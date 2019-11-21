@@ -6,16 +6,58 @@ class Tensor:
 
     def __init__(self,rank_ids=["X"], n=0):
 
-        self.ranks = []
-        for id in rank_ids:
-            self.ranks.append(Rank(name=id))
+        self.rank_ids = rank_ids
 
-        print("Ranks = %s" % self.ranks)
-        
+        #
+        # Create a linked list of ranks
+        #
+        self.ranks = []
+        old_rank = None
+        for id in rank_ids:
+            new_rank = Rank(name=id)
+            if not old_rank is None: old_rank.set_next(new_rank)
+            old_rank = new_rank
+            self.ranks.append(new_rank)
+            
         if (n == 0):
-            self.ranks[0].append(Fiber(default = 0))
+            root_fiber = Fiber()
+            
+            if len(rank_ids) != 1:
+                root_fiber.set_default(Fiber)
+            else:
+                root_fiber.set_default(0)
+
+            self.ranks[0].append(root_fiber)
             return
-        
+
+        if (n > 0):
+            self._builtin_value(n)
+
+
+    def root(self):
+        return self.ranks[0].fibers[0]
+
+#
+# String methods
+#
+    def print(self, title=None):
+        if not title is None:
+            print("%s" % title)
+
+        print("%s" % self)
+        print("")
+
+    def __repr__(self):
+        str = "T(%s)/[" % ",".join(self.rank_ids) + "\n"
+        for r in self.ranks:
+            str += "  " + r.__repr__() + "\n"
+        str += "]"
+        return str
+#
+#
+# Temporary tensor initialization values
+#
+    def _builtin_value(self, n):
         if (n == 1):
 
             rank0 = self.ranks[0]            
@@ -77,9 +119,4 @@ class Tensor:
         else:
             assert(False)
 
-
-
-    def root(self):
-        print("Root name: %s" % self.ranks[0].name)
-        return self.ranks[0].fibers[0]
-
+        
