@@ -221,7 +221,26 @@ class Fiber:
         return Fiber(z_coords, z_payloads)
 
 #
-#  String operatons
+#  Comparison operations
+#
+
+    def __eq__(self, other):
+        """__eq__"""
+
+        print("FIBER comparison")
+
+        if (self.coords != other.coords):
+            print("Coords different")
+            return False
+
+        if (self.payloads != other.payloads)
+            print("Payloads different")
+            return False
+
+        return True
+
+#
+#  String methods
 #
     def print(self, title=None):
         """print"""
@@ -267,75 +286,3 @@ if __name__ == "__main__":
     a.print()
     print("----\n\n")
 
-
-    print("Find payload of 0,4,6,3")
-    for i in [0, 4, 6, 3]:
-        print("Payload of %s = %s" % (i, a.payload(i)))
-    print("----\n\n")
-
-    print("Insert payload at coordinates 0, 3, 7")
-    for i in [0, 3, 7]:
-        p = i*i+1
-        a.insert(i, p)
-        a.print("List with (%s, %s) inserted" % (i, p))
-        print("")
-    print("----\n\n")
-
-
-    print("For loop print")
-    for p in a:
-        print(p)
-    print("----\n\n")
-
-
-    print("Iterator Print")
-    i = a.__iter__()
-
-    while True:
-        try:
-            coord, payload = next(i)
-            print("(%s, %s)" % (coord, payload))
-        except StopIteration:
-            print("End")
-            break
-    print("----\n\n")
-
-
-    print("Intersection")
-
-    b = Fiber([2, 6, 8], [4, 8, 10])
-
-    a.print()
-    b.print()
-
-    ab = a & b
-    ab.print()
-    print("----\n\n")
-
-    print("For Intersection")
-
-    for coord, payload in ab:
-        print("(%s, %s)" % (coord, payload))
-
-    print("----\n\n")
-
-    print("Union")
-
-    a.print()
-    b.print()
-
-    ab = a | b
-    ab.print()
-    print("----\n\n")
-
-    print("Assignment")
-
-    z = Fiber()
-    a = Fiber([2, 6, 8], [4, 8, 10])
-
-    z.print("Z Fiber")
-    a.print("A Fiber")
-
-    za = z << a
-    za.print("Z << A Fiber")
-    print("----\n\n")
