@@ -1,43 +1,62 @@
+""" Payload class"""
+
 class Payload:
+    """Payload class"""
 
     def __init__(self, value=None):
+        """__init__"""
+
         self.value = value
 
     def v(self):
+        """v"""
+
         return self.value
 
     def __setattr__(self, name, value):
-        if (name == "v"):
+        """__setattr__"""
+
+        if name == "v":
             name = "value"
 
         # If value is a Payload copy in its value
         if isinstance(value, Payload):
             value = value.v()
-            
+
         self.__dict__[name] = value
 
     def __iter__(self):
+        """__iter__"""
+
         for v in self.value:
             yield v
 
     def __bool__(self):
+        """__bool__"""
+
         return bool(self.value)
-    
-            
+
+
 #
 # Srtring operations
 #
 
     def __str__(self):
+        """__str__"""
+
         return "<%s> " % self.value.__str__()
 
     def __repr__(self):
-        return ("%s" % self.value)
+        """__repr__"""
+
+        return "%s" % self.value
 
 #
 # Arithmetic operations
 #
     def __add__(self, other):
+        """__add__"""
+
         if isinstance(other, Payload):
             ans = self.value + other.value
         else:
@@ -46,10 +65,15 @@ class Payload:
         return Payload(ans)
 
     def __radd__(self, other):
-        assert(not isinstance(other, Payload))
+        """__radd__"""
+
+        assert not isinstance(other, Payload)
+
         return Payload(other + self.value)
 
     def __iadd__(self, other):
+        """__iadd__"""
+
         if isinstance(other, Payload):
             self.value = self.value + other.value
         else:
@@ -57,6 +81,8 @@ class Payload:
         return self
 
     def __sub__(self, other):
+        """__sub__"""
+
         if isinstance(other, Payload):
             ans = self.value - other.value
         else:
@@ -65,12 +91,15 @@ class Payload:
         return Payload(ans)
 
     def __rsub__(self, other):
-#        print("Subing %s to %s" % (self.value, other))
-        assert(not isinstance(other, Payload))
+        """__rsub__"""
+
+        assert not isinstance(other, Payload)
         return Payload(other - self.value)
 
 
     def __isub__(self, other):
+        """__isub__"""
+
         if isinstance(other, Payload):
             self.value = self.value - other.value
         else:
@@ -79,6 +108,8 @@ class Payload:
 
 
     def __mul__(self, other):
+        """__mul__"""
+
         if isinstance(other, Payload):
             ans = self.value * other.value
         else:
@@ -87,11 +118,16 @@ class Payload:
         return Payload(ans)
 
     def __rmul__(self, other):
-        assert(not isinstance(other, Payload))
+        """__rmul__"""
+
+        assert not isinstance(other, Payload)
+
         return Payload(other * self.value)
 
 
     def __imul__(self, other):
+        """__imul__"""
+
         if isinstance(other, Payload):
             self.value = self.value * other.value
         else:
@@ -104,16 +140,20 @@ class Payload:
 #
 
     def __eq__(self, other):
-        if (isinstance(other, Payload)):
-            return (self.value == other.value)
-        else:
-            return (self.value == other)
+        """__eq__"""
+
+        if isinstance(other, Payload):
+            return self.value == other.value
+
+        return self.value == other
 
     def __ne__(self, other):
-        if (isinstance(other, Payload)):
-            return (self.value != other.value)
-        else:
-            return (self.value != other)
+        """__ne__"""
+
+        if isinstance(other, Payload):
+            return self.value != other.value
+
+        return self.value != other
 
 
 if __name__ == "__main__":
@@ -149,14 +189,14 @@ if __name__ == "__main__":
     a_sub_1 = a - 1
     print("A-1 = %s"% a_sub_1)
     print("---")
-    
+
 
     print("A = %s" % a)
     print("B = %s" % b)
     a_sub_b = a - b
     print("A-B = %s"% a_sub_b)
     print("---")
-    
+
 
     print("A = %s" % a)
     a_mul_2 = a * 2
@@ -207,7 +247,3 @@ if __name__ == "__main__":
     print("1 == C %s" % (1 == c))
     print("8 != C %s" % (8 != c))
     print("1 != C %s" % (1 != c))
-
-
-    
-

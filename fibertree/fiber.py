@@ -1,6 +1,6 @@
-from fibertree.payload import Payload
-
 """Fiber"""
+
+from fibertree.payload import Payload
 
 class Fiber:
     """Fiber class"""
@@ -75,6 +75,8 @@ class Fiber:
         """__and__"""
 
         def get_next(iter):
+            """get_next"""
+
             try:
                 coord, payload = next(iter)
             except StopIteration:
@@ -114,6 +116,8 @@ class Fiber:
         """__or__"""
 
         def get_next(iter):
+            """get_next"""
+
             try:
                 coord, payload = next(iter)
             except StopIteration:
@@ -214,7 +218,6 @@ class Fiber:
             z_payloads.append((a_payload, b_payload))
             b_coord, b_payload = get_next(b)
 
-        
         return Fiber(z_coords, z_payloads)
 
 #
@@ -252,8 +255,8 @@ class Fiber:
 
         if isinstance(value, (float, int)):
             return Payload(value)
-        else:
-            return value
+
+        return value
 
 
 if __name__ == "__main__":

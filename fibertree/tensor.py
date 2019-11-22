@@ -1,10 +1,13 @@
 from fibertree.rank  import Rank
 from fibertree.fiber import Fiber
 
+""" Tensor """
 
 class Tensor:
+    """ Tensor Class """
 
     def __init__(self,rank_ids=["X"], n=0):
+        """__init__"""
 
         self.rank_ids = rank_ids
 
@@ -35,12 +38,16 @@ class Tensor:
 
 
     def root(self):
+        """root"""
+
         return self.ranks[0].fibers[0]
 
 #
 # String methods
 #
     def print(self, title=None):
+        """print"""
+
         if not title is None:
             print("%s" % title)
 
@@ -48,6 +55,8 @@ class Tensor:
         print("")
 
     def __repr__(self):
+        """__repr__"""
+
         str = "T(%s)/[" % ",".join(self.rank_ids) + "\n"
         for r in self.ranks:
             str += "  " + r.__repr__() + "\n"
@@ -58,6 +67,8 @@ class Tensor:
 # Temporary tensor initialization values
 #
     def _builtin_value(self, n):
+        """_builtin_value"""
+
         if (n == 1):
 
             rank0 = self.ranks[0]            

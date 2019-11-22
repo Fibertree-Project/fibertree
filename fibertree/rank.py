@@ -1,8 +1,13 @@
 from fibertree.fiber import Fiber
 
+""" Rank """
+
 class Rank:
+    """ Rank class """
 
     def __init__(self, name, next_rank=None):
+        """__init__"""
+
         self.name = name
         self.next_rank = next_rank
         self.fibers = []
@@ -11,12 +16,16 @@ class Rank:
 # Accessor methods
 #
     def get_name(self):
+        """get_name"""
+
         return self.name
 
 #
 # Fundamental methods
 #
     def append(self, fiber):
+        """append"""
+
         # Set this rank as owner of the fiber
         fiber.set_owner(self)
 
@@ -33,9 +42,13 @@ class Rank:
 # Linked list methods
 #
     def get_next(self):
+        """get_next"""
+
         return self.next_rank
 
     def set_next(self, next_rank):
+        """set_next"""
+
         self.next_rank = next_rank
 
 #
@@ -43,11 +56,15 @@ class Rank:
 #
 
     def __str__(self):
+        """__str__"""
+
         string = "Rank: %s " % self.name
         string += ", ".join([str(x) for x in self.fibers])
         return string
     
     def __repr__(self):
+        """__repr__"""
+
         string = "R(%s)/[" % self.name
         string += ", ".join([str(x) for x in self.fibers])
         string += "]"
