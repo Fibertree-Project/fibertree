@@ -1,0 +1,40 @@
+tensor:
+  rank_ids: [ M, K ]
+  root:
+    - fiber:
+        coords:
+          - 1
+          - 2
+          - 4
+          - 6
+        payloads:
+          - fiber:
+              coords:
+                - 0      # [1, 0]
+                - 1      # [1, 1]
+                - 2      # [1, 2]
+              payloads:
+                - 100
+                - 101
+                - 102
+
+          - fiber:   #  [2, 1] [2, 3]
+              coords:   [  1,     3  ]
+              payloads: [ 201,   203 ]
+
+          - fiber:
+              coords:
+                - 0      # [4, 0]
+                - 2      # [4, 2]
+              payloads:
+                - 400
+                - 402
+
+          - fiber:
+              coords:
+                - 1      # [6, 1]
+                - 3      # [6, 3]
+              payloads:
+                - 601
+                - 603
+              

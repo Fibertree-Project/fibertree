@@ -11,8 +11,8 @@ print("Dot product on two single row matrices")
 print("--------------------------------------")
 print("")
 
-a = Tensor(rank_ids=["M","K"], n=1)
-b = Tensor(rank_ids=["M","K"], n=2)
+a = Tensor("./data/dot-product-a.yaml")
+b = Tensor("./data/dot-product-b.yaml")
 z = Tensor(rank_ids=["M"])
 
 a.print("A Tensor")

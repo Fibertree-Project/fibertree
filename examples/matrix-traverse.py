@@ -6,7 +6,7 @@ print("           Matrix Traverse")
 print("--------------------------------------")
 print("")
 
-a = Tensor(rank_ids = ["M", "K"], n=6)
+a = Tensor("./data/matrix-a.yaml")
 
 a.print("Matrix")
 

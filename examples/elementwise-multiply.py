@@ -7,8 +7,8 @@ print("--------------------------------------")
 print("")
 
 
-a = Tensor(rank_ids=["M"], n=4)
-b = Tensor(rank_ids=["M"], n=5)
+a = Tensor("./data/elementwise-a.yaml")
+b = Tensor("./data/elementwise-b.yaml")
 z = Tensor(rank_ids=["M"])
 
 a.print("A Tensor")

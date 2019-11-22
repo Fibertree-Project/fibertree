@@ -1,3 +1,5 @@
+import yaml
+
 from fibertree.rank  import Rank
 from fibertree.fiber import Fiber
 
@@ -6,8 +8,27 @@ from fibertree.fiber import Fiber
 class Tensor:
     """ Tensor Class """
 
-    def __init__(self,rank_ids=["X"], n=0):
+    def __init__(self, yamlfile="", rank_ids=["X"]):
         """__init__"""
+
+        if (yamlfile != ""):
+            # Note: rank_ids are ignored...
+            self.parse(yamlfile)
+            return
+
+        #
+        # Initialize an empty tensor with an empty root fiber
+        #
+        self.set_rank_ids(rank_ids)
+
+        root_fiber = Fiber()
+        self.ranks[0].append(root_fiber)
+
+
+
+
+    def set_rank_ids(self, rank_ids):
+        """set_rank_ids"""
 
         self.rank_ids = rank_ids
 
@@ -21,20 +42,6 @@ class Tensor:
             if not old_rank is None: old_rank.set_next(new_rank)
             old_rank = new_rank
             self.ranks.append(new_rank)
-            
-        if (n == 0):
-            root_fiber = Fiber()
-            
-            if len(rank_ids) != 1:
-                root_fiber.set_default(Fiber)
-            else:
-                root_fiber.set_default(0)
-
-            self.ranks[0].append(root_fiber)
-            return
-
-        if (n > 0):
-            self._builtin_value(n)
 
 
     def root(self):
@@ -62,72 +69,100 @@ class Tensor:
             str += "  " + r.__repr__() + "\n"
         str += "]"
         return str
+
 #
+# Yaml parsing methods
 #
-# Temporary tensor initialization values
-#
-    def _builtin_value(self, n):
-        """_builtin_value"""
+    def parse(self, file):
+        """Parse a yaml file containing a tensor"""
 
-        if (n == 1):
+        with open(file, 'r') as stream:
+            try:
+                y_file = yaml.safe_load(stream)
+            except yaml.YAMLError as exc:
+                print(exc)
+                exit(1)
 
-            rank0 = self.ranks[0]            
-            rank1 = self.ranks[1]
-            
-            a_k = Fiber([0, 2, 4, 6],            # Coordinates
-                        [1, 3, 5, 7])            # Payloads
+            #
+            # Make sure key "tensor" exists
+            #
+            if not isinstance(y_file, dict) or 'tensor' not in y_file:
+                print("Yaml is not a tensor")
+                exit(1)
 
-            rank1.append(a_k)
+            y_tensor = y_file['tensor']
 
-            a_m = Fiber([0], [a_k])
+            #
+            # Make sure key "rank_ids" exists
+            #
+            if not isinstance(y_tensor, dict) or 'rank_ids' not in y_tensor:
+                print("Yaml has no rank_ids")
+                exit(1)
 
-            rank0.append(a_m)
-        elif n == 2:
-            b_k = Fiber([2, 6, 8],                # Coordinates
-                        [4 , 8, 10])              # Payloads
+            self.set_rank_ids(y_tensor['rank_ids'])
 
-            self.ranks[1].append(b_k)
+            #
+            # Make sure key "root" exists
+            #
+            if 'root' not in y_tensor:
+                print("Yaml has no root")
+                exit(1)
 
-            b_m = Fiber([0], [b_k])
+            y_root = y_tensor['root']
 
-            self.ranks[0].append(b_m)
-        elif n == 3:
-            a_m = Fiber([0, 2, 4, 6],             # Coordinates
-                        [1 , 3, 5, 7])            # Payloads
+            #
+            # Geneate the tree recursively
+            #
+            tree = self.process_payload(y_root[0])
 
-            self.ranks[0].append(a_m)
-        elif n == 4:
-            a_m = Fiber([0, 2, 4, 6],             # Coordinates
-                        [1 , 3, 5, 7])            # Payloads
+            self.ranks[0].append(tree)
 
-            self.ranks[0].append(a_m)
-        elif n == 5:
-            b_m = Fiber([2, 4],
-                        [2, 4])
 
-            self.ranks[0].append(b_m)
-        elif n == 6:
-            a_k0 = Fiber([0, 2],
-                         [1, 3])
+    def process_payload(self, y_payload_in, level=0):
+        """Parse a yaml-based tensor payload, creating Fibers as appropriate"""
 
-            self.ranks[1].append(a_k0)
+        if isinstance(y_payload_in, dict) and 'fiber' in y_payload_in:
+            # Got a fiber, so need to get into the Fiber class
 
-            a_k1 = Fiber([0, 3],
-                         [1, 4])
+            y_fiber = y_payload_in['fiber']
 
-            self.ranks[1].append(a_k1)
+            #
+            # Error checking
+            #
+            if not isinstance(y_fiber, dict):
+                print("Malformed payload")
+                exit(0)
 
-            a_k3 = Fiber([2, 3],
-                         [3, 4])
+            if 'coords' not in y_fiber:
+                print("Malformed fiber")
+                exit(0)
 
-            self.ranks[1].append(a_k3)
+            if 'payloads' not in y_fiber:
+                print("Malformed fiber")
+                exit(0)
 
-            a_m0 = Fiber([0,  1,  3],
-                      [a_k0, a_k1, a_k3])
+            #
+            # Process corrdinates and payloads
+            #
+            f_coords = y_fiber['coords']
+            y_f_payloads = y_fiber['payloads']
 
-            self.ranks[0].append(a_m0)
-            
+            f_payloads = []
+            for y_f_payload in y_f_payloads:
+                f_payloads.append(self.process_payload(y_f_payload, level+1))
+
+            #
+            # Turn into a fiber
+            #
+            subtree = Fiber(coords=f_coords, payloads=f_payloads)
+
+            #
+            # Add fiber into appropriate rank
+            #
+            self.ranks[level].append(subtree)
         else:
-            assert(False)
+            # Got scalars, so format is unchanged
+            subtree = y_payload_in
 
-        
+        return subtree
+
