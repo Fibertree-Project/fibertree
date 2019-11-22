@@ -227,14 +227,10 @@ class Fiber:
     def __eq__(self, other):
         """__eq__"""
 
-        print("FIBER comparison")
-
-        if (self.coords != other.coords):
-            print("Coords different")
+        if self.coords != other.coords:
             return False
 
-        if (self.payloads != other.payloads)
-            print("Payloads different")
+        if self.payloads != other.payloads:
             return False
 
         return True
