@@ -1,4 +1,4 @@
-from fibertree.tensor import Tensor
+from fibertree import Tensor
 
 print("--------------------------------------")
 print("         Matrix copy")

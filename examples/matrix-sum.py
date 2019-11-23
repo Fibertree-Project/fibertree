@@ -1,5 +1,4 @@
-from fibertree.tensor import Tensor
-from fibertree.fiber  import Fiber
+from fibertree import Tensor
 
 #
 # Do a sum of sums of the rows of two matrices
