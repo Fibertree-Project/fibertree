@@ -6,7 +6,7 @@ print("--------------------------------------")
 print("")
 
 
-a = Tensor("./data/elementwise-a.yaml")
+a = Tensor("../data/elementwise-a.yaml")
 z = Tensor(rank_ids=["M"])
 
 a.print("A Tensor")

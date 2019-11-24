@@ -6,7 +6,7 @@ print("--------------------------------------")
 print("")
 
 
-a = Tensor("./data/matrix-a.yaml")
+a = Tensor("../data/matrix-a.yaml")
 z = Tensor(rank_ids=["M", "K"])
 
 a.print("A Tensor")

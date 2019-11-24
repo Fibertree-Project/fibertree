@@ -4,7 +4,7 @@ import argparse
 from fibertree import Tensor, TensorImage
 
 parser = argparse.ArgumentParser(description='Display a tensor')
-parser.add_argument("tensorfile", nargs="?", default="./data/draw-a.yaml")
+parser.add_argument("tensorfile", nargs="?", default="../examples/data/draw-a.yaml")
 args = parser.parse_args()
 
 filename = args.tensorfile

@@ -6,7 +6,7 @@ print("           Matrix Traverse")
 print("--------------------------------------")
 print("")
 
-a = Tensor("./data/matrix-a.yaml")
+a = Tensor("../data/matrix-a.yaml")
 
 a.print("Matrix")
 
