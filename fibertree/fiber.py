@@ -37,6 +37,11 @@ class Fiber:
 
         self.owner = owner
 
+    def __len__(self):
+        """__len__"""
+
+        return len(self.coords)
+
     def __iter__(self):
         """__iter__"""
 

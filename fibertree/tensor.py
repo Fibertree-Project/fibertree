@@ -11,6 +11,8 @@ class Tensor:
     def __init__(self, yamlfile="", rank_ids=["X"]):
         """__init__"""
 
+        self.yamlfile = yamlfile
+        
         if (yamlfile != ""):
             # Note: rank_ids are ignored...
             self.parse(yamlfile)
