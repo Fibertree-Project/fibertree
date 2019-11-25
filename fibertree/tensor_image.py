@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from fibertree import Tensor
 from fibertree import Fiber
+from fibertree.payload import Payload
 
 class TensorImage():
     """TensorImage"""
@@ -14,9 +15,17 @@ class TensorImage():
 
     def create_tree(self, tensor):
 
+        self.max_y = 100
+
         self.image_setup()
 
-        f = tensor.root()
+        #
+        # Allow support for displaying fibers
+        #
+        if isinstance(tensor, Tensor):
+            f = tensor.root()
+        elif isinstance(tensor, Fiber):
+            f = tensor
 
         region_start = 0
         region_end = self.traverse(f)
@@ -25,7 +34,8 @@ class TensorImage():
         #
         # Draw root of tree
         #
-        self.draw_rank(0, "File: %s" % tensor.yamlfile)
+        if isinstance(tensor, Tensor):
+            self.draw_rank(0, "File: %s" % tensor.yamlfile)
 
         fiber_size = 1
         fiber_start = region_start + (region_size - fiber_size)/2
@@ -35,7 +45,7 @@ class TensorImage():
         self.im = self.im.crop((0,
                                 0,
                                 self.offset2x(region_end)+200,
-                                self.level2y(2+len(tensor.rank_ids))))
+                                20+self.max_y))
 
         
     def show(self):
@@ -45,7 +55,7 @@ class TensorImage():
     def traverse(self, fiber, level=1, offset=0):
         """traverse"""
 
-        if offset == 0:
+        if offset == 0 and not fiber.owner is None:
 #           print("(%02d, 00) - Rank - %s" % (level, fiber.owner.name))
             self.draw_rank(level, "Rank: %s " % fiber.owner.name)
 
@@ -90,7 +100,7 @@ class TensorImage():
 
             if not isinstance(p, Fiber):
 #               print("(%02d, %02d) - Value - %02s" % (level+1, pos, p))
-                self.draw_value(level+1, pos, p.value)
+                self.draw_value(level+1, pos, p)
 
             pos += 1
 
@@ -143,13 +153,37 @@ class TensorImage():
     def draw_value(self, level, offset, value):
         """draw_value"""
 
+        if isinstance(value, Payload):
+            value = value.value
+
+        if not isinstance(value, tuple):
+            value = ( value, )
+
+        font_y = 30
+
         x1 = self.offset2x(offset) + 20
         y1 = self.level2y(level) - 10
+
         x2 = x1 + 40
-        y2 = y1 + 40
+        y2 = y1 + len(value)*(font_y+10)
         
+        if y2 > self.max_y:
+            self.max_y = y2
+
         self.draw.rectangle(((x1,y1), (x2,y2)), "red", 1)
-        self.draw.text((x1+10,y1+10), str(value), font=self.fnt, fill="black")
+
+        for i,v in enumerate(value):
+            if isinstance(v, Payload):
+                v = v.value
+
+            x_text = x1+10
+            y_text = y1+10+(i*font_y)
+
+
+            self.draw.text((x_text, y_text),
+                            str(v),
+                            font=self.fnt,
+                            fill="black")
 
     def draw_line(self, level1, offset1, level2, offset2):
 
