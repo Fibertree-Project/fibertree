@@ -74,6 +74,134 @@ class Fiber:
             self.payloads.append(payload)
 
 #
+# Split methods
+#     TBD: Refactor to reduce code size
+#
+
+    def splitUniform(self, step):
+        """splitUniform"""
+
+        fiber_coords = []
+        fiber_payloads = []
+
+        cur_group=0
+
+        for c,p in zip(self.coords,self.payloads):
+            # Check if we need to start a new fiber
+            if c >= cur_group:
+                cur_group += step
+
+                cur_coords = []
+                fiber_coords.append(cur_coords)
+                cur_payloads = []
+                fiber_payloads.append(cur_payloads)
+
+            cur_coords.append(c)
+            cur_payloads.append(p)
+
+        # TBD: Do this a a list comprehension
+
+        fibers = []
+        for c, p in zip(fiber_coords, fiber_payloads):
+            fibers.append(Fiber(c, p))
+
+        return fibers
+
+    def splitNonUniform(self, splits):
+        """splitNonUniform"""
+
+        fiber_coords = []
+        fiber_payloads = []
+
+        # Note: needs to start at coordinate 0
+
+        cur_split = splits.pop(0)
+
+        for c,p in zip(self.coords,self.payloads):
+            # Check if we need to start a new fiber
+            if splits and c >= cur_split:
+                cur_split = splits.pop(0)
+
+                cur_coords = []
+                fiber_coords.append(cur_coords)
+                cur_payloads = []
+                fiber_payloads.append(cur_payloads)
+
+            cur_coords.append(c)
+            cur_payloads.append(p)
+
+        # TBD: Do this a a list comprehension
+
+        fibers = []
+        for c, p in zip(fiber_coords, fiber_payloads):
+            fibers.append(Fiber(c, p))
+
+        return fibers
+
+    def splitEqual(self, step):
+        """splitEqual"""
+
+        fiber_coords = []
+        fiber_payloads = []
+
+        cur_count=0
+
+        for i, (c,p) in enumerate(zip(self.coords,self.payloads)):
+            # Check if we need to start a new fiber
+            if i >= cur_count:
+                cur_count += step
+
+                cur_coords = []
+                fiber_coords.append(cur_coords)
+                cur_payloads = []
+                fiber_payloads.append(cur_payloads)
+
+            cur_coords.append(c)
+            cur_payloads.append(p)
+
+        # TBD: Do this a a list comprehension
+
+        fibers = []
+        for c, p in zip(fiber_coords, fiber_payloads):
+            fibers.append(Fiber(c, p))
+
+        return fibers
+
+
+    def splitUnEqual(self, sizes):
+        """splitUnEqual"""
+
+        assert len(self.coords) <= sum(sizes)
+
+        fiber_coords = []
+        fiber_payloads = []
+
+        cur_count = -1
+
+        for i, (c,p) in enumerate(zip(self.coords,self.payloads)):
+            # Check if we need to start a new fiber
+            if sizes and i > cur_count:
+                cur_count += sizes.pop(0)
+
+                cur_coords = []
+                fiber_coords.append(cur_coords)
+                cur_payloads = []
+                fiber_payloads.append(cur_payloads)
+
+            cur_coords.append(c)
+            cur_payloads.append(p)
+
+        # TBD: Do this a a list comprehension
+
+        fibers = []
+        for c, p in zip(fiber_coords, fiber_payloads):
+            fibers.append(Fiber(c, p))
+
+        return fibers
+
+
+
+#
 #  Merge operatons
 #
     def __and__(self, other):
