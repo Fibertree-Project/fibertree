@@ -72,6 +72,7 @@ class Fiber:
         except:
             return None
 
+
     def insert(self, coord, value):
         """insert"""
 
@@ -84,6 +85,26 @@ class Fiber:
         except StopIteration:
             self.coords.append(coord)
             self.payloads.append(payload)
+
+
+    def project(self, trans_fn):
+        """project"""
+
+        coords = [ trans_fn(c) for c in self.coords ]
+        payloads = self.payloads
+
+        return Fiber(coords, payloads)
+
+
+    def unzip(self):
+        """Unzip"""
+
+        coords_a = list(self.coords)
+        coords_b = list(self.coords)
+
+        (payloads_a, payloads_b) = zip(*self.payloads)
+
+        return (Fiber(coords_a, payloads_a), Fiber(coords_b, payloads_b))
 
 #
 # Split methods
