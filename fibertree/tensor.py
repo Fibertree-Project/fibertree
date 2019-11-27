@@ -55,7 +55,7 @@ class Tensor:
     def values(self):
         """Count of values in the tensor"""
 
-        return a.root().values()
+        return self.root().values()
 
 #
 # String methods
@@ -122,8 +122,6 @@ class Tensor:
             # Geneate the tree recursively
             #
             tree = self.process_payload(y_root[0])
-
-            self.ranks[0].append(tree)
 
 
     def process_payload(self, y_payload_in, level=0):

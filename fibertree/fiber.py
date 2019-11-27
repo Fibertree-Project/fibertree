@@ -87,11 +87,36 @@ class Fiber:
             self.payloads.append(payload)
 
 
-    def project(self, trans_fn):
+    def project(self, trans_fn, interval=None):
         """project"""
 
-        coords = [ trans_fn(c) for c in self.coords ]
-        payloads = self.payloads
+        # Invariant: trans_fn is order preserving, but we check for reversals
+
+        if range is None:
+            # All coordinates are legal
+
+            coords = [ trans_fn(c) for c in self.coords ]
+            payloads = self.payloads
+        else:
+            # Only pass coordinates in [ interval[0], interval[1] )
+
+            min = interval[0]
+            max = interval[1]
+
+            coords = []
+            payloads = []
+
+            for c,p in zip(self.coords, self.payloads):
+                new_c = trans_fn(c)
+                if new_c >= min and new_c < max:
+                    coords.append(new_c)
+                    payloads.append(p)
+
+            # Note: This reversal implies a complex read order
+
+            if len(coords) > 1 and coords[1] < coords[0]:
+                coords.reverse()
+                payloads.reverse()
 
         return Fiber(coords, payloads)
 
