@@ -9,10 +9,13 @@ class Fiber:
         """__init__"""
 
         if coords is None:
-            # If neither coords or payloads are given create an empty fiber
-            assert(payloads is None)
-            coords = []
-            payloads = []
+            if payloads is None:
+                # If neither coords or payloads are given create an empty fiber
+                coords = []
+                payloads = []
+            else:
+                # If only payloads are given create a "dense" fiber
+                coords = range(len(payloads))
         else:
             if payloads is None:
                 # If only coords are given create a blank set of payloads
@@ -281,17 +284,17 @@ class Fiber:
         # For 1 partition don't return a extra level of Fiber
 
         if partitions == 1:
-            return Fiber(range(len(fibers[0])), fibers[0])
+            return Fiber(payloads=fibers[0])
 
         # For >1 partitions return a Fiber with a payload for each partition
 
         payloads = []
 
         for f in fibers:
-            payload = Fiber(range(len(f)), f)
+            payload = Fiber(payloads=f)
             payloads.append(payload)
 
-        return Fiber(range(len(payloads)), payloads)
+        return Fiber(payloads=payloads)
 
 
 #
