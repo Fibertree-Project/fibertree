@@ -9,9 +9,15 @@ class Fiber:
         """__init__"""
 
         if coords is None:
+            # If neither coords or payloads are given create an empty fiber
+            assert(payloads is None)
             coords = []
-        if payloads is None:
             payloads = []
+        else:
+            if payloads is None:
+                # If only coords are given create a blank set of payloads
+                payloads = [default for x in range(len(coords))]
+
 
         assert (len(coords) == len(payloads)), "Coordinates and payloads must be same length"
 
@@ -36,6 +42,16 @@ class Fiber:
         """set_owner"""
 
         self.owner = owner
+
+    def min_coord(self):
+        """min_coord"""
+
+        return min(self.coords)
+
+    def max_coord(self):
+        """max_coord"""
+
+        return max(self.coords)
 
     def values(self):
         """Count values in the fiber tree"""
@@ -87,12 +103,16 @@ class Fiber:
             self.payloads.append(payload)
 
 
-    def project(self, trans_fn, interval=None):
+    def project(self, trans_fn=None, interval=None):
         """project"""
+
+        if trans_fn is None:
+            # Default trans_fn is identify function (inefficient but easy implementation)
+            trans_fn = lambda x: x
 
         # Invariant: trans_fn is order preserving, but we check for reversals
 
-        if range is None:
+        if interval is None:
             # All coordinates are legal
 
             coords = [ trans_fn(c) for c in self.coords ]
@@ -278,7 +298,31 @@ class Fiber:
 #  Merge operatons
 #
     def __and__(self, other):
-        """__and__"""
+        """__and__
+
+        Return the intersection of "self" and "other" by considering all possible
+        coordinates and returning a fiber consisting of payloads containing
+        a tuple of the payloads of the inputs for coordinates where the
+        following truth table returns True:
+
+
+                         coordinate not     |      coordinate
+                        present in "other"  |    present in "other"
+                    +-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        not present |         False         |        False          |
+        in "self"   |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        present in  |         False         |        True           |
+        "self"      |                       |                       |
+                    |                       |                       |                    |
+        ------------+-----------------------+-----------------------+
+
+        """
 
         def get_next(iter):
             """get_next"""
@@ -319,7 +363,32 @@ class Fiber:
 
 
     def __or__(self, other):
-        """__or__"""
+        """__or__
+
+        Return the union of "self" and "other" by considering all possible
+        coordinates and returning a fiber consisting of payloads containing
+        a tuple of the payloads of the inputs for coordinates where the
+        following truth table returns True:
+
+
+                         coordinate not     |      coordinate
+                        present in "other"  |    present in "other"
+                    +-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        not present |         False         |        True           |
+        in "self"   |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        present in  |         True          |        True           |
+        "self"      |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+
+        """
+
 
         def get_next(iter):
             """get_next"""
@@ -381,7 +450,32 @@ class Fiber:
 
 
     def __lshift__(self, other):
-        """__lshift__"""
+        """__lshift__
+
+        Return the "assignment" of "other" to "self" by considering all possible
+        coordinates and returning a fiber consisting of payloads containing
+        a tuple of the payloads of the inputs for coordinates where the
+        following truth table returns True:
+
+
+                         coordinate not     |      coordinate
+                        present in "other"  |    present in "other"
+                    +-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        not present |         False         |        True           |
+        in "self"   |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        present in  |         False         |        True           |
+        "self"      |                       |                       |
+                    |                       |                       |                    |
+        ------------+-----------------------+-----------------------+
+
+        """
+
 
         def get_next(iter):
             """get_next"""
