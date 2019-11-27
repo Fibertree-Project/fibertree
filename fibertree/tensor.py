@@ -51,6 +51,12 @@ class Tensor:
 
         return self.ranks[0].fibers[0]
 
+
+    def values(self):
+        """Count of values in the tensor"""
+
+        return a.root().values()
+
 #
 # String methods
 #

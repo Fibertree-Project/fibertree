@@ -37,6 +37,18 @@ class Fiber:
 
         self.owner = owner
 
+    def values(self):
+        """Count values in the fiber tree"""
+
+        count = 0
+        for p in self.payloads:
+            if isinstance(p, Fiber):
+                count += p.values()
+            else:
+                count += 1
+
+        return count
+
     def __len__(self):
         """__len__"""
 
