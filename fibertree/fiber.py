@@ -75,130 +75,145 @@ class Fiber:
 
 #
 # Split methods
-#     TBD: Refactor to reduce code size
 #
 
-    def splitUniform(self, step):
+
+    def splitUniform(self, step, partitions=1):
         """splitUniform"""
 
-        fiber_coords = []
-        fiber_payloads = []
+        class _SplitterUniform():
 
-        cur_group=0
+            def __init__(self, step):
+                self.step = step
+                self.cur_group = 0
 
-        for c,p in zip(self.coords,self.payloads):
-            # Check if we need to start a new fiber
-            if c >= cur_group:
-                cur_group += step
+            def nextGroup(self, i, c):
+                if c >= self.cur_group:
+                    self.cur_group += self.step
+                    return True
 
-                cur_coords = []
-                fiber_coords.append(cur_coords)
-                cur_payloads = []
-                fiber_payloads.append(cur_payloads)
+                return False
 
-            cur_coords.append(c)
-            cur_payloads.append(p)
+        splitter = _SplitterUniform(step)
 
-        # TBD: Do this a a list comprehension
+        return self._splitGeneric(splitter, partitions)
 
-        fibers = []
-        for c, p in zip(fiber_coords, fiber_payloads):
-            fibers.append(Fiber(c, p))
 
-        return fibers
-
-    def splitNonUniform(self, splits):
+    def splitNonUniform(self, splits, partitions=1):
         """splitNonUniform"""
 
-        fiber_coords = []
-        fiber_payloads = []
+        class _SplitterNonUniform():
 
-        # Note: needs to start at coordinate 0
+            def __init__(self, splits):
+                self.splits = splits
+                self.cur_split = self.splits.pop(0)
 
-        cur_split = splits.pop(0)
+            def nextGroup(self, i, c):
+                if self.splits and c >= self.cur_split:
+                    self.cur_split = self.splits.pop(0)
+                    return True
 
-        for c,p in zip(self.coords,self.payloads):
-            # Check if we need to start a new fiber
-            if splits and c >= cur_split:
-                cur_split = splits.pop(0)
+                return False
 
-                cur_coords = []
-                fiber_coords.append(cur_coords)
-                cur_payloads = []
-                fiber_payloads.append(cur_payloads)
+        splitter = _SplitterNonUniform(splits)
 
-            cur_coords.append(c)
-            cur_payloads.append(p)
+        return self._splitGeneric(splitter, partitions)
 
-        # TBD: Do this a a list comprehension
 
-        fibers = []
-        for c, p in zip(fiber_coords, fiber_payloads):
-            fibers.append(Fiber(c, p))
-
-        return fibers
-
-    def splitEqual(self, step):
+    def splitEqual(self, step, partitions=1):
         """splitEqual"""
 
-        fiber_coords = []
-        fiber_payloads = []
+        class _SplitterEqual():
 
-        cur_count=0
+            def __init__(self, splits):
+                self.step = step
+                self.cur_count=0
 
-        for i, (c,p) in enumerate(zip(self.coords,self.payloads)):
-            # Check if we need to start a new fiber
-            if i >= cur_count:
-                cur_count += step
+            def nextGroup(self, i, c):
+                if i >= self.cur_count:
+                    self.cur_count += self.step
+                    return True
 
-                cur_coords = []
-                fiber_coords.append(cur_coords)
-                cur_payloads = []
-                fiber_payloads.append(cur_payloads)
+                return False
 
-            cur_coords.append(c)
-            cur_payloads.append(p)
+        splitter = _SplitterEqual(step)
 
-        # TBD: Do this a a list comprehension
-
-        fibers = []
-        for c, p in zip(fiber_coords, fiber_payloads):
-            fibers.append(Fiber(c, p))
-
-        return fibers
+        return self._splitGeneric(splitter, partitions)
 
 
-    def splitUnEqual(self, sizes):
+    def splitUnEqual(self, sizes, partitions=1):
         """splitUnEqual"""
+
+        class _SplitterUnEqual():
+
+            def __init__(self, sizes):
+                self.sizes = sizes
+                self.cur_count = -1
+
+            def nextGroup(self, i, c):
+                if self.sizes and i > self.cur_count:
+                    self.cur_count += self.sizes.pop(0)
+                    return True
+
+                return False
 
         assert len(self.coords) <= sum(sizes)
 
+        splitter = _SplitterUnEqual(sizes)
+
+        return self._splitGeneric(splitter, partitions)
+
+
+    def _splitGeneric(self, splitter, partitions):
+        """_splitGeneric"""
+
         fiber_coords = []
         fiber_payloads = []
+        fibers = []
 
-        cur_count = -1
+        # Create arrays of |partitions| 
+
+        for i in range(partitions):
+            fiber_coords.append([])
+            fiber_payloads.append([])
+            fibers.append([])
+
+        partition =  0
+
+        # Split apart the fiber into groups according to "splitter"
 
         for i, (c,p) in enumerate(zip(self.coords,self.payloads)):
             # Check if we need to start a new fiber
-            if sizes and i > cur_count:
-                cur_count += sizes.pop(0)
-
+            if splitter.nextGroup(i, c):
                 cur_coords = []
-                fiber_coords.append(cur_coords)
+                fiber_coords[partition].append(cur_coords)
                 cur_payloads = []
-                fiber_payloads.append(cur_payloads)
+                fiber_payloads[partition].append(cur_payloads)
+                partition = (partition + 1) % partitions
 
             cur_coords.append(c)
             cur_payloads.append(p)
 
-        # TBD: Do this a a list comprehension
+        # Deal the split fibers out to the partitions
+        
+        for i in range(partitions):
+            for c, p in zip(fiber_coords[i], fiber_payloads[i]):
+                fibers[i].append(Fiber(c, p))
 
-        fibers = []
-        for c, p in zip(fiber_coords, fiber_payloads):
-            fibers.append(Fiber(c, p))
+        # For 1 partition don't return a extra level of Fiber
 
-        return fibers
+        if partitions == 1:
+            return Fiber(range(len(fibers[0])), fibers[0])
 
+        # For >1 partitions return a Fiber with a payload for each partition
+
+        payloads = []
+
+        for f in fibers:
+            payload = Fiber(range(len(f)), f)
+            payloads.append(payload)
+
+        return Fiber(range(len(payloads)), payloads)
 
 
 #

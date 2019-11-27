@@ -13,7 +13,7 @@ print("Uniform coordinate split (groups of %s coordinates)\n" % coords)
 
 fibers = f.splitUniform(coords)
 
-for s in fibers:
+for c,s in fibers:
     s.print()
 
 #
@@ -24,7 +24,7 @@ print("NonUniform coordinate split (splits at %s)\n" % splits)
 
 fibers = f.splitNonUniform(splits)
 
-for s in fibers:
+for c,s in fibers:
     s.print()
 
 #
@@ -35,7 +35,7 @@ print("Equal position split (groups of %s)\n" % size)
 
 fibers = f.splitEqual(size)
 
-for s in fibers:
+for c,s in fibers:
     s.print()
 
 
@@ -44,6 +44,21 @@ print("NonEqual position split (splits of sizes %s)\n" % sizes)
 
 fibers = f.splitUnEqual(sizes)
 
-for s in fibers:
+for c,s in fibers:
+    s.print()
+
+#
+# Create multiple partitions
+#
+
+#
+# Equal position-based split
+#
+size = 2
+print("Two partitions with equal position split (groups of %s)\n" % size)
+
+fibers = f.splitEqual(size, partitions=2)
+
+for c,s in fibers:
     s.print()
 
