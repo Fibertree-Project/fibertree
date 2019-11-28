@@ -1,12 +1,18 @@
 """Fiber"""
 
+import yaml
+
 from fibertree.payload import Payload
 
 class Fiber:
     """Fiber class"""
 
-    def __init__(self, coords=None, payloads=None, default=0):
+    def __init__(self, coords=None, payloads=None, default=0, yamlfile=None):
         """__init__"""
+
+        if not yamlfile is None:
+            self.parse(yamlfile, default)
+            return
 
         if coords is None:
             if payloads is None:
@@ -565,6 +571,129 @@ class Fiber:
         return str
 
 #
+# Yaml input/output methods
+#
+
+    def parse(self, yamlfile, default):
+        """Parse a yaml file containing a tensor"""
+
+        with open(yamlfile, 'r') as stream:
+            try:
+                y_file = yaml.safe_load(stream)
+            except yaml.YAMLError as exc:
+                print(exc)
+                exit(1)
+
+        #
+        # Make sure key "fiber" exists
+        #
+        if not isinstance(y_file, dict) or 'fiber' not in y_file:
+            print("Yaml is not a fiber")
+            exit(1)
+
+        newfiber = Fiber.dict2fiber(y_file)
+
+        #
+        # Copy newfile into self
+        #    Note: make sure this is all the fields!
+        #
+        self.coords = newfiber.coords
+        self.payloads = newfiber.payloads
+
+        # Owner rank... set on append to rank
+        self.owner = None
+
+        # Default value assigned to new coordinates
+        self.set_default(default)
+
+
+    def dump(self, yamlfile):
+        """Dump a tensor to a file in YAML format"""
+
+        fiber_dict = self.fiber2dict()
+
+        with open(yamlfile, 'w') as stream:
+            document = yaml.dump(fiber_dict, stream)
+
+
+# Conversion methods - to/from dictionaries
+#
+
+    @staticmethod
+    def dict2fiber(y_payload_dict, ranks=None, level=0):
+        """Parse a yaml-based tensor payload, creating Fibers as appropriate"""
+
+        if isinstance(y_payload_dict, dict) and 'fiber' in y_payload_dict:
+            # Got a fiber, so need to get into the Fiber class
+
+            y_fiber = y_payload_dict['fiber']
+
+            #
+            # Error checking
+            #
+            if not isinstance(y_fiber, dict):
+                print("Malformed payload")
+                exit(0)
+
+            if 'coords' not in y_fiber:
+                print("Malformed fiber")
+                exit(0)
+
+            if 'payloads' not in y_fiber:
+                print("Malformed fiber")
+                exit(0)
+
+            #
+            # Process corrdinates and payloads
+            #
+            f_coords = y_fiber['coords']
+            y_f_payloads = y_fiber['payloads']
+
+            f_payloads = []
+            for y_f_payload in y_f_payloads:
+                f_payloads.append(Fiber.dict2fiber(y_f_payload, ranks, level+1))
+
+            #
+            # Turn into a fiber
+            #
+            subtree = Fiber(coords=f_coords, payloads=f_payloads)
+
+            #
+            # Add fiber into appropriate rank
+            #  Hack: used when called as part of tensor creation
+            #
+            if isinstance(ranks, list):
+                ranks[level].append(subtree)
+        else:
+            # Got scalars, so format is unchanged
+            subtree = y_payload_dict
+
+        return subtree
+
+
+
+    def fiber2dict(self):
+        """Return dictionary with fiber information"""
+
+        f = { 'fiber' :
+              { 'coords'   : self.coords,
+                'payloads' : [ self.payload2dict(p) for p in self.payloads ]
+              }
+        }
+
+        return f
+
+    def payload2dict(self, payload):
+        """Convert payload to dictionry"""
+
+        if isinstance(payload, Fiber):
+            return payload.fiber2dict()
+        elif isinstance(payload, Payload):
+            return payload.value
+        else:
+            return payload
+
+#
 # Utility functions
 #
 
@@ -575,6 +704,7 @@ class Fiber:
             return Payload(value)
 
         return value
+
 
 
 if __name__ == "__main__":

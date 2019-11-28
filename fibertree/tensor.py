@@ -79,8 +79,9 @@ class Tensor:
         return str
 
 #
-# Yaml parsing methods
+# Yaml input/output methods
 #
+
     def parse(self, file):
         """Parse a yaml file containing a tensor"""
 
@@ -91,84 +92,50 @@ class Tensor:
                 print(exc)
                 exit(1)
 
-            #
-            # Make sure key "tensor" exists
-            #
-            if not isinstance(y_file, dict) or 'tensor' not in y_file:
-                print("Yaml is not a tensor")
-                exit(1)
+        #
+        # Make sure key "tensor" exists
+        #
+        if not isinstance(y_file, dict) or 'tensor' not in y_file:
+            print("Yaml is not a tensor")
+            exit(1)
 
-            y_tensor = y_file['tensor']
+        y_tensor = y_file['tensor']
 
-            #
-            # Make sure key "rank_ids" exists
-            #
-            if not isinstance(y_tensor, dict) or 'rank_ids' not in y_tensor:
-                print("Yaml has no rank_ids")
-                exit(1)
+        #
+        # Make sure key "rank_ids" exists
+        #
+        if not isinstance(y_tensor, dict) or 'rank_ids' not in y_tensor:
+            print("Yaml has no rank_ids")
+            exit(1)
 
-            self.set_rank_ids(y_tensor['rank_ids'])
+        self.set_rank_ids(y_tensor['rank_ids'])
 
-            #
-            # Make sure key "root" exists
-            #
-            if 'root' not in y_tensor:
-                print("Yaml has no root")
-                exit(1)
+        #
+        # Make sure key "root" exists
+        #
+        if 'root' not in y_tensor:
+            print("Yaml has no root")
+            exit(1)
 
-            y_root = y_tensor['root']
+        y_root = y_tensor['root']
 
-            #
-            # Geneate the tree recursively
-            #
-            tree = self.process_payload(y_root[0])
+        #
+        # Generate the tree recursively
+        #   Note: fibers are added into self.ranks inside method
+        #
+        Fiber.dict2fiber(y_root[0], ranks=self.ranks)
 
 
-    def process_payload(self, y_payload_in, level=0):
-        """Parse a yaml-based tensor payload, creating Fibers as appropriate"""
+    def dump(self, filename):
+        """Dump a tensor to a file in YAML format"""
 
-        if isinstance(y_payload_in, dict) and 'fiber' in y_payload_in:
-            # Got a fiber, so need to get into the Fiber class
+        
+        root_dict = self.root().fiber2dict()
 
-            y_fiber = y_payload_in['fiber']
-
-            #
-            # Error checking
-            #
-            if not isinstance(y_fiber, dict):
-                print("Malformed payload")
-                exit(0)
-
-            if 'coords' not in y_fiber:
-                print("Malformed fiber")
-                exit(0)
-
-            if 'payloads' not in y_fiber:
-                print("Malformed fiber")
-                exit(0)
-
-            #
-            # Process corrdinates and payloads
-            #
-            f_coords = y_fiber['coords']
-            y_f_payloads = y_fiber['payloads']
-
-            f_payloads = []
-            for y_f_payload in y_f_payloads:
-                f_payloads.append(self.process_payload(y_f_payload, level+1))
-
-            #
-            # Turn into a fiber
-            #
-            subtree = Fiber(coords=f_coords, payloads=f_payloads)
-
-            #
-            # Add fiber into appropriate rank
-            #
-            self.ranks[level].append(subtree)
-        else:
-            # Got scalars, so format is unchanged
-            subtree = y_payload_in
-
-        return subtree
+        tensor_dict = { 'tensor':
+                        { 'rank_ids': self.rank_ids,
+                          'root': [ root_dict ]
+                        } }
+        with open(filename, 'w') as file:
+            document = yaml.dump(tensor_dict, file)
 

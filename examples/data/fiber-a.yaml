@@ -1,0 +1,3 @@
+fiber:
+  coords: [0, 1, 10, 20]
+  payloads: [0, 1, 10, 20]
