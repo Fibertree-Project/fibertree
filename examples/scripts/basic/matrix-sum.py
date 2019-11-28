@@ -1,3 +1,5 @@
+import os
+
 from fibertree import Tensor
 
 #
@@ -9,8 +11,10 @@ print("      Sum of sums of matrix rows")
 print("--------------------------------------")
 print("")
 
-a = Tensor("../data/dot-product-a.yaml")
-b = Tensor("../data/dot-product-b.yaml")
+data_dir = "../../data"
+
+a = Tensor(os.path.join(data_dir, "dot-product-a.yaml"))
+b = Tensor(os.path.join(data_dir, "dot-product-b.yaml"))
 
 z = Tensor(rank_ids=["M"])
 

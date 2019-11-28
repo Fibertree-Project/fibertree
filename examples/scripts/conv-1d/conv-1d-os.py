@@ -1,3 +1,5 @@
+import os
+
 from fibertree import Tensor, Fiber
 
 
@@ -6,9 +8,10 @@ print("    Convolution 1-D Output Stationary")
 print("----------------------------------------")
 print("")
 
+data_dir = "../../data"
 
-w = Tensor("../../data/conv-weights-a.yaml")
-i = Tensor("../../data/conv-activations-a.yaml")
+w = Tensor(os.path.join(data_dir, "conv-weights-a.yaml"))
+i = Tensor(os.path.join(data_dir, "conv-activations-a.yaml"))
 o = Tensor(rank_ids=["Q"])
 
 w.print("W Tensor")

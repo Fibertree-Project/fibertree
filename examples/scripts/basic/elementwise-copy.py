@@ -1,3 +1,5 @@
+import os
+
 from fibertree import Tensor
 
 print("--------------------------------------")
@@ -5,8 +7,9 @@ print("         Elementwise copy")
 print("--------------------------------------")
 print("")
 
+data_dir = "../../data"
 
-a = Tensor("../data/elementwise-a.yaml")
+a = Tensor(os.path.join(data_dir, "elementwise-a.yaml"))
 z = Tensor(rank_ids=["M"])
 
 a.print("A Tensor")

@@ -1,12 +1,15 @@
-from fibertree import Tensor
+import os
 
+from fibertree import Tensor
 
 print("--------------------------------------")
 print("           Matrix Traverse")
 print("--------------------------------------")
 print("")
 
-a = Tensor("../data/matrix-a.yaml")
+data_dir = "../../data"
+
+a = Tensor(os.path.join(data_dir, "matrix-a.yaml"))
 
 a.print("Matrix")
 

@@ -1,3 +1,5 @@
+import os
+
 from fibertree import Tensor
 
 print("--------------------------------------")
@@ -5,8 +7,9 @@ print("         Matrix copy")
 print("--------------------------------------")
 print("")
 
+data_dir = "../../data"
 
-a = Tensor("../data/matrix-a.yaml")
+a = Tensor(os.path.join(data_dir, "matrix-a.yaml"))
 z = Tensor(rank_ids=["M", "K"])
 
 a.print("A Tensor")
