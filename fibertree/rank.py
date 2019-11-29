@@ -15,10 +15,21 @@ class Rank:
 #
 # Accessor methods
 #
-    def get_name(self):
-        """get_name"""
+    def getName(self):
+        """Return name of rank"""
 
         return self.name
+
+
+    def getFibers(self):
+        """Return list of fibers in the rank"""
+
+        return self.fibers
+
+    def clearFibers(self):
+        """Return list of fibers in the rank"""
+
+        self.fibers = []
 
 #
 # Fundamental methods
@@ -27,13 +38,13 @@ class Rank:
         """append"""
 
         # Set this rank as owner of the fiber
-        fiber.set_owner(self)
+        fiber.setOwner(self)
 
         # Set proper default value for new coordinates in the fiber
         if self.next_rank is None:
-            fiber.set_default(0)
+            fiber.setDefault(0)
         else:
-            fiber.set_default(Fiber)
+            fiber.setDefault(Fiber)
 
         # Add fiber to list of fibers of rank
         self.fibers.append(fiber)

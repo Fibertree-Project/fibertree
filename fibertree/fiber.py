@@ -37,27 +37,68 @@ class Fiber:
         self.owner = None
 
         # Default value assigned to new coordinates
-        self.set_default(default)
+        self.setDefault(default)
+
+
+    @classmethod
+    def fromUncompressed(cls, payload_list):
+        return Fiber._makeFiber(payload_list)
+
+
+    @staticmethod
+    def _makeFiber(payload_list):
+        """Make a fiber out of an uncompressed list"""
+        coords = []
+        payloads = []
+
+        for rownum, row in enumerate(payload_list):
+            if isinstance(row[0], list):
+                subfibers = Fiber._makeFiber(row)
+                if len(subfibers) > 0:
+                    coords.append(rownum)
+                    payloads.append(subfibers)
+            else:
+                zipped = [ (c, p) for c, p in enumerate(row) if p != 0 ]
+                if len(zipped) > 0:
+                    subcoords = [ c for c,_ in zipped ]
+                    subpayloads = [ p for _,p in zipped ]
+
+                    new_fiber = Fiber(subcoords, subpayloads)
+                    coords.append(rownum)
+                    payloads.append(new_fiber)
+
+        return Fiber(coords, payloads)
+
 
 #
 # Accessor methods
 #
-    def set_default(self, default):
-        """set_default"""
+    def getCoords(self):
+        """Return list of coordinates in fiber"""
+
+        return self.coords
+
+    def getPayloads(self):
+        """Return list of payloads in fiber"""
+
+        return self.payloads
+
+    def setDefault(self, default):
+        """setDefault"""
 
         self.default = default
 
-    def set_owner(self, owner):
-        """set_owner"""
+    def setOwner(self, owner):
+        """setOwner"""
 
         self.owner = owner
 
-    def min_coord(self):
+    def minCoord(self):
         """min_coord"""
 
         return min(self.coords)
 
-    def max_coord(self):
+    def maxCoord(self):
         """max_coord"""
 
         return max(self.coords)
@@ -562,7 +603,7 @@ class Fiber:
         if self.owner is None:
             str = "F/["
         else:
-            str = "F(%s)/[" % self.owner.get_name()
+            str = "F(%s)/[" % self.owner.getName()
 
         for i in range(len(self.coords)):
             str += "(%s -> %s) " % (self.coords[i], self.payloads[i])
@@ -604,7 +645,7 @@ class Fiber:
         self.owner = None
 
         # Default value assigned to new coordinates
-        self.set_default(default)
+        self.setDefault(default)
 
 
     def dump(self, yamlfile):

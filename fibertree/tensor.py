@@ -8,7 +8,7 @@ from fibertree.fiber import Fiber
 class Tensor:
     """ Tensor Class """
 
-    def __init__(self, yamlfile="", rank_ids=["X"]):
+    def __init__(self, yamlfile="", rank_ids=None):
         """__init__"""
 
         self.yamlfile = yamlfile
@@ -21,13 +21,37 @@ class Tensor:
         #
         # Initialize an empty tensor with an empty root fiber
         #
+        assert(not rank_ids is None)
+
         self.set_rank_ids(rank_ids)
 
         root_fiber = Fiber()
         self.ranks[0].append(root_fiber)
 
+    @classmethod
+    def fromUncompressed(cls, rank_ids=None, root_list=None):
+        """Create tensor from uncompressed fiber tree"""
+
+        fiber = Fiber.fromUncompressed(root_list)
+        return Tensor.fromFiber(rank_ids, fiber)
 
 
+    @classmethod
+    def fromFiber(cls, rank_ids=None, fiber=None):
+        """Create a tensor from a fiber"""
+
+        tensor = cls(rank_ids=rank_ids)
+
+        tensor.setRoot(fiber)
+
+        return tensor
+
+
+#
+# Accessor methods
+#
+
+    # TBD: Fix style of this method name
 
     def set_rank_ids(self, rank_ids):
         """set_rank_ids"""
@@ -46,10 +70,30 @@ class Tensor:
             self.ranks.append(new_rank)
 
 
+    def setRoot(self, root):
+        """(Re-)populate self.ranks with "root"""
+
+        # Clear out existing rank information
+        for r in self.ranks:
+            r.clearFibers()
+
+        self._addFiber(root)
+
+
+    def _addFiber(self, fiber, level=0):
+        """Recursively fill in ranks from "fiber"."""
+
+        self.ranks[level].append(fiber)
+
+        for p in fiber.getPayloads():
+            if isinstance(p, Fiber):
+                self._addFiber(p, level+1)
+
+
     def root(self):
         """root"""
 
-        return self.ranks[0].fibers[0]
+        return self.ranks[0].getFibers()[0]
 
 
     def values(self):

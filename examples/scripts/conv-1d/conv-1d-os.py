@@ -22,8 +22,8 @@ w_r = w.root()
 i_h = i.root()
 o_q = o.root()
 
-W = w_r.max_coord() + 1
-I = i_h.max_coord() + 1
+W = w_r.maxCoord() + 1
+I = i_h.maxCoord() + 1
 Q = I - W + 1
 
 w_r.print("W Tensor - R rank - size=%s" % W)
