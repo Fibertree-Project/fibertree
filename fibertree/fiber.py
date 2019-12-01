@@ -7,12 +7,8 @@ from fibertree.payload import Payload
 class Fiber:
     """Fiber class"""
 
-    def __init__(self, coords=None, payloads=None, default=0, yamlfile=None):
+    def __init__(self, coords=None, payloads=None, default=0):
         """__init__"""
-
-        if not yamlfile is None:
-            self.parse(yamlfile, default)
-            return
 
         if coords is None:
             if payloads is None:
@@ -41,13 +37,24 @@ class Fiber:
 
 
     @classmethod
+    def fromYAMLfile(cls, yamlfile, default=0):
+        """Construct a Fiber from a YAML file"""
+
+        (coords, payloads) = Fiber.parse(yamlfile, default)
+
+        return cls(coords, payloads, default=default)
+
+    @classmethod
     def fromUncompressed(cls, payload_list):
+        """Construct a Fiber from an uncompressed list tree"""
+
         return Fiber._makeFiber(payload_list)
 
 
     @staticmethod
     def _makeFiber(payload_list):
-        """Make a fiber out of an uncompressed list"""
+        """Recursively make a fiber out of an uncompressed list"""
+
         coords = []
         payloads = []
 
@@ -369,7 +376,7 @@ class Fiber:
         coordinate  |                       |                       |
         present in  |         False         |        True           |
         "self"      |                       |                       |
-                    |                       |                       |                    |
+                    |                       |                       |
         ------------+-----------------------+-----------------------+
 
         """
@@ -521,7 +528,7 @@ class Fiber:
         coordinate  |                       |                       |
         present in  |         False         |        True           |
         "self"      |                       |                       |
-                    |                       |                       |                    |
+                    |                       |                       |
         ------------+-----------------------+-----------------------+
 
         """
@@ -615,7 +622,8 @@ class Fiber:
 # Yaml input/output methods
 #
 
-    def parse(self, yamlfile, default):
+    @staticmethod
+    def parse(yamlfile, default):
         """Parse a yaml file containing a tensor"""
 
         with open(yamlfile, 'r') as stream:
@@ -634,18 +642,8 @@ class Fiber:
 
         newfiber = Fiber.dict2fiber(y_file)
 
-        #
-        # Copy newfile into self
-        #    Note: make sure this is all the fields!
-        #
-        self.coords = newfiber.coords
-        self.payloads = newfiber.payloads
+        return (newfiber.getCoords(), newfiber.getPayloads())
 
-        # Owner rank... set on append to rank
-        self.owner = None
-
-        # Default value assigned to new coordinates
-        self.setDefault(default)
 
 
     def dump(self, yamlfile):
@@ -661,7 +659,7 @@ class Fiber:
 #
 
     @staticmethod
-    def dict2fiber(y_payload_dict, ranks=None, level=0):
+    def dict2fiber(y_payload_dict, level=0):
         """Parse a yaml-based tensor payload, creating Fibers as appropriate"""
 
         if isinstance(y_payload_dict, dict) and 'fiber' in y_payload_dict:
@@ -692,19 +690,12 @@ class Fiber:
 
             f_payloads = []
             for y_f_payload in y_f_payloads:
-                f_payloads.append(Fiber.dict2fiber(y_f_payload, ranks, level+1))
+                f_payloads.append(Fiber.dict2fiber(y_f_payload, level+1))
 
             #
             # Turn into a fiber
             #
             subtree = Fiber(coords=f_coords, payloads=f_payloads)
-
-            #
-            # Add fiber into appropriate rank
-            #  Hack: used when called as part of tensor creation
-            #
-            if isinstance(ranks, list):
-                ranks[level].append(subtree)
         else:
             # Got scalars, so format is unchanged
             subtree = y_payload_dict
@@ -725,7 +716,7 @@ class Fiber:
         return f
 
     def payload2dict(self, payload):
-        """Convert payload to dictionry"""
+        """Return payload converted to dictionry or simple value"""
 
         if isinstance(payload, Fiber):
             return payload.fiber2dict()

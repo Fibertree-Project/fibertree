@@ -9,7 +9,7 @@ from fibertree.tensor import Tensor
 class TestTensor(unittest.TestCase):
 
     def test_new(self):
-        tensor = Tensor(yamlfile="./data/test_tensor-1.yaml")
+        tensor = Tensor("./data/test_tensor-1.yaml")
         tensor.print()
         pass
 

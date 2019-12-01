@@ -12,10 +12,14 @@ class Tensor:
         """__init__"""
 
         self.yamlfile = yamlfile
-        
+
         if (yamlfile != ""):
-            # Note: rank_ids are ignored...
-            self.parse(yamlfile)
+            assert(rank_ids is None)
+
+            (rank_ids, fiber) = self.parse(yamlfile)
+
+            self.set_rank_ids(rank_ids)
+            self.setRoot(fiber)
             return
 
         #
@@ -29,8 +33,17 @@ class Tensor:
         self.ranks[0].append(root_fiber)
 
     @classmethod
+    def fromYAMLfile(cls, yamlfile):
+        """Construct a Tensor from a YAML file"""
+
+        (rank_ids, fiber) = Tensor.parse(yamlfile)
+
+        return Tensor.fromFiber(rank_ids, fiber)
+
+
+    @classmethod
     def fromUncompressed(cls, rank_ids=None, root_list=None):
-        """Create tensor from uncompressed fiber tree"""
+        """Construct a Tensor from uncompressed fiber tree"""
 
         fiber = Fiber.fromUncompressed(root_list)
         return Tensor.fromFiber(rank_ids, fiber)
@@ -38,7 +51,7 @@ class Tensor:
 
     @classmethod
     def fromFiber(cls, rank_ids=None, fiber=None):
-        """Create a tensor from a fiber"""
+        """Construct a Tensor from a fiber"""
 
         tensor = cls(rank_ids=rank_ids)
 
@@ -126,7 +139,8 @@ class Tensor:
 # Yaml input/output methods
 #
 
-    def parse(self, file):
+    @staticmethod
+    def parse(file):
         """Parse a yaml file containing a tensor"""
 
         with open(file, 'r') as stream:
@@ -152,7 +166,7 @@ class Tensor:
             print("Yaml has no rank_ids")
             exit(1)
 
-        self.set_rank_ids(y_tensor['rank_ids'])
+        rank_ids = y_tensor['rank_ids']
 
         #
         # Make sure key "root" exists
@@ -167,7 +181,9 @@ class Tensor:
         # Generate the tree recursively
         #   Note: fibers are added into self.ranks inside method
         #
-        Fiber.dict2fiber(y_root[0], ranks=self.ranks)
+        fiber = Fiber.dict2fiber(y_root[0])
+
+        return (rank_ids, fiber)
 
 
     def dump(self, filename):
