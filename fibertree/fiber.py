@@ -577,6 +577,79 @@ class Fiber:
 
         return Fiber(z_coords, z_payloads)
 
+    def __sub__(self, other):
+        """__sub__
+
+        Return the "diffence" of "other" from "self" by considering all possible
+        coordinates and returning a fiber consisting of payloads containing
+        a tuple of the payloads of the inputs for coordinates where the
+        following truth table returns True:
+
+
+                         coordinate not     |      coordinate
+                        present in "other"  |    present in "other"
+                    +-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        not present |         False         |        False          |
+        in "self"   |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        present in  |          True         |        False          |
+        "self"      |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+
+        """
+
+
+        def get_next(iter):
+            """get_next"""
+
+            try:
+                coord, payload = next(iter)
+            except StopIteration:
+                return (None, None)
+            return (coord, payload)
+
+        a = self.__iter__()
+        b = other.__iter__()
+
+        z_coords = []
+        z_payloads = []
+
+        a_coord, a_payload = get_next(a)
+        b_coord, b_payload = get_next(b)
+
+        while not (a_coord is None or b_coord is None):
+            if a_coord == b_coord:
+                a_coord, a_payload = get_next(a)
+                b_coord, b_payload = get_next(b)
+                continue
+
+            if a_coord < b_coord:
+                z_coords.append(a_coord)
+                # TODO: Append the right b_payload, e.g., maybe a Fiber()
+                z_payloads.append(a_payload)
+
+                a_coord, a_payload = get_next(a)
+                continue
+
+            if a_coord > b_coord:
+                b_coord, b_payload = get_next(b)
+                continue
+
+        while not a_coord is None:
+            z_coords.append(a_coord)
+            z_payloads.append(a_payload)
+
+            a_coord, a_payload = get_next(a)
+
+        return Fiber(z_coords, z_payloads)
+
+
 #
 #  Comparison operations
 #
