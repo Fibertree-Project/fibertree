@@ -112,7 +112,9 @@ class TensorImage():
 #
     def image_setup(self):
 
-        self.im = Image.new("RGB", (2048, 512), "wheat")
+        # TBD: Estimate image size based on size of tensor
+
+        self.im = Image.new("RGB", (4096, 512), "wheat")
         self.fnt = ImageFont.truetype('Pillow/Tests/fonts/FreeMono.ttf', 20)
         self.draw = ImageDraw.Draw(self.im)
         
