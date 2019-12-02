@@ -30,7 +30,7 @@ class Tensor:
         self.set_rank_ids(rank_ids)
 
         root_fiber = Fiber()
-        self.ranks[0].append(root_fiber)
+        self.setRoot(root_fiber)
 
     @classmethod
     def fromYAMLfile(cls, yamlfile):
@@ -75,12 +75,15 @@ class Tensor:
         # Create a linked list of ranks
         #
         self.ranks = []
-        old_rank = None
         for id in rank_ids:
             new_rank = Rank(name=id)
-            if not old_rank is None: old_rank.set_next(new_rank)
-            old_rank = new_rank
             self.ranks.append(new_rank)
+
+        old_rank = None
+        for rank in self.ranks:
+            if not old_rank is None:
+                old_rank.set_next(rank)
+            old_rank = rank
 
 
     def setRoot(self, root):

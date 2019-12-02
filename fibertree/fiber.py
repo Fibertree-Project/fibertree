@@ -554,6 +554,8 @@ class Fiber:
         while not b_coord is None:
             z_coords.append(b_coord)
 
+            # TBD: Optimize with co-iteration...
+
             a_payload = self.payload(b_coord)
             if a_payload is None:
                 # Iemporary value (should be None)
@@ -566,8 +568,8 @@ class Fiber:
                 # Inefficient: another search
                 a_payload = self.payload(b_coord)
 
-                # Try to insert fiber into next rank
-                if not self.owner is None:
+                if isinstance(value, Fiber):
+                    assert(not self.owner is None)
                     next_rank = self.owner.get_next()
                     if not next_rank is None:
                         next_rank.append(a_payload)
