@@ -115,25 +115,38 @@ class Fiber:
 
         count = 0
         for p in self.payloads:
-            if isinstance(p, Fiber):
-                count += p.values()
+            if Payload.contains(p, Fiber):
+                count += Payload.get(p).values()
             else:
                 count += 1
 
         return count
+
 
     def __len__(self):
         """__len__"""
 
         return len(self.coords)
 
+#
+# Iterator methods
+#
+
     def __iter__(self):
         """__iter__"""
 
         for i in range(len(self.coords)):
             yield (self.coords[i], self.payloads[i])
+
+    def __reversed__(self):
+        """Return reversed fiber"""
+
+        for coord, payload in zip(reversed(self.coords), reversed(self.payloads)):
+            yield (coord, payload)
+
+
 #
-# Fundamental methods
+# Core methods
 #
 
     def payload(self, coord):
@@ -197,7 +210,6 @@ class Fiber:
 
         return Fiber(coords, payloads)
 
-
     def unzip(self):
         """Unzip"""
 
@@ -208,6 +220,76 @@ class Fiber:
 
         return (Fiber(coords_a, payloads_a), Fiber(coords_b, payloads_b))
 
+#
+# Shape-related methods
+#
+
+    def getShape(self):
+        """Return shape of fiber tree"""
+        
+        max_coord = self.maxCoord()
+
+        return self._calcShape(shape=[], level=0)
+
+    def _calcShape(self, shape, level):
+        """Find the maximum coordinate at each level of the tree"""
+
+        #
+        # Conditionaly append a new level to the shape array
+        #
+        if len(shape) < level+1:
+            shape.append(0)
+        
+        #
+        # Update shape for this Fiber at this level
+        #
+        shape[level] = max(shape[level], self.maxCoord()+1)
+
+        if Payload.contains(self.payloads[0], Fiber):
+            #
+            # Process payloads that are Fibers
+            #
+            for p in self.payloads:
+                p._calcShape(shape, level+1)
+
+        return shape
+
+
+    def uncompress(self, shape=None, level=0):
+        """Return an uncompressed fiber tree (i.e., a nest of lists)"""
+
+        if shape is None:
+            shape = self.getShape()
+
+        f = [ ]
+
+        for c, (mask, p, _) in self | Fiber(range(shape[level])):
+
+            if (mask == "AB"):
+                if Payload.contains(p, Fiber):
+                    f.append(Payload.get(p).uncompress(shape, level+1))
+                else:
+                    f.append(Payload.get(p))
+
+            if (mask == "B"):
+                f.append(self._fillempty(shape, level+1))
+
+        return f
+
+    def _fillempty(self, shape, level):
+        """Recursive fill empty"""
+
+        if level+1 > len(shape):
+            return 0
+
+        f = []
+    
+        for i in range(shape[level]):
+            f.append(self._fillempty(shape, level+1))
+
+        return f
+
+            
 #
 # Split methods
 #
@@ -260,7 +342,7 @@ class Fiber:
 
         class _SplitterEqual():
 
-            def __init__(self, splits):
+            def __init__(self, step):
                 self.step = step
                 self.cur_count=0
 
@@ -351,8 +433,9 @@ class Fiber:
         return Fiber(payloads=payloads)
 
 
+
 #
-#  Merge operatons
+# Merge methods
 #
     def __and__(self, other):
         """__and__
@@ -565,10 +648,12 @@ class Fiber:
                     value = self.default
 
                 self.insert(b_coord, value)
-                # Inefficient: another search
+
+                # TBD: Inefficient since it does yet another search
+
                 a_payload = self.payload(b_coord)
 
-                if isinstance(value, Fiber):
+                if Payload.contains(value, Fiber):
                     assert(not self.owner is None)
                     next_rank = self.owner.get_next()
                     if not next_rank is None:
@@ -651,6 +736,50 @@ class Fiber:
 
         return Fiber(z_coords, z_payloads)
 
+
+#
+# Multilayer methods
+#
+    def flattenRanks(self):
+        """Flatten two ranks into one - COO-style"""
+
+        coords = []
+        payloads = []
+
+        for c1, p1 in zip(self.coords, self.payloads):
+            for c0, p0 in p1:
+                coords.append( (c1, c0) )
+                payloads.append(p0)
+
+        return Fiber(coords, payloads)
+
+
+    def unflattenRanks(self):
+        """Unflatten two ranks into one"""
+
+        coords1 = []
+        payloads1 = []
+
+        c1_last = -1
+
+
+        for ( (c1, c0), p0 ) in zip(self.coords, self.payloads):
+            if (c1 > c1_last):
+                if c1_last != -1:
+                     coords1.append(c1_last)
+                     payloads1.append(Fiber(coords0, payloads0))
+
+                c1_last = c1
+                coords0 = []
+                payloads0 = []
+
+            coords0.append(c0)
+            payloads0.append(p0)
+
+        coords1.append(c1_last)
+        payloads1.append(Fiber(coords0, payloads0))
+
+        return Fiber(coords1, payloads1)
 
 #
 #  Comparison operations
@@ -794,9 +923,13 @@ class Fiber:
         """Return payload converted to dictionry or simple value"""
 
         if isinstance(payload, Fiber):
+            # Note: this leg is deprecated and should be removed
             return payload.fiber2dict()
         elif isinstance(payload, Payload):
-            return payload.value
+            if Payload.contains(payload, Fiber):
+                return Payload.get(payload).value.fiber2dict()
+            else:
+                return payload.value
         else:
             return payload
 

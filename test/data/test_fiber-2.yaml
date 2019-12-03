@@ -1,0 +1,23 @@
+fiber:
+  coords:
+  - 2
+  - 4
+  payloads:
+  - fiber:
+      coords:
+      - 1
+      - 4
+      - 7
+      payloads:
+      - 2
+      - 5
+      - 8
+  - fiber:
+      coords:
+      - 2
+      - 4
+      - 6
+      payloads:
+      - 3
+      - 5
+      - 7

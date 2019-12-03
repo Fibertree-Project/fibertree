@@ -38,6 +38,31 @@ class Payload:
 
 
 #
+# Transition methods
+#
+# Note: the following two methods are used as part of the transition from
+#       Fibers holding a raw Fiber as a payload to that Fiber being embedded
+#       in in a Payload object
+#
+    @staticmethod
+    def contains(payload, type):
+        """Return whether "payload" is of type "type" - checking inside payload if necessary"""
+
+        if not isinstance(payload, Payload):
+            return isinstance(payload, type)
+
+        return isinstance(payload.value, type)
+
+    @staticmethod
+    def get(payload):
+        """Return value of "payload" - checking inside payload if necessary"""
+
+        if not isinstance(payload, Payload):
+            return payload
+
+        return payload.value
+
+#
 # Srtring operations
 #
 

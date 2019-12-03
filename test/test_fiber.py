@@ -5,11 +5,124 @@ from fibertree.fiber import Fiber
 
 class TestFiber(unittest.TestCase):
 
-    def test_new(self):
-        """Create a fiber"""
+    def test_new_1d(self):
+        """Create a 1d fiber"""
 
         a = Fiber([2, 4, 6], [3, 5, 7])
 
+    def test_new_2d(self):
+        """Create a 1d fiber"""
+
+        b0 = Fiber([1, 4, 7], [2, 5, 8])
+        b1 = Fiber([2, 4, 6], [3, 5, 7])
+        a0 = Fiber([2, 4], [b0, b1])
+
+    def test_comparison(self):
+
+        a = Fiber([2, 4, 6], [3, 5, 7])
+        b = Fiber([2, 4, 6], [3, 5, 7])
+
+        self.assertEqual(a, b)
+
+    def test_fromYAMLfile_1D(self):
+        """Read a YAMLfile 1-D"""
+
+        a_ref = Fiber([2, 4, 6], [3, 5, 7])
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-1.yaml")
+
+        self.assertEqual(a, a_ref)
+
+    def test_fromYAMLfile_2D(self):
+        """Read a YAMLfile 2-D"""
+
+        b0 = Fiber([1, 4, 7], [2, 5, 8])
+        b1 = Fiber([2, 4, 6], [3, 5, 7])
+        a_ref = Fiber([2, 4], [b0, b1])
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+
+        self.assertEqual(a, a_ref)
+
+    def test_getCoords(self):
+        """Extract coordinates"""
+
+        c_ref = [2, 4, 6]
+        p_ref = [3, 5, 7]
+
+        a = Fiber(c_ref, p_ref)
+
+        c = a.getCoords()
+
+        self.assertEqual(c, c_ref)
+
+    def test_getPayloads(self):
+        """Extract payloads"""
+
+        c_ref = [2, 4, 6]
+        p_ref = [3, 5, 7]
+
+        a = Fiber(c_ref, p_ref)
+
+        p = a.getPayloads()
+
+        self.assertEqual(p, p_ref)
+
+    def test_setDefault(self):
+        """Test setting defaults - unimplemented"""
+
+        pass
+
+    def test_setOwner(self):
+        """Test setting owner - unimplemented"""
+
+        pass
+
+    
+    def test_minCoord(self):
+        """Find minimum coordinate"""
+
+        c_ref = [2, 4, 6]
+        p_ref = [3, 5, 7]
+
+        c_min = min(c_ref)
+
+        a = Fiber(c_ref, p_ref)
+
+        self.assertEqual(a.minCoord(), c_min)
+
+
+    def test_maxCoord(self):
+        """Find minimum coordinate"""
+
+        c_ref = [2, 4, 6]
+        p_ref = [3, 5, 7]
+
+        c_max = max(c_ref)
+
+        a = Fiber(c_ref, p_ref)
+
+        self.assertEqual(a.maxCoord(), c_max)
+
+
+    def test_values(self):
+        """Count values in a 2-D fiber"""
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+
+        self.assertEqual(a.values(), 6)
+
+
+    def test_len(self):
+        """Find lenght of a fiber"""
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+
+        self.assertEqual(len(a), 2)
+
+
+
+        
     def test_payload(self):
         """Access payloads"""
 
@@ -43,14 +156,32 @@ class TestFiber(unittest.TestCase):
             p = i*i+1
             a.insert(i, p)
 
-            a.print("List with (%s, %s) inserted" % (i, p))
-            ans[i].print()
+            self.assertEqual(a, ans[i])
 
-            x = a == ans[i]
-            print(x)
 
-#            self.assertTrue(a == ans[i])
+    def test_shape(self):
 
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+
+        s = a.getShape()
+
+        self.assertEqual(s, [5, 8])
+        
+    def test_uncompress(self):
+        """Test recursive iteration"""
+
+        uncompressed_ref = [ [ 0, 0, 0, 0, 0, 0, 0, 0,],
+                             [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+                             [ 0, 2, 0, 0, 5, 0, 0, 8 ],
+                             [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+                             [ 0, 0, 3, 0, 5, 0, 7, 0 ] ]
+                               
+                          
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+
+        uncompressed = a.uncompress()
+
+        self.assertEqual(uncompressed, uncompressed_ref)
 
     
 """

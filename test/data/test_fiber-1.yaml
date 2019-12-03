@@ -1,0 +1,9 @@
+fiber:
+  coords:
+  - 2
+  - 4
+  - 6
+  payloads:
+  - 3
+  - 5
+  - 7

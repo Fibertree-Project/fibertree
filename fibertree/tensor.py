@@ -1,7 +1,8 @@
 import yaml
 
-from fibertree.rank  import Rank
-from fibertree.fiber import Fiber
+from fibertree.rank    import Rank
+from fibertree.fiber   import Fiber
+from fibertree.payload import Payload
 
 """ Tensor """
 
@@ -45,6 +46,9 @@ class Tensor:
     def fromUncompressed(cls, rank_ids=None, root_list=None):
         """Construct a Tensor from uncompressed fiber tree"""
 
+        assert(not rank_ids is None)
+        assert(not root_list is None)
+
         fiber = Fiber.fromUncompressed(root_list)
         return Tensor.fromFiber(rank_ids, fiber)
 
@@ -52,6 +56,9 @@ class Tensor:
     @classmethod
     def fromFiber(cls, rank_ids=None, fiber=None):
         """Construct a Tensor from a fiber"""
+
+        assert(not rank_ids is None)
+        assert(not fiber is None)
 
         tensor = cls(rank_ids=rank_ids)
 
@@ -101,9 +108,12 @@ class Tensor:
 
         self.ranks[level].append(fiber)
 
+        # Note: The code below handles the transistion from
+        #       raw fibers as payloads to fibers in Payload
+
         for p in fiber.getPayloads():
-            if isinstance(p, Fiber):
-                self._addFiber(p, level+1)
+            if Payload.contains(p, Fiber):
+                self._addFiber(Payload.get(p), level+1)
 
 
     def root(self):
@@ -116,6 +126,15 @@ class Tensor:
         """Count of values in the tensor"""
 
         return self.root().values()
+
+#
+#  Comparison operations
+#
+
+    def __eq__(self, other):
+        """__eq__"""
+
+        return (self.rank_ids == other.rank_ids) and (self.root() == other.root())
 
 #
 # String methods
