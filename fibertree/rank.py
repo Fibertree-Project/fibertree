@@ -1,4 +1,5 @@
 from fibertree.fiber import Fiber
+from fibertree.payload import Payload
 
 """ Rank """
 
@@ -36,6 +37,8 @@ class Rank:
 #
     def append(self, fiber):
         """append"""
+
+        fiber = Payload.get(fiber)
 
         # Set this rank as owner of the fiber
         fiber.setOwner(self)

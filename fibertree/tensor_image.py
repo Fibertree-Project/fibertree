@@ -7,13 +7,18 @@ from fibertree.payload import Payload
 class TensorImage():
     """TensorImage"""
 
-    def __init__(self, tensor):
+    def __init__(self, object):
         """__init__"""
 
-        self.create_tree(tensor)
+        #
+        # Conditionally unwrap Payload objects
+        #
+        object = Payload.get(object)
+
+        self.create_tree(object)
 
 
-    def create_tree(self, tensor):
+    def create_tree(self, object):
 
         self.max_y = 100
 
@@ -22,10 +27,10 @@ class TensorImage():
         #
         # Allow support for displaying fibers
         #
-        if isinstance(tensor, Tensor):
-            f = tensor.root()
-        elif isinstance(tensor, Fiber):
-            f = tensor
+        if isinstance(object, Tensor):
+            f = object.root()
+        elif isinstance(object, Fiber):
+            f = object
 
         region_start = 0
         region_end = self.traverse(f)
@@ -34,8 +39,8 @@ class TensorImage():
         #
         # Draw root of tree
         #
-        if isinstance(tensor, Tensor):
-            self.draw_rank(0, "File: %s" % tensor.yamlfile)
+        if isinstance(object, Tensor):
+            self.draw_rank(0, "File: %s" % object.yamlfile)
 
         fiber_size = 1
         fiber_start = region_start + (region_size - fiber_size)/2
@@ -47,7 +52,7 @@ class TensorImage():
                                 self.offset2x(region_end)+200,
                                 20+self.max_y))
 
-        
+
     def show(self):
         self.im.show()
 
@@ -70,8 +75,8 @@ class TensorImage():
         coordinate_start = region_start
         
         for (c, p) in fiber:
-            if isinstance(p, Fiber):
-                region_end = self.traverse(p, level+1, region_end)
+            if Payload.contains(p, Fiber):
+                region_end = self.traverse(Payload.get(p), level+1, region_end)
             else:
                 region_end += 1
 
@@ -98,9 +103,9 @@ class TensorImage():
             self.draw_coord(level, pos, c)
             self.draw_line(level, pos+0.5, level+1, targets.pop(0))
 
-            if not isinstance(p, Fiber):
+            if not Payload.contains(p, Fiber):
 #               print("(%02d, %02d) - Value - %02s" % (level+1, pos, p))
-                self.draw_value(level+1, pos, p)
+                self.draw_value(level+1, pos, Payload.get(p))
 
             pos += 1
 

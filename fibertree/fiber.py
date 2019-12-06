@@ -250,7 +250,7 @@ class Fiber:
             # Process payloads that are Fibers
             #
             for p in self.payloads:
-                p._calcShape(shape, level+1)
+                Payload.get(p)._calcShape(shape, level+1)
 
         return shape
 
@@ -326,8 +326,12 @@ class Fiber:
                 self.cur_split = self.splits.pop(0)
 
             def nextGroup(self, i, c):
-                if self.splits and c >= self.cur_split:
-                    self.cur_split = self.splits.pop(0)
+                if c >= self.cur_split:
+                    if self.splits:
+                        self.cur_split = self.splits.pop(0)
+                    else:
+                        self.cur_split = float("inf")
+
                     return True
 
                 return False
@@ -368,8 +372,12 @@ class Fiber:
                 self.cur_count = -1
 
             def nextGroup(self, i, c):
-                if self.sizes and i > self.cur_count:
-                    self.cur_count += self.sizes.pop(0)
+                if i > self.cur_count:
+                    if self.sizes:
+                        self.cur_count += self.sizes.pop(0)
+                    else:
+                        self.cur_count = float("inf")
+
                     return True
 
                 return False
@@ -412,7 +420,7 @@ class Fiber:
             cur_payloads.append(p)
 
         # Deal the split fibers out to the partitions
-        
+
         for i in range(partitions):
             for c, p in zip(fiber_coords[i], fiber_payloads[i]):
                 fibers[i].append(Fiber(c, p))
@@ -927,7 +935,7 @@ class Fiber:
             return payload.fiber2dict()
         elif isinstance(payload, Payload):
             if Payload.contains(payload, Fiber):
-                return Payload.get(payload).value.fiber2dict()
+                return payload.value.fiber2dict()
             else:
                 return payload.value
         else:
