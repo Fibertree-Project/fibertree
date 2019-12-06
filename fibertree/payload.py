@@ -31,6 +31,12 @@ class Payload:
         for v in self.value:
             yield v
 
+    def __reversed__(self):
+        """__reversed__"""
+
+        return reversed(self.value)
+
+
     def __bool__(self):
         """__bool__"""
 
@@ -65,6 +71,11 @@ class Payload:
 #
 # Srtring operations
 #
+
+    def print(self, title=None):
+        """print"""
+
+        return self.value.print(title)
 
     def __str__(self):
         """__str__"""
@@ -179,6 +190,44 @@ class Payload:
             return self.value != other.value
 
         return self.value != other
+
+#
+# Logical operatons
+#    Note: primarily used by fiber iterators
+#
+
+    def __and__(self, other):
+        """__and__"""
+
+        if isinstance(other, Payload):
+            ans = self.value & other.value
+        else:
+            ans = self.value & other
+
+        return Payload(ans)
+
+
+    def __or__(self, other):
+        """__or__"""
+
+        if isinstance(other, Payload):
+            ans = self.value | other.value
+        else:
+            ans = self.value | other
+
+        return Payload(ans)
+
+
+    def __lshift__(self, other):
+        """__lshift__"""
+
+        if isinstance(other, Payload):
+            ans = self.value << other.value
+        else:
+            ans = self.value << other
+
+        return Payload(ans)
+
 
 
 if __name__ == "__main__":
