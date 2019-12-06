@@ -1,0 +1,7 @@
+tensor:
+  rank_ids: [ R ]
+  root:
+    - fiber:
+        coords:   [ 0, 2 ]
+        payloads: [ 1, 3 ]
+

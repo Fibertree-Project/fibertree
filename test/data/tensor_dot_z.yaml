@@ -1,0 +1,9 @@
+tensor:
+  rank_ids:
+  - M
+  root:
+  - fiber:
+      coords:
+      - 0
+      payloads:
+      - 68

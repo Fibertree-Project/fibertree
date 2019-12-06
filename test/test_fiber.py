@@ -183,7 +183,38 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(uncompressed, uncompressed_ref)
 
-    
+
+    def test_project(self):
+
+        c = [0, 1, 10, 20 ]
+        p = [ 1, 2, 11, 21 ]
+        a = Fiber(c, p)
+
+        cp = [1, 2, 11, 21]
+        ap_ref = Fiber(cp, p)
+
+        ap = a.project(lambda c: c + 1)
+
+        self.assertEqual(ap, ap_ref)
+
+
+    def test_zip(self):
+
+        c = [0, 1, 10, 20]
+        p_a = [0, 1, 10, 20]
+        p_b = [1, 2, 11, 21]
+
+        p_ab = [ (0, 1), (1, 2), (10, 11), (20, 21) ]
+
+        a_ref = Fiber(c, p_a)
+        b_ref = Fiber(c, p_b)
+        ab = Fiber(c, p_ab)
+
+        (a, b) = ab.unzip()
+
+        self.assertEqual(a, a_ref)
+        self.assertEqual(b, b_ref)
+        
 """
 
 

@@ -1,0 +1,17 @@
+tensor:
+  rank_ids:
+  - Q
+  root:
+  - fiber:
+      coords:
+      - 0
+      - 2
+      - 3
+      - 4
+      - 5
+      payloads:
+      - 7
+      - 11
+      - 3
+      - 9
+      - 10
