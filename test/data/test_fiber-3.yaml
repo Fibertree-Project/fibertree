@@ -1,0 +1,81 @@
+fiber:
+  coords:
+  - 0
+  - 2
+  payloads:
+  - fiber:
+      coords:
+      - 0
+      - 1
+      - 2
+      - 3
+      payloads:
+      - fiber:
+          coords:
+          - 0
+          - 1
+          - 2
+          payloads:
+          - 1
+          - 2
+          - 3
+      - fiber:
+          coords:
+          - 0
+          - 2
+          - 3
+          payloads:
+          - 1
+          - 3
+          - 4
+      - fiber:
+          coords:
+          - 1
+          - 2
+          - 3
+          payloads:
+          - 2
+          - 3
+          - 4
+      - fiber:
+          coords:
+          - 0
+          - 1
+          - 3
+          payloads:
+          - 1
+          - 2
+          - 4
+  - fiber:
+      coords:
+      - 0
+      - 1
+      - 3
+      payloads:
+      - fiber:
+          coords:
+          - 0
+          - 1
+          - 2
+          payloads:
+          - 1
+          - 2
+          - 3
+      - fiber:
+          coords:
+          - 0
+          - 2
+          - 3
+          payloads:
+          - 1
+          - 3
+          - 4
+      - fiber:
+          coords:
+          - 0
+          - 1
+          - 3
+          payloads:
+          - 1
+          - 2
+          - 4

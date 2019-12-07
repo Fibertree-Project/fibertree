@@ -26,6 +26,10 @@ class Fiber:
 
         assert (len(coords) == len(payloads)), "Coordinates and payloads must be same length"
 
+        # Note:
+        #    We do not eliminate explicit zeros in the payloads
+        #    so zeros will be preserved
+
         self.coords = coords
         self.payloads = [self._maybe_box(p) for p in payloads]
 
@@ -44,37 +48,58 @@ class Fiber:
 
         return cls(coords, payloads, default=default)
 
+
     @classmethod
     def fromUncompressed(cls, payload_list):
-        """Construct a Fiber from an uncompressed list tree"""
+        """Construct a Fiber from an uncompressed nest of lists
 
-        return Fiber._makeFiber(payload_list)
+        Note: Zero values and sub-fibers that are all zeros
+        are squeezed out, i.e., they will have no coordinates.
+        Unless the entire input is zeros.
+
+        """
+
+        f = Fiber._makeFiber(payload_list)
+
+        if f is None:
+            # Return something for an entirely empty input
+            return Fiber([], [])
+
+        return f
 
 
     @staticmethod
     def _makeFiber(payload_list):
-        """Recursively make a fiber out of an uncompressed list"""
+        """Recursively make a fiber out of an uncompressed nest of lists"""
 
-        coords = []
-        payloads = []
+        assert(isinstance(payload_list, list))
 
-        for rownum, row in enumerate(payload_list):
-            if isinstance(row[0], list):
-                subfibers = Fiber._makeFiber(row)
-                if len(subfibers) > 0:
-                    coords.append(rownum)
-                    payloads.append(subfibers)
-            else:
-                zipped = [ (c, p) for c, p in enumerate(row) if p != 0 ]
-                if len(zipped) > 0:
-                    subcoords = [ c for c,_ in zipped ]
-                    subpayloads = [ p for _,p in zipped ]
+        # Create zipped list of (non-empty) coordinates/payloads
+        zipped = [ (c, p) for c, p in enumerate(payload_list) if p != 0 ]
 
-                    new_fiber = Fiber(subcoords, subpayloads)
-                    coords.append(rownum)
-                    payloads.append(new_fiber)
+        # Recursively unzip the lists into a Fiber
+        if len(zipped) == 0:
+            # Got an empty subtree
+            return None
+
+        if isinstance(payload_list[0], list):
+            coords = []
+            payloads = []
+            for c,p in zipped:
+                real_p = Fiber._makeFiber(p)
+                if not real_p is None:
+                    coords.append(c)
+                    payloads.append(real_p)
+        else:
+            coords = [ c for c,_ in zipped ]
+            payloads = [ p for _,p in zipped ]
+
+        if len(coords) == 0:
+            return None
 
         return Fiber(coords, payloads)
+
+
 
 
 #
@@ -89,6 +114,15 @@ class Fiber:
         """Return list of payloads in fiber"""
 
         return self.payloads
+
+    def getPayload(self, coord):
+        """payload"""
+
+        try:
+            index = self.coords.index(coord)
+            return self.payloads[index]
+        except:
+            return None
 
     def setDefault(self, default):
         """setDefault"""
@@ -111,7 +145,10 @@ class Fiber:
         return max(self.coords)
 
     def values(self):
-        """Count values in the fiber tree"""
+        """Count values in the fiber tree
+
+        Note: an explcit zero scalar value will count as a value
+        """
 
         count = 0
         for p in self.payloads:
@@ -128,6 +165,27 @@ class Fiber:
 
         return len(self.coords)
 
+
+    def isEmpty(self):
+        """isEmpty() - check if Fiber is empty
+
+        Empty is defined as of zero length, only containing zeros
+        or only containing subfibers that are empty.
+        """
+
+        return all(map(Fiber._checkEmpty, self.payloads))
+
+
+    @staticmethod
+    def _checkEmpty(p):
+
+        if isinstance(p, Fiber):
+            return p.isEmpty()
+
+        if (p == 0):
+            return  True
+
+        return False
 #
 # Iterator methods
 #
@@ -152,11 +210,11 @@ class Fiber:
     def payload(self, coord):
         """payload"""
 
-        try:
-            index = self.coords.index(coord)
-            return self.payloads[index]
-        except:
-            return None
+        assert(False)
+        print("Info: Used deprecated function Fiber.payload() should be getPayload()")
+
+        return self.getPayload(coord)
+
 
 
     def insert(self, coord, value):
@@ -647,7 +705,7 @@ class Fiber:
 
             # TBD: Optimize with co-iteration...
 
-            a_payload = self.payload(b_coord)
+            a_payload = self.getPayload(b_coord)
             if a_payload is None:
                 # Iemporary value (should be None)
                 if callable(self.default):
@@ -659,7 +717,7 @@ class Fiber:
 
                 # TBD: Inefficient since it does yet another search
 
-                a_payload = self.payload(b_coord)
+                a_payload = self.getPayload(b_coord)
 
                 if Payload.contains(value, Fiber):
                     assert(not self.owner is None)
@@ -794,13 +852,20 @@ class Fiber:
 #
 
     def __eq__(self, other):
-        """__eq__"""
+        """__eq__ - Equality check for Fibers
 
-        if self.coords != other.coords:
-            return False
+        Note: explict zeros do not result in inequality
+        """
 
-        if self.payloads != other.payloads:
-            return False
+        for c, (mask, ps, po) in self | other:
+            if mask == "A" and not Fiber._checkEmpty(ps):
+                return False
+
+            if mask == "B" and not Fiber._checkEmpty(po):
+                return False
+
+            if mask == "AB" and not (ps == po):
+                return False
 
         return True
 

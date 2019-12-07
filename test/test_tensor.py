@@ -36,7 +36,24 @@ class TestTensor(unittest.TestCase):
 
         self.assertTrue(tensor == tensor_ref)
 
-    def test_fromUncompressed(self):
+    def test_fromUncompressed_1D(self):
+        """Test construction of a tensor from nested lists"""
+
+        tensor_ref = Tensor("./data/test_tensor-1.yaml")
+
+        # Manual copy of test_tensor-1.yaml
+
+        #         0    1    2    3
+        #
+        t = [ 100, 101, 0, 102 ]
+
+        fiber = Fiber( [0, 1, 3], [100, 101, 102])
+        tensor = Tensor.fromUncompressed(["M"], t)
+
+        self.assertEqual(tensor.root(), fiber)
+
+
+    def test_fromUncompressed_2D(self):
         """Test construction of a tensor from nested lists"""
 
         tensor_ref = Tensor("./data/test_tensor-1.yaml")

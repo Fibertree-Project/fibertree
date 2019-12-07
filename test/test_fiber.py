@@ -1,7 +1,7 @@
 import unittest
 from fibertree.payload import Payload
 from fibertree.fiber import Fiber
-
+from fibertree.tensor_image import TensorImage
 
 class TestFiber(unittest.TestCase):
 
@@ -17,12 +17,63 @@ class TestFiber(unittest.TestCase):
         b1 = Fiber([2, 4, 6], [3, 5, 7])
         a0 = Fiber([2, 4], [b0, b1])
 
-    def test_comparison(self):
+    def test_new_empty(self):
+        """Create an empty fiber"""
+
+        a = Fiber([], [])
+
+    def test_comparison_eq(self):
 
         a = Fiber([2, 4, 6], [3, 5, 7])
         b = Fiber([2, 4, 6], [3, 5, 7])
 
         self.assertEqual(a, b)
+
+    def test_comparison_eq_1D(self):
+
+        a = Fiber([2, 4, 6], [3, 5, 7])
+        b1 = Fiber([2, 4, 6], [3, 5, 7])
+        b2 = Fiber([2, 4, 6, 8], [3, 5, 7, 0])
+        b3 = Fiber([2, 4, 6], [3, 6, 7])
+        b4 = Fiber([2, 4, 8], [3, 5, 7])
+
+        self.assertEqual(a, b1)
+        self.assertEqual(a, b2)
+        self.assertNotEqual(a, b3)
+        self.assertNotEqual(a, b4)
+
+        c = Fiber( [], [])
+        d1 = Fiber( [0, 1], [0, 0])
+        d2 = Fiber( [0, 1], [0, 10])
+
+        self.assertEqual(c, d1)
+        self.assertNotEqual(c, d2)
+
+    def test_comparison_eq_2D(self):
+
+        a = Fiber([2, 4, 6], [3, 5, 7])
+        b1 = Fiber([2, 4, 6], [3, 5, 7])
+        b2 = Fiber([2, 4, 6, 8], [3, 5, 7, 0])
+        b3 = Fiber([2, 4, 6], [3, 6, 7])
+        b4 = Fiber([2, 4, 8], [3, 5, 7])
+
+        x0 = Fiber([2, 4], [a, a])
+        x1 = Fiber([2, 4], [a, b1])
+        x2 = Fiber([2, 4], [a, b2])
+        x3 = Fiber([2, 4], [a, b3])
+        x4 = Fiber([2, 4], [a, b4])
+
+        self.assertEqual(x0, x1)
+        self.assertEqual(x0, x2)
+        self.assertNotEqual(x0, x3)
+        self.assertNotEqual(x0, x4)
+        self.assertEqual(x1, x2)
+        self.assertNotEqual(x1, x3)
+        self.assertNotEqual(x1, x4)
+        self.assertNotEqual(x2, x3)
+        self.assertNotEqual(x2, x4)
+        self.assertNotEqual(x3, x4)
+
 
     def test_fromYAMLfile_1D(self):
         """Read a YAMLfile 1-D"""
@@ -43,6 +94,72 @@ class TestFiber(unittest.TestCase):
         a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
 
         self.assertEqual(a, a_ref)
+
+    def test_fromUncompressed_1D(self):
+        """Create from uncompressed 1-D"""
+
+        f_ref = Fiber([0, 1, 3, 4], [1, 2, 4, 5])
+
+        f = Fiber.fromUncompressed([ 1, 2, 0, 4, 5, 0 ])
+
+        self.assertEqual(f, f_ref)
+
+    def test_fromUncompressed_2D(self):
+        """Create from uncompressed 2-D"""
+
+        a1 = Fiber([0, 1, 3, 4], [1, 2, 4, 5])
+        a2 = Fiber([2, 3], [3, 4])
+
+        f_ref = Fiber([0, 2], [ a1, a2 ])
+
+        f = Fiber.fromUncompressed([ [1, 2, 0, 4, 5, 0 ],
+                                     [0, 0, 0, 0, 0, 0 ],
+                                     [0, 0, 3, 4, 0, 0 ] ])
+
+        self.assertEqual(f, f_ref)
+
+    def test_fromUncompressed_3D(self):
+        """Create from uncomrpessed 3-D"""
+
+        f_ref = Fiber.fromYAMLfile("./data/test_fiber-3.yaml")
+
+        u_t = [ [ [ 1, 2, 3, 0],
+                  [ 1, 0, 3, 4],
+                  [ 0, 2, 3, 4],
+                  [ 1, 2, 0, 4] ],
+                [ [ 0, 0, 0, 0],
+                  [ 0, 0, 0, 0],
+                  [ 0, 0, 0, 0],
+                  [ 0, 0, 0, 0] ],
+                [ [ 1, 2, 3, 0],
+                  [ 1, 0, 3, 4],
+                  [ 0, 0, 0, 0],
+                  [ 1, 2, 0, 4] ] ]
+
+        f = Fiber.fromUncompressed(u_t)
+
+        self.assertEqual(f, f_ref)
+
+    def test_fromUncompressed_1D_empty(self):
+        """Create empty tensor from uncompressed 1-D"""
+
+        f_ref = Fiber([], [])
+
+        f = Fiber.fromUncompressed([ 0, 0, 0, 0, 0 ])
+
+        self.assertEqual(f, f_ref)
+
+    def test_fromUncompressed_2D_empty(self):
+        """Create empty tensor from uncompressed 2-D"""
+
+        f_ref = Fiber([], [])
+
+        f = Fiber.fromUncompressed([ [0, 0, 0, 0, 0, 0 ],
+                                     [0, 0, 0, 0, 0, 0 ],
+                                     [0, 0, 0, 0, 0, 0 ] ])
+
+        self.assertEqual(f, f_ref)
+
 
     def test_getCoords(self):
         """Extract coordinates"""
@@ -67,6 +184,37 @@ class TestFiber(unittest.TestCase):
         p = a.getPayloads()
 
         self.assertEqual(p, p_ref)
+
+    def test_isempty_1D(self):
+        """Test for empty fiber"""
+
+        a = Fiber( [], [])
+        self.assertTrue(a.isEmpty())
+
+        b = Fiber( [ 0, 1], [0, 0])
+        self.assertTrue(b.isEmpty())
+
+        c = Fiber( [0, 1], [0, 1])
+        self.assertFalse(c.isEmpty())
+
+    def test_isempty_2D(self):
+        """Test for empty fiber"""
+
+        a1 = Fiber( [], [])
+        a2 = Fiber( [ 0, 1], [0, 0])
+        a3 = Fiber( [0, 1], [0, 1])
+
+        a = Fiber( [2, 3], [a1, a1])
+        self.assertTrue(a.isEmpty())
+
+        b = Fiber( [3, 4], [a2, a2])
+        self.assertTrue(b.isEmpty())
+
+        c = Fiber( [3, 4], [a1, a2])
+        self.assertTrue(c.isEmpty())
+
+        d = Fiber( [4, 5], [a1, a3])
+        self.assertFalse(d.isEmpty())
 
     def test_setDefault(self):
         """Test setting defaults - unimplemented"""
@@ -135,7 +283,7 @@ class TestFiber(unittest.TestCase):
         answer = [None, 5, 7, None]
         
         for i in range(len(test)):
-            self.assertTrue(a.payload(test[i]) == answer[i])
+            self.assertTrue(a.getPayload(test[i]) == answer[i])
 
     def test_insert(self):
         """"Insert payload at coordinates 0, 3, 7"""
