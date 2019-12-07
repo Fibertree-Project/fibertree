@@ -268,6 +268,12 @@ class Fiber:
 
         return Fiber(coords, payloads)
 
+    def updatePayloads(self, func):
+
+        for i in range(len(self.payloads)):
+            self.payloads[i] = func(self.payloads[i])
+
+
     def unzip(self):
         """Unzip"""
 
@@ -823,11 +829,12 @@ class Fiber:
     def unflattenRanks(self):
         """Unflatten two ranks into one"""
 
+        assert(isinstance(self.coords[0], tuple))
+
         coords1 = []
         payloads1 = []
 
         c1_last = -1
-
 
         for ( (c1, c0), p0 ) in zip(self.coords, self.payloads):
             if (c1 > c1_last):
