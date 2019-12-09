@@ -812,6 +812,25 @@ class Fiber:
 #
 # Multilayer methods
 #
+    def swapRanks(self):
+        """Swap the (highest) two ranks of the fiber.
+        This function relies on flattenRanks() and unflattenRanks().
+        FIXME: flattenRanks() could be more general to support all p1 types,
+        including tuples."""
+
+        # Flatten the (highest) two ranks
+        flattened = self.flattenRanks()
+        # Make sure the coord is a 2-element tuple
+        assert(len(flattened.coords[0]) == 2)
+
+        # Swap the ranks and sort based on the swapped (new) structure
+        swapped = sorted([ (c[::-1], p) for c, p in flattened ])
+
+        # Return the unflattened fiber
+        coords = [ c for c,_ in swapped]
+        payloads = [ p for _,p in swapped ]
+        return Fiber(coords, payloads).unflattenRanks()
+
     def flattenRanks(self):
         """Flatten two ranks into one - COO-style"""
 
