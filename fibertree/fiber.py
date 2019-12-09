@@ -838,10 +838,22 @@ class Fiber:
         payloads = []
 
         for c1, p1 in zip(self.coords, self.payloads):
-            for c0, p0 in p1:
-                coords.append( (c1, c0) )
-                payloads.append(p0)
-
+            if Payload.contains(p1, Fiber):
+                for c0, p0 in p1:
+                    coords.append( (c1, c0) )
+                    payloads.append(p0)
+            elif Payload.contains(p1, tuple):
+                # zgw: p1 could be tuples.
+                # In general, a payload contains one the the following three
+                # 1) a Fiber
+                # 2) a tuple
+                # 3) a (fibertree-)structure-irrelevant type (e.g., a Python number)
+                # If p1 is a tuple, flattenRanks() flattens rank c1 and c0,
+                # where c0 is the highest rank of the fiber p1[0]
+                assert(isinstance(p1[0], Fiber))
+                for c0, p0 in p1[0]:
+                    coords.append( (c1, c0) )
+                    payloads.append( (p0,) + p1[1:] )
         return Fiber(coords, payloads)
 
 
