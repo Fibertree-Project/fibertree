@@ -261,6 +261,50 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.values(), 6)
 
 
+    def test_getitem_simple(self):
+        """Get item - simple"""
+
+        c_ref = [2, 4, 6, 8]
+        p_ref = [3, 5, 7, 9]
+
+        a = Fiber(c_ref, p_ref)
+
+        (coord0, payload0) = a[0]
+
+        self.assertEqual(coord0, 2)
+        self.assertEqual(payload0, 3)
+
+        (coord1, payload1) = a[1]
+
+        self.assertEqual(coord1, 4)
+        self.assertEqual(payload1, 5)
+
+        (coord2, payload2) = a[-2]
+        self.assertEqual(coord2, 6)
+        self.assertEqual(payload2, 7)
+
+        (coord3, payload3) = a[-1]
+        self.assertEqual(coord3, 8)
+        self.assertEqual(payload3, 9)
+
+
+    def test_getitem_slice(self):
+        """Get item - slices"""
+
+        c_ref = [2, 4, 6, 8]
+        p_ref = [3, 5, 7, 9]
+
+        a = Fiber(c_ref, p_ref)
+
+        slice1 = a[0:2]
+
+        slice1_coord_ref = a.coords[0:2]
+        slice1_payload_ref = a.payloads[0:2]
+        slice1_ref = Fiber(slice1_coord_ref, slice1_payload_ref)
+
+        self.assertEqual(slice1, slice1_ref)
+
+
     def test_len(self):
         """Find lenght of a fiber"""
 

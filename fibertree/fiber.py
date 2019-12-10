@@ -160,6 +160,56 @@ class Fiber:
         return count
 
 
+    def __getitem__(self, key):
+        """__getitem__
+
+        For an integer key return a (coordinate, payload) tuple
+        containing the contents of a fiber at "position", i.e., an
+        offset in the coordinate and payload arrays. For a slice key return a new fiber for the slice
+
+        Parameters
+        ----------
+        key: integer or slice
+        The position or slice in the fiber
+
+        Returns
+        -------
+        tuple or Fiber
+        A tuple of a coordinate and payload or a Fiber of the slice
+
+        Raises
+        ------
+
+        IndexError
+        Index out of range
+
+        TypeError
+        Invalid key type
+        """
+
+        if isinstance(key, int) :
+            if key < 0 :
+                #Handle negative indices
+                key += len(self)
+
+            if key < 0 or key >= len(self):
+                   raise(IndexError,
+                         f"The index ({key}) is out of range")
+
+            return (self.coords[key], self.payloads[key])
+
+        if isinstance(key, slice) :
+            #Get the start, stop, and step from the slice
+            slice_range = range(*key.indices(len(self)))
+
+            coords = [self.coords[ii] for ii in slice_range]
+            payloads = [self.payloads[ii] for ii in slice_range]
+
+            return Fiber(coords, payloads)
+
+        raise(TypeError, "Invalid key type.")
+
+
     def __len__(self):
         """__len__"""
 
