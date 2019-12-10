@@ -419,11 +419,13 @@ class Fiber:
                 self.cur_group = 0
 
             def nextGroup(self, i, c):
-                if c >= self.cur_group:
-                    self.cur_group += self.step
-                    return True
+                count = 0
 
-                return False
+                while c >= self.cur_group:
+                    count += 1
+                    self.cur_group += self.step
+
+                return count
 
         splitter = _SplitterUniform(step)
 
@@ -440,15 +442,16 @@ class Fiber:
                 self.cur_split = self.splits.pop(0)
 
             def nextGroup(self, i, c):
-                if c >= self.cur_split:
+                count = 0
+
+                while c >= self.cur_split:
+                    count += 1
                     if self.splits:
                         self.cur_split = self.splits.pop(0)
                     else:
                         self.cur_split = float("inf")
 
-                    return True
-
-                return False
+                return count
 
         splitter = _SplitterNonUniform(splits)
 
@@ -465,11 +468,13 @@ class Fiber:
                 self.cur_count=0
 
             def nextGroup(self, i, c):
-                if i >= self.cur_count:
-                    self.cur_count += self.step
-                    return True
+                count = 0
 
-                return False
+                while i >= self.cur_count:
+                    count += 1
+                    self.cur_count += self.step
+
+                return count
 
         splitter = _SplitterEqual(step)
 
@@ -486,15 +491,16 @@ class Fiber:
                 self.cur_count = -1
 
             def nextGroup(self, i, c):
-                if i > self.cur_count:
+                count = 0
+
+                while i > self.cur_count:
+                    count += 1
                     if self.sizes:
                         self.cur_count += self.sizes.pop(0)
                     else:
                         self.cur_count = float("inf")
 
-                    return True
-
-                return False
+                return count
 
         assert len(self.coords) <= sum(sizes)
 
@@ -504,52 +510,73 @@ class Fiber:
 
 
     def _splitGeneric(self, splitter, partitions):
-        """_splitGeneric"""
+        """_splitGeneric
 
-        fiber_coords = []
-        fiber_payloads = []
-        fibers = []
+        Takes the current fiber and splits it according to the boundaries defined by splitter().
+        The result is a new rank (for paritions = 1) or two new ranks (for partitions > 1).
 
-        # Create arrays of |partitions| 
+        rank2 - uppermost rank with one coordinate per partition (only exists for partitions > 1)
+        rank1 - middle rank with one coordinate per split
+        rank0 - lowest rank with fibers split out from the single original fiber
+
+        """
+
+        rank0_fiber_group = []
+        rank0_fiber_coords = []
+        rank0_fiber_payloads = []
+
+        rank1_fiber_coords = []
+        rank1_fiber_payloads = []
+
+        # Create arrays for rank1 fibers per partition
 
         for i in range(partitions):
-            fiber_coords.append([])
-            fiber_payloads.append([])
-            fibers.append([])
+            rank1_fiber_coords.append([])
+            rank1_fiber_payloads.append([])
 
-        partition =  0
+        cur_coords = None
+        rank1_coord = -1
 
         # Split apart the fiber into groups according to "splitter"
 
-        for i, (c,p) in enumerate(zip(self.coords,self.payloads)):
-            # Check if we need to start a new fiber
-            if splitter.nextGroup(i, c):
-                cur_coords = []
-                fiber_coords[partition].append(cur_coords)
-                cur_payloads = []
-                fiber_payloads[partition].append(cur_payloads)
-                partition = (partition + 1) % partitions
+        for i0, (c0,p0) in enumerate(zip(self.coords,self.payloads)):
+            # Check if we need to start a new rank0 fiber
+            count = splitter.nextGroup(i0, c0)
+            if (count > 0):
+                rank1_coord += count
+                rank0_fiber_group.append(rank1_coord)
 
-            cur_coords.append(c)
-            cur_payloads.append(p)
+                cur_coords = []
+                rank0_fiber_coords.append(cur_coords)
+
+                cur_payloads = []
+                rank0_fiber_payloads.append(cur_payloads)
+
+            # May not be in a group yet
+            if not cur_coords is None:
+                cur_coords.append(c0)
+                cur_payloads.append(p0)
 
         # Deal the split fibers out to the partitions
 
-        for i in range(partitions):
-            for c, p in zip(fiber_coords[i], fiber_payloads[i]):
-                fibers[i].append(Fiber(c, p))
+        partition =  0
+
+        for c1, c0, p0 in zip(rank0_fiber_group, rank0_fiber_coords, rank0_fiber_payloads):
+            rank1_fiber_coords[partition].append(c1)
+            rank1_fiber_payloads[partition].append(Fiber(c0, p0))
+            partition = (partition + 1) % partitions
 
         # For 1 partition don't return a extra level of Fiber
 
         if partitions == 1:
-            return Fiber(payloads=fibers[0])
+            return Fiber(rank1_fiber_coords[0], rank1_fiber_payloads[0])
 
         # For >1 partitions return a Fiber with a payload for each partition
 
         payloads = []
 
-        for f in fibers:
-            payload = Fiber(payloads=f)
+        for c1, p1 in zip(rank1_fiber_coords, rank1_fiber_payloads):
+            payload = Fiber(c1, p1)
             payloads.append(payload)
 
         return Fiber(payloads=payloads)
