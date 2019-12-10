@@ -20,7 +20,7 @@ for c,s in fibers:
 # Non-unform coordiate-based split
 #
 splits = [0, 12, 31]
-print("NonUniform coordinate split (splits at %s)\n" % splits)
+print(f"NonUniform coordinate split (splits at {splits})\n")
 
 fibers = f.splitNonUniform(splits)
 
@@ -31,7 +31,7 @@ for c,s in fibers:
 # Equal position-based split
 #
 size = 2
-print("Equal position split (groups of %s)\n" % size)
+print(f"Equal position split (groups of {size})\n")
 
 fibers = f.splitEqual(size)
 
@@ -40,7 +40,7 @@ for c,s in fibers:
 
 
 sizes = [1, 2, 4]
-print("NonEqual position split (splits of sizes %s)\n" % sizes)
+print(f"NonEqual position split (splits of sizes {sizes})\n")
 
 fibers = f.splitUnEqual(sizes)
 
@@ -55,7 +55,7 @@ for c,s in fibers:
 # Equal position-based split
 #
 size = 2
-print("Two partitions with equal position split (groups of %s)\n" % size)
+print(f"Two partitions with equal position split (groups of {size})\n")
 
 fibers = f.splitEqual(size, partitions=2)
 

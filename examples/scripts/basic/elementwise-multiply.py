@@ -27,9 +27,9 @@ z_m.print("Z Tensor - M rank")
 
 print("Z < A Fiber")
 
-for coord, (z_ref, (a_val, b_val)) in z_m << (a_m & b_m):
-    print("Processing: (%s, (%s, (%s, %s)))"
-          % (coord, z_ref, a_val, b_val))
+for m_coord, (z_ref, (a_val, b_val)) in z_m << (a_m & b_m):
+    print(f"Processing: ({m_coord}, ({z_ref}, ({a_val}, {b_val})))")
+
 
     z_ref += a_val * b_val
 

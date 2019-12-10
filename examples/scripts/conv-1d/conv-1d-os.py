@@ -26,18 +26,18 @@ W = w_r.maxCoord() + 1
 I = i_h.maxCoord() + 1
 Q = I - W + 1
 
-w_r.print("W Tensor - R rank - size=%s" % W)
-i_h.print("I Tensor - H rank - size=%s" % I)
-o_q.print("O Tensor - Q rank - size=%s" % I)
+w_r.print(f"W Tensor - R rank - size={W}")
+i_h.print(f"I Tensor - H rank - size={I}")
+o_q.print(f"O Tensor - Q rank - size={Q}")
 
 print("Convolution")
 
 output_shape = Fiber(range(Q))
 
 for q, (o_q_ref, _) in o_q << output_shape:
-    print("Processing output: (%s, (%s))" % (q, o_q_ref))
+    print(f"Processing output: ({q}, ({o_q_ref}))")
     for r, (w_val, i_val) in w_r.project(lambda r: q+r) & i_h:
-        print("  Processing weights and activations (%s, (%s, %s)" % (r, w_val, i_val))
+        print(f"  Processing weights and activations ({r}, ({w_val}, {i_val})")
         o_q_ref += w_val * i_val
 
 o.print("\nOutput Tensor")

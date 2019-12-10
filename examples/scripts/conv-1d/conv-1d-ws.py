@@ -25,16 +25,16 @@ W = w_r.maxCoord() + 1
 I = i_h.maxCoord() + 1
 Q = I - W + 1
 
-w_r.print("W Tensor - R rank - size=%s" % W)
-i_h.print("I Tensor - H rank - size=%s" % I)
-o_q.print("O Tensor - Q rank - size=%s" % I)
+w_r.print(f"W Tensor - R rank - size={W}")
+i_h.print(f"I Tensor - H rank - size={I}")
+o_q.print(f"O Tensor - Q rank - size={Q}")
 
 print("Convolution")
 
 for r, (w_val) in w_r:
-    print("Processing weight: (%s, (%s))" % (r, w_val))
+    print(f"Processing weight: ({r}, ({w_val}))")
     for q, (o_q_ref, i_val) in o_q << i_h.project(lambda h: h-r, (0, Q)):
-        print("  Processing output (%s, (%s, %s)" % (q, o_q_ref, i_val))
+        print(f"  Processing output ({q}, ({o_q_ref}, {i_val})")
         o_q_ref += w_val * i_val
 
 o.print("\nOutput Tensor")

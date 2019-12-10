@@ -6,7 +6,7 @@ fiber:
         payloads:
           - fiber:
               coords:   [ 0 ]
-              payloads: [ 0 ]
+              payloads: [ 1 ]
           - fiber:
               coords:   [ 1, 2 ]
               payloads: [ 10, 20 ]

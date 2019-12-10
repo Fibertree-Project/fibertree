@@ -22,9 +22,9 @@ a_m.print("A Tensor - M rank")
 z_m.print("Z Tensor - M rank")
 
 for m, (z_k, a_k) in z_m << a_m:
-    print("Processing: Coord: %s" % m)
-    print("   z_k: %s" % z_k)
-    print("   a_k: %s" % a_k)
+    print(f"Processing: Coord: {m}")
+    print(f"   z_k: {z_k}")
+    print(f"   a_k: {a_k}")
           
     for k, (z_ref, a_val) in z_k << a_k:
         z_ref += a_val

@@ -23,8 +23,8 @@ z_m.print("Z Fiber - Rank M")
 
 print("Z < A Fiber")
 
-for coord, (z_ref, a_val) in z_m << a_m:
-    print("Processing: (%s, (%s, %s))" % (coord, z_ref, a_val))
+for m, (z_ref, a_val) in z_m << a_m:
+    print(f"Processing: ({m}, ({z_ref}, {a_val}))")
 
     z_ref += a_val
 

@@ -32,9 +32,9 @@ o_q.print("O Tensor - Q rank - size=%s" % I)
 print("Convolution")
 
 for h, (i_val) in i_h:
-    print("Processing input: (%s, (%s))" % (h, i_val))
+    print(f"Processing input: ({h}, ({i_val}))")
     for q, (o_q_ref, w_val) in o_q << w_r.project(lambda r: h-r, (0, Q)):
-        print("  Processing output (%s, (%s, %s)" % (q, o_q_ref, w_val))
+        print(f"  Processing output ({q}, ({o_q_ref}, {w_val})")
         o_q_ref += w_val * i_val
 
 o.print("\nOutput Tensor")

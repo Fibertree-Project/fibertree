@@ -23,14 +23,14 @@ t1.dump(draw_a_file_tmp)
 
 t2 = Tensor.fromYAMLfile(draw_a_file_tmp)
 
-print("Tensor read/write test: %s" % (t1.root() == t2.root()))
+print(f"Tensor read/write test: {(t1.root() == t2.root())}")
 
 # Read in a Fiber
 
 draw_fiber_a_file = os.path.join(data_dir, "draw-fiber-a.yaml")
 f1 = Fiber.fromYAMLfile(draw_fiber_a_file)
 
-print("Fiber read test: %s" % (t1.root() == f1))
+print(f"Fiber read test: {(t1.root() == f1)}")
 
 # Dump the Fiber to /tmp
 
@@ -41,5 +41,5 @@ f1.dump(draw_fiber_a_file_tmp)
 
 f2 = Fiber.fromYAMLfile(draw_fiber_a_file_tmp)
 
-print("Fiber read/write test: %s" % (f1 == f2))
+print(f"Fiber read/write test: {(f1 == f2)}")
 

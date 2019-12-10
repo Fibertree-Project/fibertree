@@ -32,8 +32,7 @@ z_m.print("Z Tensor - Rank M")
 
 for m_coord, (z_ref, (a_k, b_k)) in z_m << (a_m & b_m):
     for k_coord, (a_val, b_val) in a_k & b_k:
-        print("Processing: [%s -> ( %s, (%s, %s)]"
-              % (k_coord, z_ref, a_val, b_val))
+        print(f"Processing: [{k_coord} -> ( {z_ref}, ({a_val}, {b_val})]")
 
         z_ref += a_val * b_val
 
