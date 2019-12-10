@@ -919,18 +919,53 @@ class Fiber:
         print("%s" % self)
         print("")
 
+    def __str__(self, indent=0):
+        """__str__"""
+
+        str = ''
+
+        if self.owner is None:
+            str += "F/["
+        else:
+            str += "F(%s)/[" % self.owner.getName()
+
+        coord_indent = 0
+        next_indent = indent + len(str)
+
+        if self.payloads and isinstance(self.payloads[0], Fiber):
+
+            for (c, p) in zip(self.coords, self.payloads):
+                if ( coord_indent != 0):
+                    str += '\n'
+                str += coord_indent*' ' + "( %3s -> " % c
+                str += p.__str__(indent=next_indent+9)
+                str += ')'
+                coord_indent = next_indent
+
+            return str
+
+        for i in range(len(self.coords)):
+            if coord_indent != 0:
+                str += '\n'
+
+            str += coord_indent*' ' + "(%s -> %s) " % (self.coords[i], self.payloads[i])
+            coord_indent = next_indent
+
+        str += "]"
+        return str
+
     def __repr__(self):
         """__repr__"""
 
-        if self.owner is None:
-            str = "F/["
-        else:
-            str = "F(%s)/[" % self.owner.getName()
+        # TBD: Owner is not properly reflected in representation
 
-        for i in range(len(self.coords)):
-            str += "(%s -> %s) " % (self.coords[i], self.payloads[i])
+        str = f"Fiber({self.coords!r}, {self.payloads!r}"
 
-        str += "]"
+        if self.owner:
+            str += f", owner={self.owner.getName()}"
+
+        str += ")"
+
         return str
 
 #

@@ -69,17 +69,21 @@ class Rank:
 # String methods
 #
 
-    def __str__(self):
+    def __str__(self, indent=0):
         """__str__"""
 
-        string = "Rank: %s " % self.name
-        string += ", ".join([str(x) for x in self.fibers])
+        string = indent*' '
+        string += f"Rank: {self.name} "
+
+        next_indent = len(string)
+
+        string += ", ".join([x.__str__(indent=next_indent) for x in self.fibers])
         return string
     
     def __repr__(self):
         """__repr__"""
 
         string = "R(%s)/[" % self.name
-        string += ", ".join([str(x) for x in self.fibers])
+        string += ", ".join([x.__repr__() for x in self.fibers])
         string += "]"
         return string

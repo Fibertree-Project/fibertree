@@ -80,7 +80,7 @@ class Payload:
     def __str__(self):
         """__str__"""
 
-        return "<%s> " % self.value.__str__()
+        return "<%s>" % self.value.__str__()
 
     def __repr__(self):
         """__repr__"""

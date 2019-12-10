@@ -148,6 +148,14 @@ class Tensor:
         print("%s" % self)
         print("")
 
+    def __str__(self):
+        
+        str = "T(%s)/[" % ",".join(self.rank_ids) + "\n"
+        for r in self.ranks:
+            str += r.__str__(indent=2) + "\n"
+        str += "]"
+        return str
+        
     def __repr__(self):
         """__repr__"""
 
