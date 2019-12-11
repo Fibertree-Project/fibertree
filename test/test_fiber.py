@@ -216,6 +216,22 @@ class TestFiber(unittest.TestCase):
         d = Fiber( [4, 5], [a1, a3])
         self.assertFalse(d.isEmpty())
 
+    def test_nonempty_2D(self):
+        """Test for empty fiber"""
+
+        a1 = Fiber( [], [])
+        a2 = Fiber( [ 0, 1], [0, 0])
+        a3 = Fiber( [0, 1], [0, 1])
+
+        a = Fiber( [1, 2, 3], [a1, a2, a3])
+
+        ne = a.nonEmpty()
+
+        ne3 = Fiber( [1], [1])
+        ne_ref = Fiber( [3], [ne3])
+
+        self.assertEqual(ne, ne_ref)
+
     def test_setDefault(self):
         """Test setting defaults - unimplemented"""
 
@@ -253,12 +269,20 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.maxCoord(), c_max)
 
 
-    def test_values(self):
+    def test_values_2D(self):
         """Count values in a 2-D fiber"""
 
         a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
 
         self.assertEqual(a.values(), 6)
+
+
+    def test_values_with_zero(self):
+        """Count values in a 1-D fiber with an explict zero"""
+
+        a = Fiber( [1, 8, 9], [2, 0, 10])
+
+        self.assertEqual(a.values(), 2)
 
 
     def test_getitem_simple(self):
@@ -406,41 +430,75 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(a, a_ref)
         self.assertEqual(b, b_ref)
+
+    def test_and(self):
+        """Intersection test"""
+
+        a = Fiber( [1, 5, 8, 9], [2, 6, 9, 10])
+        b = Fiber( [0, 5, 9], [2, 7, 11 ])
+
+        ab_ref = Fiber( [5, 9], [ (6, 7), (10, 11)])
         
+        ab = a & b
+
+        self.assertEqual(ab, ab_ref)
+
+
+    def test_or(self):
+        """Union test"""
+
+        a = Fiber( [1, 5, 8, 9], [2, 6, 9, 10])
+        b = Fiber( [0, 5, 9], [2, 7, 11 ])
+
+        ab_ref = Fiber( [0, 1, 5, 8, 9],
+                        [ ("B",   0,  2),
+                          ("A",   2,  0),
+                          ("AB",  6,  7),
+                          ("A",   9,  0),
+                          ("AB", 10, 11) ])
+
+        ab = a | b
+
+        self.assertEqual(ab, ab_ref)
+
+    def test_diff(self):
+        """Difference test"""
+
+        a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
+        b = Fiber([0, 5, 9], [2, 7, 0])
+
+        # Note coordinate 9 stays since b@9 is zero
+
+        ab_ref = Fiber( [1, 8, 9],
+                        [2, 9, 10])
+
+        ab = a - b
+
+        self.assertEqual(ab, ab_ref)
+
+
+    def test_diff(self):
+        """Difference test"""
+
+        a = Fiber([0, 5, 9], [0, 10, 0])
+        b = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
+
+        # Note coordinate 9 stays since b@9 is zero
+
+        ab_ref = Fiber( [1, 5, 8, 9],
+                        [(0, 2),
+                         (10, 6),
+                         (0, 9),
+                         (0, 10) ])
+
+        ab = a << b
+
+        self.assertEqual(ab, ab_ref)
+
+
+
 """
 
-
-
-    print("Iterator Print")
-    i = a.__iter__()
-
-    while True:
-        try:
-            coord, payload = next(i)
-            print("(%s, %s)" % (coord, payload))
-        except StopIteration:
-            print("End")
-            break
-    print("----\n\n")
-
-
-    print("Intersection")
-
-    b = Fiber([2, 6, 8], [4, 8, 10])
-
-    a.print()
-    b.print()
-
-    ab = a & b
-    ab.print()
-    print("----\n\n")
-
-    print("For Intersection")
-
-    for coord, payload in ab:
-        print("(%s, %s)" % (coord, payload))
-
-    print("----\n\n")
 
     print("Union")
 

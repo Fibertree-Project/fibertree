@@ -137,17 +137,21 @@ class Fiber:
     def minCoord(self):
         """min_coord"""
 
+        # TBD: Should check that the candidate is not an explicit zero
+
         return min(self.coords)
 
     def maxCoord(self):
         """max_coord"""
+
+        # TBD: Should check that the candidate is not an explicit zero
 
         return max(self.coords)
 
     def values(self):
         """Count values in the fiber tree
 
-        Note: an explcit zero scalar value will count as a value
+        Note: an explcit zero scalar value will NOT count as a value
         """
 
         count = 0
@@ -155,7 +159,7 @@ class Fiber:
             if Payload.contains(p, Fiber):
                 count += Payload.get(p).values()
             else:
-                count += 1
+                count += 1 if not Payload.isEmpty(p) else 0
 
         return count
 
@@ -223,20 +227,30 @@ class Fiber:
         or only containing subfibers that are empty.
         """
 
-        return all(map(Fiber._checkEmpty, self.payloads))
+        return all(map(Payload.isEmpty, self.payloads))
 
 
-    @staticmethod
-    def _checkEmpty(p):
+    def nonEmpty(self):
+        """nonEmpty() - return Fiber only with non-empty elements
 
-        if isinstance(p, Fiber):
-            return p.isEmpty()
+        Because our fiber representation might have explicit zeros
+        in it this method creates a new fiber with those elements
+        pruned out.
 
-        if (p == 0):
-            return  True
+        """
+        coords = []
+        payloads = []
 
-        return False
-#
+        for c, p in zip(self.coords, self.payloads):
+            if not Payload.isEmpty(p):
+                coords.append(c)
+                if Payload.contains(p, Fiber):
+                    payloads.append(p.nonEmpty())
+                else:
+                    payloads.append(p)
+
+        return Fiber(coords, payloads)
+
 # Iterator methods
 #
 
@@ -850,6 +864,16 @@ class Fiber:
                 return (None, None)
             return (coord, payload)
 
+        def get_next_nonempty(iter):
+            """get_next_nonempty"""
+
+            (coord, payload) = get_next(iter)
+
+            while Payload.isEmpty(payload):
+                (coord, payload) = get_next(iter)
+
+            return (coord, payload)
+
         a = self.__iter__()
         b = other.__iter__()
 
@@ -857,12 +881,12 @@ class Fiber:
         z_payloads = []
 
         a_coord, a_payload = get_next(a)
-        b_coord, b_payload = get_next(b)
+        b_coord, b_payload = get_next_nonempty(b)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
                 a_coord, a_payload = get_next(a)
-                b_coord, b_payload = get_next(b)
+                b_coord, b_payload = get_next_nonempty(b)
                 continue
 
             if a_coord < b_coord:
@@ -973,10 +997,10 @@ class Fiber:
         """
 
         for c, (mask, ps, po) in self | other:
-            if mask == "A" and not Fiber._checkEmpty(ps):
+            if mask == "A" and not Payload.isEmpty(ps):
                 return False
 
-            if mask == "B" and not Fiber._checkEmpty(po):
+            if mask == "B" and not Payload.isEmpty(po):
                 return False
 
             if mask == "AB" and not (ps == po):

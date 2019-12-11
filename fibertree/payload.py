@@ -42,7 +42,26 @@ class Payload:
 
         return bool(self.value)
 
+#
+# Static methods
+#
+    @staticmethod
+    def isEmpty(p):
 
+        from fibertree.fiber import Fiber
+
+        if isinstance(p, Fiber):
+            return p.isEmpty()
+
+        if isinstance(p, tuple):
+            assert(False, "No implementation of isEmpty for tuples")
+
+        if (p == 0):
+            return  True
+
+        return False
+
+#
 #
 # Transition methods
 #
