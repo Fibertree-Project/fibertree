@@ -13,7 +13,7 @@ a = Tensor(os.path.join(data_dir, "matrix-a.yaml"))
 
 a.print("Matrix")
 
-a_m = a.root()
+a_m = a.getRoot()
 
 a_m.print("Matrix - M Fiber")
 

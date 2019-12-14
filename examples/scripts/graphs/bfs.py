@@ -28,9 +28,9 @@ f0 = Tensor.fromUncompressed([ "D" ], [ 1, 0, 0, 0, 0, 0 ])
 d = Tensor(rank_ids=[ "S" ])
 
 # Get root fibers
-a_s = a.root()
-f0_d = f0.root()
-d_d = d.root()
+a_s = a.getRoot()
+f0_d = f0.getRoot()
+d_d = d.getRoot()
 
 print("BFS")
 
@@ -41,7 +41,7 @@ while (f0_d.countValues() > 0):
     f0_d.print("\nFringe")
 
     f1 = Tensor(rank_ids=[ "D" ]) 
-    f1_d = f1.root()
+    f1_d = f1.getRoot()
 
     for s, (_, a_d) in f0_d & a_s:
         print(f"Processing source {s}")
@@ -70,7 +70,7 @@ while (f0_d.countValues() > 0):
 
     level += 1
     f0 = f1
-    f0_d = f0.root()
+    f0_d = f0.getRoot()
 
 d_d.print("\nDistance Tensor")
 

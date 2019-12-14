@@ -15,8 +15,8 @@ z = Tensor(rank_ids=["M", "K"])
 a.print("A Tensor")
 z.print("Z Tensor")
 
-a_m = a.root()
-z_m = z.root()
+a_m = a.getRoot()
+z_m = z.getRoot()
 
 a_m.print("A Tensor - M rank")
 z_m.print("Z Tensor - M rank")

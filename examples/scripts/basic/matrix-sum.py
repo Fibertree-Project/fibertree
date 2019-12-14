@@ -22,9 +22,9 @@ a.print("A Tensor")
 b.print("B Tensor")
 z.print("Z Tensor")
 
-a_m = a.root()
-b_m = b.root()
-z_m = z.root()
+a_m = a.getRoot()
+b_m = b.getRoot()
+z_m = z.getRoot()
 
 a_m.print("A Tensor - Rank M")
 b_m.print("B Tensor - Rank M")

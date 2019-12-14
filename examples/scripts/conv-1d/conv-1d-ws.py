@@ -17,9 +17,9 @@ w.print("W Tensor")
 i.print("I Tensor")
 o.print("O Tensor")
 
-w_r = w.root()
-i_h = i.root()
-o_q = o.root()
+w_r = w.getRoot()
+i_h = i.getRoot()
+o_q = o.getRoot()
 
 W = w_r.maxCoord() + 1
 I = i_h.maxCoord() + 1
