@@ -28,7 +28,7 @@ class TensorImage():
         # Allow support for displaying fibers
         #
         if isinstance(object, Tensor):
-            f = object.root()
+            f = object.getRoot()
         elif isinstance(object, Fiber):
             f = object
 

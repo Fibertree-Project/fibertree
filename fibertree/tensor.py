@@ -116,16 +116,24 @@ class Tensor:
                 self._addFiber(Payload.get(p), level+1)
 
 
-    def root(self):
+    def getRoot(self):
         """root"""
 
         return self.ranks[0].getFibers()[0]
 
 
+    def root(self):
+        """root"""
+
+        Tensor._deprecated("Tensor.root() is deprecated, use getRoot()")
+
+        return self.getRoot()
+
+
     def countValues(self):
         """Count of values in the tensor"""
 
-        return self.root().countValues()
+        return self.getRoot().countValues()
 
 #
 #  Comparison operations
@@ -134,7 +142,7 @@ class Tensor:
     def __eq__(self, other):
         """__eq__"""
 
-        return (self.rank_ids == other.rank_ids) and (self.root() == other.root())
+        return (self.rank_ids == other.rank_ids) and (self.getRoot() == other.getRoot())
 
 #
 # String methods
@@ -220,7 +228,7 @@ class Tensor:
         """Dump a tensor to a file in YAML format"""
 
         
-        root_dict = self.root().fiber2dict()
+        root_dict = self.getRoot().fiber2dict()
 
         tensor_dict = { 'tensor':
                         { 'rank_ids': self.rank_ids,
@@ -228,4 +236,14 @@ class Tensor:
                         } }
         with open(filename, 'w') as file:
             document = yaml.dump(tensor_dict, file)
+
+#
+# Utility methods
+#
+
+    @staticmethod
+    def _deprecated(message):
+        import warnings
+
+        warnings.warn(message, FutureWarning, stacklevel=3)
 

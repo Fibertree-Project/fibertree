@@ -10,7 +10,7 @@ class TestCalculations(unittest.TestCase):
 
         a = Tensor("./data/test_tensor-1.yaml")
         
-        a_m = a.root()
+        a_m = a.getRoot()
 
         sum = 0
 
@@ -27,8 +27,8 @@ class TestCalculations(unittest.TestCase):
         a = Tensor("./data/test_tensor-1.yaml")
         z = Tensor(rank_ids=["M", "K"])
 
-        a_m = a.root()
-        z_m = z.root()
+        a_m = a.getRoot()
+        z_m = z.getRoot()
 
         for m, (z_k, a_k) in z_m << a_m:
             for k, (z_ref, a_val) in z_k << a_k:
@@ -43,9 +43,9 @@ class TestCalculations(unittest.TestCase):
         b = Tensor("./data/tensor_sum_b.yaml")
         z = Tensor(rank_ids=["M"])
 
-        a_m = a.root()
-        b_m = b.root()
-        z_m = z.root()
+        a_m = a.getRoot()
+        b_m = b.getRoot()
+        z_m = z.getRoot()
 
         for m_coord, (z_ref, (op, a_k, b_k)) in z_m << (a_m | b_m):
             for k_coord, (op, a_val, b_val) in a_k | b_k:
@@ -63,9 +63,9 @@ class TestCalculations(unittest.TestCase):
         b = Tensor("./data/tensor_sum_b.yaml")
         z = Tensor(rank_ids=["M"])
 
-        a_m = a.root()
-        b_m = b.root()
-        z_m = z.root()
+        a_m = a.getRoot()
+        b_m = b.getRoot()
+        z_m = z.getRoot()
 
         for m_coord, (z_ref, (a_k, b_k)) in z_m << (a_m & b_m):
             for k_coord, (a_val, b_val) in a_k & b_k:
@@ -83,9 +83,9 @@ class TestCalculations(unittest.TestCase):
         i = Tensor("./data/conv-activations-a.yaml")
         o = Tensor(rank_ids=["Q"])
 
-        w_r = w.root()
-        i_h = i.root()
-        o_q = o.root()
+        w_r = w.getRoot()
+        i_h = i.getRoot()
+        o_q = o.getRoot()
 
         W = w_r.maxCoord() + 1
         I = i_h.maxCoord() + 1
@@ -106,9 +106,9 @@ class TestCalculations(unittest.TestCase):
         i = Tensor("./data/conv-activations-a.yaml")
         o = Tensor(rank_ids=["Q"])
 
-        w_r = w.root()
-        i_h = i.root()
-        o_q = o.root()
+        w_r = w.getRoot()
+        i_h = i.getRoot()
+        o_q = o.getRoot()
 
         W = w_r.maxCoord() + 1
         I = i_h.maxCoord() + 1
@@ -129,9 +129,9 @@ class TestCalculations(unittest.TestCase):
         i = Tensor("./data/conv-activations-a.yaml")
         o = Tensor(rank_ids=["Q"])
 
-        w_r = w.root()
-        i_h = i.root()
-        o_q = o.root()
+        w_r = w.getRoot()
+        i_h = i.getRoot()
+        o_q = o.getRoot()
 
         W = w_r.maxCoord() + 1
         I = i_h.maxCoord() + 1

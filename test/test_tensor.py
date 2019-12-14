@@ -50,7 +50,7 @@ class TestTensor(unittest.TestCase):
         fiber = Fiber( [0, 1, 3], [100, 101, 102])
         tensor = Tensor.fromUncompressed(["M"], t)
 
-        self.assertEqual(tensor.root(), fiber)
+        self.assertEqual(tensor.getRoot(), fiber)
 
 
     def test_fromUncompressed_2D(self):
@@ -79,7 +79,7 @@ class TestTensor(unittest.TestCase):
 
         tensor_ref = Tensor("./data/test_tensor-1.yaml")
 
-        root = tensor_ref.root()
+        root = tensor_ref.getRoot()
 
         tensor = Tensor.fromFiber(["M", "K"], root)
 
@@ -90,7 +90,7 @@ class TestTensor(unittest.TestCase):
 
         tensor_ref = Tensor("./data/test_tensor-1.yaml")
 
-        root = tensor_ref.root()
+        root = tensor_ref.getRoot()
 
         tensor = Tensor(rank_ids=["M", "K"])
         tensor.setRoot(root)
