@@ -7,7 +7,7 @@ from fibertree.payload import Payload
 class Fiber:
     """Fiber class"""
 
-    def __init__(self, coords=None, payloads=None, default=0):
+    def __init__(self, coords=None, payloads=None, default=0, initial=None):
         """__init__"""
 
         if coords is None:
@@ -21,7 +21,9 @@ class Fiber:
         else:
             if payloads is None:
                 # If only coords are given create a blank set of payloads
-                payloads = [default for x in range(len(coords))]
+                if initial is None:
+                    initial = default
+                payloads = [initial for x in range(len(coords))]
 
 
         assert (len(coords) == len(payloads)), "Coordinates and payloads must be same length"
@@ -391,7 +393,7 @@ class Fiber:
 
         f = [ ]
 
-        for c, (mask, p, _) in self | Fiber(range(shape[level])):
+        for c, (mask, p, _) in self | Fiber(coords=range(shape[level]), initial=1):
 
             if (mask == "AB"):
                 if Payload.contains(p, Fiber):
@@ -636,30 +638,40 @@ class Fiber:
                 return (None, None)
             return (coord, payload)
 
+        def get_next_nonempty(iter):
+            """get_next_nonempty"""
+
+            (coord, payload) = get_next(iter)
+
+            while Payload.isEmpty(payload):
+                (coord, payload) = get_next(iter)
+
+            return (coord, payload)
+
         a = self.__iter__()
         b = other.__iter__()
 
         z_coords = []
         z_payloads = []
 
-        a_coord, a_payload = get_next(a)
-        b_coord, b_payload = get_next(b)
+        a_coord, a_payload = get_next_nonempty(a)
+        b_coord, b_payload = get_next_nonempty(b)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
                 z_coords.append(a_coord)
                 z_payloads.append((a_payload, b_payload))
 
-                a_coord, a_payload = get_next(a)
-                b_coord, b_payload = get_next(b)
+                a_coord, a_payload = get_next_nonempty(a)
+                b_coord, b_payload = get_next_nonempty(b)
                 continue
 
             if a_coord < b_coord:
-                a_coord, a_payload = get_next(a)
+                a_coord, a_payload = get_next_nonempty(a)
                 continue
 
             if a_coord > b_coord:
-                b_coord, b_payload = get_next(b)
+                b_coord, b_payload = get_next_nonempty(b)
                 continue
 
         return Fiber(z_coords, z_payloads)
@@ -702,22 +714,33 @@ class Fiber:
                 return (None, None)
             return (coord, payload)
 
+        def get_next_nonempty(iter):
+            """get_next_nonempty"""
+
+            (coord, payload) = get_next(iter)
+
+            while Payload.isEmpty(payload):
+                (coord, payload) = get_next(iter)
+
+            return (coord, payload)
+
         a = self.__iter__()
         b = other.__iter__()
 
         z_coords = []
         z_payloads = []
 
-        a_coord, a_payload = get_next(a)
-        b_coord, b_payload = get_next(b)
+        a_coord, a_payload = get_next_nonempty(a)
+        b_coord, b_payload = get_next_nonempty(b)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
                 z_coords.append(a_coord)
+
                 z_payloads.append(("AB", a_payload, b_payload))
 
-                a_coord, a_payload = get_next(a)
-                b_coord, b_payload = get_next(b)
+                a_coord, a_payload = get_next_nonempty(a)
+                b_coord, b_payload = get_next_nonempty(b)
                 continue
 
             if a_coord < b_coord:
@@ -725,7 +748,7 @@ class Fiber:
                 # TODO: Append the right b_payload, e.g., maybe a Fiber()
                 z_payloads.append(("A", a_payload, 0))
 
-                a_coord, a_payload = get_next(a)
+                a_coord, a_payload = get_next_nonempty(a)
                 continue
 
             if a_coord > b_coord:
@@ -733,20 +756,20 @@ class Fiber:
                 # TODO: Append the right a_payload, e.g., maybe a Fiber()
                 z_payloads.append(("B", 0, b_payload))
 
-                b_coord, b_payload = get_next(b)
+                b_coord, b_payload = get_next_nonempty(b)
                 continue
 
         while not a_coord is None:
             z_coords.append(a_coord)
             z_payloads.append(("A", a_payload, 0))
 
-            a_coord, a_payload = get_next(a)
+            a_coord, a_payload = get_next_nonempty(a)
 
         while  not b_coord is None:
             z_coords.append(b_coord)
             z_payloads.append(("B", 0, b_payload))
 
-            b_coord, b_payload = get_next(b)
+            b_coord, b_payload = get_next_nonempty(b)
 
         return Fiber(z_coords, z_payloads)
 
@@ -777,6 +800,10 @@ class Fiber:
                     |                       |                       |
         ------------+-----------------------+-----------------------+
 
+
+        Note: an explcit zero in the input will NOT generate a corresponding
+              coordinate in the output!
+
         """
 
 
@@ -789,13 +816,24 @@ class Fiber:
                 return (None, None)
             return (coord, payload)
 
+        def get_next_nonempty(iter):
+            """get_next_nonempty"""
+
+            (coord, payload) = get_next(iter)
+
+            while Payload.isEmpty(payload):
+                (coord, payload) = get_next(iter)
+
+            return (coord, payload)
+
+
         # "a" is self!
         b = other.__iter__()
 
         z_coords = []
         z_payloads = []
 
-        b_coord, b_payload = get_next(b)
+        b_coord, b_payload = get_next_nonempty(b)
 
         while not b_coord is None:
             z_coords.append(b_coord)
@@ -823,7 +861,7 @@ class Fiber:
                         next_rank.append(a_payload)
 
             z_payloads.append((a_payload, b_payload))
-            b_coord, b_payload = get_next(b)
+            b_coord, b_payload = get_next_nonempty(b)
 
         return Fiber(z_coords, z_payloads)
 

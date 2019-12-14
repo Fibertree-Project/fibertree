@@ -54,7 +54,7 @@ class Payload:
             return p.isEmpty()
 
         if isinstance(p, tuple):
-            assert(False, "No implementation of isEmpty for tuples")
+            assert isinstance(p, tuple)
 
         if (p == 0):
             return  True

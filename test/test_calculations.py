@@ -137,7 +137,7 @@ class TestCalculations(unittest.TestCase):
         I = i_h.maxCoord() + 1
         Q = I - W + 1
 
-        output_shape = Fiber(range(Q))
+        output_shape = Fiber(coords=range(Q), initial=1)
 
         for q, (o_q_ref, _) in o_q << output_shape:
             for r, (w_val, i_val) in w_r.project(lambda r: q+r) & i_h:

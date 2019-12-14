@@ -443,6 +443,18 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(ab, ab_ref)
 
+    def test_and_empty(self):
+        """Intersection test - with explict zeros"""
+
+        a = Fiber( [1, 5, 8, 9], [0, 6, 0, 10])
+        b = Fiber( [1, 5, 8, 9], [2, 0, 0, 11])
+
+        ab_ref = Fiber( [9], [(10, 11)])
+
+        ab = a & b
+
+        self.assertEqual(ab, ab_ref)
+
 
     def test_or(self):
         """Union test"""
@@ -461,18 +473,18 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(ab, ab_ref)
 
-    def test_diff(self):
-        """Difference test"""
+    def test_or_empty(self):
+        """Uniontest - with explict zeros"""
 
-        a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
-        b = Fiber([0, 5, 9], [2, 7, 0])
+        a = Fiber( [1, 5, 8, 9], [0, 6, 0, 10])
+        b = Fiber( [1, 5, 8, 9], [2, 0, 0, 11])
 
-        # Note coordinate 9 stays since b@9 is zero
+        ab_ref = Fiber( [1, 5, 9],
+                        [("B", 0, 2),
+                         ("A", 6, 0),
+                         ("AB", 10, 11)])
 
-        ab_ref = Fiber( [1, 8, 9],
-                        [2, 9, 10])
-
-        ab = a - b
+        ab = a | b
 
         self.assertEqual(ab, ab_ref)
 
@@ -480,10 +492,32 @@ class TestFiber(unittest.TestCase):
     def test_diff(self):
         """Difference test"""
 
-        a = Fiber([0, 5, 9], [0, 10, 0])
-        b = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
+        a = Fiber([1, 5, 8, 9, 12, 14], [2, 6, 9, 10, 0, 0])
+        b = Fiber([0, 5, 9, 12], [2, 7, 0, 5])
 
-        # Note coordinate 9 stays since b@9 is zero
+        # Notes:
+        #     coordinate 9 stays since b@9 is zero
+        #     coordinat 12 goes away even though explict zero at a@12
+        #     coordinate 14 does not go away with explict zero at a@14
+
+
+        ab_ref = Fiber( [1, 8, 9, 14],
+                        [2, 9, 10, 0])
+
+        ab = a - b
+
+        self.assertEqual(ab, ab_ref)
+
+
+    def test_assignment(self):
+        """Assignment test"""
+
+        a = Fiber([0, 5, 9], [0, 10, 0])
+        b = Fiber([1, 5, 8, 9, 14], [2, 6, 9, 10, 0])
+
+        # Note:
+        #    coordinate 9 stays although a@9 is zero
+        #    coordinate 14 does not appear since b@14 is 0
 
         ab_ref = Fiber( [1, 5, 8, 9],
                         [(0, 2),

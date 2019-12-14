@@ -32,7 +32,7 @@ o_q.print(f"O Tensor - Q rank - size={Q}")
 
 print("Convolution")
 
-output_shape = Fiber(range(Q))
+output_shape = Fiber(coords=range(Q), initial=1)
 
 for q, (o_q_ref, _) in o_q << output_shape:
     print(f"Processing output: ({q}, ({o_q_ref}))")
