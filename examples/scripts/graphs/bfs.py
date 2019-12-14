@@ -37,7 +37,7 @@ print("BFS")
 level = 1
 
 
-while (f0_d.values() > 0):
+while (f0_d.countValues() > 0):
     f0_d.print("\nFringe")
 
     f1 = Tensor(rank_ids=[ "D" ]) 

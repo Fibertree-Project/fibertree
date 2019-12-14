@@ -122,10 +122,10 @@ class Tensor:
         return self.ranks[0].getFibers()[0]
 
 
-    def values(self):
+    def countValues(self):
         """Count of values in the tensor"""
 
-        return self.root().values()
+        return self.root().countValues()
 
 #
 #  Comparison operations

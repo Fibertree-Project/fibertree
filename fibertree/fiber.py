@@ -150,7 +150,7 @@ class Fiber:
 
         return max(self.coords)
 
-    def values(self):
+    def countValues(self):
         """Count values in the fiber tree
 
         Note: an explcit zero scalar value will NOT count as a value
@@ -159,7 +159,7 @@ class Fiber:
         count = 0
         for p in self.payloads:
             if Payload.contains(p, Fiber):
-                count += Payload.get(p).values()
+                count += Payload.get(p).countValues()
             else:
                 count += 1 if not Payload.isEmpty(p) else 0
 

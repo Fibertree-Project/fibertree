@@ -102,7 +102,7 @@ class TestTensor(unittest.TestCase):
 
         tensor = Tensor("./data/test_tensor-1.yaml")
 
-        count = tensor.values()
+        count = tensor.countValues()
 
         self.assertEqual(count, 9)
 

@@ -274,7 +274,7 @@ class TestFiber(unittest.TestCase):
 
         a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
 
-        self.assertEqual(a.values(), 6)
+        self.assertEqual(a.countValues(), 6)
 
 
     def test_values_with_zero(self):
@@ -282,7 +282,7 @@ class TestFiber(unittest.TestCase):
 
         a = Fiber( [1, 8, 9], [2, 0, 10])
 
-        self.assertEqual(a.values(), 2)
+        self.assertEqual(a.countValues(), 2)
 
 
     def test_getitem_simple(self):
