@@ -345,7 +345,7 @@ class TestFiber(unittest.TestCase):
         coords = [2, 4, 6]
         payloads = [3, 5, 7]
 
-        a = Fiber(coords, payloads) 
+        a = Fiber(coords, payloads)
 
         test = [0, 4, 6, 3]
         answer = [None, 5, 7, None]
@@ -353,13 +353,84 @@ class TestFiber(unittest.TestCase):
         for i in range(len(test)):
             self.assertTrue(a.getPayload(test[i]) == answer[i])
 
-    def test_insert(self):
-        """"Insert payload at coordinates 0, 3, 7"""
+    def test_append(self):
+        """Append element at end of fiber"""
 
         coords = [2, 4, 6]
         payloads = [3, 5, 7]
 
-        a = Fiber(coords, payloads) 
+        a = Fiber(coords, payloads)
+
+        aa_coords = [2, 4, 6, 7]
+        aa_payloads = [3, 5, 7, 10]
+
+        aa_ref = Fiber(aa_coords, aa_payloads)
+
+        a.append(7, 10)
+
+        self.assertEqual(a, aa_ref)
+
+    def test_append_assert(self):
+        """Append element at end of fiber - and assert"""
+
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+
+        with self.assertRaises(AssertionError):
+            a.append(3, 10)
+
+    def test_extend(self):
+        """Extend fiber"""
+
+        a_coords = [2, 4, 6]
+        a_payloads = [3, 5, 7]
+
+        a = Fiber(a_coords, a_payloads)
+
+        b_coords = [7, 10, 12]
+        b_payloads = [4, 6, 8]
+
+        b = Fiber(b_coords, b_payloads)
+
+        ae_coords = [2, 4, 6, 7, 10, 12]
+        ae_payloads = [3, 5, 7, 4, 6, 8]
+
+        ae_ref = Fiber(ae_coords, ae_payloads)
+
+        a.extend(b)
+
+        self.assertEqual(a, ae_ref)
+
+
+    def test_extend_assert(self):
+        """Extend fiber - and assert"""
+
+        a_coords = [2, 4, 6]
+        a_payloads = [3, 5, 7]
+
+        a = Fiber(a_coords, a_payloads)
+
+        b_coords = [6, 10, 12]
+        b_payloads = [4, 6, 8]
+
+        b = Fiber(b_coords, b_payloads)
+
+        with self.assertRaises(AssertionError):
+            a.extend(b)
+
+        with self.assertRaises(AssertionError):
+            a.extend(1)
+
+
+    def test_insert(self):
+        """Insert payload at coordinates 0, 3, 7"""
+
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
 
         insert_at = [0, 3, 7]
 
@@ -401,6 +472,7 @@ class TestFiber(unittest.TestCase):
 
 
     def test_project(self):
+        """Test projections"""
 
         c = [0, 1, 10, 20 ]
         p = [ 1, 2, 11, 21 ]
@@ -414,7 +486,8 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(ap, ap_ref)
 
 
-    def test_zip(self):
+    def test_upzip(self):
+        """Test unzipping a fiber"""
 
         c = [0, 1, 10, 20]
         p_a = [0, 1, 10, 20]
@@ -430,6 +503,49 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(a, a_ref)
         self.assertEqual(b, b_ref)
+
+    def test_add(self):
+        """Add fibers"""
+
+        a_coords = [2, 4, 6]
+        a_payloads = [3, 5, 7]
+
+        a = Fiber(a_coords, a_payloads)
+
+        b_coords = [7, 10, 12]
+        b_payloads = [4, 6, 8]
+
+        b = Fiber(b_coords, b_payloads)
+
+        ae_coords = [2, 4, 6, 7, 10, 12]
+        ae_payloads = [3, 5, 7, 4, 6, 8]
+
+        ae_ref = Fiber(ae_coords, ae_payloads)
+
+        self.assertEqual(a+b, ae_ref)
+
+    def test_iadd(self):
+        """iadd fibers"""
+
+        a_coords = [2, 4, 6]
+        a_payloads = [3, 5, 7]
+
+        a = Fiber(a_coords, a_payloads)
+
+        b_coords = [7, 10, 12]
+        b_payloads = [4, 6, 8]
+
+        b = Fiber(b_coords, b_payloads)
+
+        ae_coords = [2, 4, 6, 7, 10, 12]
+        ae_payloads = [3, 5, 7, 4, 6, 8]
+
+        ae_ref = Fiber(ae_coords, ae_payloads)
+
+        a += b
+
+        self.assertEqual(a, ae_ref)
+
 
     def test_and(self):
         """Intersection test"""

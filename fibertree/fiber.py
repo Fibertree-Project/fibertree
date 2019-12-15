@@ -276,11 +276,38 @@ class Fiber:
     def payload(self, coord):
         """payload"""
 
-        assert(False)
-        print("Info: Used deprecated function Fiber.payload() should be getPayload()")
+        Fiber._deprecated("Fiber.payload() is deprecated use getPayload()")
 
         return self.getPayload(coord)
 
+
+    def append(self, coord, value):
+        """append - Add element at end of fiber"""
+
+        assert self.maxCoord() < coord, \
+               "Fiber coordinates must be monotonically increasing"
+
+        payload = self._maybe_box(value)
+
+        self.coords.append(coord)
+        self.payloads.append(payload)
+
+
+    def extend(self, other):
+        """extend - Extend a fiber with another fiber"""
+
+        assert isinstance(other, Fiber), \
+               "Fibers can only be extended with another fiber"
+
+        if other.isEmpty():
+            # Extending with an empty fiber is a nop
+            return
+
+        assert self.maxCoord() < other.coords[0], \
+               "Fiber coordinates must be monotonically increasing"
+
+        self.coords.extend(other.coords)
+        self.payloads.extend(other.payloads)
 
 
     def insert(self, coord, value):
@@ -597,7 +624,26 @@ class Fiber:
 
         return Fiber(payloads=payloads)
 
+#
+# Operation methods
+#
 
+    def __add__(self, other):
+        """__add__"""
+
+        assert isinstance(other, Fiber), \
+               "Fiber addition must involve two fibers"
+
+        return Fiber(coords = self.coords+other.coords,
+                     payloads = self.payloads+other.payloads)
+
+
+    def __iadd__(self, other):
+        """__iadd__"""
+
+        self.extend(other)
+
+        return self
 
 #
 # Merge methods
@@ -1229,6 +1275,14 @@ class Fiber:
             return Payload(value)
 
         return value
+
+
+    @staticmethod
+    def _deprecated(message):
+        import warnings
+
+        warnings.warn(message, FutureWarning, stacklevel=3)
+
 
 
 
