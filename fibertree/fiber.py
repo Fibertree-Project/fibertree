@@ -117,14 +117,39 @@ class Fiber:
 
         return self.payloads
 
-    def getPayload(self, coord):
-        """payload"""
+    def getPayload(self, *coords):
+        """payload
+
+        Return the final payload after recursively traversing the
+        levels of the fiber tree for at each coordinate in coords.
+
+        Parameters
+        ----------
+        coords: list of coordinates to traverse
+
+        Returns
+        -------
+        payload: a scalar or Fiber
+
+        Raises
+        ------
+
+        None
+
+        """
 
         try:
-            index = self.coords.index(coord)
-            return self.payloads[index]
+            index = self.coords.index(coords[0])
+            payload = self.payloads[index]
+
+            if len(coords) > 1:
+                # Recurse to the next level's fiber
+                return payload.getPayload(*coords[1:])
+
+            return payload
         except:
             return None
+
 
     def setDefault(self, default):
         """setDefault"""

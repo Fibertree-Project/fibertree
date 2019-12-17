@@ -42,9 +42,9 @@ class TestFiber(unittest.TestCase):
         self.assertNotEqual(a, b3)
         self.assertNotEqual(a, b4)
 
-        c = Fiber( [], [])
-        d1 = Fiber( [0, 1], [0, 0])
-        d2 = Fiber( [0, 1], [0, 10])
+        c = Fiber([], [])
+        d1 = Fiber([0, 1], [0, 0])
+        d2 = Fiber([0, 1], [0, 10])
 
         self.assertEqual(c, d1)
         self.assertNotEqual(c, d2)
@@ -100,7 +100,7 @@ class TestFiber(unittest.TestCase):
 
         f_ref = Fiber([0, 1, 3, 4], [1, 2, 4, 5])
 
-        f = Fiber.fromUncompressed([ 1, 2, 0, 4, 5, 0 ])
+        f = Fiber.fromUncompressed([1, 2, 0, 4, 5, 0])
 
         self.assertEqual(f, f_ref)
 
@@ -110,11 +110,11 @@ class TestFiber(unittest.TestCase):
         a1 = Fiber([0, 1, 3, 4], [1, 2, 4, 5])
         a2 = Fiber([2, 3], [3, 4])
 
-        f_ref = Fiber([0, 2], [ a1, a2 ])
+        f_ref = Fiber([0, 2], [a1, a2])
 
-        f = Fiber.fromUncompressed([ [1, 2, 0, 4, 5, 0 ],
-                                     [0, 0, 0, 0, 0, 0 ],
-                                     [0, 0, 3, 4, 0, 0 ] ])
+        f = Fiber.fromUncompressed([[1, 2, 0, 4, 5, 0],
+                                    [0, 0, 0, 0, 0, 0],
+                                    [0, 0, 3, 4, 0, 0]])
 
         self.assertEqual(f, f_ref)
 
@@ -123,18 +123,18 @@ class TestFiber(unittest.TestCase):
 
         f_ref = Fiber.fromYAMLfile("./data/test_fiber-3.yaml")
 
-        u_t = [ [ [ 1, 2, 3, 0],
-                  [ 1, 0, 3, 4],
-                  [ 0, 2, 3, 4],
-                  [ 1, 2, 0, 4] ],
-                [ [ 0, 0, 0, 0],
-                  [ 0, 0, 0, 0],
-                  [ 0, 0, 0, 0],
-                  [ 0, 0, 0, 0] ],
-                [ [ 1, 2, 3, 0],
-                  [ 1, 0, 3, 4],
-                  [ 0, 0, 0, 0],
-                  [ 1, 2, 0, 4] ] ]
+        u_t = [[[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 2, 3, 4],
+                [1, 2, 0, 4]],
+               [[0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]],
+               [[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 0, 0, 0],
+                [1, 2, 0, 4]]]
 
         f = Fiber.fromUncompressed(u_t)
 
@@ -154,9 +154,9 @@ class TestFiber(unittest.TestCase):
 
         f_ref = Fiber([], [])
 
-        f = Fiber.fromUncompressed([ [0, 0, 0, 0, 0, 0 ],
-                                     [0, 0, 0, 0, 0, 0 ],
-                                     [0, 0, 0, 0, 0, 0 ] ])
+        f = Fiber.fromUncompressed([[0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0]])
 
         self.assertEqual(f, f_ref)
 
@@ -188,47 +188,47 @@ class TestFiber(unittest.TestCase):
     def test_isempty_1D(self):
         """Test for empty fiber"""
 
-        a = Fiber( [], [])
+        a = Fiber([], [])
         self.assertTrue(a.isEmpty())
 
-        b = Fiber( [ 0, 1], [0, 0])
+        b = Fiber([0, 1], [0, 0])
         self.assertTrue(b.isEmpty())
 
-        c = Fiber( [0, 1], [0, 1])
+        c = Fiber([0, 1], [0, 1])
         self.assertFalse(c.isEmpty())
 
     def test_isempty_2D(self):
         """Test for empty fiber"""
 
-        a1 = Fiber( [], [])
-        a2 = Fiber( [ 0, 1], [0, 0])
-        a3 = Fiber( [0, 1], [0, 1])
+        a1 = Fiber([], [])
+        a2 = Fiber([0, 1], [0, 0])
+        a3 = Fiber([0, 1], [0, 1])
 
-        a = Fiber( [2, 3], [a1, a1])
+        a = Fiber([2, 3], [a1, a1])
         self.assertTrue(a.isEmpty())
 
-        b = Fiber( [3, 4], [a2, a2])
+        b = Fiber([3, 4], [a2, a2])
         self.assertTrue(b.isEmpty())
 
-        c = Fiber( [3, 4], [a1, a2])
+        c = Fiber([3, 4], [a1, a2])
         self.assertTrue(c.isEmpty())
 
-        d = Fiber( [4, 5], [a1, a3])
+        d = Fiber([4, 5], [a1, a3])
         self.assertFalse(d.isEmpty())
 
     def test_nonempty_2D(self):
         """Test for empty fiber"""
 
-        a1 = Fiber( [], [])
-        a2 = Fiber( [ 0, 1], [0, 0])
-        a3 = Fiber( [0, 1], [0, 1])
+        a1 = Fiber([], [])
+        a2 = Fiber([0, 1], [0, 0])
+        a3 = Fiber([0, 1], [0, 1])
 
-        a = Fiber( [1, 2, 3], [a1, a2, a3])
+        a = Fiber([1, 2, 3], [a1, a2, a3])
 
         ne = a.nonEmpty()
 
-        ne3 = Fiber( [1], [1])
-        ne_ref = Fiber( [3], [ne3])
+        ne3 = Fiber([1], [1])
+        ne_ref = Fiber([3], [ne3])
 
         self.assertEqual(ne, ne_ref)
 
@@ -242,7 +242,7 @@ class TestFiber(unittest.TestCase):
 
         pass
 
-    
+
     def test_minCoord(self):
         """Find minimum coordinate"""
 
@@ -280,7 +280,7 @@ class TestFiber(unittest.TestCase):
     def test_values_with_zero(self):
         """Count values in a 1-D fiber with an explict zero"""
 
-        a = Fiber( [1, 8, 9], [2, 0, 10])
+        a = Fiber([1, 8, 9], [2, 0, 10])
 
         self.assertEqual(a.countValues(), 2)
 
@@ -337,9 +337,7 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(len(a), 2)
 
 
-
-        
-    def test_payload(self):
+    def test_getPayload(self):
         """Access payloads"""
 
         coords = [2, 4, 6]
@@ -351,7 +349,26 @@ class TestFiber(unittest.TestCase):
         answer = [None, 5, 7, None]
         
         for i in range(len(test)):
-            self.assertTrue(a.getPayload(test[i]) == answer[i])
+            self.assertEqual(a.getPayload(test[i]), answer[i])
+
+    def test_getPayload_2(self):
+        """Access payloads - multilevel"""
+
+        a = Fiber.fromUncompressed([[1, 2, 0, 4, 5, 0],
+                                    [0, 0, 0, 0, 0, 0],
+                                    [0, 0, 3, 4, 0, 0]])
+
+        # Simple test
+        self.assertEqual(a.getPayload(2, 2), 3)
+
+        # Multiple tests
+        test = [(0, 0), (2, 2), (1, 3), (2, 1)]
+        answer = [1, 3, None, None]
+
+        for i in range(len(test)):
+            p = a.getPayload(*test[i])
+            self.assertEqual(p, answer[i])
+
 
     def test_append(self):
         """Append element at end of fiber"""
@@ -453,17 +470,18 @@ class TestFiber(unittest.TestCase):
         s = a.getShape()
 
         self.assertEqual(s, [5, 8])
-        
+
+
     def test_uncompress(self):
         """Test recursive iteration"""
 
-        uncompressed_ref = [ [ 0, 0, 0, 0, 0, 0, 0, 0,],
-                             [ 0, 0, 0, 0, 0, 0, 0, 0 ],
-                             [ 0, 2, 0, 0, 5, 0, 0, 8 ],
-                             [ 0, 0, 0, 0, 0, 0, 0, 0 ],
-                             [ 0, 0, 3, 0, 5, 0, 7, 0 ] ]
-                               
-                          
+        uncompressed_ref = [[0, 0, 0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0, 0, 0],
+                            [0, 2, 0, 0, 5, 0, 0, 8],
+                            [0, 0, 0, 0, 0, 0, 0, 0],
+                            [0, 0, 3, 0, 5, 0, 7, 0]]
+
+
         a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
 
         uncompressed = a.uncompress()
@@ -474,8 +492,8 @@ class TestFiber(unittest.TestCase):
     def test_project(self):
         """Test projections"""
 
-        c = [0, 1, 10, 20 ]
-        p = [ 1, 2, 11, 21 ]
+        c = [0, 1, 10, 20]
+        p = [1, 2, 11, 21]
         a = Fiber(c, p)
 
         cp = [1, 2, 11, 21]
@@ -493,7 +511,7 @@ class TestFiber(unittest.TestCase):
         p_a = [0, 1, 10, 20]
         p_b = [1, 2, 11, 21]
 
-        p_ab = [ (0, 1), (1, 2), (10, 11), (20, 21) ]
+        p_ab = [(0, 1), (1, 2), (10, 11), (20, 21)]
 
         a_ref = Fiber(c, p_a)
         b_ref = Fiber(c, p_b)
@@ -550,11 +568,11 @@ class TestFiber(unittest.TestCase):
     def test_and(self):
         """Intersection test"""
 
-        a = Fiber( [1, 5, 8, 9], [2, 6, 9, 10])
-        b = Fiber( [0, 5, 9], [2, 7, 11 ])
+        a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
+        b = Fiber([0, 5, 9], [2, 7, 11])
 
-        ab_ref = Fiber( [5, 9], [ (6, 7), (10, 11)])
-        
+        ab_ref = Fiber([5, 9], [(6, 7), (10, 11)])
+
         ab = a & b
 
         self.assertEqual(ab, ab_ref)
@@ -562,10 +580,10 @@ class TestFiber(unittest.TestCase):
     def test_and_empty(self):
         """Intersection test - with explict zeros"""
 
-        a = Fiber( [1, 5, 8, 9], [0, 6, 0, 10])
-        b = Fiber( [1, 5, 8, 9], [2, 0, 0, 11])
+        a = Fiber([1, 5, 8, 9], [0, 6, 0, 10])
+        b = Fiber([1, 5, 8, 9], [2, 0, 0, 11])
 
-        ab_ref = Fiber( [9], [(10, 11)])
+        ab_ref = Fiber([9], [(10, 11)])
 
         ab = a & b
 
@@ -575,15 +593,15 @@ class TestFiber(unittest.TestCase):
     def test_or(self):
         """Union test"""
 
-        a = Fiber( [1, 5, 8, 9], [2, 6, 9, 10])
-        b = Fiber( [0, 5, 9], [2, 7, 11 ])
+        a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
+        b = Fiber([0, 5, 9], [2, 7, 11])
 
-        ab_ref = Fiber( [0, 1, 5, 8, 9],
-                        [ ("B",   0,  2),
-                          ("A",   2,  0),
-                          ("AB",  6,  7),
-                          ("A",   9,  0),
-                          ("AB", 10, 11) ])
+        ab_ref = Fiber([0, 1, 5, 8, 9],
+                       [("B", 0, 2),
+                        ("A", 2, 0),
+                        ("AB", 6, 7),
+                        ("A", 9, 0),
+                        ("AB", 10, 11)])
 
         ab = a | b
 
@@ -592,13 +610,13 @@ class TestFiber(unittest.TestCase):
     def test_or_empty(self):
         """Uniontest - with explict zeros"""
 
-        a = Fiber( [1, 5, 8, 9], [0, 6, 0, 10])
-        b = Fiber( [1, 5, 8, 9], [2, 0, 0, 11])
+        a = Fiber([1, 5, 8, 9], [0, 6, 0, 10])
+        b = Fiber([1, 5, 8, 9], [2, 0, 0, 11])
 
-        ab_ref = Fiber( [1, 5, 9],
-                        [("B", 0, 2),
-                         ("A", 6, 0),
-                         ("AB", 10, 11)])
+        ab_ref = Fiber([1, 5, 9],
+                       [("B", 0, 2),
+                        ("A", 6, 0),
+                        ("AB", 10, 11)])
 
         ab = a | b
 
@@ -617,8 +635,8 @@ class TestFiber(unittest.TestCase):
         #     coordinate 14 does not go away with explict zero at a@14
 
 
-        ab_ref = Fiber( [1, 8, 9, 14],
-                        [2, 9, 10, 0])
+        ab_ref = Fiber([1, 8, 9, 14],
+                       [2, 9, 10, 0])
 
         ab = a - b
 
@@ -635,11 +653,11 @@ class TestFiber(unittest.TestCase):
         #    coordinate 9 stays although a@9 is zero
         #    coordinate 14 does not appear since b@14 is 0
 
-        ab_ref = Fiber( [1, 5, 8, 9],
-                        [(0, 2),
-                         (10, 6),
-                         (0, 9),
-                         (0, 10) ])
+        ab_ref = Fiber([1, 5, 8, 9],
+                       [(0, 2),
+                        (10, 6),
+                        (0, 9),
+                        (0, 10)])
 
         ab = a << b
 
