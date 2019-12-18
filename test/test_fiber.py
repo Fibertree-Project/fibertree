@@ -1,6 +1,7 @@
 import unittest
 from fibertree.payload import Payload
 from fibertree.fiber import Fiber
+from fibertree.tensor import Tensor
 from fibertree.tensor_image import TensorImage
 
 class TestFiber(unittest.TestCase):
@@ -145,7 +146,7 @@ class TestFiber(unittest.TestCase):
 
         f_ref = Fiber([], [])
 
-        f = Fiber.fromUncompressed([ 0, 0, 0, 0, 0 ])
+        f = Fiber.fromUncompressed([0, 0, 0, 0, 0])
 
         self.assertEqual(f, f_ref)
 
@@ -368,6 +369,38 @@ class TestFiber(unittest.TestCase):
         for i in range(len(test)):
             p = a.getPayload(*test[i])
             self.assertEqual(p, answer[i])
+
+
+    def test_getPayloadRef(self):
+        """Get payload references"""
+
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+
+        test = [0, 4, 6, 3]
+        answer = [0, 5, 7, 0]
+
+        for i in range(len(test)):
+            self.assertEqual(a.getPayloadRef(test[i]), answer[i])
+
+
+    def test_getPayloadRef2(self):
+        """Get payload references 2-D"""
+
+        t = Tensor(rank_ids=["m", "n"])
+        a = t.getRoot()
+
+        test = [(0,), (2,), (1, 3), (2, 1)]
+        answer = [Fiber([], []), Fiber([], []), 0, 0]
+
+        for i in range(len(test)):
+            p = a.getPayloadRef(*test[i])
+            self.assertEqual(p, answer[i])
+
+        with self.assertRaises(AssertionError):
+            a.getPayloadRef(3, 2, 4)
 
 
     def test_append(self):
@@ -664,33 +697,5 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(ab, ab_ref)
 
 
-
-"""
-
-
-    print("Union")
-
-    a.print()
-    b.print()
-
-    ab = a | b
-    ab.print()
-    print("----\n\n")
-
-    print("Assignment")
-
-    z = Fiber()
-    a = Fiber([2, 6, 8], [4, 8, 10])
-
-    z.print("Z Fiber")
-    a.print("A Fiber")
-
-    za = z << a
-    za.print("Z << A Fiber")
-    print("----\n\n")
-"""
-
-
 if __name__ == '__main__':
     unittest.main()
-

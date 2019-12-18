@@ -151,6 +151,74 @@ class Fiber:
             return None
 
 
+    def getPayloadRef(self, *coords):
+        """payload
+
+        Return the final payload after recursively traversing the
+        levels of the fiber tree for at each coordinate in coords.
+        If the payload is empty, then recursively return the default payload
+
+        Parameters
+        ----------
+        coords: list of coordinates to traverse
+
+        Returns
+        -------
+        payload: a scalar or Fiber
+
+        Raises
+        ------
+
+        None
+
+        """
+
+        try:
+            index = self.coords.index(coords[0])
+            payload = self.payloads[index]
+        except:
+            payload = self._create_payload(coords[0])
+
+        if len(coords) > 1:
+            # Recurse to the next level's fiber
+            assert isinstance(payload, Fiber), \
+                   "Too many coordinates"
+
+            return payload.getPayloadRef(*coords[1:])
+
+        return payload
+
+
+    def _create_payload(self, coord):
+        """Create a payload in the fiber at coord
+
+        Optinally insert into the owners rank.
+
+        Note: self.default must be set
+        """
+
+        # Create a payload at coord
+        # Iemporary value (should be None)
+
+        if callable(self.default):
+            value = self.default()
+        else:
+            value = self.default
+
+        self.insert(coord, value)
+
+        # TBD: Inefficient since it does yet another search
+
+        payload = self.getPayload(coord)
+
+        if Payload.contains(value, Fiber):
+            assert(not self.owner is None)
+            next_rank = self.owner.get_next()
+            if not next_rank is None:
+                next_rank.append(payload)
+
+        return payload
+
     def setDefault(self, default):
         """setDefault"""
 
@@ -913,23 +981,7 @@ class Fiber:
 
             a_payload = self.getPayload(b_coord)
             if a_payload is None:
-                # Iemporary value (should be None)
-                if callable(self.default):
-                    value = self.default()
-                else:
-                    value = self.default
-
-                self.insert(b_coord, value)
-
-                # TBD: Inefficient since it does yet another search
-
-                a_payload = self.getPayload(b_coord)
-
-                if Payload.contains(value, Fiber):
-                    assert(not self.owner is None)
-                    next_rank = self.owner.get_next()
-                    if not next_rank is None:
-                        next_rank.append(a_payload)
+                a_payload = self._create_payload(b_coord)
 
             z_payloads.append((a_payload, b_payload))
             b_coord, b_payload = get_next_nonempty(b)
