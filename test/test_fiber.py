@@ -696,6 +696,96 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(ab, ab_ref)
 
+    def test_flatten(self):
+        """Test flattening/unflattening 1 level"""
+
+        u_t = [[[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 2, 3, 4],
+                [1, 2, 0, 4]],
+               [[0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]],
+               [[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 0, 0, 0],
+                [1, 2, 0, 4]]]
+
+        f = Fiber.fromUncompressed(u_t)
+
+        ff = f.flattenRanks()
+
+        ff_ref = Fiber([(0, 0), (0, 1), (0, 2), (0, 3), (2, 0), (2, 1), (2, 3)],
+                       [Fiber([0, 1, 2], [1, 2, 3]),
+                        Fiber([0, 2, 3], [1, 3, 4]),
+                        Fiber([1, 2, 3], [2, 3, 4]),
+                        Fiber([0, 1, 3], [1, 2, 4]),
+                        Fiber([0, 1, 2], [1, 2, 3]),
+                        Fiber([0, 2, 3], [1, 3, 4]),
+                        Fiber([0, 1, 3], [1, 2, 4])])
+
+        self.assertEqual(ff, ff_ref)
+
+        fu = ff.unflattenRanks()
+
+        self.assertEqual(fu, f)
+
+
+    def test_flatten_levels_2(self):
+        """Test flattening/unflattening 2 levels"""
+
+        u_t = [[[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 2, 3, 4],
+                [1, 2, 0, 4]],
+               [[0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]],
+               [[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 0, 0, 0],
+                [1, 2, 0, 4]]]
+
+        f = Fiber.fromUncompressed(u_t)
+
+        ff = f.flattenRanks(levels=2)
+
+        ref_coords = [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 0),
+                      (0, 1, 2), (0, 1, 3), (0, 2, 1), (0, 2, 2),
+                      (0, 2, 3), (0, 3, 0), (0, 3, 1), (0, 3, 3),
+                      (2, 0, 0), (2, 0, 1), (2, 0, 2), (2, 1, 0),
+                      (2, 1, 2), (2, 1, 3), (2, 3, 0), (2, 3, 1),
+                      (2, 3, 3)]
+
+        ref_payloads = [1, 2, 3, 1, 3, 4, 2, 3, 4, 1, 2, 4, 1, 2,
+                        3, 1, 3, 4, 1, 2, 4]
+
+        ff_ref = Fiber(coords=ref_coords, payloads=ref_payloads)
+
+        self.assertEqual(ff, ff_ref)
+
+        #
+        # Now unflatten back to the original
+        #
+        fu = ff.unflattenRanks(levels=2)
+
+        self.assertEqual(fu, f)
+
+        #
+        # Now unflatten in two steps
+        #
+        fu1 = ff.unflattenRanks(levels=1)
+        fu1.updatePayloads(lambda p: p.unflattenRanks(levels=1))
+
+        self.assertEqual(fu1, f)
+
+    def test_flatten_levels_3(self):
+        """Test flattening/unflattening 3 levels"""
+
+        # TBD
+        pass
 
 if __name__ == '__main__':
     unittest.main()

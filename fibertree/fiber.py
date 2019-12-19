@@ -1093,16 +1093,43 @@ class Fiber:
         payloads = [ p for _,p in swapped ]
         return Fiber(coords, payloads).unflattenRanks()
 
-    def flattenRanks(self):
+    def flattenRanks(self, levels=1):
         """Flatten two ranks into one - COO-style"""
 
+        #
+        # Flatten deeper levels first, if requested
+        #
+        if levels == 1:
+            cur_payloads = self.payloads
+        else:
+            assert (isinstance(self.payloads[0], Fiber)), \
+                   "Insuffient levels to flatten"
+
+            cur_payloads = []
+
+            for p in self.payloads:
+                cur_payloads.append(p.flattenRanks(levels=levels-1))
+
+        #
+        # Flatten this level
+        #
         coords = []
         payloads = []
 
-        for c1, p1 in zip(self.coords, self.payloads):
+        for c1, p1 in zip(self.coords, cur_payloads):
+
+            # Convert c1 to tuple, if necessary
+            if not isinstance(c1, tuple):
+                c1 = (c1, )
+
             if Payload.contains(p1, Fiber):
                 for c0, p0 in p1:
-                    coords.append( (c1, c0) )
+
+                    # Convert c0 to tuple, if necessary
+                    if not isinstance(c0, tuple):
+                        c0 = (c0,)
+
+                    coords.append( c1 + c0 )
                     payloads.append(p0)
             elif Payload.contains(p1, tuple):
                 # zgw: p1 could be tuples.
@@ -1113,13 +1140,19 @@ class Fiber:
                 # If p1 is a tuple, flattenRanks() flattens rank c1 and c0,
                 # where c0 is the highest rank of the fiber p1[0]
                 assert(isinstance(p1[0], Fiber))
+
+                # Convert c0 to tuple, if necessary
+                if not isinstance(c0, tuple):
+                    c0 = (c0,)
+
                 for c0, p0 in p1[0]:
-                    coords.append( (c1, c0) )
+                    coords.append( c1 + c0 )
                     payloads.append( (p0,) + p1[1:] )
+
         return Fiber(coords, payloads)
 
 
-    def unflattenRanks(self):
+    def unflattenRanks(self, levels=1):
         """Unflatten two ranks into one"""
 
         assert(isinstance(self.coords[0], tuple))
@@ -1129,11 +1162,23 @@ class Fiber:
 
         c1_last = -1
 
-        for ( (c1, c0), p0 ) in zip(self.coords, self.payloads):
+        for ( cx, p0 ) in zip(self.coords, self.payloads):
+            # Little dance to get the coordinates from the two ranks
+            c1 = cx[0]
+            if len(cx) > 2:
+                c0 = cx[1:]
+            else:
+                c0 = cx[1]
+
             if (c1 > c1_last):
                 if c1_last != -1:
                      coords1.append(c1_last)
-                     payloads1.append(Fiber(coords0, payloads0))
+
+                     cur_fiber = Fiber(coords0, payloads0)
+                     if levels > 1:
+                         cur_fiber = cur_fiber.unflattenRanks(levels=levels-1)
+
+                     payloads1.append(cur_fiber)
 
                 c1_last = c1
                 coords0 = []
@@ -1143,7 +1188,12 @@ class Fiber:
             payloads0.append(p0)
 
         coords1.append(c1_last)
-        payloads1.append(Fiber(coords0, payloads0))
+
+        cur_fiber = Fiber(coords0, payloads0)
+        if levels > 1:
+            cur_fiber = cur_fiber.unflattenRanks(levels=levels-1)
+
+        payloads1.append(cur_fiber)
 
         return Fiber(coords1, payloads1)
 
