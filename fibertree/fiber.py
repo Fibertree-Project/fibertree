@@ -1239,28 +1239,32 @@ class Fiber:
         if self.owner is None:
             str += "F/["
         else:
-            str += "F(%s)/[" % self.owner.getName()
+            str += f"F({self.owner.getName()})/["
 
         coord_indent = 0
-        next_indent = indent + len(str)
 
         if self.payloads and isinstance(self.payloads[0], Fiber):
 
             for (c, p) in zip(self.coords, self.payloads):
-                if ( coord_indent != 0):
+                if ( coord_indent == 0):
+                    coord_indent = indent + len(str)
+                    str += f"( {c} -> "
+                    next_indent = indent + len(str)
+                else:
                     str += '\n'
-                str += coord_indent*' ' + "( %3s -> " % c
-                str += p.__str__(indent=next_indent+9)
+                    str += coord_indent*' ' + f"( {c} -> "
+
+                str += p.__str__(indent=next_indent)
                 str += ')'
-                coord_indent = next_indent
 
             return str
 
+        next_indent = indent + len(str)
         for i in range(len(self.coords)):
             if coord_indent != 0:
                 str += '\n'
 
-            str += coord_indent*' ' + "(%s -> %s) " % (self.coords[i], self.payloads[i])
+            str += coord_indent*' ' + f"({self.coords[i]} -> {self.payloads[i]}) "
             coord_indent = next_indent
 
         str += "]"

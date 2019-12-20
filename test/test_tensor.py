@@ -85,6 +85,38 @@ class TestTensor(unittest.TestCase):
 
         self.assertEqual(tensor, tensor_ref)
 
+
+    def test_print_2D(self):
+        a = Tensor.fromYAMLfile("./data/matrix-a.yaml")
+
+        a_s_ref = "T(M,K)/[\n" + \
+                  "  Rank: M F(M)/[( 0 -> F(K)/[(0 -> <1>) \n" + \
+                  "                             (2 -> <3>) ])\n" + \
+                  "                ( 1 -> F(K)/[(0 -> <1>) \n" + \
+                  "                             (3 -> <4>) ])\n" + \
+                  "                ( 3 -> F(K)/[(2 -> <3>) \n" + \
+                  "                             (3 -> <4>) ])\n" + \
+                  "  Rank: K F(K)/[(0 -> <1>) \n" + \
+                  "                (2 -> <3>) ],\n" + \
+                  "          F(K)/[(0 -> <1>) \n" + \
+                  "                (3 -> <4>) ],\n" + \
+                  "          F(K)/[(2 -> <3>) \n" + \
+                  "                (3 -> <4>) ]\n" + \
+                  "]"
+
+        a_s = f"{a}"
+
+        self.assertEqual(a_s, a_s_ref)
+
+        a_r_ref = "T(M,K)/[\n" + \
+                  "  R(M)/[Fiber([0, 1, 3], [Fiber([0, 2], [1, 3], owner=K), Fiber([0, 3], [1, 4], owner=K), Fiber([2, 3], [3, 4], owner=K)], owner=M)]\n" + \
+                  "  R(K)/[Fiber([0, 2], [1, 3], owner=K), Fiber([0, 3], [1, 4], owner=K), Fiber([2, 3], [3, 4], owner=K)]\n" + \
+                  "]"
+        a_r = f"{a!r}"
+
+        self.assertEqual(a_r, a_r_ref)
+
+
     def test_setRoot(self):
         """Test adding a new root"""
 

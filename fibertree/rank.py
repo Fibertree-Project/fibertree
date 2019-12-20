@@ -77,7 +77,10 @@ class Rank:
 
         next_indent = len(string)
 
-        string += ", ".join([x.__str__(indent=next_indent) for x in self.fibers])
+        separator = ",\n" + " "*next_indent
+        fibers = [x.__str__(indent=next_indent) for x in self.fibers]
+        string += separator.join(fibers)
+
         return string
     
     def __repr__(self):
