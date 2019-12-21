@@ -14,6 +14,8 @@ class Tensor:
 
         self.yamlfile = yamlfile
 
+        # TBD: Encourage use of Tensor.fromYAMLfile instead...
+
         if (yamlfile != ""):
             assert(rank_ids is None)
 
@@ -30,26 +32,45 @@ class Tensor:
 
         self.set_rank_ids(rank_ids)
 
+        if rank_ids == []:
+            # Create a rank zero tensor, i.e., just a payload
+
+            self._root = Payload(0)
+            return
+
         root_fiber = Fiber()
         self.setRoot(root_fiber)
+
 
     @classmethod
     def fromYAMLfile(cls, yamlfile):
         """Construct a Tensor from a YAML file"""
 
-        (rank_ids, fiber) = Tensor.parse(yamlfile)
+        (rank_ids, root) = Tensor.parse(yamlfile)
 
-        return Tensor.fromFiber(rank_ids, fiber)
+        if not isinstance(root, Fiber):
+            t = Tensor(rank_ids=[])
+            t._root = Payload(root)
+            return t
+
+        return Tensor.fromFiber(rank_ids, root)
 
 
     @classmethod
-    def fromUncompressed(cls, rank_ids=None, root_list=None):
+    def fromUncompressed(cls, rank_ids=None, root=None):
         """Construct a Tensor from uncompressed fiber tree"""
 
-        assert(not rank_ids is None)
-        assert(not root_list is None)
+        assert(not root is None)
 
-        fiber = Fiber.fromUncompressed(root_list)
+        if not isinstance(root, list):
+            # Handle a rank zero tensor
+            t = Tensor(rank_ids=[])
+            t._root = Payload(root)
+            return t
+
+        assert(not rank_ids is None)
+
+        fiber = Fiber.fromUncompressed(root)
         return Tensor.fromFiber(rank_ids, fiber)
 
 
@@ -96,6 +117,11 @@ class Tensor:
     def setRoot(self, root):
         """(Re-)populate self.ranks with "root"""
 
+        # Note: rank 0 tensors are not allowed in this path
+        assert isinstance(root, Fiber)
+
+        self._root = root
+
         # Clear out existing rank information
         for r in self.ranks:
             r.clearFibers()
@@ -119,7 +145,13 @@ class Tensor:
     def getRoot(self):
         """root"""
 
-        return self.ranks[0].getFibers()[0]
+        root = self._root
+
+        # Either we have a 0-D tensor or the root is a Fiber
+        assert (isinstance(root, Payload) or
+                root == self.ranks[0].getFibers()[0])
+
+        return root
 
 
     def root(self):
@@ -158,19 +190,32 @@ class Tensor:
 
     def __str__(self):
         
-        str = "T(%s)/[" % ",".join(self.rank_ids) + "\n"
-        for r in self.ranks:
-            str += r.__str__(indent=2) + "\n"
+        str = "T(%s)/[" % ",".join(self.rank_ids)
+
+        if self.ranks:
+            str += "\n"
+            for r in self.ranks:
+                str += r.__str__(indent=2) + "\n"
+        else:
+            str += self.getRoot().__str__()
+
         str += "]"
         return str
         
     def __repr__(self):
         """__repr__"""
 
-        str = "T(%s)/[" % ",".join(self.rank_ids) + "\n"
-        for r in self.ranks:
-            str += "  " + r.__repr__() + "\n"
+        str = "T(%s)/[" % ",".join(self.rank_ids)
+
+        if self.ranks:
+            str += "\n"
+            for r in self.ranks:
+                str += "  " + repr(r) + "\n"
+        else:
+            str += repr(self.getRoot())
+
         str += "]"
+
         return str
 
 #
@@ -227,8 +272,12 @@ class Tensor:
     def dump(self, filename):
         """Dump a tensor to a file in YAML format"""
 
+        root = self.getRoot()
         
-        root_dict = self.getRoot().fiber2dict()
+        if isinstance(root, Payload):
+            root_dict = Payload.payload2dict(root)
+        else:
+            root_dict = root.fiber2dict()
 
         tensor_dict = { 'tensor':
                         { 'rank_ids': self.rank_ids,

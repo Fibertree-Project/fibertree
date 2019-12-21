@@ -1320,7 +1320,7 @@ class Fiber:
         with open(yamlfile, 'w') as stream:
             document = yaml.dump(fiber_dict, stream)
 
-
+#
 # Conversion methods - to/from dictionaries
 #
 
@@ -1375,25 +1375,11 @@ class Fiber:
 
         f = { 'fiber' :
               { 'coords'   : self.coords,
-                'payloads' : [ self.payload2dict(p) for p in self.payloads ]
+                'payloads' : [ Payload.payload2dict(p) for p in self.payloads ]
               }
         }
 
         return f
-
-    def payload2dict(self, payload):
-        """Return payload converted to dictionry or simple value"""
-
-        if isinstance(payload, Fiber):
-            # Note: this leg is deprecated and should be removed
-            return payload.fiber2dict()
-        elif isinstance(payload, Payload):
-            if Payload.contains(payload, Fiber):
-                return payload.value.fiber2dict()
-            else:
-                return payload.value
-        else:
-            return payload
 
 #
 # Utility functions

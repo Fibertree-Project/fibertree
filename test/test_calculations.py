@@ -75,6 +75,19 @@ class TestCalculations(unittest.TestCase):
 
         self.assertEqual(z, z_correct)
 
+    def test_0D(self):
+        "Test sum to rank 0 tensor"
+
+        a = Tensor("./data/conv-activations-a.yaml")
+        z = Tensor(rank_ids=[])
+
+        a_m = a.getRoot()
+        z_ref = z.getRoot()
+
+        for m_coord, (a_val) in a_m:
+            z_ref += a_val
+
+        self.assertEqual(z_ref, 12)
 
     def test_conv1d_ws(self):
         """Convolution 1d ws"""
