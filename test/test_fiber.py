@@ -467,6 +467,56 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(slice1, slice1_ref)
 
 
+    def test_getitem_nD(self):
+        """Get item - multi-dimensional"""
+
+        c00 = [1, 2, 3]
+        p00 = [2, 3, 4]
+        f00 = Fiber(c00, p00)
+
+        c01 = [4, 6, 8]
+        p01 = [5, 7, 9]
+        f01 = Fiber(c01, p01)
+
+        c02 = [5, 7]
+        p02 = [6, 8]
+        f02 = Fiber(c02, p02)
+
+        c0 = [4, 5, 8]
+        p0 = [f00, f01, f02]
+        f = Fiber(c0, p0)
+
+        f_1_1 = f[1, 1]
+        f_1_1_ref = CoordPayload(c0[1], f01[1])
+
+        self.assertEqual(f_1_1, f_1_1_ref)
+
+        f_02_1 = f[0:2, 1]
+        f_02_1_ref = Fiber(c0[0:2], [f00[1], f01[1]])
+
+        self.assertEqual(f_02_1, f_02_1_ref)
+
+        f_12_1 = f[1:2, 1]
+        f_12_1_ref = Fiber(c0[1:2], [f01[1]])
+
+        self.assertEqual(f_12_1, f_12_1_ref)
+
+        f_02_01 = f[0:2, 0:1]
+        f_02_01_ref = Fiber(c0[0:2], [f00[0:1], f01[0:1]])
+
+        self.assertEqual(f_02_01, f_02_01_ref)
+
+        f_13_02 = f[1:3, 0:2]
+        f_13_02_ref = Fiber(c0[1:3], [f01[0:2], f02[0:2]])
+
+        self.assertEqual(f_13_02, f_13_02_ref)
+
+        f_13_12 = f[1:3, 1:2]
+        f_13_12_ref = Fiber(c0[1:3], [f01[1:2], f02[1:2]])
+
+        self.assertEqual(f_13_12, f_13_12_ref)
+
+
     def test_len(self):
         """Find lenght of a fiber"""
 

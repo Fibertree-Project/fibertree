@@ -304,7 +304,7 @@ class Fiber:
         return count
 
 
-    def __getitem__(self, key):
+    def __getitem__(self, keys):
         """__getitem__
 
         For an integer key return a (coordinate, payload) tuple
@@ -313,8 +313,8 @@ class Fiber:
 
         Parameters
         ----------
-        key: integer or slice
-        The position or slice in the fiber
+        keys: single integer/slicr or tuple of integers/slices
+        The positions or slices in an n-D fiber
 
         Returns
         -------
@@ -331,8 +331,19 @@ class Fiber:
         Invalid key type
         """
 
-        if isinstance(key, int) :
-            if key < 0 :
+        if not isinstance(keys, tuple):
+            # Keys is a single value for 1-D access
+            key = keys
+            key_cdr = ()
+        else:
+            # Keys is a tuple for for n-D access
+            key = keys[0]
+            key_cdr = keys[1:]
+
+        if isinstance(key, int):
+            # Handle key as single index
+
+            if key < 0:
                 #Handle negative indices
                 key += len(self)
 
@@ -340,14 +351,28 @@ class Fiber:
                    raise(IndexError,
                          f"The index ({key}) is out of range")
 
-            return (self.coords[key], self.payloads[key])
+            new_payload = self.payloads[key]
+
+            if len(key_cdr):
+                # Recurse down the fiber tree
+                new_payload = new_payload[key_cdr]
+
+            return CoordPayload(self.coords[key], new_payload)
 
         if isinstance(key, slice) :
+            # Key is a slice
+
             #Get the start, stop, and step from the slice
             slice_range = range(*key.indices(len(self)))
 
             coords = [self.coords[ii] for ii in slice_range]
-            payloads = [self.payloads[ii] for ii in slice_range]
+
+            if len(key_cdr):
+                # Recurse down the fiber tree for each payload in slice
+                payloads = [self.payloads[ii][key_cdr] for ii in slice_range]
+            else:
+                # Just use each payload in slice
+                payloads = [self.payloads[ii] for ii in slice_range]
 
             return Fiber(coords, payloads)
 
