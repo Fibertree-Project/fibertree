@@ -987,6 +987,99 @@ class Fiber:
         return Fiber(z_coords, z_payloads)
 
 
+    def __xor__(self, other):
+        """__xor__
+
+        Return the xor of "self" and "other" by considering all possible
+        coordinates and returning a fiber consisting of payloads containing
+        a tuple of the payloads of the inputs for coordinates where the
+        following truth table returns True:
+
+
+                         coordinate not     |      coordinate
+                        present in "other"  |    present in "other"
+                    +-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        not present |         False         |        True           |
+        in "self"   |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        present in  |         True          |        False          |
+        "self"      |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+
+        """
+
+
+        def get_next(iter):
+            """get_next"""
+
+            try:
+                coord, payload = next(iter)
+            except StopIteration:
+                return (None, None)
+            return CoordPayload(coord, payload)
+
+        def get_next_nonempty(iter):
+            """get_next_nonempty"""
+
+            (coord, payload) = get_next(iter)
+
+            while Payload.isEmpty(payload):
+                (coord, payload) = get_next(iter)
+
+            return CoordPayload(coord, payload)
+
+        a = self.__iter__()
+        b = other.__iter__()
+
+        z_coords = []
+        z_payloads = []
+
+        a_coord, a_payload = get_next_nonempty(a)
+        b_coord, b_payload = get_next_nonempty(b)
+
+        while not (a_coord is None or b_coord is None):
+            if a_coord == b_coord:
+                a_coord, a_payload = get_next_nonempty(a)
+                b_coord, b_payload = get_next_nonempty(b)
+                continue
+
+            if a_coord < b_coord:
+                z_coords.append(a_coord)
+                # TODO: Append the right b_payload, e.g., maybe a Fiber()
+                z_payloads.append(("A", a_payload, 0))
+
+                a_coord, a_payload = get_next_nonempty(a)
+                continue
+
+            if a_coord > b_coord:
+                z_coords.append(b_coord)
+                # TODO: Append the right a_payload, e.g., maybe a Fiber()
+                z_payloads.append(("B", 0, b_payload))
+
+                b_coord, b_payload = get_next_nonempty(b)
+                continue
+
+        while not a_coord is None:
+            z_coords.append(a_coord)
+            z_payloads.append(("A", a_payload, 0))
+
+            a_coord, a_payload = get_next_nonempty(a)
+
+        while  not b_coord is None:
+            z_coords.append(b_coord)
+            z_payloads.append(("B", 0, b_payload))
+
+            b_coord, b_payload = get_next_nonempty(b)
+
+        return Fiber(z_coords, z_payloads)
+
+
 
     def __lshift__(self, other):
         """__lshift__

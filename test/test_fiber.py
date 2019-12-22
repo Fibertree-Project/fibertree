@@ -846,6 +846,36 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(ab, ab_ref)
 
 
+    def test_xor(self):
+        """Xor test"""
+
+        a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
+        b = Fiber([0, 5, 9], [2, 7, 11])
+
+        ab_ref = Fiber([0, 1, 8],
+                       [("B", 0, 2),
+                        ("A", 2, 0),
+                        ("A", 9, 0)])
+
+        ab = a ^ b
+
+        self.assertEqual(ab, ab_ref)
+
+    def test_xor_empty(self):
+        """Uniontest - with explict zeros"""
+
+        a = Fiber([1, 5, 8, 9], [0, 6, 0, 10])
+        b = Fiber([1, 5, 8, 9], [2, 0, 0, 11])
+
+        ab_ref = Fiber([1, 5],
+                       [("B", 0, 2),
+                        ("A", 6, 0)])
+
+        ab = a ^ b
+
+        self.assertEqual(ab, ab_ref)
+
+
     def test_diff(self):
         """Difference test"""
 
