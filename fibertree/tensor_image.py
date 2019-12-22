@@ -118,8 +118,8 @@ class TensorImage():
         #
         # Process the fibers of the tree
         #
-        if offset == 0 and not fiber.owner is None:
-            self.draw_rank(level, "Rank: %s " % fiber.owner.name)
+        if offset == 0 and not fiber.getOwner() is None:
+            self.draw_rank(level, "Rank: %s " % fiber.getOwner().getName())
 
         region_start = offset
         region_end = region_start

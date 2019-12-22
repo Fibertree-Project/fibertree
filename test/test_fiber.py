@@ -1,6 +1,7 @@
 import unittest
 from fibertree.payload import Payload
 from fibertree.fiber import Fiber
+from fibertree.fiber import CoordPayload
 from fibertree.tensor import Tensor
 from fibertree.tensor_image import TensorImage
 
@@ -387,6 +388,21 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.countValues(), 2)
 
 
+    def test_iter(self):
+        """Test iteration over a fiber"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+
+        a = Fiber(c0, p0)
+
+        i = 0
+        for (c, p) in a:
+            self.assertEqual(c, c0[i])
+            self.assertEqual(p, p0[i])
+            i += 1
+
+
     def test_getitem_simple(self):
         """Get item - simple"""
 
@@ -517,8 +533,9 @@ class TestFiber(unittest.TestCase):
 
         aa_ref = Fiber(aa_coords, aa_payloads)
 
-        a.append(7, 10)
+        retval = a.append(7, 10)
 
+        self.assertIsNone(retval)
         self.assertEqual(a, aa_ref)
 
     def test_append_assert(self):
@@ -550,8 +567,9 @@ class TestFiber(unittest.TestCase):
 
         ae_ref = Fiber(ae_coords, ae_payloads)
 
-        a.extend(b)
+        retval = a.extend(b)
 
+        self.assertIsNone(retval)
         self.assertEqual(a, ae_ref)
 
 
@@ -592,8 +610,9 @@ class TestFiber(unittest.TestCase):
 
         for i in insert_at:
             p = i*i+1
-            a.insert(i, p)
+            retval = a.insert(i, p)
 
+            self.assertIsNone(retval)
             self.assertEqual(a, ans[i])
 
 

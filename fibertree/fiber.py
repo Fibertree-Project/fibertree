@@ -1,11 +1,29 @@
 """Fiber"""
 
+from collections import namedtuple
 import yaml
 
 from fibertree.payload import Payload
 
+#
+# Define a named tuple for coordinate/payload pairs
+#
+CoordPayload = namedtuple('CoordPayload', 'coord payload')
+
+
+#
+# Define the fiber class
+#
 class Fiber:
-    """Fiber class"""
+    """Fiber class
+
+    A fiber of a tensor containing a list of coordinates and
+    asssociated payloads.
+
+    Note: The coords and payloads instance variables are currently
+    left public...
+
+    """
 
     def __init__(self, coords=None, payloads=None, default=0, initial=None):
         """__init__"""
@@ -36,7 +54,7 @@ class Fiber:
         self.payloads = [self._maybe_box(p) for p in payloads]
 
         # Owner rank... set on append to rank
-        self.owner = None
+        self.setOwner(None)
 
         # Default value assigned to new coordinates
         self.setDefault(default)
@@ -194,16 +212,16 @@ class Fiber:
 
         Optinally insert into the owners rank.
 
-        Note: self.default must be set
+        Note: self._default must be set
         """
 
         # Create a payload at coord
         # Iemporary value (should be None)
 
-        if callable(self.default):
-            value = self.default()
+        if callable(self._default):
+            value = self._default()
         else:
-            value = self.default
+            value = self._default
 
         self.insert(coord, value)
 
@@ -212,8 +230,8 @@ class Fiber:
         payload = self.getPayload(coord)
 
         if Payload.contains(value, Fiber):
-            assert(not self.owner is None)
-            next_rank = self.owner.get_next()
+            assert(not self._owner is None)
+            next_rank = self._owner.get_next()
             if not next_rank is None:
                 next_rank.append(payload)
 
@@ -222,12 +240,22 @@ class Fiber:
     def setDefault(self, default):
         """setDefault"""
 
-        self.default = default
+        self._default = default
+
+    def getDefault(self):
+        """getDefault"""
+
+        return self._default
 
     def setOwner(self, owner):
         """setOwner"""
 
-        self.owner = owner
+        self._owner = owner
+
+    def getOwner(self):
+        """getOwner"""
+
+        return self._owner
 
     def minCoord(self):
         """min_coord"""
@@ -353,13 +381,13 @@ class Fiber:
         """__iter__"""
 
         for i in range(len(self.coords)):
-            yield (self.coords[i], self.payloads[i])
+            yield CoordPayload(self.coords[i], self.payloads[i])
 
     def __reversed__(self):
         """Return reversed fiber"""
 
         for coord, payload in zip(reversed(self.coords), reversed(self.payloads)):
-            yield (coord, payload)
+            yield CoordPayload(coord, payload)
 
 
 #
@@ -394,13 +422,15 @@ class Fiber:
 
         if other.isEmpty():
             # Extending with an empty fiber is a nop
-            return
+            return None
 
         assert self.maxCoord() < other.coords[0], \
                "Fiber coordinates must be monotonically increasing"
 
         self.coords.extend(other.coords)
         self.payloads.extend(other.payloads)
+
+        return None
 
 
     def insert(self, coord, value):
@@ -415,6 +445,8 @@ class Fiber:
         except StopIteration:
             self.coords.append(coord)
             self.payloads.append(payload)
+
+        return None
 
 
     def project(self, trans_fn=None, interval=None):
@@ -775,7 +807,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
             """get_next_nonempty"""
@@ -785,7 +817,7 @@ class Fiber:
             while Payload.isEmpty(payload):
                 (coord, payload) = get_next(iter)
 
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         a = self.__iter__()
         b = other.__iter__()
@@ -851,7 +883,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
             """get_next_nonempty"""
@@ -861,7 +893,7 @@ class Fiber:
             while Payload.isEmpty(payload):
                 (coord, payload) = get_next(iter)
 
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         a = self.__iter__()
         b = other.__iter__()
@@ -953,7 +985,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
             """get_next_nonempty"""
@@ -963,7 +995,7 @@ class Fiber:
             while Payload.isEmpty(payload):
                 (coord, payload) = get_next(iter)
 
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
 
         # "a" is self!
@@ -1023,7 +1055,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
             """get_next_nonempty"""
@@ -1033,7 +1065,7 @@ class Fiber:
             while Payload.isEmpty(payload):
                 (coord, payload) = get_next(iter)
 
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         a = self.__iter__()
         b = other.__iter__()
@@ -1236,10 +1268,10 @@ class Fiber:
 
         str = ''
 
-        if self.owner is None:
+        if self._owner is None:
             str += "F/["
         else:
-            str += f"F({self.owner.getName()})/["
+            str += f"F({self._owner.getName()})/["
 
         coord_indent = 0
 
@@ -1277,8 +1309,8 @@ class Fiber:
 
         str = f"Fiber({self.coords!r}, {self.payloads!r}"
 
-        if self.owner:
-            str += f", owner={self.owner.getName()}"
+        if self._owner:
+            str += f", owner={self._owner.getName()}"
 
         str += ")"
 
