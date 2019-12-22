@@ -76,6 +76,26 @@ class TestFiber(unittest.TestCase):
         self.assertNotEqual(x2, x4)
         self.assertNotEqual(x3, x4)
 
+    def test_fromCoordPayloadList(self):
+
+        cp = [(2, 3), (4, 5), (6, 7)]
+
+        (coords, payloads) = zip(*cp)
+
+        a_ref = Fiber(coords=coords, payloads=payloads)
+
+        a1 = Fiber.fromCoordPayloadList(*cp)
+        self.assertEqual(a1, a_ref)
+        self.assertEqual(a1.getDefault(), 0)
+
+        a2 = Fiber.fromCoordPayloadList(*cp, default=1)
+        self.assertEqual(a2, a_ref)
+        self.assertEqual(a2.getDefault(), 1)
+
+        a3 = Fiber.fromCoordPayloadList(default=2, *cp)
+        self.assertEqual(a3, a_ref)
+        self.assertEqual(a3.getDefault(), 2)
+
 
     def test_fromYAMLfile_1D(self):
         """Read a YAMLfile 1-D"""

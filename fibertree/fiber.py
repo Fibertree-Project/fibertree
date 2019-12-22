@@ -61,6 +61,23 @@ class Fiber:
 
 
     @classmethod
+    def fromCoordPayloadList(cls, *cp, default=0):
+        """Construct a Fiber from a coordinate/payload list
+
+        Parameters
+        ----------
+
+        cp: sequence of (coord, payload) tuples
+        default: default payload
+
+        """
+
+        (coords, payloads) = zip(*cp)
+
+        return cls(coords, payloads, default=default)
+
+
+    @classmethod
     def fromYAMLfile(cls, yamlfile, default=0):
         """Construct a Fiber from a YAML file"""
 
