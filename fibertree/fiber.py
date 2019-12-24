@@ -1,6 +1,7 @@
 """Fiber"""
 
 from collections import namedtuple
+from functools import partialmethod
 import yaml
 
 from fibertree.payload import Payload
@@ -528,10 +529,45 @@ class Fiber:
 
         return Fiber(coords, payloads)
 
-    def updatePayloads(self, func):
+    def updatePayloads(self, func, depth=0):
+        """updatePayloads
 
-        for i in range(len(self.payloads)):
-            self.payloads[i] = func(self.payloads[i])
+        Update each payload in the the fibers at a depth of "depth"
+        below "self" by invoking "func" on it.  Therefore, a depth of
+        zero will update the payloads in the current fiber. Higher
+        depths with result in a depth first search down to "depth"
+        before traversing the payloads.
+
+        Parameters
+        ----------
+
+        func: function
+        A function that is invoked with each payload as its argument
+
+        depth: integer
+        The depth in the fiber tree to dive before traversing
+
+        Returns
+        --------
+
+        None
+
+        Raises
+        ------
+
+        TBD: currently nothing
+
+        """
+        if depth > 0:
+            # Recurse down to depth...
+            for p in self.payloads:
+                p.updatePayloads(func, depth=depth-1)
+        else:
+            # Update my payloads
+            for i in range(len(self.payloads)):
+                self.payloads[i] = func(self.payloads[i])
+
+        return None
 
 
     def unzip(self):
@@ -616,6 +652,8 @@ class Fiber:
             
 #
 # Split methods
+#
+# Note: all these methods return a new fiber
 #
 
 
@@ -1241,6 +1279,8 @@ class Fiber:
 #
 # Multilayer methods
 #
+# Note: all these methods return a new fiber
+#
     def swapRanks(self):
         """Swap the (highest) two ranks of the fiber.
         This function relies on flattenRanks() and unflattenRanks().
@@ -1363,6 +1403,50 @@ class Fiber:
         payloads1.append(cur_fiber)
 
         return Fiber(coords1, payloads1)
+
+#
+# Closures to operate on all payloads at a specified depth
+#
+# Note: all these methods mutate the fibers
+#
+# TBD: Reimpliment with Guowei's cleaner Python closure/wrapper
+#
+
+    def updatePayloadsBelow(self, func, *args, depth=0, **kwargs):
+        """updatePayloadsBelow
+
+        Utility function used as a closure on updatePayloads() to
+        change all the payloads in fibers at "depth" in the tree by
+        applying "func" with parameters *args and **kwargs to the
+        payloads.
+
+        """
+
+        update_lambda = lambda p: func(p, *args, **kwargs)
+        return self.updatePayloads(update_lambda, depth=depth)
+
+
+    splitUniformBelow = partialmethod(updatePayloadsBelow,
+                                      splitUniform)
+
+    splitNonUniformBelow = partialmethod(updatePayloadsBelow,
+                                         splitNonUniform)
+
+    splitEqualBelow = partialmethod(updatePayloadsBelow,
+                                    splitEqual)
+
+    splitUnEqualBelow = partialmethod(updatePayloadsBelow,
+                                      splitUnEqual)
+
+    swapRanksBelow = partialmethod(updatePayloadsBelow,
+                                      swapRanks)
+
+    flattenRanksBelow = partialmethod(updatePayloadsBelow,
+                                      flattenRanks)
+
+    unflattenRanksBelow = partialmethod(updatePayloadsBelow,
+                                        unflattenRanks)
+
 
 #
 #  Comparison operations
