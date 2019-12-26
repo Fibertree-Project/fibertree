@@ -392,6 +392,14 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.maxCoord(), c_max)
 
 
+    def test_minmaxCoord_empty(self):
+
+        f = Fiber([], [])
+
+        self.assertIsNone(f.minCoord())
+        self.assertIsNone(f.maxCoord())
+
+
     def test_values_2D(self):
         """Count values in a 2-D fiber"""
 
@@ -608,6 +616,18 @@ class TestFiber(unittest.TestCase):
         self.assertIsNone(retval)
         self.assertEqual(a, aa_ref)
 
+    def test_append_empty(self):
+        """Append to empty fiber"""
+
+        a = Fiber([], [])
+        a_ref = Fiber( [4], [8])
+
+        retval = a.append(4, 8)
+
+        self.assertIsNone(retval)
+        self.assertEqual(a, a_ref)
+
+
     def test_append_assert(self):
         """Append element at end of fiber - and assert"""
 
@@ -687,6 +707,7 @@ class TestFiber(unittest.TestCase):
 
 
     def test_shape(self):
+        """Test determining shape of a fiber"""
 
         a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
 
@@ -694,6 +715,14 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(s, [5, 8])
 
+    def test_shape_empty(self):
+        """Test determining shape of an empty fiber"""
+
+        a = Fiber([], [])
+
+        s = a.getShape()
+
+        self.assertEqual(s, [0])
 
     def test_uncompress(self):
         """Test recursive iteration"""

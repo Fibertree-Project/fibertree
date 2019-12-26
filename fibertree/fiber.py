@@ -280,12 +280,18 @@ class Fiber:
 
         # TBD: Should check that the candidate is not an explicit zero
 
+        if len(self.coords) == 0:
+            return None
+
         return min(self.coords)
 
     def maxCoord(self):
         """max_coord"""
 
         # TBD: Should check that the candidate is not an explicit zero
+
+        if len(self.coords) == 0:
+            return None
 
         return max(self.coords)
 
@@ -448,7 +454,7 @@ class Fiber:
     def append(self, coord, value):
         """append - Add element at end of fiber"""
 
-        assert self.maxCoord() < coord, \
+        assert self.maxCoord() is None or self.maxCoord() < coord, \
                "Fiber coordinates must be monotonically increasing"
 
         payload = self._maybe_box(value)
@@ -467,7 +473,7 @@ class Fiber:
             # Extending with an empty fiber is a nop
             return None
 
-        assert self.maxCoord() < other.coords[0], \
+        assert self.maxCoord() is None or self.maxCoord() < other.coords[0], \
                "Fiber coordinates must be monotonically increasing"
 
         self.coords.extend(other.coords)
@@ -587,9 +593,8 @@ class Fiber:
     def getShape(self):
         """Return shape of fiber tree"""
         
-        max_coord = self.maxCoord()
-
         return self._calcShape(shape=[], level=0)
+
 
     def _calcShape(self, shape, level):
         """Find the maximum coordinate at each level of the tree"""
@@ -599,16 +604,24 @@ class Fiber:
         #
         if len(shape) < level+1:
             shape.append(0)
-        
+
+        max_coord = self.maxCoord()
+
+        #
+        # If Fiber is empty then shape doesn't change
+        #
+        if max_coord is None:
+            return shape
+
         #
         # Update shape for this Fiber at this level
         #
-        shape[level] = max(shape[level], self.maxCoord()+1)
+        shape[level] = max(shape[level], max_coord+1)
 
+        #
+        # Recursively process payloads that are Fibers
+        #
         if Payload.contains(self.payloads[0], Fiber):
-            #
-            # Process payloads that are Fibers
-            #
             for p in self.payloads:
                 Payload.get(p)._calcShape(shape, level+1)
 
@@ -686,7 +699,7 @@ class Fiber:
         class _SplitterNonUniform():
 
             def __init__(self, splits):
-                self.splits = splits
+                self.splits = splits.copy()
                 self.cur_split = self.splits.pop(0)
 
             def nextGroup(self, i, c):
@@ -735,7 +748,7 @@ class Fiber:
         class _SplitterUnEqual():
 
             def __init__(self, sizes):
-                self.sizes = sizes
+                self.sizes = sizes.copy()
                 self.cur_count = -1
 
             def nextGroup(self, i, c):
