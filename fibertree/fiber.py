@@ -1495,8 +1495,67 @@ class Fiber:
         print("%s" % self)
         print("")
 
-    def __str__(self, indent=0):
+    def __format__(self, format):
+        """__format__
+
+        Format a fiber
+
+        Spec:
+
+        [(<coord spec>,<scalar spec>)][n][*]
+
+        where:
+                "n" means add newlines
+                "*" means do not truncate with elipsis
+
+        """
+        import re
+
+        kwargs = {}
+
+        regex0 = '(\(.*,.*\))?(n)?(\*)?'
+        match0 = re.search(regex0, format)
+        group1 = match0.group(1)
+
+        if group1 is not None:
+            regex1 = '\((.*),(.*)\)'
+            match1 = re.search(regex1, group1)
+            kwargs['coord_fmt'] = match1.group(1)
+            kwargs['payload_fmt'] = match1.group(2)
+
+        if match0.group(2) == 'n':
+            kwargs['newline'] = True
+
+        if match0.group(3) == '*':
+            kwargs['cutoff'] = 10000
+
+        return self.__str__(**kwargs)
+
+
+    def __str__(self,
+                coord_fmt = "d",
+                payload_fmt = "d",
+                newline=False,
+                cutoff=2,
+                indent=0):
         """__str__"""
+
+        def format_coord(coord):
+            """Return "coord" properly formatted with "coord_fmt" """
+
+            if not isinstance(coord, tuple):
+                return f"{coord:{coord_fmt}}"
+
+            return '(' + ', '.join(format_coord(c) for c in coord) + ')'
+
+
+        def cond_string(string):
+            """Return "string" if newline is True"""
+
+            if newline:
+                return string
+
+            return ''
 
         str = ''
 
@@ -1506,30 +1565,53 @@ class Fiber:
             str += f"F({self._owner.getName()})/["
 
         coord_indent = 0
+        next_indent = 0
+        items = len(self.coords)
 
         if self.payloads and isinstance(self.payloads[0], Fiber):
 
-            for (c, p) in zip(self.coords, self.payloads):
-                if ( coord_indent == 0):
+            for (c, p) in zip(self.coords[0:cutoff], self.payloads[0:cutoff]):
+                if coord_indent == 0:
                     coord_indent = indent + len(str)
-                    str += f"( {c} -> "
-                    next_indent = indent + len(str)
+                    str += f"( {format_coord(c)} -> "
+                    if newline:
+                        next_indent = indent + len(str)
                 else:
-                    str += '\n'
-                    str += coord_indent*' ' + f"( {c} -> "
+                    str += cond_string('\n' + coord_indent* ' ')
+                    str += f"( {format_coord(c)} -> "
 
-                str += p.__str__(indent=next_indent)
+                str += p.__str__(coord_fmt=coord_fmt,
+                                 payload_fmt=payload_fmt,
+                                 newline=newline,
+                                 cutoff=cutoff,
+                                 indent=next_indent)
                 str += ')'
+
+            if items > cutoff:
+                str += cond_string('\n')
+                str += next_indent*' ' + "..."
+                str += cond_string('\n')
+                str += next_indent*' ' + "..."
 
             return str
 
-        next_indent = indent + len(str)
-        for i in range(len(self.coords)):
-            if coord_indent != 0:
-                str += '\n'
+        if newline:
+            next_indent = indent + len(str)
 
-            str += coord_indent*' ' + f"({self.coords[i]} -> {self.payloads[i]}) "
+        for i in range(min(items, cutoff)):
+            if coord_indent != 0:
+                str += cond_string('\n')
+
+            str += cond_string(coord_indent*' ')
+            str += f"({format_coord(self.coords[i])} -> "
+            str += f"{self.payloads[i]:{payload_fmt}}) "
             coord_indent = next_indent
+
+        if items > cutoff:
+            str += cond_string('\n'+next_indent*' ')
+            str += " ... "
+            str += cond_string('\n'+next_indent*' ')
+            str += " ... "
 
         str += "]"
         return str

@@ -96,6 +96,13 @@ class Payload:
 
         return self.value.print(title)
 
+
+    def __format__(self, spec="d"):
+        """__format__"""
+
+        return f"<{self.value:{spec}}>"
+
+
     def __str__(self):
         """__str__"""
 

@@ -197,7 +197,9 @@ class Tensor:
             for r in self.ranks:
                 str += r.__str__(indent=2) + "\n"
         else:
-            str += self.getRoot().__str__()
+            root = self.getRoot()
+            fmt = "n*" if isinstance(root, Fiber) else ""
+            str += f"{root:{fmt}}"
 
         str += "]"
         return str

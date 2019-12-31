@@ -24,6 +24,18 @@ class TestFiber(unittest.TestCase):
 
         a = Fiber([], [])
 
+    def test_comparison_eq_ne(self):
+
+        a = Fiber([2, 4, 6], [3, 5, 7])
+        b = Fiber([2, 4, 6], [3, 5, 7])
+        c = Fiber([2, 5, 6], [3, 5, 7])
+        d = Fiber([2, 4, 6], [3, 6, 7])
+
+        self.assertTrue(a == b)
+        self.assertTrue(a != c)
+        self.assertTrue(a != d)
+
+
     def test_comparison_eq(self):
 
         a = Fiber([2, 4, 6], [3, 5, 7])
@@ -181,108 +193,6 @@ class TestFiber(unittest.TestCase):
                                     [0, 0, 0, 0, 0, 0]])
 
         self.assertEqual(f, f_ref)
-
-    def test_print_1D(self):
-        """Test str format 1D"""
-
-        c = [2, 4, 6, 8]
-        p = [3, 5, 7, 9]
-
-        a = Fiber(c, p)
-
-        ss = f"{a}"
-        ss_ref = "F/[(2 -> <3>) \n   (4 -> <5>) \n   (6 -> <7>) \n   (8 -> <9>) ]"
-
-        self.assertEqual(ss, ss_ref)
-
-        sr = f"{a!r}"
-        sr_ref = "Fiber([2, 4, 6, 8], [3, 5, 7, 9])"
-
-        self.assertEqual(sr, sr_ref)
-
-
-    def test_print_2D_flattened(self):
-        """Test str format 2D flattened"""
-
-        c = [(2,3), (2,4), (3,1), (8,2)]
-        p = [3, 5, 7, 9]
-
-        a = Fiber(c, p)
-
-        ss = f"{a}"
-        ss_ref = "F/[((2, 3) -> <3>) \n   ((2, 4) -> <5>) \n   ((3, 1) -> <7>) \n   ((8, 2) -> <9>) ]"
-
-        self.assertEqual(ss, ss_ref)
-
-        sr = f"{a!r}"
-        sr_ref = "Fiber([(2, 3), (2, 4), (3, 1), (8, 2)], [3, 5, 7, 9])"
-        self.assertEqual(sr, sr_ref)
-
-
-    def test_print_2D(self):
-        """Test str format 2D"""
-
-        c0 = [2, 4, 6, 8]
-        p0 = [3, 5, 7, 9]
-        f0 = Fiber(c0, p0)
-
-        c1 = [3, 5, 7]
-        p1 = [4, 6, 8]
-        f1 = Fiber(c1, p1)
-
-        c = [2,5]
-
-        a = Fiber(c, [f0, f1])
-
-        ss = f"{a}"
-
-        ss_ref = "F/[( 2 -> F/[(2 -> <3>) \n" + \
-                 "             (4 -> <5>) \n" + \
-                 "             (6 -> <7>) \n" + \
-                 "             (8 -> <9>) ])\n" + \
-                 "   ( 5 -> F/[(3 -> <4>) \n" + \
-                 "             (5 -> <6>) \n" + \
-                 "             (7 -> <8>) ])"
-
-        self.assertEqual(ss, ss_ref)
-
-        sr = f"{a!r}"
-
-        sr_ref = "Fiber([2, 5], [Fiber([2, 4, 6, 8], [3, 5, 7, 9]), Fiber([3, 5, 7], [4, 6, 8])])"
-        self.assertEqual(sr, sr_ref)
-
-    def test_print_3D_flattened(self):
-        """Test str format 3D flattened"""
-
-        c0 = [2, 4, 6, 8]
-        p0 = [3, 5, 7, 9]
-        f0 = Fiber(c0, p0)
-
-        c1 = [3, 5, 7]
-        p1 = [4, 6, 8]
-        f1 = Fiber(c1, p1)
-
-        c = [(0, 2), (1, 5)]
-
-        a = Fiber(c, [f0, f1])
-
-        ss = f"{a}"
-
-        ss_ref = "F/[( (0, 2) -> F/[(2 -> <3>) \n" + \
-                 "                  (4 -> <5>) \n" + \
-                 "                  (6 -> <7>) \n" + \
-                 "                  (8 -> <9>) ])\n" + \
-                 "   ( (1, 5) -> F/[(3 -> <4>) \n" + \
-                 "                  (5 -> <6>) \n" + \
-                 "                  (7 -> <8>) ])"
-
-        self.assertEqual(ss, ss_ref)
-
-        sr = f"{a!r}"
-
-        sr_ref = "Fiber([(0, 2), (1, 5)], [Fiber([2, 4, 6, 8], [3, 5, 7, 9]), Fiber([3, 5, 7], [4, 6, 8])])"
-        self.assertEqual(sr, sr_ref)
-
 
     def test_getCoords(self):
         """Extract coordinates"""

@@ -7,7 +7,7 @@ from fibertree.fiber import Fiber
 
 from fibertree.tensor_image import TensorImage
 
-class TestFiberSplit(unittest.TestCase):
+class TestFiberMutator(unittest.TestCase):
 
     def test_split_uniform_below(self):
         """Test splitUniformBelow"""
