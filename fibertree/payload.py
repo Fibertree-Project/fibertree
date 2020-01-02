@@ -96,6 +96,13 @@ class Payload:
 
         return self.value.print(title)
 
+
+    def __format__(self, spec="d"):
+        """__format__"""
+
+        return f"<{self.value:{spec}}>"
+
+
     def __str__(self):
         """__str__"""
 
@@ -246,6 +253,27 @@ class Payload:
             ans = self.value << other
 
         return Payload(ans)
+
+#
+# Conversion methods - to/from dictionaries
+#
+
+    @staticmethod
+    def payload2dict(payload):
+        """Return payload converted to dictionry or simple value"""
+
+        from fibertree.fiber import Fiber
+
+        if isinstance(payload, Fiber):
+            # Note: this leg is deprecated and should be removed
+            return payload.fiber2dict()
+        elif isinstance(payload, Payload):
+            if Payload.contains(payload, Fiber):
+                return payload.value.fiber2dict()
+            else:
+                return payload.value
+        else:
+            return payload
 
 
 

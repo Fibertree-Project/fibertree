@@ -1,6 +1,7 @@
 import unittest
 from fibertree.payload import Payload
 from fibertree.fiber import Fiber
+from fibertree.fiber import CoordPayload
 from fibertree.tensor import Tensor
 from fibertree.tensor_image import TensorImage
 
@@ -22,6 +23,18 @@ class TestFiber(unittest.TestCase):
         """Create an empty fiber"""
 
         a = Fiber([], [])
+
+    def test_comparison_eq_ne(self):
+
+        a = Fiber([2, 4, 6], [3, 5, 7])
+        b = Fiber([2, 4, 6], [3, 5, 7])
+        c = Fiber([2, 5, 6], [3, 5, 7])
+        d = Fiber([2, 4, 6], [3, 6, 7])
+
+        self.assertTrue(a == b)
+        self.assertTrue(a != c)
+        self.assertTrue(a != d)
+
 
     def test_comparison_eq(self):
 
@@ -74,6 +87,26 @@ class TestFiber(unittest.TestCase):
         self.assertNotEqual(x2, x3)
         self.assertNotEqual(x2, x4)
         self.assertNotEqual(x3, x4)
+
+    def test_fromCoordPayloadList(self):
+
+        cp = [(2, 3), (4, 5), (6, 7)]
+
+        (coords, payloads) = zip(*cp)
+
+        a_ref = Fiber(coords=coords, payloads=payloads)
+
+        a1 = Fiber.fromCoordPayloadList(*cp)
+        self.assertEqual(a1, a_ref)
+        self.assertEqual(a1.getDefault(), 0)
+
+        a2 = Fiber.fromCoordPayloadList(*cp, default=1)
+        self.assertEqual(a2, a_ref)
+        self.assertEqual(a2.getDefault(), 1)
+
+        a3 = Fiber.fromCoordPayloadList(default=2, *cp)
+        self.assertEqual(a3, a_ref)
+        self.assertEqual(a3.getDefault(), 2)
 
 
     def test_fromYAMLfile_1D(self):
@@ -160,108 +193,6 @@ class TestFiber(unittest.TestCase):
                                     [0, 0, 0, 0, 0, 0]])
 
         self.assertEqual(f, f_ref)
-
-    def test_print_1D(self):
-        """Test str format 1D"""
-
-        c = [2, 4, 6, 8]
-        p = [3, 5, 7, 9]
-
-        a = Fiber(c, p)
-
-        ss = f"{a}"
-        ss_ref = "F/[(2 -> <3>) \n   (4 -> <5>) \n   (6 -> <7>) \n   (8 -> <9>) ]"
-
-        self.assertEqual(ss, ss_ref)
-
-        sr = f"{a!r}"
-        sr_ref = "Fiber([2, 4, 6, 8], [3, 5, 7, 9])"
-
-        self.assertEqual(sr, sr_ref)
-
-
-    def test_print_2D_flattened(self):
-        """Test str format 2D flattened"""
-
-        c = [(2,3), (2,4), (3,1), (8,2)]
-        p = [3, 5, 7, 9]
-
-        a = Fiber(c, p)
-
-        ss = f"{a}"
-        ss_ref = "F/[((2, 3) -> <3>) \n   ((2, 4) -> <5>) \n   ((3, 1) -> <7>) \n   ((8, 2) -> <9>) ]"
-
-        self.assertEqual(ss, ss_ref)
-
-        sr = f"{a!r}"
-        sr_ref = "Fiber([(2, 3), (2, 4), (3, 1), (8, 2)], [3, 5, 7, 9])"
-        self.assertEqual(sr, sr_ref)
-
-
-    def test_print_2D(self):
-        """Test str format 2D"""
-
-        c0 = [2, 4, 6, 8]
-        p0 = [3, 5, 7, 9]
-        f0 = Fiber(c0, p0)
-
-        c1 = [3, 5, 7]
-        p1 = [4, 6, 8]
-        f1 = Fiber(c1, p1)
-
-        c = [2,5]
-
-        a = Fiber(c, [f0, f1])
-
-        ss = f"{a}"
-
-        ss_ref = "F/[( 2 -> F/[(2 -> <3>) \n" + \
-                 "             (4 -> <5>) \n" + \
-                 "             (6 -> <7>) \n" + \
-                 "             (8 -> <9>) ])\n" + \
-                 "   ( 5 -> F/[(3 -> <4>) \n" + \
-                 "             (5 -> <6>) \n" + \
-                 "             (7 -> <8>) ])"
-
-        self.assertEqual(ss, ss_ref)
-
-        sr = f"{a!r}"
-
-        sr_ref = "Fiber([2, 5], [Fiber([2, 4, 6, 8], [3, 5, 7, 9]), Fiber([3, 5, 7], [4, 6, 8])])"
-        self.assertEqual(sr, sr_ref)
-
-    def test_print_3D_flattened(self):
-        """Test str format 3D flattened"""
-
-        c0 = [2, 4, 6, 8]
-        p0 = [3, 5, 7, 9]
-        f0 = Fiber(c0, p0)
-
-        c1 = [3, 5, 7]
-        p1 = [4, 6, 8]
-        f1 = Fiber(c1, p1)
-
-        c = [(0, 2), (1, 5)]
-
-        a = Fiber(c, [f0, f1])
-
-        ss = f"{a}"
-
-        ss_ref = "F/[( (0, 2) -> F/[(2 -> <3>) \n" + \
-                 "                  (4 -> <5>) \n" + \
-                 "                  (6 -> <7>) \n" + \
-                 "                  (8 -> <9>) ])\n" + \
-                 "   ( (1, 5) -> F/[(3 -> <4>) \n" + \
-                 "                  (5 -> <6>) \n" + \
-                 "                  (7 -> <8>) ])"
-
-        self.assertEqual(ss, ss_ref)
-
-        sr = f"{a!r}"
-
-        sr_ref = "Fiber([(0, 2), (1, 5)], [Fiber([2, 4, 6, 8], [3, 5, 7, 9]), Fiber([3, 5, 7], [4, 6, 8])])"
-        self.assertEqual(sr, sr_ref)
-
 
     def test_getCoords(self):
         """Extract coordinates"""
@@ -371,6 +302,14 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.maxCoord(), c_max)
 
 
+    def test_minmaxCoord_empty(self):
+
+        f = Fiber([], [])
+
+        self.assertIsNone(f.minCoord())
+        self.assertIsNone(f.maxCoord())
+
+
     def test_values_2D(self):
         """Count values in a 2-D fiber"""
 
@@ -385,6 +324,21 @@ class TestFiber(unittest.TestCase):
         a = Fiber([1, 8, 9], [2, 0, 10])
 
         self.assertEqual(a.countValues(), 2)
+
+
+    def test_iter(self):
+        """Test iteration over a fiber"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+
+        a = Fiber(c0, p0)
+
+        i = 0
+        for (c, p) in a:
+            self.assertEqual(c, c0[i])
+            self.assertEqual(p, p0[i])
+            i += 1
 
 
     def test_getitem_simple(self):
@@ -429,6 +383,56 @@ class TestFiber(unittest.TestCase):
         slice1_ref = Fiber(slice1_coord_ref, slice1_payload_ref)
 
         self.assertEqual(slice1, slice1_ref)
+
+
+    def test_getitem_nD(self):
+        """Get item - multi-dimensional"""
+
+        c00 = [1, 2, 3]
+        p00 = [2, 3, 4]
+        f00 = Fiber(c00, p00)
+
+        c01 = [4, 6, 8]
+        p01 = [5, 7, 9]
+        f01 = Fiber(c01, p01)
+
+        c02 = [5, 7]
+        p02 = [6, 8]
+        f02 = Fiber(c02, p02)
+
+        c0 = [4, 5, 8]
+        p0 = [f00, f01, f02]
+        f = Fiber(c0, p0)
+
+        f_1_1 = f[1, 1]
+        f_1_1_ref = CoordPayload(c0[1], f01[1])
+
+        self.assertEqual(f_1_1, f_1_1_ref)
+
+        f_02_1 = f[0:2, 1]
+        f_02_1_ref = Fiber(c0[0:2], [f00[1], f01[1]])
+
+        self.assertEqual(f_02_1, f_02_1_ref)
+
+        f_12_1 = f[1:2, 1]
+        f_12_1_ref = Fiber(c0[1:2], [f01[1]])
+
+        self.assertEqual(f_12_1, f_12_1_ref)
+
+        f_02_01 = f[0:2, 0:1]
+        f_02_01_ref = Fiber(c0[0:2], [f00[0:1], f01[0:1]])
+
+        self.assertEqual(f_02_01, f_02_01_ref)
+
+        f_13_02 = f[1:3, 0:2]
+        f_13_02_ref = Fiber(c0[1:3], [f01[0:2], f02[0:2]])
+
+        self.assertEqual(f_13_02, f_13_02_ref)
+
+        f_13_12 = f[1:3, 1:2]
+        f_13_12_ref = Fiber(c0[1:3], [f01[1:2], f02[1:2]])
+
+        self.assertEqual(f_13_12, f_13_12_ref)
 
 
     def test_len(self):
@@ -517,9 +521,22 @@ class TestFiber(unittest.TestCase):
 
         aa_ref = Fiber(aa_coords, aa_payloads)
 
-        a.append(7, 10)
+        retval = a.append(7, 10)
 
+        self.assertIsNone(retval)
         self.assertEqual(a, aa_ref)
+
+    def test_append_empty(self):
+        """Append to empty fiber"""
+
+        a = Fiber([], [])
+        a_ref = Fiber( [4], [8])
+
+        retval = a.append(4, 8)
+
+        self.assertIsNone(retval)
+        self.assertEqual(a, a_ref)
+
 
     def test_append_assert(self):
         """Append element at end of fiber - and assert"""
@@ -550,8 +567,9 @@ class TestFiber(unittest.TestCase):
 
         ae_ref = Fiber(ae_coords, ae_payloads)
 
-        a.extend(b)
+        retval = a.extend(b)
 
+        self.assertIsNone(retval)
         self.assertEqual(a, ae_ref)
 
 
@@ -592,12 +610,14 @@ class TestFiber(unittest.TestCase):
 
         for i in insert_at:
             p = i*i+1
-            a.insert(i, p)
+            retval = a.insert(i, p)
 
+            self.assertIsNone(retval)
             self.assertEqual(a, ans[i])
 
 
     def test_shape(self):
+        """Test determining shape of a fiber"""
 
         a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
 
@@ -605,6 +625,14 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(s, [5, 8])
 
+    def test_shape_empty(self):
+        """Test determining shape of an empty fiber"""
+
+        a = Fiber([], [])
+
+        s = a.getShape()
+
+        self.assertEqual(s, [0])
 
     def test_uncompress(self):
         """Test recursive iteration"""
@@ -753,6 +781,36 @@ class TestFiber(unittest.TestCase):
                         ("AB", 10, 11)])
 
         ab = a | b
+
+        self.assertEqual(ab, ab_ref)
+
+
+    def test_xor(self):
+        """Xor test"""
+
+        a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
+        b = Fiber([0, 5, 9], [2, 7, 11])
+
+        ab_ref = Fiber([0, 1, 8],
+                       [("B", 0, 2),
+                        ("A", 2, 0),
+                        ("A", 9, 0)])
+
+        ab = a ^ b
+
+        self.assertEqual(ab, ab_ref)
+
+    def test_xor_empty(self):
+        """Uniontest - with explict zeros"""
+
+        a = Fiber([1, 5, 8, 9], [0, 6, 0, 10])
+        b = Fiber([1, 5, 8, 9], [2, 0, 0, 11])
+
+        ab_ref = Fiber([1, 5],
+                       [("B", 0, 2),
+                        ("A", 6, 0)])
+
+        ab = a ^ b
 
         self.assertEqual(ab, ab_ref)
 

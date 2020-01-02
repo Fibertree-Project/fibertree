@@ -78,7 +78,7 @@ class Rank:
         next_indent = len(string)
 
         separator = ",\n" + " "*next_indent
-        fibers = [x.__str__(indent=next_indent) for x in self.fibers]
+        fibers = [x.__str__(indent=next_indent, cutoff=1000, newline=True) for x in self.fibers]
         string += separator.join(fibers)
 
         return string

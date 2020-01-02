@@ -8,10 +8,20 @@ from fibertree.tensor import Tensor
 
 class TestTensor(unittest.TestCase):
 
-    def test_constructor(self):
+    def test_constructor_empty(self):
         """Test construction of empty tensor"""
 
         Tensor(rank_ids=["M", "K"])
+
+
+    def test_constructor_rank_0D(self):
+        """Test construction of 0-D tensor"""
+
+        t = Tensor(rank_ids=[])
+        p = t.getRoot()
+        p += 1
+
+        self.assertEqual(p, 1)
 
 
     def test_new(self):
@@ -35,6 +45,19 @@ class TestTensor(unittest.TestCase):
         tensor = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
         self.assertTrue(tensor == tensor_ref)
+
+
+    def test_fromYAMLfile_0D(self):
+        """Test construction of 0-D tensor from a YAML file"""
+
+        tensor_ref  = Tensor(rank_ids=[])
+        root = tensor_ref.getRoot()
+        root += 2
+
+        tensor = Tensor.fromYAMLfile("./data/tensor_0d.yaml")
+
+        self.assertTrue(tensor == tensor_ref)
+
 
     def test_fromUncompressed_1D(self):
         """Test construction of a tensor from nested lists"""
@@ -74,6 +97,26 @@ class TestTensor(unittest.TestCase):
 
         self.assertEqual(tensor, tensor_ref)
 
+    def test_fromUncompressed_20(self):
+        """Test construction of a tensor a scalar"""
+
+        t_ref = Tensor(rank_ids=[])
+        p = t_ref.getRoot()
+        p += 2
+
+        t0 = Tensor.fromUncompressed([], 2)
+
+        self.assertEqual(t0, t_ref)
+
+        t1 = Tensor.fromUncompressed(rank_ids=[], root=2)
+
+        self.assertEqual(t1, t_ref)
+
+        t2 = Tensor.fromUncompressed(root=2)
+
+        self.assertEqual(t2, t_ref)
+
+
     def test_fromFiber(self):
         """Test construction of a tensor from a fiber"""
 
@@ -86,7 +129,29 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(tensor, tensor_ref)
 
 
+    def test_print_0D(self):
+        """Test printing a 0-D tensor"""
+
+        a = Tensor(rank_ids=[])
+        p = a.getRoot()
+        p += 2
+
+        a_s_ref = "T()/[<2>]"
+
+        a_s = f"{a}"
+
+        self.assertEqual(a_s, a_s_ref)
+
+        a_r_ref = "T()/[2]"
+
+        a_r = f"{a!r}"
+
+        self.assertEqual(a_r, a_r_ref)
+
+
     def test_print_2D(self):
+        """Test printing a 2-D tensor"""
+
         a = Tensor.fromYAMLfile("./data/matrix-a.yaml")
 
         a_s_ref = "T(M,K)/[\n" + \

@@ -1,11 +1,30 @@
 """Fiber"""
 
+from collections import namedtuple
+from functools import partialmethod
 import yaml
 
 from fibertree.payload import Payload
 
+#
+# Define a named tuple for coordinate/payload pairs
+#
+CoordPayload = namedtuple('CoordPayload', 'coord payload')
+
+
+#
+# Define the fiber class
+#
 class Fiber:
-    """Fiber class"""
+    """Fiber class
+
+    A fiber of a tensor containing a list of coordinates and
+    asssociated payloads.
+
+    Note: The coords and payloads instance variables are currently
+    left public...
+
+    """
 
     def __init__(self, coords=None, payloads=None, default=0, initial=None):
         """__init__"""
@@ -36,10 +55,27 @@ class Fiber:
         self.payloads = [self._maybe_box(p) for p in payloads]
 
         # Owner rank... set on append to rank
-        self.owner = None
+        self.setOwner(None)
 
         # Default value assigned to new coordinates
         self.setDefault(default)
+
+
+    @classmethod
+    def fromCoordPayloadList(cls, *cp, default=0):
+        """Construct a Fiber from a coordinate/payload list
+
+        Parameters
+        ----------
+
+        cp: sequence of (coord, payload) tuples
+        default: default payload
+
+        """
+
+        (coords, payloads) = zip(*cp)
+
+        return cls(coords, payloads, default=default)
 
 
     @classmethod
@@ -194,16 +230,16 @@ class Fiber:
 
         Optinally insert into the owners rank.
 
-        Note: self.default must be set
+        Note: self._default must be set
         """
 
         # Create a payload at coord
         # Iemporary value (should be None)
 
-        if callable(self.default):
-            value = self.default()
+        if callable(self._default):
+            value = self._default()
         else:
-            value = self.default
+            value = self._default
 
         self.insert(coord, value)
 
@@ -212,8 +248,8 @@ class Fiber:
         payload = self.getPayload(coord)
 
         if Payload.contains(value, Fiber):
-            assert(not self.owner is None)
-            next_rank = self.owner.get_next()
+            assert(not self._owner is None)
+            next_rank = self._owner.get_next()
             if not next_rank is None:
                 next_rank.append(payload)
 
@@ -222,17 +258,30 @@ class Fiber:
     def setDefault(self, default):
         """setDefault"""
 
-        self.default = default
+        self._default = default
+
+    def getDefault(self):
+        """getDefault"""
+
+        return self._default
 
     def setOwner(self, owner):
         """setOwner"""
 
-        self.owner = owner
+        self._owner = owner
+
+    def getOwner(self):
+        """getOwner"""
+
+        return self._owner
 
     def minCoord(self):
         """min_coord"""
 
         # TBD: Should check that the candidate is not an explicit zero
+
+        if len(self.coords) == 0:
+            return None
 
         return min(self.coords)
 
@@ -240,6 +289,9 @@ class Fiber:
         """max_coord"""
 
         # TBD: Should check that the candidate is not an explicit zero
+
+        if len(self.coords) == 0:
+            return None
 
         return max(self.coords)
 
@@ -259,7 +311,7 @@ class Fiber:
         return count
 
 
-    def __getitem__(self, key):
+    def __getitem__(self, keys):
         """__getitem__
 
         For an integer key return a (coordinate, payload) tuple
@@ -268,8 +320,8 @@ class Fiber:
 
         Parameters
         ----------
-        key: integer or slice
-        The position or slice in the fiber
+        keys: single integer/slicr or tuple of integers/slices
+        The positions or slices in an n-D fiber
 
         Returns
         -------
@@ -286,8 +338,19 @@ class Fiber:
         Invalid key type
         """
 
-        if isinstance(key, int) :
-            if key < 0 :
+        if not isinstance(keys, tuple):
+            # Keys is a single value for 1-D access
+            key = keys
+            key_cdr = ()
+        else:
+            # Keys is a tuple for for n-D access
+            key = keys[0]
+            key_cdr = keys[1:]
+
+        if isinstance(key, int):
+            # Handle key as single index
+
+            if key < 0:
                 #Handle negative indices
                 key += len(self)
 
@@ -295,14 +358,28 @@ class Fiber:
                    raise(IndexError,
                          f"The index ({key}) is out of range")
 
-            return (self.coords[key], self.payloads[key])
+            new_payload = self.payloads[key]
+
+            if len(key_cdr):
+                # Recurse down the fiber tree
+                new_payload = new_payload[key_cdr]
+
+            return CoordPayload(self.coords[key], new_payload)
 
         if isinstance(key, slice) :
+            # Key is a slice
+
             #Get the start, stop, and step from the slice
             slice_range = range(*key.indices(len(self)))
 
             coords = [self.coords[ii] for ii in slice_range]
-            payloads = [self.payloads[ii] for ii in slice_range]
+
+            if len(key_cdr):
+                # Recurse down the fiber tree for each payload in slice
+                payloads = [self.payloads[ii][key_cdr] for ii in slice_range]
+            else:
+                # Just use each payload in slice
+                payloads = [self.payloads[ii] for ii in slice_range]
 
             return Fiber(coords, payloads)
 
@@ -353,13 +430,13 @@ class Fiber:
         """__iter__"""
 
         for i in range(len(self.coords)):
-            yield (self.coords[i], self.payloads[i])
+            yield CoordPayload(self.coords[i], self.payloads[i])
 
     def __reversed__(self):
         """Return reversed fiber"""
 
         for coord, payload in zip(reversed(self.coords), reversed(self.payloads)):
-            yield (coord, payload)
+            yield CoordPayload(coord, payload)
 
 
 #
@@ -377,7 +454,7 @@ class Fiber:
     def append(self, coord, value):
         """append - Add element at end of fiber"""
 
-        assert self.maxCoord() < coord, \
+        assert self.maxCoord() is None or self.maxCoord() < coord, \
                "Fiber coordinates must be monotonically increasing"
 
         payload = self._maybe_box(value)
@@ -394,13 +471,15 @@ class Fiber:
 
         if other.isEmpty():
             # Extending with an empty fiber is a nop
-            return
+            return None
 
-        assert self.maxCoord() < other.coords[0], \
+        assert self.maxCoord() is None or self.maxCoord() < other.coords[0], \
                "Fiber coordinates must be monotonically increasing"
 
         self.coords.extend(other.coords)
         self.payloads.extend(other.payloads)
+
+        return None
 
 
     def insert(self, coord, value):
@@ -415,6 +494,8 @@ class Fiber:
         except StopIteration:
             self.coords.append(coord)
             self.payloads.append(payload)
+
+        return None
 
 
     def project(self, trans_fn=None, interval=None):
@@ -454,10 +535,45 @@ class Fiber:
 
         return Fiber(coords, payloads)
 
-    def updatePayloads(self, func):
+    def updatePayloads(self, func, depth=0):
+        """updatePayloads
 
-        for i in range(len(self.payloads)):
-            self.payloads[i] = func(self.payloads[i])
+        Update each payload in the the fibers at a depth of "depth"
+        below "self" by invoking "func" on it.  Therefore, a depth of
+        zero will update the payloads in the current fiber. Higher
+        depths with result in a depth first search down to "depth"
+        before traversing the payloads.
+
+        Parameters
+        ----------
+
+        func: function
+        A function that is invoked with each payload as its argument
+
+        depth: integer
+        The depth in the fiber tree to dive before traversing
+
+        Returns
+        --------
+
+        None
+
+        Raises
+        ------
+
+        TBD: currently nothing
+
+        """
+        if depth > 0:
+            # Recurse down to depth...
+            for p in self.payloads:
+                p.updatePayloads(func, depth=depth-1)
+        else:
+            # Update my payloads
+            for i in range(len(self.payloads)):
+                self.payloads[i] = func(self.payloads[i])
+
+        return None
 
 
     def unzip(self):
@@ -477,9 +593,8 @@ class Fiber:
     def getShape(self):
         """Return shape of fiber tree"""
         
-        max_coord = self.maxCoord()
-
         return self._calcShape(shape=[], level=0)
+
 
     def _calcShape(self, shape, level):
         """Find the maximum coordinate at each level of the tree"""
@@ -489,16 +604,24 @@ class Fiber:
         #
         if len(shape) < level+1:
             shape.append(0)
-        
+
+        max_coord = self.maxCoord()
+
+        #
+        # If Fiber is empty then shape doesn't change
+        #
+        if max_coord is None:
+            return shape
+
         #
         # Update shape for this Fiber at this level
         #
-        shape[level] = max(shape[level], self.maxCoord()+1)
+        shape[level] = max(shape[level], max_coord+1)
 
+        #
+        # Recursively process payloads that are Fibers
+        #
         if Payload.contains(self.payloads[0], Fiber):
-            #
-            # Process payloads that are Fibers
-            #
             for p in self.payloads:
                 Payload.get(p)._calcShape(shape, level+1)
 
@@ -543,6 +666,8 @@ class Fiber:
 #
 # Split methods
 #
+# Note: all these methods return a new fiber
+#
 
 
     def splitUniform(self, step, partitions=1):
@@ -574,7 +699,7 @@ class Fiber:
         class _SplitterNonUniform():
 
             def __init__(self, splits):
-                self.splits = splits
+                self.splits = splits.copy()
                 self.cur_split = self.splits.pop(0)
 
             def nextGroup(self, i, c):
@@ -623,7 +748,7 @@ class Fiber:
         class _SplitterUnEqual():
 
             def __init__(self, sizes):
-                self.sizes = sizes
+                self.sizes = sizes.copy()
                 self.cur_count = -1
 
             def nextGroup(self, i, c):
@@ -775,7 +900,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
             """get_next_nonempty"""
@@ -785,7 +910,7 @@ class Fiber:
             while Payload.isEmpty(payload):
                 (coord, payload) = get_next(iter)
 
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         a = self.__iter__()
         b = other.__iter__()
@@ -851,7 +976,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
             """get_next_nonempty"""
@@ -861,7 +986,7 @@ class Fiber:
             while Payload.isEmpty(payload):
                 (coord, payload) = get_next(iter)
 
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         a = self.__iter__()
         b = other.__iter__()
@@ -878,6 +1003,99 @@ class Fiber:
 
                 z_payloads.append(("AB", a_payload, b_payload))
 
+                a_coord, a_payload = get_next_nonempty(a)
+                b_coord, b_payload = get_next_nonempty(b)
+                continue
+
+            if a_coord < b_coord:
+                z_coords.append(a_coord)
+                # TODO: Append the right b_payload, e.g., maybe a Fiber()
+                z_payloads.append(("A", a_payload, 0))
+
+                a_coord, a_payload = get_next_nonempty(a)
+                continue
+
+            if a_coord > b_coord:
+                z_coords.append(b_coord)
+                # TODO: Append the right a_payload, e.g., maybe a Fiber()
+                z_payloads.append(("B", 0, b_payload))
+
+                b_coord, b_payload = get_next_nonempty(b)
+                continue
+
+        while not a_coord is None:
+            z_coords.append(a_coord)
+            z_payloads.append(("A", a_payload, 0))
+
+            a_coord, a_payload = get_next_nonempty(a)
+
+        while  not b_coord is None:
+            z_coords.append(b_coord)
+            z_payloads.append(("B", 0, b_payload))
+
+            b_coord, b_payload = get_next_nonempty(b)
+
+        return Fiber(z_coords, z_payloads)
+
+
+    def __xor__(self, other):
+        """__xor__
+
+        Return the xor of "self" and "other" by considering all possible
+        coordinates and returning a fiber consisting of payloads containing
+        a tuple of the payloads of the inputs for coordinates where the
+        following truth table returns True:
+
+
+                         coordinate not     |      coordinate
+                        present in "other"  |    present in "other"
+                    +-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        not present |         False         |        True           |
+        in "self"   |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+                    |                       |                       |
+        coordinate  |                       |                       |
+        present in  |         True          |        False          |
+        "self"      |                       |                       |
+                    |                       |                       |
+        ------------+-----------------------+-----------------------+
+
+        """
+
+
+        def get_next(iter):
+            """get_next"""
+
+            try:
+                coord, payload = next(iter)
+            except StopIteration:
+                return (None, None)
+            return CoordPayload(coord, payload)
+
+        def get_next_nonempty(iter):
+            """get_next_nonempty"""
+
+            (coord, payload) = get_next(iter)
+
+            while Payload.isEmpty(payload):
+                (coord, payload) = get_next(iter)
+
+            return CoordPayload(coord, payload)
+
+        a = self.__iter__()
+        b = other.__iter__()
+
+        z_coords = []
+        z_payloads = []
+
+        a_coord, a_payload = get_next_nonempty(a)
+        b_coord, b_payload = get_next_nonempty(b)
+
+        while not (a_coord is None or b_coord is None):
+            if a_coord == b_coord:
                 a_coord, a_payload = get_next_nonempty(a)
                 b_coord, b_payload = get_next_nonempty(b)
                 continue
@@ -953,7 +1171,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
             """get_next_nonempty"""
@@ -963,7 +1181,7 @@ class Fiber:
             while Payload.isEmpty(payload):
                 (coord, payload) = get_next(iter)
 
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
 
         # "a" is self!
@@ -1023,7 +1241,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
             """get_next_nonempty"""
@@ -1033,7 +1251,7 @@ class Fiber:
             while Payload.isEmpty(payload):
                 (coord, payload) = get_next(iter)
 
-            return (coord, payload)
+            return CoordPayload(coord, payload)
 
         a = self.__iter__()
         b = other.__iter__()
@@ -1073,6 +1291,8 @@ class Fiber:
 
 #
 # Multilayer methods
+#
+# Note: all these methods return a new fiber
 #
     def swapRanks(self):
         """Swap the (highest) two ranks of the fiber.
@@ -1198,6 +1418,50 @@ class Fiber:
         return Fiber(coords1, payloads1)
 
 #
+# Closures to operate on all payloads at a specified depth
+#
+# Note: all these methods mutate the fibers
+#
+# TBD: Reimpliment with Guowei's cleaner Python closure/wrapper
+#
+
+    def updatePayloadsBelow(self, func, *args, depth=0, **kwargs):
+        """updatePayloadsBelow
+
+        Utility function used as a closure on updatePayloads() to
+        change all the payloads in fibers at "depth" in the tree by
+        applying "func" with parameters *args and **kwargs to the
+        payloads.
+
+        """
+
+        update_lambda = lambda p: func(p, *args, **kwargs)
+        return self.updatePayloads(update_lambda, depth=depth)
+
+
+    splitUniformBelow = partialmethod(updatePayloadsBelow,
+                                      splitUniform)
+
+    splitNonUniformBelow = partialmethod(updatePayloadsBelow,
+                                         splitNonUniform)
+
+    splitEqualBelow = partialmethod(updatePayloadsBelow,
+                                    splitEqual)
+
+    splitUnEqualBelow = partialmethod(updatePayloadsBelow,
+                                      splitUnEqual)
+
+    swapRanksBelow = partialmethod(updatePayloadsBelow,
+                                      swapRanks)
+
+    flattenRanksBelow = partialmethod(updatePayloadsBelow,
+                                      flattenRanks)
+
+    unflattenRanksBelow = partialmethod(updatePayloadsBelow,
+                                        unflattenRanks)
+
+
+#
 #  Comparison operations
 #
 
@@ -1231,41 +1495,123 @@ class Fiber:
         print("%s" % self)
         print("")
 
-    def __str__(self, indent=0):
+    def __format__(self, format):
+        """__format__
+
+        Format a fiber
+
+        Spec:
+
+        [(<coord spec>,<scalar spec>)][n][*]
+
+        where:
+                "n" means add newlines
+                "*" means do not truncate with elipsis
+
+        """
+        import re
+
+        kwargs = {}
+
+        regex0 = '(\(.*,.*\))?(n)?(\*)?'
+        match0 = re.search(regex0, format)
+        group1 = match0.group(1)
+
+        if group1 is not None:
+            regex1 = '\((.*),(.*)\)'
+            match1 = re.search(regex1, group1)
+            kwargs['coord_fmt'] = match1.group(1)
+            kwargs['payload_fmt'] = match1.group(2)
+
+        if match0.group(2) == 'n':
+            kwargs['newline'] = True
+
+        if match0.group(3) == '*':
+            kwargs['cutoff'] = 10000
+
+        return self.__str__(**kwargs)
+
+
+    def __str__(self,
+                coord_fmt = "d",
+                payload_fmt = "d",
+                newline=False,
+                cutoff=2,
+                indent=0):
         """__str__"""
+
+        def format_coord(coord):
+            """Return "coord" properly formatted with "coord_fmt" """
+
+            if not isinstance(coord, tuple):
+                return f"{coord:{coord_fmt}}"
+
+            return '(' + ', '.join(format_coord(c) for c in coord) + ')'
+
+
+        def cond_string(string):
+            """Return "string" if newline is True"""
+
+            if newline:
+                return string
+
+            return ''
 
         str = ''
 
-        if self.owner is None:
+        if self._owner is None:
             str += "F/["
         else:
-            str += f"F({self.owner.getName()})/["
+            str += f"F({self._owner.getName()})/["
 
         coord_indent = 0
+        next_indent = 0
+        items = len(self.coords)
 
         if self.payloads and isinstance(self.payloads[0], Fiber):
 
-            for (c, p) in zip(self.coords, self.payloads):
-                if ( coord_indent == 0):
+            for (c, p) in zip(self.coords[0:cutoff], self.payloads[0:cutoff]):
+                if coord_indent == 0:
                     coord_indent = indent + len(str)
-                    str += f"( {c} -> "
-                    next_indent = indent + len(str)
+                    str += f"( {format_coord(c)} -> "
+                    if newline:
+                        next_indent = indent + len(str)
                 else:
-                    str += '\n'
-                    str += coord_indent*' ' + f"( {c} -> "
+                    str += cond_string('\n' + coord_indent* ' ')
+                    str += f"( {format_coord(c)} -> "
 
-                str += p.__str__(indent=next_indent)
+                str += p.__str__(coord_fmt=coord_fmt,
+                                 payload_fmt=payload_fmt,
+                                 newline=newline,
+                                 cutoff=cutoff,
+                                 indent=next_indent)
                 str += ')'
+
+            if items > cutoff:
+                str += cond_string('\n')
+                str += next_indent*' ' + "..."
+                str += cond_string('\n')
+                str += next_indent*' ' + "..."
 
             return str
 
-        next_indent = indent + len(str)
-        for i in range(len(self.coords)):
-            if coord_indent != 0:
-                str += '\n'
+        if newline:
+            next_indent = indent + len(str)
 
-            str += coord_indent*' ' + f"({self.coords[i]} -> {self.payloads[i]}) "
+        for i in range(min(items, cutoff)):
+            if coord_indent != 0:
+                str += cond_string('\n')
+
+            str += cond_string(coord_indent*' ')
+            str += f"({format_coord(self.coords[i])} -> "
+            str += f"{self.payloads[i]:{payload_fmt}}) "
             coord_indent = next_indent
+
+        if items > cutoff:
+            str += cond_string('\n'+next_indent*' ')
+            str += " ... "
+            str += cond_string('\n'+next_indent*' ')
+            str += " ... "
 
         str += "]"
         return str
@@ -1277,8 +1623,8 @@ class Fiber:
 
         str = f"Fiber({self.coords!r}, {self.payloads!r}"
 
-        if self.owner:
-            str += f", owner={self.owner.getName()}"
+        if self._owner:
+            str += f", owner={self._owner.getName()}"
 
         str += ")"
 
@@ -1320,7 +1666,7 @@ class Fiber:
         with open(yamlfile, 'w') as stream:
             document = yaml.dump(fiber_dict, stream)
 
-
+#
 # Conversion methods - to/from dictionaries
 #
 
@@ -1375,25 +1721,11 @@ class Fiber:
 
         f = { 'fiber' :
               { 'coords'   : self.coords,
-                'payloads' : [ self.payload2dict(p) for p in self.payloads ]
+                'payloads' : [ Payload.payload2dict(p) for p in self.payloads ]
               }
         }
 
         return f
-
-    def payload2dict(self, payload):
-        """Return payload converted to dictionry or simple value"""
-
-        if isinstance(payload, Fiber):
-            # Note: this leg is deprecated and should be removed
-            return payload.fiber2dict()
-        elif isinstance(payload, Payload):
-            if Payload.contains(payload, Fiber):
-                return payload.value.fiber2dict()
-            else:
-                return payload.value
-        else:
-            return payload
 
 #
 # Utility functions
