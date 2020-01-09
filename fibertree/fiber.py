@@ -535,6 +535,50 @@ class Fiber:
 
         return Fiber(coords, payloads)
 
+    def updateCoords(self, func, depth=0):
+        """updateCoords
+
+        Update each coordinate in the the fibers at a depth of "depth"
+        below "self" by invoking "func" on it.  Therefore, a depth of
+        zero will update the coordinates in the current fiber. Higher
+        depths with result in a depth first search down to "depth"
+        before traversing the coordinates.
+
+        Note: Function currently does not check that coordinates remain
+              monotonically increasing.
+
+        Parameters
+        ----------
+
+        func: function
+        A function that is invoked with each coordinate as its argument
+
+        depth: integer
+        The depth in the fiber tree to dive before traversing
+
+        Returns
+        --------
+
+        None
+
+        Raises
+        ------
+
+        TBD: currently nothing
+
+        """
+        if depth > 0:
+            # Recurse down to depth...
+            for p in self.payloads:
+                p.updateCoords(func, depth=depth-1)
+        else:
+            # Update my coordinates
+            for i in range(len(self.coords)):
+                self.coords[i] = func(self.coords[i])
+
+        return None
+
+
     def updatePayloads(self, func, depth=0):
         """updatePayloads
 

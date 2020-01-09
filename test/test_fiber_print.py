@@ -128,10 +128,6 @@ class TestFiberPrint(unittest.TestCase):
                     "              (05 -> <006>) \n" + \
                     "              (07 -> <008>) ])"
 
-        print("\n")
-        print(snscp)
-        print(snscp_ref)
-              
         self.assertEqual(snscp, snscp_ref)
 
         sr = f"{a!r}"
