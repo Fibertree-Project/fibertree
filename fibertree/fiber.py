@@ -714,7 +714,7 @@ class Fiber:
 #
 
 
-    def splitUniform(self, step, partitions=1):
+    def splitUniform(self, step, partitions=1, relativeCoords=False):
         """splitUniform"""
 
         class _SplitterUniform():
@@ -725,45 +725,53 @@ class Fiber:
 
             def nextGroup(self, i, c):
                 count = 0
+                last_group = self.cur_group
 
                 while c >= self.cur_group:
                     count += 1
+                    last_group = self.cur_group
                     self.cur_group += self.step
 
-                return count
+                return count, last_group
 
         splitter = _SplitterUniform(step)
 
-        return self._splitGeneric(splitter, partitions)
+        return self._splitGeneric(splitter, partitions, relativeCoords=relativeCoords)
 
 
-    def splitNonUniform(self, splits, partitions=1):
+    def splitNonUniform(self, splits, partitions=1, relativeCoords=False):
         """splitNonUniform"""
 
         class _SplitterNonUniform():
 
             def __init__(self, splits):
-                self.splits = splits.copy()
+                if isinstance(splits, Fiber):
+                    self.splits = splits.coords.copy()
+                else:
+                    self.splits = splits.copy()
+
                 self.cur_split = self.splits.pop(0)
 
             def nextGroup(self, i, c):
                 count = 0
+                last_group = self.cur_split
 
                 while c >= self.cur_split:
                     count += 1
+                    last_group = self.cur_split
                     if self.splits:
                         self.cur_split = self.splits.pop(0)
                     else:
                         self.cur_split = float("inf")
 
-                return count
+                return count, last_group
 
         splitter = _SplitterNonUniform(splits)
 
-        return self._splitGeneric(splitter, partitions)
+        return self._splitGeneric(splitter, partitions, relativeCoords=relativeCoords)
 
 
-    def splitEqual(self, step, partitions=1):
+    def splitEqual(self, step, partitions=1, relativeCoords=False):
         """splitEqual"""
 
         class _SplitterEqual():
@@ -779,14 +787,14 @@ class Fiber:
                     count += 1
                     self.cur_count += self.step
 
-                return count
+                return count, c
 
         splitter = _SplitterEqual(step)
 
-        return self._splitGeneric(splitter, partitions)
+        return self._splitGeneric(splitter, partitions, relativeCoords=relativeCoords)
 
 
-    def splitUnEqual(self, sizes, partitions=1):
+    def splitUnEqual(self, sizes, partitions=1, relativeCoords=False):
         """splitUnEqual"""
 
         class _SplitterUnEqual():
@@ -805,16 +813,16 @@ class Fiber:
                     else:
                         self.cur_count = float("inf")
 
-                return count
+                return count, c
 
         assert len(self.coords) <= sum(sizes)
 
         splitter = _SplitterUnEqual(sizes)
 
-        return self._splitGeneric(splitter, partitions)
+        return self._splitGeneric(splitter, partitions, relativeCoords=relativeCoords)
 
 
-    def _splitGeneric(self, splitter, partitions):
+    def _splitGeneric(self, splitter, partitions, relativeCoords):
         """_splitGeneric
 
         Takes the current fiber and splits it according to the boundaries defined by splitter().
@@ -840,15 +848,23 @@ class Fiber:
             rank1_fiber_payloads.append([])
 
         cur_coords = None
-        rank1_coord = -1
+        rank1_count = -1
 
         # Split apart the fiber into groups according to "splitter"
 
         for i0, (c0,p0) in enumerate(zip(self.coords,self.payloads)):
             # Check if we need to start a new rank0 fiber
-            count = splitter.nextGroup(i0, c0)
+            count,next_rank1_coord = splitter.nextGroup(i0, c0)
             if (count > 0):
-                rank1_coord += count
+                rank1_count += count
+
+                # Old style: upper rank's coordinates were a dense range
+                # rank1_coord = rank1_count
+
+                # New style: upper rank's coordinates are first coordinate of group
+                rank1_coord = next_rank1_coord
+                rank0_offset = rank1_coord
+
                 rank0_fiber_group.append(rank1_coord)
 
                 cur_coords = []
@@ -859,8 +875,13 @@ class Fiber:
 
             # May not be in a group yet
             if not cur_coords is None:
-                cur_coords.append(c0)
+                if relativeCoords:
+                    cur_coords.append(c0-rank0_offset)
+                else:
+                    cur_coords.append(c0)
+
                 cur_payloads.append(p0)
+
 
         # Deal the split fibers out to the partitions
 
