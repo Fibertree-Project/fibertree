@@ -1,6 +1,7 @@
 
 from fibertree.tensor import *
 from fibertree.tensor_image import *
+from fibertree.tensor_animation import *
 
 from fibertree.rank import *
 from fibertree.fiber import *

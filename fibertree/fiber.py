@@ -455,7 +455,7 @@ class Fiber:
         """append - Add element at end of fiber"""
 
         assert self.maxCoord() is None or self.maxCoord() < coord, \
-               "Fiber coordinates must be monotonically increasing"
+               "Fiber coordinates must be monotonically increasing: {}, {}".format(self.maxCoord(), coord)
 
         payload = self._maybe_box(value)
 
@@ -497,6 +497,28 @@ class Fiber:
 
         return None
 
+    def insertOrLookup(self, coord, value=None):
+        """insertOrLookup"""
+        if value is None:
+            if callable(self._default):
+                value = self._default()
+            else:
+                value = self._default
+
+        payload = self._maybe_box(value)
+
+        index = 0
+        try:
+            index = next(x for x, val in enumerate(self.coords) if val >= coord)
+            if self.coords[index] == coord:
+                return self.payloads[index]
+            self.coords.insert(index, coord)
+            self.payloads.insert(index, payload)
+            return self.payloads[index]
+        except StopIteration:
+            self.coords.append(coord)
+            self.payloads.append(payload)
+            return self.payloads[-1]
 
     def project(self, trans_fn=None, interval=None):
         """project"""
