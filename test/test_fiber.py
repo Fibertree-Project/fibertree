@@ -684,6 +684,29 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a, a_ref)
         self.assertEqual(b, b_ref)
 
+    def test_updateCoords(self):
+        """Update coords"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+
+        #
+        # Do the split
+        #
+        coords = 10
+
+        split = f.splitUniform(coords)
+        flat_split = split.flattenRanks()
+        flat_split.updateCoords(lambda c: c[1])
+
+        self.assertEqual(f, flat_split)
+
+
     def test_add(self):
         """Add fibers"""
 
