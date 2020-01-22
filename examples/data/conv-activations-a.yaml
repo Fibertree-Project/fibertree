@@ -1,5 +1,5 @@
 tensor:
-  rank_ids: [ X ]
+  rank_ids: [ H ]
   root:
     - fiber:
         coords:   [ 0, 2, 4, 5, 6, 7 ]
