@@ -82,30 +82,36 @@ class TensorCanvas():
         # Add a little padding at the bottom for when the controls are visible.
         #
         final_height = final_height + 75
+        
+        return (final_width, final_height, flattened_height)
+        
+    def _combineFrames(self, start, end):
 
+        (final_width, final_height, flattened_height) = self._finalize()
         #
         # Create empty frames for pasting
         #
         final_images = []
-        for image in self.image_list_per_tensor[0]:
+        for n in range(start, end):
             final_images.append(Image.new("RGB", (final_width, final_height), "wheat"))
 
         #
         # Dump individual frames into the same image so they stay in sync.
         #
-        for n in range(len(final_images)):
+        for n in range(start, end):
             for t in range(len(self.tensors)):
                 image = self.image_list_per_tensor[t][n]
                 x_center = final_width // 2 - (image.width // 2)
                 # Start where the last image finished.
                 y_final = 0 if t == 0 else flattened_height[t-1]
-                final_images[n].paste(image, (x_center, y_final))
+                final_images[n-start].paste(image, (x_center, y_final))
         
         return (final_images, final_width, final_height)
 
     def saveMovie(self, filename):
 
-        (final_images, final_width, final_height) = self._finalize()
+        end = len(self.image_list_per_tensor[0])
+        (final_images, final_width, final_height) = self._combineFrames(0, end)
         
         fourcc = cv2.VideoWriter_fourcc(*"vp09")
         out = cv2.VideoWriter(filename,fourcc, 1, (final_width, final_height))
@@ -116,7 +122,8 @@ class TensorCanvas():
         out.release()
 
     def getLastFrame(self, text = "Foo"):
-        (final_images, final_width, final_height) = self._finalize()
+        end = len(self.image_list_per_tensor[0])
+        (final_images, final_width, final_height) = self._combineFrames(end-1, end)
         if text is None:
             return final_images[-1]
         im = final_images[-1].copy()
