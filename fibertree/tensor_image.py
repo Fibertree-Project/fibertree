@@ -243,7 +243,7 @@ class TensorImage():
         y2 = y1 + 40
         color = "goldenrod" if highlight else "blue"
         x_text = x1+15
-        if coord != "R":
+        if coord != "R" and isinstance(coord, int):
             if int(coord) >= 10:
                 x_text = x_text - 7
             if int(coord) >= 100:
