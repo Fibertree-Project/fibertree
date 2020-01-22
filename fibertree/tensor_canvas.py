@@ -19,16 +19,14 @@ class TensorCanvas():
         #
         self.tensors = []
         self.image_list_per_tensor = []
-        initial_frames = []
         for tensor in tensors:
             self.tensors.append(Payload.get(tensor))
             self.image_list_per_tensor.append([])
-            initial_frames.append([])
         
         #
         # Add an initial frame with nothing highlighted (it looks good)
         #
-        self.addFrame(*initial_frames)
+        self.addFrame()
 
 
     def addFrame(self, *highlighted_coords_per_tensor):
@@ -36,16 +34,18 @@ class TensorCanvas():
         #
         # Handle the case where nothing should be highlighted anywhere.
         #
-        if highlighted_coords_per_tensor is []:
-            highlighted_coords_per_tensor = []
+        final_coords = []
+        if not highlighted_coords_per_tensor:
             for n in range(len(self.tensors)):
-              highlighted_coords_per_tensor.append([])
+              final_coords.append([])
+        else:
+            final_coords = highlighted_coords_per_tensor
         
-        assert(len(highlighted_coords_per_tensor) == len(self.tensors))
+        assert(len(final_coords) == len(self.tensors))
         
         for n in range(len(self.tensors)):
             tensor = self.tensors[n]
-            highlighted_coords = highlighted_coords_per_tensor[n]
+            highlighted_coords = final_coords[n]
             im = TensorImage(tensor, highlighted_coords).im
             self.image_list_per_tensor[n].append(im)
 
@@ -122,6 +122,11 @@ class TensorCanvas():
         out.release()
 
     def getLastFrame(self, text = "Foo"):
+        #
+        # Add an final frame with nothing highlighted (it looks better)
+        #
+        self.addFrame()
+
         end = len(self.image_list_per_tensor[0])
         (final_images, final_width, final_height) = self._combineFrames(end-1, end)
         if text is None:
@@ -135,9 +140,9 @@ if __name__ == "__main__":
     a = Tensor("../examples/data/draw-a.yaml")
     b = Tensor("../examples/data/draw-b.yaml")
     canvas = TensorCanvas(a, b)
-    canvas.addFrame([0], [0])
+    canvas.addFrame()
     canvas.addFrame([10], [4])
     canvas.addFrame([10,40], [4,1])
     canvas.addFrame([10,40,1], [4,1,0])
-    canvas.addFrame([0], [0])
+    canvas.addFrame()
     canvas.saveMovie("tmp.mp4")

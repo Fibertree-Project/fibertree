@@ -287,12 +287,13 @@ class TensorImage():
 
             x_text = x1+15
             y_text = y1+10+(i*font_y)
-            if v >= 10:
-                x_text = x_text - 7
-            if v >= 100:
-                x_text = x_text - 7
-            if v >= 1000:
-                x_text = x_text - 7
+            if (isinstance(v, int)):
+                if v >= 10:
+                    x_text = x_text - 7
+                if v >= 100:
+                    x_text = x_text - 7
+                if v >= 1000:
+                    x_text = x_text - 7
 
 
             # Hack: drawing text twice looks better in PIL
