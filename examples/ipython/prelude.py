@@ -15,7 +15,7 @@ from fibertree import Payload, Fiber, Tensor, TensorImage, TensorCanvas
 #
 from IPython.display import display # to display images
 from IPython.display import Image
-from IPython.display import HTML, Video
+from IPython.display import HTML
 import string
 import random
 
