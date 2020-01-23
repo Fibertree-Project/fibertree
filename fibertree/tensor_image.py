@@ -53,9 +53,11 @@ class TensorImage():
         #
         if isinstance(object, Tensor):
             root = object.getRoot()
+            self._color = object.getColor()
             self.draw_rank(0, "File: %s" % object.yamlfile)
         elif isinstance(object, Fiber):
             root = object
+            self._color = "red"
 
         #
         # Process appropriately if root has 0 dimensions or more
@@ -241,7 +243,7 @@ class TensorImage():
         y1 = self.level2y(level)
         x2 = x1 + 40
         y2 = y1 + 40
-        color = "goldenrod" if highlight else "blue"
+        color = "goldenrod" if highlight else "black"
         x_text = x1+15
         if coord != "R" and isinstance(coord, int):
             if int(coord) >= 10:
@@ -277,7 +279,7 @@ class TensorImage():
         if y2 > self.max_y:
             self.max_y = y2
 
-        fill_color = "goldenrod" if highlight else "red"
+        fill_color = "goldenrod" if highlight else self._color
 
         self.draw.rectangle(((x1,y1), (x2,y2)), fill_color, 1)
 
@@ -300,11 +302,11 @@ class TensorImage():
             self.draw.text((x_text, y_text),
                             str(v),
                             font=self.fnt,
-                            fill="black")
+                            fill="white")
             self.draw.text((x_text, y_text),
                             str(v),
                             font=self.fnt,
-                            fill="black")
+                            fill="white")
 
 
 

@@ -22,6 +22,7 @@ class Tensor:
             (rank_ids, fiber) = self.parse(yamlfile)
 
             self.set_rank_ids(rank_ids)
+            self.setColor("red")
             self.setRoot(fiber)
             return
 
@@ -31,6 +32,7 @@ class Tensor:
         assert(not rank_ids is None)
 
         self.set_rank_ids(rank_ids)
+        self.setColor("red")
 
         if rank_ids == []:
             # Create a rank zero tensor, i.e., just a payload
@@ -83,6 +85,7 @@ class Tensor:
 
         tensor = cls(rank_ids=rank_ids)
 
+        tensor.setColor("red")
         tensor.setRoot(fiber)
 
         return tensor
@@ -160,6 +163,51 @@ class Tensor:
         Tensor._deprecated("Tensor.root() is deprecated, use getRoot()")
 
         return self.getRoot()
+
+
+    def setColor(self, color):
+        """setColor
+
+        Set color for elements of tensor
+
+        Parameters
+        ----------
+        color: Color to use for scalar values in tensor
+
+        Returns
+        -------
+        self: So method can be used in a chain
+
+        Raises
+        ------
+        None
+
+        """
+
+        self._color = color
+        return self
+
+
+    def getColor(self):
+        """Getcolor
+
+        Get color for elements of tensor
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        color: Color to use for scalar values in tensor
+
+        Raises
+        ------
+        None
+
+        """
+
+        return self._color
 
 
     def countValues(self):
