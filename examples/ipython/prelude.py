@@ -53,12 +53,16 @@ AnimationDisabledError = """Note: Canvas animation has been disabled by --no-sho
 def random_string(length):
     return ''.join(random.choice(string.ascii_letters) for m in range(length))
 
-def displayCanvas(canvas, filename="tmp", width="100%", loop=True, autoplay=True, controls=True, center=False):
+def displayCanvas(canvas, filename=None, width="100%", loop=True, autoplay=True, controls=True, center=False):
     if args.DisableAnimations:
         im = canvas.getLastFrame(AnimationDisabledError)
         display(im)
         return
+    if filename is None:
+        filename=random_string(10)
+
     canvas.saveMovie(filename + ".mp4")
+
     # Append random string to URL to prevent browser caching
     randomstring=random_string(10)
     final_width = "" if width is None else " width=\"{0}\"".format(width)
