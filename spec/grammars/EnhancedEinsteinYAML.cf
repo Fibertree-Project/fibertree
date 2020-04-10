@@ -1,0 +1,55 @@
+-- CF File: input format for the tool "bnfc" the BNF Converter
+-- Essentially a labeled BNF grammar with parsing hints
+-- and built-in support for terminators and separators
+
+comment "#" ;
+
+
+ELet       . Expr ::= "let"      ":" VarOrVars    ExprOrExprs ;
+EFor       . Expr ::= "for"      ":" VarOrVars    ExprOrExprs ;
+EForAll    . Expr ::= "forall"   ":" VarOrVars    ExprOrExprs ;
+EOperator  . Expr ::= "operator" ":" OperatorType ExprOrExprs ;
+ETensor    . Expr ::= "tensor"   ":" TensorName   ExprOrExprs ;
+--EScalarVar . Expr ::= VarName ;
+--EScalarVars. Expr ::= [VarName] ;
+
+ENone . ExprOrExprs ::= ;
+EOne  . ExprOrExprs ::= "expression" ":" Expr ;
+EMany . ExprOrExprs ::= "expressions" ":" "-" Expr ExprList ;
+
+-- Because YAML lists are prefixed with -, not terminated, 
+-- we must define this ourselves instead of using "terminator"
+EDone    . ExprList ::= ;
+EMore    . ExprList ::= "-" Expr ExprList ;
+
+TName . TensorName  ::= "name" ":" Ident ;
+
+OType . OperatorType  ::= "type" ":" OperatorName ;
+
+OpEquals            . OperatorName ::= "="  ;
+OpChoice            . OperatorName ::= "?"  ;
+OpLessThan          . OperatorName ::= "<"  ;
+OpLessThanEq        . OperatorName ::= "<=" ;
+OpGreaterThan       . OperatorName ::= ">"  ;
+OpGreaterThanEq     . OperatorName ::= ">=" ;
+OpEqualTo           . OperatorName ::= "==" ;
+OpNotEqualTo        . OperatorName ::= "!=" ;
+OpPlus              . OperatorName ::= "+"  ;
+OpMinus             . OperatorName ::= "-"  ;
+OpTimes             . OperatorName ::= "*"  ;
+OpDivide            . OperatorName ::= "/"  ;
+OpModulus           . OperatorName ::= "%"  ;
+OpPower             . OperatorName ::= "**" ;
+OpLeftShift         . OperatorName ::= "<<" ;
+OpRightShift        . OperatorName ::= ">>" ;
+OpXOr               . OperatorName ::= "&"  ;
+OpOr                . OperatorName ::= "|"  ;
+OpAnd               . OperatorName ::= "^"  ;
+
+
+Var  . VarOrVars ::= "var"  ":" VarName ;
+Vars . VarOrVars ::= "vars" ":" "[" [VarName] "]" ;
+
+
+VName . VarName ::= Ident ;
+separator VarName "," ;

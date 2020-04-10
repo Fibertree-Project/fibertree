@@ -58,6 +58,9 @@ class TensorImage():
         elif isinstance(object, Fiber):
             root = object
             self._color = "red"
+        else:
+            root = None
+            self._color = "red"
 
         #
         # Process appropriately if root has 0 dimensions or more
@@ -191,7 +194,7 @@ class TensorImage():
         self.max_y = 100
 
         # Do image related setup
-        self.im = Image.new("RGB", (4096, 512), "wheat")
+        self.im = Image.new("RGB", (8192, 1024), "wheat")
         self.fnt = ImageFont.truetype('Pillow/Tests/fonts/FreeMono.ttf', 20)
         self.draw = ImageDraw.Draw(self.im)
 

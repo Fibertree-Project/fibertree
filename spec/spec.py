@@ -390,6 +390,9 @@ k_mnk_mnk_matrix_mul = Schedule(spec_matrix_mul(), ["k", "m", "n", "k", "m", "n"
 n_kmn_kmn_matrix_mul = Schedule(spec_matrix_mul(), ["n", "k", "m", "n", "k", "m", "n"])
 
 
+tactile_matrix_mul = Schedule(spec_matrix_mul(), ["k", "n", "m", "k", "n", "m", "k"])
+
+
 mkn_matrix_mul = Schedule(spec_matrix_mul(), ["m", "k", "n"])
 
 def spec_2d_conv():
@@ -420,7 +423,7 @@ def convert_xy_to_yxyx():
 
 yxyx_convert_xy_to_yxyx = Schedule(convert_xy_to_yxyx(), ["y", "x", "y", "x"])
 
-t_yxyx = t.transform(["y", "x", "y", "x")], {"y" = [YO], "x" = [X0]}
+#t_yxyx = t.transform(["y", "x", "y", "x")], {"y" = [YO], "x" = [X0]}
 
 #
 #for y, t_x in t_y:
