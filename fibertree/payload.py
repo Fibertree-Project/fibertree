@@ -179,6 +179,16 @@ class Payload:
 
         return Payload(ans)
 
+    def __truediv__(self, other):
+        """__truediv__"""
+
+        if isinstance(other, Payload):
+            ans = self.value / other.value
+        else:
+            ans = self.value / other
+
+        return Payload(ans)
+
     def __rmul__(self, other):
         """__rmul__"""
 
