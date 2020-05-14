@@ -19,8 +19,8 @@ from IPython.display import HTML
 import string
 import random
 
-def displayTensor(t):
-    display(TensorImage(t).im)
+def displayTensor(t, highlights=[]):
+    display(TensorImage(t, highlights=highlights).im)
 
 
 def displayGraph(am_s):

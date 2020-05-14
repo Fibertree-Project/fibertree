@@ -7,26 +7,40 @@ from fibertree.payload import Payload
 class TensorImage():
     """TensorImage"""
 
-    def __init__(self, object, highlighted_coords=[]):
+    def __init__(self, object, highlights=[]):
         """__init__"""
+        #
+        # If highlights is a single point convert to list
+        #
+        if len(highlights):
+            try:
+                temp = highlights[0][0]
+            except Exception:
+                temp = highlights
+                highlights = []
+                highlights.append(temp)
+
+
+        if highlights is None and highlighted_coords is not None:
+            highlights = [ highlighted_coords ]
 
         #
         # Conditionally unwrap Payload objects
         #
         object = Payload.get(object)
 
-        self.create_tree(object, highlighted_coords)
+        self.create_tree(object, highlights)
 
 
-    def create_tree(self, object, highlighted_coords=[]):
+    def create_tree(self, object, highlights=[]):
         """create_tree: Create an image of a tensor or fiber tree
 
         Parameters
         ----------
         object: tensor or fiber
         A tensor or fiber object to draw
-        highlighted_coords: point (list of coordinates)
-        Coordinates in the tensors to highlight
+        highlight: list of points (each point is a list of coordinates)
+        Points in the tensor to highlight
 
         Returns
         -------
@@ -72,8 +86,8 @@ class TensorImage():
             self.draw_value(1, 0, Payload.get(root))
             region_end = 1
         else:
-            # Draw a non-0-D tensor or a fiber, i.e., the fibers
-            region_end = self.traverse(root, highlighted_coords=highlighted_coords)
+            # Draw a non-0-D tensor or a fiber, i.e., the fiber tree
+            region_end = self.traverse(root, highlights=highlights)
 
         #
         # Crop the image
@@ -90,14 +104,9 @@ class TensorImage():
 
 #
 # Method to traverse (and draw) all the levels of the tree
-    def traverse(self, fiber, level=0, offset=0, highlighted_coords=[], highlight_subtensor=False):
+#
+    def traverse(self, fiber, level=0, offset=0, highlights=[], highlight_subtensor=False):
         """traverse"""
-        #
-        # Setup the highlighting for this level
-        #
-        highlighted_coord = highlighted_coords[0] if len(highlighted_coords) else []
-        rest_of_highlighting = highlighted_coords[1:] if len(highlighted_coords) > 1 else []
-
         #
         # Check if this is level0, which may just be a payload
         #
@@ -105,16 +114,18 @@ class TensorImage():
             region_start = 0
 
             if not Payload.contains(fiber, Fiber):
+                #
                 # Draw a 0-D tensor, i.e., a value (NOT a fiber)
+                #
                 self.draw_coord(0, 0, "R")
                 self.draw_line(0, 1/2, 1, 1/2)
                 self.draw_value(1, 0, Payload.get(fiber))
                 region_end = 1
             else:
                 #
-                # Traverse the fibers
+                # Recursively traverse and draw the fibers of a non-0-D tensor
                 #
-                region_end = self.traverse(fiber, level=1, offset=offset, highlighted_coords=highlighted_coords, highlight_subtensor=highlight_subtensor)
+                region_end = self.traverse(fiber, level=1, offset=offset, highlights=highlights, highlight_subtensor=highlight_subtensor)
                 region_size = region_end - region_start
                 #
                 # Draw root of tree
@@ -127,28 +138,42 @@ class TensorImage():
             return region_end
 
         #
-        # Process the fibers of the tree
+        # Process the fibers of the tree (level > 0)
+        #
+
+        #
+        # Print out the rank information (if available)
         #
         if offset == 0 and not fiber.getOwner() is None:
             self.draw_rank(level, "Rank: %s " % fiber.getOwner().getName())
 
+        #
+        # Initialize drawing region information
+        #
         region_start = offset
-        region_end = region_start
+        region_end = offset
 
         #
         # Figure out space of region below this fiber
         #
-
         targets = []
         coordinate_start = region_start
         
+        #
+        # Set up the highlighting for this level
+        #
+        highlight_coords = [ c[0] for c in highlights ]
+
         for (c, p) in fiber:
             if Payload.contains(p, Fiber):
-                highlight_payload = c == highlighted_coord and rest_of_highlighting == []
+                highlight_next = [ p[1:] for p in highlights if len(p) > 1 and p[0] == c ]
+
                 # Once we start highlighting a fiber, highlight the entire subtensor.
-                highlight_payload = highlight_payload or highlight_subtensor
-                next_hightlighting = rest_of_highlighting if c == highlighted_coord else []
-                region_end = self.traverse(Payload.get(p), level+1, region_end, next_hightlighting, highlight_payload)
+                highlight_payload = highlight_subtensor
+                if len(highlight_next) == 0:
+                    highlight_payload |= c in highlight_coords
+
+                region_end = self.traverse(Payload.get(p), level+1, region_end, highlight_next, highlight_payload)
             else:
                 region_end += 1
 
@@ -168,15 +193,16 @@ class TensorImage():
         pos=fiber_start
 
         for c,p in fiber:
-            self.draw_coord(level, pos, c, c == highlighted_coord or highlight_subtensor)
-            if c == highlighted_coord and not highlight_subtensor:
+            self.draw_coord(level, pos, c, (c in highlight_coords) or highlight_subtensor)
+            if (c in highlight_coords) and not highlight_subtensor:
                 self.draw_intra_line(level, fiber_start + fiber_size / 2, pos+0.5, True)
+
             # Only draw the line if the next level will actually draw something.
             if not Payload.contains(p, Fiber) or not p.isEmpty():
-                self.draw_line(level, pos+0.5, level+1, targets.pop(0), c == highlighted_coord or highlight_subtensor)
+                self.draw_line(level, pos+0.5, level+1, targets.pop(0), (c in highlight_coords) or highlight_subtensor)
 
             if not Payload.contains(p, Fiber):
-                highlight_payload = c == highlighted_coord and rest_of_highlighting == []
+                highlight_payload = c in highlight_coords    # How could this not be the leaf --- "and rest_of_highlighting == []"
                 self.draw_value(level+1, pos, Payload.get(p), highlight_payload or highlight_subtensor)
 
             pos += 1
