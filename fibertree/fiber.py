@@ -596,7 +596,7 @@ class Fiber:
         else:
             # Update my coordinates
             for i in range(len(self.coords)):
-                self.coords[i] = func(self.coords[i])
+                self.coords[i] = func(i, self.coords[i], self.payloads[i])
 
         return None
 
@@ -817,7 +817,14 @@ class Fiber:
 
 
     def splitUnEqual(self, sizes, partitions=1, relativeCoords=False):
-        """splitUnEqual"""
+        """splitUnEqual
+
+        Split root fiber by the sizes in "sizes".
+
+        If there are more coordinates than the sum of the "sizes" all
+        remaining coordinates are put into the final split.
+
+        """
 
         class _SplitterUnEqual():
 
@@ -836,8 +843,6 @@ class Fiber:
                         self.cur_count = float("inf")
 
                 return count, c
-
-        assert len(self.coords) <= sum(sizes)
 
         splitter = _SplitterUnEqual(sizes)
 
