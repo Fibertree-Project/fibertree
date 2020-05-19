@@ -117,16 +117,29 @@ class FibertreeDisplay():
         return TensorCanvas(*tensors, matrix=matrix)
 
 
+    def addFrame(self, canvas, *points):
+        """ addFrame """
+
+        if not self.enable_animations:
+            return None
+
+        return canvas.addFrame(*points)
+
+
     def displayCanvas(self, canvas, filename=None, width="100%", loop=True, autoplay=True, controls=True, center=False):
         """ displayCanvas """
 
         AnimationDisabledError = "Note: Canvas animation has been disabled - showing final frame"
 
         if not self.enable_animations:
-
+            #
+            # Just create a frame from the last state and display it
+            #
+            canvas.addFrame()
             im = canvas.getLastFrame(AnimationDisabledError)
             display(im)
             return
+
         if filename is None:
             filename = self.random_string(10)
 
@@ -264,6 +277,12 @@ def createCanvas(*tensors, matrix=None):
     """ createCanvas """
 
     return FTD.createCanvas(*tensors, matrix=matrix)
+
+
+def addFrame(canvas, *points):
+    """ addFrame """
+
+    return FTD.addFrame(canvas, *points)
 
 
 def displayCanvas(*args, **kwargs):
