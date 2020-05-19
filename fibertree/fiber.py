@@ -16,7 +16,7 @@ CoordPayload = namedtuple('CoordPayload', 'coord payload')
 # Define the fiber class
 #
 class Fiber:
-    """Fiber class
+    """ Fiber class
 
     A fiber of a tensor containing a list of coordinates and
     asssociated payloads.
@@ -153,7 +153,7 @@ class Fiber:
 
         return self.payloads
 
-    def getPayload(self, *coords):
+    def getPayload(self, *coords, default=None):
         """payload
 
         Return the final payload after recursively traversing the
@@ -162,6 +162,7 @@ class Fiber:
         Parameters
         ----------
         coords: list of coordinates to traverse
+        default: default value to return if coordinate is empty
 
         Returns
         -------
@@ -184,7 +185,7 @@ class Fiber:
 
             return payload
         except:
-            return None
+            return default
 
 
     def getPayloadRef(self, *coords):
@@ -293,7 +294,14 @@ class Fiber:
         if len(self.coords) == 0:
             return None
 
+        if not isinstance(self.coords[0], int):
+            #
+            # Coordinates aren't integers, so maxCoord doesn't make sense
+            #
+            return None
+
         return max(self.coords)
+
 
     def countValues(self):
         """Count values in the fiber tree
@@ -663,7 +671,15 @@ class Fiber:
 
 
     def _calcShape(self, shape, level):
-        """Find the maximum coordinate at each level of the tree"""
+        """ _calcShape()
+
+        Find the maximum coordinate at each level of the tree
+
+        TBD: Using maximum coordinate isn't really right because
+             the original array may have a empty value at its
+             maximum coordinate location
+
+        """
 
         #
         # Conditionaly append a new level to the shape array
@@ -671,13 +687,23 @@ class Fiber:
         if len(shape) < level+1:
             shape.append(0)
 
+        #
+        # If fiber is empty then shape doesn't change
+        #
+        if not len(self.coords):
+            return shape
+
+        #
+        # Try to determine the maximum coordinate
+        #
         max_coord = self.maxCoord()
 
         #
-        # If Fiber is empty then shape doesn't change
+        # If fiber is not empty, but max_coord isn't meaningful,
+        # assume fiber is dense and return count of elements
         #
         if max_coord is None:
-            return shape
+            max_coord = len(self.coords)
 
         #
         # Update shape for this Fiber at this level

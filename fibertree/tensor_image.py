@@ -21,9 +21,6 @@ class TensorImage():
                 highlights.append(temp)
 
 
-        if highlights is None and highlighted_coords is not None:
-            highlights = [ highlighted_coords ]
-
         #
         # Conditionally unwrap Payload objects
         #
