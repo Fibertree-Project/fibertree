@@ -886,10 +886,10 @@ class Fiber:
                 rank1_count += count
 
                 # Old style: upper rank's coordinates were a dense range
-                rank1_coord = rank1_count
+                # rank1_coord = rank1_count
 
                 # New style: upper rank's coordinates are first coordinate of group
-                #rank1_coord = next_rank1_coord
+                rank1_coord = next_rank1_coord
                 rank0_offset = rank1_coord
 
                 rank0_fiber_group.append(rank1_coord)
