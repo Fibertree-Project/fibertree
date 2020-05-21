@@ -5,21 +5,21 @@ from PIL import Image, ImageDraw, ImageFont
 
 from fibertree import Tensor
 from fibertree import TensorImage
-from fibertree import TensorMatrixImage
+from fibertree import UncompressedImage
 from fibertree import Fiber
 from fibertree.payload import Payload
 
 class TensorCanvas():
     """TensorCanvas"""
 
-    def __init__(self, *tensors, matrix=True):
+    def __init__(self, *tensors, uncompressed=True):
         """__init__"""
 
         #
         # Set image type
         #
-        if matrix:
-            self.image_type = TensorMatrixImage
+        if uncompressed:
+            self.image_type = UncompressedImage
         else:
             self.image_type = TensorImage
 

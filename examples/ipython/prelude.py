@@ -18,6 +18,7 @@ import random
 from IPython.display import display # to display images
 from IPython.display import Image
 from IPython.display import HTML
+from IPython.display import Javascript
 
 #
 # Math imports
@@ -45,7 +46,7 @@ except ImportError:
 #
 # Import tensor class
 #
-from fibertree import Payload, Fiber, Tensor, TensorImage, TensorMatrixImage, TensorCanvas
+from fibertree import Payload, Fiber, Tensor, TensorImage, UncompressedImage, TensorCanvas
 
 #
 # Try to import ipywidgets
@@ -71,7 +72,7 @@ class FibertreeDisplay():
 
         self.have_ipywidgets = have_ipywidgets
 
-        self.matrix_style = False
+        self.uncompressed_style = False
         self.enable_animations = False
 
         self.setupWidgets()
@@ -79,10 +80,10 @@ class FibertreeDisplay():
     #
     # Display control settings
     #
-    def setStyle(self, matrix=False, sync=True):
+    def setStyle(self, uncompressed=False, sync=True):
         """ setStyle """
 
-        self.matrix_style = matrix
+        self.uncompressed_style = uncompressed
 
         if sync:
             self.syncWidgets()
@@ -102,19 +103,19 @@ class FibertreeDisplay():
     def displayTensor(self, t, *args, **kwargs):
         """ displayTensor """
 
-        if not self.matrix_style:
+        if not self.uncompressed_style:
             display(TensorImage(t, *args, **kwargs).im)
         else:
-            display(TensorMatrixImage(t, *args, **kwargs).im)
+            display(UncompressedImage(t, *args, **kwargs).im)
 
 
-    def createCanvas(self, *tensors, matrix=None):
+    def createCanvas(self, *tensors, uncompressed=None):
         """ createCanvas """
 
-        if matrix is None:
-            matrix = self.matrix_style
+        if uncompressed is None:
+            uncompressed = self.uncompressed_style
 
-        return TensorCanvas(*tensors, matrix=matrix)
+        return TensorCanvas(*tensors, uncompressed=uncompressed)
 
 
     def addFrame(self, canvas, *points):
@@ -190,7 +191,7 @@ class FibertreeDisplay():
         """ setupWidgets """
 
         if have_ipywidgets:
-            self.w = interactive(self.updateWidgets, style=['tree', 'matrix'], animation=['enabled', 'disabled'])
+            self.w = interactive(self.updateWidgets, style=['tree', 'uncompressed'], animation=['enabled', 'disabled'])
             display(self.w)
         else:
             print("Warning: ipywidgets not available - set attributes manually by typing:")
@@ -198,8 +199,8 @@ class FibertreeDisplay():
             print("FTD.showAnimations(True)      # Turn on animations")
             print("FTD.showAnimations(False)     # Turn off animations")
             print("")
-            print("FTD.setStyle(matrix=True)     # Show tensor as a matrix")
-            print("FTD.setStyle(matrix=False)    # Show tensor as a fiber tree")
+            print("FTD.setStyle(uncompressed=True)     # Show tensor as a uncompressed")
+            print("FTD.setStyle(uncompressed=False)    # Show tensor as a fiber tree")
             print("")
             
 
@@ -209,14 +210,14 @@ class FibertreeDisplay():
         #
         # Set attributes (but do not recurse back and sync widgets)
         #
-        self.setStyle(matrix=(style == 'matrix'), sync=False)
+        self.setStyle(uncompressed=(style == 'uncompressed'), sync=False)
         self.showAnimations(animation == 'enabled', sync=False)
 
     def syncWidgets(self):
         """ sync """
         
-        if self.matrix_style:
-            style = 'matrix'
+        if self.uncompressed_style:
+            style = 'uncompressed'
         else:
             style = 'tree'
 
@@ -259,6 +260,7 @@ FTD = FibertreeDisplay(have_ipywidgets)
 
 FTD.showAnimations(args.EnableAnimations)
 
+
 #
 # Convenience functions that just call the class methods
 #
@@ -273,10 +275,10 @@ def displayGraph(am_s):
     FTD.displayGraph(am_s)
 
 
-def createCanvas(*tensors, matrix=None):
+def createCanvas(*tensors, uncompressed=None):
     """ createCanvas """
 
-    return FTD.createCanvas(*tensors, matrix=matrix)
+    return FTD.createCanvas(*tensors, uncompressed=uncompressed)
 
 
 def addFrame(canvas, *points):
@@ -290,8 +292,20 @@ def displayCanvas(*args, **kwargs):
 
     FTD.displayCanvas(*args, **kwargs)
 
-#
-# Report status
-#
-print("Prelude loaded OK")
 
+def run_all_below(ev):
+    """ run_all_below """
+
+    display(Javascript('IPython.notebook.select_next()'))
+    display(Javascript('IPython.notebook.execute_cells_below()'))
+
+
+def createRunallButton():
+    """ createRunallButton """
+
+    button = widgets.Button(description="Run all cells below")
+    button.on_click(run_all_below)
+    display(button)
+
+if have_ipywidgets:
+    createRunallButton()

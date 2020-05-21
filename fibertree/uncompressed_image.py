@@ -4,8 +4,8 @@ from fibertree import Tensor
 from fibertree import Fiber
 from fibertree.payload import Payload
 
-class TensorMatrixImage():
-    """TensorMatrixImage"""
+class UncompressedImage():
+    """UncompressedImage"""
 
     def __init__(self, object, highlights=[]):
         """__init__"""
@@ -25,11 +25,11 @@ class TensorMatrixImage():
         #
         object = Payload.get(object)
 
-        self.create_matrix(object, highlights)
+        self.create_uncompressed(object, highlights)
 
 
-    def create_matrix(self, object, highlights=[]):
-        """create_matrix: Create an image of a tensor or fiber tree
+    def create_uncompressed(self, object, highlights=[]):
+        """create_uncompressed: Create an image of a tensor or fiber tree
 
         Parameters
         ----------
@@ -46,7 +46,7 @@ class TensorMatrixImage():
         ------
 
         The drawing is made in a coordinate space where the X
-        and Y are the positions in the matrix.
+        and Y are the positions in the tensor.
         Translation to pixels happens in the draw_*() methods.
 
         """
@@ -96,13 +96,13 @@ class TensorMatrixImage():
 
 
 #
-# Method to traverse (and draw) all the cells in the matrix
+# Method to traverse (and draw) all the cells in the tensor
 #
     def traverse(self, fiber, highlights=[]):
         """traverse"""
 
         #
-        # Assume this is a matrix
+        # Assume this is a rank-3 or less tensor
         #
         if not Payload.contains(fiber, Fiber):
             #
@@ -329,42 +329,39 @@ class TensorMatrixImage():
         return 40+ 40*row
 
 
-if __name__ == "__xmain__":
+if __name__ == "__main__":
                          
     a = Tensor("examples/data/sparse-matrix-a.yaml")
     a.setColor("blue")
     a.print()
-    i = TensorMatrixImage(a, highlights=[(0,1), (1,2), (3,)])
+    i = UncompressedImage(a, highlights=[(0,1), (1,2), (3,)])
     i.show()
 
     #
-    i = TensorMatrixImage(a, (1,2))
+    i = UncompressedImage(a, (1,2))
     i.show()
 
     #
     b = Tensor.fromUncompressed(["X"], [1, 2, 0, 0, 4])
     b.print()
-    i = TensorMatrixImage(b, [(1,), (4,)])
+    i = UncompressedImage(b, [(1,), (4,)])
     i.show()
-
-if __name__ == "__main__":
-    a = Tensor("examples/data/sparse-matrix-a.yaml")
 
     #
     a_root = a.getRoot()
     c = Tensor.fromFiber(["X", "Y", "Z"], Fiber([0, 1, 2], [a_root, Fiber([],[]), a_root]))
     c.print()
-    i = TensorMatrixImage(c)
+    i = UncompressedImage(c)
     i.show()
 
     #
     d = c.getRoot()
     print("Original")
-    i = TensorMatrixImage(d)
+    i = UncompressedImage(d)
     i.show()
 
     #
     d_flattened = d.flattenRanks()
     print("Flattened")
-    i = TensorMatrixImage(d_flattened)
+    i = UncompressedImage(d_flattened)
     i.show()
