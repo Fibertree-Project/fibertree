@@ -46,7 +46,7 @@ except ImportError:
 #
 # Import tensor class
 #
-from fibertree import Payload, Fiber, Tensor, TensorImage, UncompressedImage, TensorCanvas
+from fibertree import Payload, Fiber, Tensor, TensorImage, TensorCanvas
 
 #
 # Try to import ipywidgets
@@ -72,7 +72,7 @@ class FibertreeDisplay():
 
         self.have_ipywidgets = have_ipywidgets
 
-        self.uncompressed_style = False
+        self.style = 'tree'
         self.enable_animations = False
 
         self.setupWidgets()
@@ -80,10 +80,14 @@ class FibertreeDisplay():
     #
     # Display control settings
     #
-    def setStyle(self, uncompressed=False, sync=True):
+    def setStyle(self, style='tree', sync=True):
         """ setStyle """
 
-        self.uncompressed_style = uncompressed
+        if style not in ['tree', 'uncompressed', 'tree+uncompressed']:
+            print("Unsuppored display style")
+            return
+
+        self.style = style
 
         if sync:
             self.syncWidgets()
@@ -100,22 +104,18 @@ class FibertreeDisplay():
     #
     # Display actions
     #
-    def displayTensor(self, t, *args, **kwargs):
+    def displayTensor(self, tensor, **kwargs):
         """ displayTensor """
 
-        if not self.uncompressed_style:
-            display(TensorImage(t, *args, **kwargs).im)
-        else:
-            display(UncompressedImage(t, *args, **kwargs).im)
+        im = TensorImage(tensor, style=self.style, **kwargs).im
+
+        display(im)
 
 
-    def createCanvas(self, *tensors, uncompressed=None):
+    def createCanvas(self, *tensors, **kwargs):
         """ createCanvas """
 
-        if uncompressed is None:
-            uncompressed = self.uncompressed_style
-
-        return TensorCanvas(*tensors, uncompressed=uncompressed)
+        return TensorCanvas(*tensors, style=self.style, **kwargs)
 
 
     def addFrame(self, canvas, *points):
@@ -179,7 +179,7 @@ class FibertreeDisplay():
             gr.add_node(s)
             for (d, _) in am_d:
                 gr.add_edge(s, d)
-   
+
         pos = nx.spring_layout(gr)
         nx.draw(gr, pos, node_size=500, with_labels=True)
         plt.show()
@@ -191,16 +191,20 @@ class FibertreeDisplay():
         """ setupWidgets """
 
         if have_ipywidgets:
-            self.w = interactive(self.updateWidgets, style=['tree', 'uncompressed'], animation=['enabled', 'disabled'])
+            self.w = interactive(self.updateWidgets,
+                                 style=['tree', 'uncompressed', 'tree+uncompressed'],
+                                 animation=['enabled', 'disabled'])
+
             display(self.w)
         else:
             print("Warning: ipywidgets not available - set attributes manually by typing:")
             print("")
-            print("FTD.showAnimations(True)      # Turn on animations")
-            print("FTD.showAnimations(False)     # Turn off animations")
+            print("FTD.setStyle('uncompressed')           # Show tensor as a uncompressed")
+            print("FTD.setStyle('tree')                   # Show tensor as a fiber tree")
+            print("FTD.setStyle('tree+uncompressed')      # Show tensor in both styles")
             print("")
-            print("FTD.setStyle(uncompressed=True)     # Show tensor as a uncompressed")
-            print("FTD.setStyle(uncompressed=False)    # Show tensor as a fiber tree")
+            print("FTD.showAnimations(True)               # Turn on animations")
+            print("FTD.showAnimations(False)              # Turn off animations")
             print("")
             
 
@@ -210,16 +214,13 @@ class FibertreeDisplay():
         #
         # Set attributes (but do not recurse back and sync widgets)
         #
-        self.setStyle(uncompressed=(style == 'uncompressed'), sync=False)
+        self.setStyle(style=style, sync=False)
         self.showAnimations(animation == 'enabled', sync=False)
 
     def syncWidgets(self):
-        """ sync """
-        
-        if self.uncompressed_style:
-            style = 'uncompressed'
-        else:
-            style = 'tree'
+        """ syncWidgets """
+
+        style = self.style
 
         if self.enable_animations:
             animation = 'enabled'
@@ -235,14 +236,68 @@ class FibertreeDisplay():
             print("")
 
 #
-# Helper for data directory
+# Functions for a "run_all" button
 #
-import os
+def run_all_below(ev):
+    """ run_all_below """
 
+    display(Javascript('IPython.notebook.select_next()'))
+    display(Javascript('IPython.notebook.execute_cells_below()'))
+
+
+def createRunallButton():
+    """ createRunallButton """
+
+    button = widgets.Button(description="Run all cells below")
+    button.on_click(run_all_below)
+    display(button)
+
+
+#
+# Functions for use in the IPython notebooks
+#
+
+#
+# Convenience functions that just call the class methods
+# on the FTD object created below
+#
+def displayTensor(tensor, **kwargs):
+    """ displayTensor(<tensor|fiber>, hightlights=[ <point>...] ) """
+
+    FTD.displayTensor(tensor, **kwargs)
+
+
+def displayGraph(am_s):
+    """ displayGraph(am_s) """
+
+    FTD.displayGraph(am_s)
+
+
+def createCanvas(*tensors, **kwargs):
+    """ createCanvas """
+
+    return FTD.createCanvas(*tensors, **kwargs)
+
+
+def addFrame(canvas, *points):
+    """ addFrame """
+
+    return FTD.addFrame(canvas, *points)
+
+
+def displayCanvas(*args, **kwargs):
+    """ displayCanvas """
+
+    FTD.displayCanvas(*args, **kwargs)
+
+#
+# Helper function for locating the data directory
+#
 data_dir = "../data"
 
 def datafileName(filename):
     return os.path.join(data_dir, filename)
+
 
 #
 # Parse the arguments (deprecated)
@@ -260,52 +315,8 @@ FTD = FibertreeDisplay(have_ipywidgets)
 
 FTD.showAnimations(args.EnableAnimations)
 
-
 #
-# Convenience functions that just call the class methods
+# If possible create a runall button
 #
-def displayTensor(*args, **kwargs):
-    """ displayTensor(<tensor|fiber>, hightlights=[ <point>...] ) """
-
-    FTD.displayTensor(*args, **kwargs)
-
-def displayGraph(am_s):
-    """ displayGraph(am_s) """
-
-    FTD.displayGraph(am_s)
-
-
-def createCanvas(*tensors, uncompressed=None):
-    """ createCanvas """
-
-    return FTD.createCanvas(*tensors, uncompressed=uncompressed)
-
-
-def addFrame(canvas, *points):
-    """ addFrame """
-
-    return FTD.addFrame(canvas, *points)
-
-
-def displayCanvas(*args, **kwargs):
-    """ displayCanvas """
-
-    FTD.displayCanvas(*args, **kwargs)
-
-
-def run_all_below(ev):
-    """ run_all_below """
-
-    display(Javascript('IPython.notebook.select_next()'))
-    display(Javascript('IPython.notebook.execute_cells_below()'))
-
-
-def createRunallButton():
-    """ createRunallButton """
-
-    button = widgets.Button(description="Run all cells below")
-    button.on_click(run_all_below)
-    display(button)
-
 if have_ipywidgets:
     createRunallButton()

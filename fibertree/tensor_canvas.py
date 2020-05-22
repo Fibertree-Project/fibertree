@@ -12,16 +12,13 @@ from fibertree.payload import Payload
 class TensorCanvas():
     """TensorCanvas"""
 
-    def __init__(self, *tensors, uncompressed=True):
+    def __init__(self, *tensors, style='tree'):
         """__init__"""
 
         #
         # Set image type
         #
-        if uncompressed:
-            self.image_type = UncompressedImage
-        else:
-            self.image_type = TensorImage
+        self.style = style
 
         #
         # Conditionally unwrap Payload objects
@@ -55,7 +52,7 @@ class TensorCanvas():
         for n in range(len(self.tensors)):
             tensor = self.tensors[n]
             highlighted_coords = final_coords[n]
-            im = self.image_type(tensor, highlighted_coords).im
+            im = TensorImage(tensor, style=self.style, highlights=highlighted_coords).im
             self.image_list_per_tensor[n].append(im)
 
 
