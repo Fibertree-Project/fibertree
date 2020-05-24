@@ -293,7 +293,7 @@ def displayCanvas(*args, **kwargs):
 #
 # Helper function for locating the data directory
 #
-data_dir = "../data"
+data_dir = "../../data"
 
 def datafileName(filename):
     return os.path.join(data_dir, filename)
