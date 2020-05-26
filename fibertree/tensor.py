@@ -1,3 +1,4 @@
+import copy
 import yaml
 
 from fibertree.rank    import Rank
@@ -223,6 +224,156 @@ class Tensor:
         """__eq__"""
 
         return (self.rank_ids == other.rank_ids) and (self.getRoot() == other.getRoot())
+
+
+#
+# Split methods
+#
+# Note: all these methods return a new tensor
+# TBD: Allow depth to be specified by rank_id
+#
+
+    def splitUniform(self, *args, depth=0, **kwargs):
+        """ splitUniform """
+
+        return self._splitGeneric(Fiber.splitUniform,
+                                  Fiber.splitUniformBelow,
+                                  *args,
+                                  depth=depth,
+                                  **kwargs)
+
+    def splitNonUniform(self, *args, depth=0, **kwargs):
+        """ splitNonUniform """
+
+        return self._splitGeneric(Fiber.splitNonUniform,
+                                  Fiber.splitNonUniformBelow,
+                                  *args,
+                                  depth=depth,
+                                  **kwargs)
+
+
+    def splitEqual(self, *args, depth=0, **kwargs):
+        """ splitEqual """
+
+        return self._splitGeneric(Fiber.splitEqual,
+                                  Fiber.splitEqualBelow,
+                                  *args,
+                                  depth=depth,
+                                  **kwargs)
+
+    def splitUnEqual(self, *args, depth=0, **kwargs):
+        """ splitUnEqual """
+
+        return self._splitGeneric(Fiber.splitUnEqual,
+                                  Fiber.splitUnEqualBelow,
+                                  *args,
+                                  depth=depth,
+                                  **kwargs)
+
+
+    def _splitGeneric(self, func, funcBelow, *args, depth=0, **kwargs):
+        """ _splitGeneric... """
+
+        #
+        # Create new list of rank ids
+        #
+        rank_ids = copy.deepcopy(self.rank_ids)
+        id = rank_ids[depth]
+        rank_ids[depth] = f"{id}.1"
+        rank_ids.insert(depth+1, f"{id}.0")
+
+        #
+        # Create new root fiber
+        #
+        root_copy = copy.deepcopy(self.getRoot())
+        if depth == 0:
+            root = func(root_copy, *args, **kwargs)
+        else:
+            root = root_copy
+            funcBelow(root, *args, depth=depth-1, **kwargs)
+
+        #
+        # Create Tensor from rank_ids and root fiber
+        #
+        return Tensor.fromFiber(rank_ids, root)
+
+#
+# Swap method
+#
+    def swapRanks(self, depth=0):
+        """ swapRanks """
+
+        #
+        # Create new list of rank ids
+        #
+        rank_ids = copy.deepcopy(self.rank_ids)
+        id = rank_ids[depth]
+        rank_ids[depth] = rank_ids[depth+1]
+        rank_ids[depth+1] = id
+
+        root = self._modifyRoot(Fiber.swapRanks,
+                                Fiber.swapRanksBelow,
+                                depth=depth)
+        #
+        # Create Tensor from rank_ids and root fiber
+        #
+        return Tensor.fromFiber(rank_ids, root)
+
+
+    def flattenRanks(self, depth=0):
+        """ swapRanks """
+
+        #
+        # Create new list of rank ids
+        #
+        rank_ids = copy.deepcopy(self.rank_ids)
+        rank_ids[depth] = [rank_ids[depth], rank_ids[depth+1]]
+        del rank_ids[depth+1]
+
+        root = self._modifyRoot(Fiber.flattenRanks,
+                                Fiber.flattenRanksBelow,
+                                depth=depth)
+        #
+        # Create Tensor from rank_ids and root fiber
+        #
+        return Tensor.fromFiber(rank_ids, root)
+
+    def unflattenRanks(self, depth=0):
+        """ swapRanks """
+
+        #
+        # Create new list of rank ids
+        #
+        rank_ids = copy.deepcopy(self.rank_ids)
+        id = rank_ids[depth]
+        rank_ids[depth] = id[0]
+        rank_ids.insert(depth+1, id[1])
+
+        root = self._modifyRoot(Fiber.unflattenRanks,
+                                Fiber.unflattenRanksBelow,
+                                depth=depth)
+        #
+        # Create Tensor from rank_ids and root fiber
+        #
+        return Tensor.fromFiber(rank_ids, root)
+
+
+    def _modifyRoot(self, func, funcBelow, depth=0):
+        #
+        # Create new root fiber
+        #
+        root_copy = copy.deepcopy(self.getRoot())
+        if depth == 0:
+            root = func(root_copy)
+        else:
+            root = root_copy
+            funcBelow(root, depth=depth-1)
+
+        #
+        # Create Tensor from rank_ids and root fiber
+        #
+        return root
+
 
 #
 # String methods

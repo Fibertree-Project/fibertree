@@ -1,0 +1,138 @@
+tensor:
+  rank_ids:
+  - M
+  - N
+  - K.1
+  - K.0
+  root:
+  - fiber:
+      coords:
+      - 10
+      - 20
+      - 40
+      payloads:
+      - fiber:
+          coords:
+          - 11
+          payloads:
+          - fiber:
+              coords:
+              - 6
+              payloads:
+              - fiber:
+                  coords:
+                  - 6
+                  - 7
+                  payloads:
+                  - 60
+                  - 70
+      - fiber:
+          coords:
+          - 12
+          - 21
+          payloads:
+          - fiber:
+              coords:
+              - 1
+              - 3
+              payloads:
+              - fiber:
+                  coords:
+                  - 1
+                  - 2
+                  payloads:
+                  - 10
+                  - 20
+              - fiber:
+                  coords:
+                  - 3
+                  - 8
+                  payloads:
+                  - 30
+                  - 40
+          - fiber:
+              coords:
+              - 3
+              - 5
+              payloads:
+              - fiber:
+                  coords:
+                  - 3
+                  - 4
+                  payloads:
+                  - 30
+                  - 40
+              - fiber:
+                  coords:
+                  - 5
+                  payloads:
+                  - 50
+      - fiber:
+          coords:
+          - 11
+          - 22
+          - 33
+          - 41
+          payloads:
+          - fiber:
+              coords:
+              - 1
+              - 6
+              - 9
+              payloads:
+              - fiber:
+                  coords:
+                  - 1
+                  - 2
+                  payloads:
+                  - 11
+                  - 22
+              - fiber:
+                  coords:
+                  - 6
+                  - 8
+                  payloads:
+                  - 66
+                  - 88
+              - fiber:
+                  coords:
+                  - 9
+                  payloads:
+                  - 99
+          - fiber:
+              coords:
+              - 0
+              payloads:
+              - fiber:
+                  coords:
+                  - 0
+                  payloads:
+                  - 1
+          - fiber:
+              coords:
+              - 3
+              - 5
+              payloads:
+              - fiber:
+                  coords:
+                  - 3
+                  - 4
+                  payloads:
+                  - 30
+                  - 40
+              - fiber:
+                  coords:
+                  - 5
+                  payloads:
+                  - 50
+          - fiber:
+              coords:
+              - 1
+              payloads:
+              - fiber:
+                  coords:
+                  - 1
+                  - 2
+                  payloads:
+                  - 10
+                  - 20

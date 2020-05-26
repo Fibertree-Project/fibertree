@@ -702,7 +702,7 @@ class TestFiber(unittest.TestCase):
 
         split = f.splitUniform(coords)
         flat_split = split.flattenRanks()
-        flat_split.updateCoords(lambda c: c[1])
+        flat_split.updateCoords(lambda i, c, p: c[1])
 
         self.assertEqual(f, flat_split)
 
