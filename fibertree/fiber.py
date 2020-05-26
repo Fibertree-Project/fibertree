@@ -153,6 +153,60 @@ class Fiber:
 
         return self.payloads
 
+    def getPosition(self, coord):
+        """payload
+
+        Return the position of the coord, if any.
+
+        Parameters
+        ----------
+        coord: coordinates to lookup
+
+        Returns
+        -------
+        position: an index that can be used to _getitem_(), or None
+
+        Raises
+        ------
+
+        None
+
+        """
+
+        try:
+            index = self.coords.index(coord)
+            return index
+        except:
+            return None
+
+
+    def getPositionRef(self, coord):
+        """payload
+
+        Return the position of the coord, adding it first not present.
+
+        Parameters
+        ----------
+        coord: coordinates to lookup
+
+        Returns
+        -------
+        position: an index that can be used to _getitem_(), or None
+
+        Raises
+        ------
+
+        None
+
+        """
+
+        try:
+            index = self.coords.index(coord)
+            return index
+        except:
+            self._create_payload(coord)
+            return len(self.payloads)-1 # TODO: This is wrong...
+            
     def getPayload(self, *coords):
         """payload
 
@@ -556,6 +610,47 @@ class Fiber:
                 payloads.reverse()
 
         return Fiber(coords, payloads)
+
+    def getRange(self, starting_coord, size, trans_fn=None, starting_pos=None):
+        """project"""
+
+        if trans_fn is None:
+            # Default trans_fn is identify function (inefficient but easy implementation)
+            trans_fn = lambda x: x
+
+        if starting_pos is not None:
+            assert(starting_pos < len(self.coords))
+
+        # Invariant: trans_fn is order preserving, but we check for reversals
+
+        min = starting_coord
+        max = starting_coord + size
+        
+        coords = []
+        payloads = []
+
+        # Start at starting_pos (if any)
+        pos = 0
+        for pos in range(starting_pos, len(self.coords)):
+            c = self.coords[pos]
+            p = self.payloads[pos]
+            new_c = trans_fn(c)
+            if new_c >= min and new_c < max:
+                coords.append(new_c)
+                payloads.append(p)
+            else:
+                break
+
+        # Note: This reversal implies a complex read order
+
+        if len(coords) > 1 and coords[1] < coords[0]:
+            coords.reverse()
+            payloads.reverse()
+
+        if starting_pos is not None:
+            return (Fiber(coords, payloads), pos)
+        else:
+            return Fiber(coords, payloads)
 
     def updateCoords(self, func, depth=0):
         """updateCoords

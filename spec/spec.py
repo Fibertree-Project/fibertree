@@ -390,10 +390,9 @@ k_mnk_mnk_matrix_mul = Schedule(spec_matrix_mul(), ["k", "m", "n", "k", "m", "n"
 n_kmn_kmn_matrix_mul = Schedule(spec_matrix_mul(), ["n", "k", "m", "n", "k", "m", "n"])
 
 
-tactile_matrix_mul = Schedule(spec_matrix_mul(), ["k", "n", "m", "k", "n", "m", "k"])
+tactile_matrix_mul = Schedule(spec_matrix_mul(), ["m", "k", "n", "m", "k", "n", "m", "k"])
+tactil2_matrix_mul = Schedule(spec_matrix_mul(), ["n", "k", "m", "n", "k", "m", "n", "k"])
 
-
-mkn_matrix_mul = Schedule(spec_matrix_mul(), ["m", "k", "n"])
 
 def spec_2d_conv():
   p = I("p")
