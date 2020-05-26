@@ -226,7 +226,7 @@ class UncompressedImage():
 
         for col_c in range(shape[0]):
             if fiber is not None:
-                col_p = fiber.getPayload(col_c, default=0)
+                col_p = fiber.getPayload(col_c)
 
             lightitup = (col_c in highlight_coords) or highlight_subtree
             row_count = self.draw_value(row_origin, col_origin+col_c, col_p, lightitup)
