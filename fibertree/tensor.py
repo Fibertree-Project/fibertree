@@ -295,7 +295,10 @@ class Tensor:
         #
         # Create Tensor from rank_ids and root fiber
         #
-        return Tensor.fromFiber(rank_ids, root)
+        tensor = Tensor.fromFiber(rank_ids, root)
+        tensor.setColor(self.getColor())
+
+        return tensor
 
 #
 # Swap method
@@ -317,7 +320,10 @@ class Tensor:
         #
         # Create Tensor from rank_ids and root fiber
         #
-        return Tensor.fromFiber(rank_ids, root)
+        tensor = Tensor.fromFiber(rank_ids, root)
+        tensor.setColor(self.getColor())
+
+        return tensor
 
 
     def flattenRanks(self, depth=0):
@@ -336,7 +342,11 @@ class Tensor:
         #
         # Create Tensor from rank_ids and root fiber
         #
-        return Tensor.fromFiber(rank_ids, root)
+        tensor = Tensor.fromFiber(rank_ids, root)
+        tensor.setColor(self.getColor())
+
+        return tensor
+
 
     def unflattenRanks(self, depth=0):
         """ swapRanks """
@@ -355,7 +365,10 @@ class Tensor:
         #
         # Create Tensor from rank_ids and root fiber
         #
-        return Tensor.fromFiber(rank_ids, root)
+        tensor = Tensor.fromFiber(rank_ids, root)
+        tensor.setColor(self.getColor())
+
+        return tensor
 
 
     def _modifyRoot(self, func, funcBelow, depth=0):
