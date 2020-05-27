@@ -131,8 +131,13 @@ class UncompressedImage():
     def traverse_cube(self, shape, fiber, row_origin=0, col_origin=0, highlights=[], highlight_subtree=False):
         """ traverse_cube - unimplemented """
 
-        row_cur = row_origin
-        row_max = row_origin
+        #
+        # Print out the rank information (if available)
+        #
+        self.draw_label(row_origin, col_origin+3, "Rank: "+self._getId(fiber)+" ----->")
+
+        row_cur = row_origin + 1
+        row_max = row_origin + 1
         col_cur = col_origin
 
         #
@@ -171,24 +176,30 @@ class UncompressedImage():
         #
         # Print out the rank information (if available)
         #
-#        if col == 0 and not fiber.getOwner() is None:
-#            self.draw_rank(level, "Rank: %s " % fiber.getOwner().getName())
+        self.draw_label(row_origin+1, col_origin, "Rank: "+self._getId(fiber))
 
+        #
+        # Set up variables to track rows and columns (note offset for rank label)
+        #
+        row_cur = row_origin
+        row_max = row_origin
+
+        col_cur = col_origin + 3
+        col_max = col_origin + 3
 
         #
         # Set up the highlighting for this level
         #
         highlight_coords = [ c[0] for c in highlights ]
 
+
         #
-        # Set up variables to track rows and columns
-        row_c = row_origin
-        row_max = row_origin
+        # Set up for loop
+        #
         row_p = Fiber([], [])
+        row_first = True
 
-        col_max = col_origin
-
-        for count in range(shape[0]):
+        for row_c in range(shape[0]):
 
             if fiber is not None:
                 row_p = fiber.getPayload(row_c)
@@ -202,26 +213,42 @@ class UncompressedImage():
 
             rc_range = self.traverse_vector(shape[1:],
                                              row_p,
-                                             row_origin=row_c,
-                                             col_origin=col_origin,
+                                             row_origin=row_cur,
+                                             col_origin=col_cur,
                                              highlights=highlight_next,
-                                             highlight_subtree=highlight_payload)
+                                             highlight_subtree=highlight_payload,
+                                             label=row_first)
 
             row_max = max(row_max, rc_range[0])
-            row_c = row_max
+            row_cur = row_max
+            row_first = False
 
             col_max = max(col_max, rc_range[1])
 
         return [ row_max, col_max ]
 
 
-    def traverse_vector(self, shape, fiber, row_origin=0, col_origin=0, highlights=[], highlight_subtree=False):
+    def traverse_vector(self, shape, fiber, row_origin=0, col_origin=0, highlights=[], highlight_subtree=False, label=True):
         # Default payload
 
-        row_cur = row_origin
-        row_max = row_origin
+        #
+        # Print out the rank information (if available)
+        #
+        if label:
+            self.draw_label(row_origin, col_origin, "Rank: "+self._getId(fiber))
+            label_offset = 1
+        else:
+            label_offset = 0
 
+        #
+        # Set up variables to track rows and columns (note offset for rank label)
+        #
+        row_cur = row_origin + label_offset
+        row_max = row_origin + label_offset
+
+        col_cur = col_origin
         col_p = 0
+
         highlight_coords = [ c[0] for c in highlights ]
 
         for col_c in range(shape[0]):
@@ -229,11 +256,23 @@ class UncompressedImage():
                 col_p = fiber.getPayload(col_c)
 
             lightitup = (col_c in highlight_coords) or highlight_subtree
-            row_count = self.draw_value(row_origin, col_origin+col_c, col_p, lightitup)
+            row_count = self.draw_value(row_cur, col_cur+col_c, col_p, lightitup)
 
+            assert row_count != 0
             row_max = max(row_max, row_cur+row_count)
 
-        return [ row_max, col_origin+shape[0] ]
+        return [ row_max, col_cur+shape[0] ]
+
+#
+# Utility methods
+#
+    def _getId(self, fiber):
+        """ _getId - get fiber's rank id """
+
+        if fiber.getOwner() is None:
+            return ""
+
+        return fiber.getOwner().getName()
 
 #
 # Image methods
@@ -265,6 +304,18 @@ class UncompressedImage():
 #          - row
 #          - column
 #
+    def draw_label(self, row, column, label):
+        """draw_label"""
+
+        x1 = self.col2x(column) + 20
+        y1 = self.row2y(row) - 10
+
+        # Hack: drawing text twice looks better in PIL
+        self.draw.text((x1+10,y1+10), label, font=self.fnt, fill="black")
+        self.draw.text((x1+10,y1+10), label, font=self.fnt, fill="black")
+
+
+
     def draw_value(self, row, column, value, highlight=False):
         """draw_value"""
 
@@ -331,37 +382,40 @@ class UncompressedImage():
 
 if __name__ == "__main__":
                          
+    print("a - multiple highlights")
     a = Tensor("examples/data/sparse-matrix-a.yaml")
     a.setColor("blue")
-    a.print()
     i = UncompressedImage(a, highlights=[(0,1), (1,2), (3,)])
     i.show()
 
     #
+    print("a - single highlights")
     i = UncompressedImage(a, (1,2))
     i.show()
 
     #
+    print("b")
     b = Tensor.fromUncompressed(["X"], [1, 2, 0, 0, 4])
-    b.print()
     i = UncompressedImage(b, [(1,), (4,)])
     i.show()
 
     #
+    print("c")
     a_root = a.getRoot()
     c = Tensor.fromFiber(["X", "Y", "Z"], Fiber([0, 1, 2], [a_root, Fiber([],[]), a_root]))
-    c.print()
     i = UncompressedImage(c)
     i.show()
 
     #
+    print("d")
     d = c.getRoot()
     print("Original")
     i = UncompressedImage(d)
     i.show()
 
     #
-    d_flattened = d.flattenRanks()
-    print("Flattened")
-    i = UncompressedImage(d_flattened)
-    i.show()
+#    print("e")
+#    d_flattened = d.flattenRanks()
+#    print("Flattened")
+#    i = UncompressedImage(d_flattened)
+#    i.show()
