@@ -157,7 +157,6 @@ class Fiber:
 
         return self.payloads
 
-<<<<<<< HEAD
     def getPosition(self, coord):
         """payload
 
@@ -212,10 +211,7 @@ class Fiber:
             self._create_payload(coord)
             return len(self.payloads)-1 # TODO: This is wrong...
             
-    def getPayload(self, *coords, default=None):
-=======
     def getPayload(self, *coords, default=None, allocate=True):
->>>>>>> 2e9ddaf8d6bc09b005ad5793697f3db938ead736
         """payload
 
         Return the final payload after recursively traversing the
