@@ -252,7 +252,7 @@ class UncompressedImage():
         highlight_coords = [ c[0] for c in highlights ]
 
         for col_c in range(shape[0]):
-            if fiber is not None:
+            if isinstance(fiber, Fiber):
                 col_p = fiber.getPayload(col_c)
 
             lightitup = (col_c in highlight_coords) or highlight_subtree

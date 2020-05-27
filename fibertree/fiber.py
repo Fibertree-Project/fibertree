@@ -538,6 +538,10 @@ class Fiber:
 # Core methods
 #
 
+    def clear(self):
+        self.coords.clear()
+        self.payloads.clear()
+
     def payload(self, coord):
         """payload"""
 
@@ -672,7 +676,7 @@ class Fiber:
 
         # Start at starting_pos (if any)
         pos = 0
-        for pos in range(starting_pos, len(self.coords)):
+        for pos in range(int(starting_pos), len(self.coords)):
             c = self.coords[pos]
             p = self.payloads[pos]
             new_c = trans_fn(c)
@@ -1980,7 +1984,7 @@ class Fiber:
     def _maybe_box(self, value):
         """_maybe_box"""
 
-        if isinstance(value, (float, int)):
+        if isinstance(value, (bool, float, int, str, tuple, frozenset)):
             return Payload(value)
 
         return value
