@@ -58,7 +58,11 @@ class Fiber:
         self.setOwner(None)
 
         # Default value assigned to new coordinates
-        self.setDefault(default)
+
+        if len(payloads) > 0 and isinstance(payloads[0], Fiber):
+            self.setDefault(Fiber)
+        else:
+            self.setDefault(default)
 
 
     @classmethod
@@ -153,6 +157,7 @@ class Fiber:
 
         return self.payloads
 
+<<<<<<< HEAD
     def getPosition(self, coord):
         """payload
 
@@ -208,6 +213,9 @@ class Fiber:
             return len(self.payloads)-1 # TODO: This is wrong...
             
     def getPayload(self, *coords, default=None):
+=======
+    def getPayload(self, *coords, default=None, allocate=True):
+>>>>>>> 2e9ddaf8d6bc09b005ad5793697f3db938ead736
         """payload
 
         Return the final payload after recursively traversing the
@@ -215,8 +223,16 @@ class Fiber:
 
         Parameters
         ----------
-        coords: list of coordinates to traverse
-        default: default value to return if coordinate is empty
+        coords: 
+        list of coordinates to traverse
+
+        allocate:
+        Automatically generate the default value if needed at each
+        level of the tree, but don't insert into the tree.
+
+        default:
+        A constant default value to return if coordinate is empty on
+        no-allocate
 
         Returns
         -------
@@ -229,17 +245,37 @@ class Fiber:
 
         """
 
+        assert default is None or not allocate
+
         try:
             index = self.coords.index(coords[0])
             payload = self.payloads[index]
-
-            if len(coords) > 1:
-                # Recurse to the next level's fiber
-                return payload.getPayload(*coords[1:])
-
-            return payload
         except:
-            return default
+            #
+            # The requested coordinate did not exist.
+            # Unless we are at the last coordinate in the tree
+            # create a default value to return (or recurse into)
+            # but do not change anything in the actual fiber
+            #
+            if allocate or len(coords) > 1:
+                if callable(self._default):
+                    payload = self._default()
+                else:
+                    # TBD: Wrap in Payload object?
+                    payload = self._default
+            else:
+                payload = default
+
+
+        if len(coords) > 1:
+            assert isinstance(payload, Fiber), "getPayload too many coordinates"
+
+            # Recurse to the next level's fiber
+            return payload.getPayload(*coords[1:],
+                                      default=default,
+                                      allocate=allocate)
+
+        return payload
 
 
     def getPayloadRef(self, *coords):
@@ -268,6 +304,7 @@ class Fiber:
             index = self.coords.index(coords[0])
             payload = self.payloads[index]
         except:
+            # Coordinate didn't exist so create a payload
             payload = self._create_payload(coords[0])
 
         if len(coords) > 1:
@@ -1410,7 +1447,7 @@ class Fiber:
 
             # TBD: Optimize with co-iteration...
 
-            a_payload = self.getPayload(b_coord)
+            a_payload = self.getPayload(b_coord, allocate=False)
             if a_payload is None:
                 a_payload = self._create_payload(b_coord)
 
