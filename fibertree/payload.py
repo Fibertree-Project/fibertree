@@ -147,6 +147,17 @@ class Payload:
             self.value = self.value + other
         return self
 
+    # Note: we use <<= in place of base '=' so this is a pure overwrite
+    def __ilshift__(self, other):
+        """__iadd__"""
+
+        if isinstance(other, Payload):
+            self.value = other.value
+        else:
+            self.value = other
+        return self
+
+
     def __sub__(self, other):
         """__sub__"""
 
@@ -224,6 +235,38 @@ class Payload:
 
         return self.value == other
 
+    def __lt__(self,other):
+        """__lt__"""
+
+        if isinstance(other, Payload):
+            return self.value < other.value
+
+        return self.value < other
+
+    def __le__(self,other):
+        """__le__"""
+
+        if isinstance(other, Payload):
+            return self.value <= other.value
+
+        return self.value <= other
+
+    def __gt__(self,other):
+        """__gt__"""
+
+        if isinstance(other, Payload):
+            return self.value > other.value
+
+        return self.value > other
+
+    def __ge__(self,other):
+        """__ge__"""
+
+        if isinstance(other, Payload):
+            return self.value >= other.value
+
+        return self.value >= other
+
     def __ne__(self, other):
         """__ne__"""
 
@@ -269,6 +312,11 @@ class Payload:
 
         return Payload(ans)
 
+
+    def __int__(self):
+        """__int__"""
+        
+        return int(self.value)
 #
 # Conversion methods - to/from dictionaries
 #

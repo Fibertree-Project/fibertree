@@ -6,10 +6,14 @@ An emulator for the hierarchical fiber-tree abstraction for tensors
 Install
 =======
 
-To install an editable copy in your home directory run::
+To install an editable copy in your home directory run:
 
 ```
+  # Install the package
   % pip3 install --user -e .
+
+  # To get widgets in the Jupyter notebooks
+  jupyter nbextension enable --py widgetsnbextension
 ```
 
 Run examples
@@ -23,12 +27,18 @@ Next you can run the included examples. For example::
 
 Other examples are in examples/scripts
 
-Or run the Ipython notebook
+Run Ipython notebooks
+=====================
+
+To run the Ipython notebooks:
 
 ```
   % cd examples/ipython
   % jupyter notebook .
 ```
+
+Then open basic/fibertree.ipyn 
+
 
 Run tests
 =========

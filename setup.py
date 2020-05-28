@@ -20,6 +20,6 @@ setup(name='fiber-tree',
       author_email='jsemer@mit.edu',
       license='MIT',
       packages=['fibertree'],
-      install_requires=['networkx','opencv-python', 'Pillow', 'numpy'],
+      install_requires=['networkx','opencv-python', 'Pillow', 'numpy', 'ipywidgets'],
       include_package_data=True,
       zip_safe=False)

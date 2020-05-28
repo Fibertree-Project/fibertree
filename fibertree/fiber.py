@@ -16,7 +16,7 @@ CoordPayload = namedtuple('CoordPayload', 'coord payload')
 # Define the fiber class
 #
 class Fiber:
-    """Fiber class
+    """ Fiber class
 
     A fiber of a tensor containing a list of coordinates and
     asssociated payloads.
@@ -58,7 +58,11 @@ class Fiber:
         self.setOwner(None)
 
         # Default value assigned to new coordinates
-        self.setDefault(default)
+
+        if len(payloads) > 0 and isinstance(payloads[0], Fiber):
+            self.setDefault(Fiber)
+        else:
+            self.setDefault(default)
 
 
     @classmethod
@@ -153,7 +157,61 @@ class Fiber:
 
         return self.payloads
 
-    def getPayload(self, *coords):
+    def getPosition(self, coord):
+        """payload
+
+        Return the position of the coord, if any.
+
+        Parameters
+        ----------
+        coord: coordinates to lookup
+
+        Returns
+        -------
+        position: an index that can be used to _getitem_(), or None
+
+        Raises
+        ------
+
+        None
+
+        """
+
+        try:
+            index = self.coords.index(coord)
+            return index
+        except:
+            return None
+
+
+    def getPositionRef(self, coord):
+        """payload
+
+        Return the position of the coord, adding it first not present.
+
+        Parameters
+        ----------
+        coord: coordinates to lookup
+
+        Returns
+        -------
+        position: an index that can be used to _getitem_(), or None
+
+        Raises
+        ------
+
+        None
+
+        """
+
+        try:
+            index = self.coords.index(coord)
+            return index
+        except:
+            self._create_payload(coord)
+            return len(self.payloads)-1 # TODO: This is wrong...
+            
+    def getPayload(self, *coords, default=None, allocate=True):
         """payload
 
         Return the final payload after recursively traversing the
@@ -161,7 +219,16 @@ class Fiber:
 
         Parameters
         ----------
-        coords: list of coordinates to traverse
+        coords: 
+        list of coordinates to traverse
+
+        allocate:
+        Automatically generate the default value if needed at each
+        level of the tree, but don't insert into the tree.
+
+        default:
+        A constant default value to return if coordinate is empty on
+        no-allocate
 
         Returns
         -------
@@ -174,17 +241,37 @@ class Fiber:
 
         """
 
+        assert default is None or not allocate
+
         try:
             index = self.coords.index(coords[0])
             payload = self.payloads[index]
-
-            if len(coords) > 1:
-                # Recurse to the next level's fiber
-                return payload.getPayload(*coords[1:])
-
-            return payload
         except:
-            return None
+            #
+            # The requested coordinate did not exist.
+            # Unless we are at the last coordinate in the tree
+            # create a default value to return (or recurse into)
+            # but do not change anything in the actual fiber
+            #
+            if allocate or len(coords) > 1:
+                if callable(self._default):
+                    payload = self._default()
+                else:
+                    # TBD: Wrap in Payload object?
+                    payload = self._default
+            else:
+                payload = default
+
+
+        if len(coords) > 1:
+            assert isinstance(payload, Fiber), "getPayload too many coordinates"
+
+            # Recurse to the next level's fiber
+            return payload.getPayload(*coords[1:],
+                                      default=default,
+                                      allocate=allocate)
+
+        return payload
 
 
     def getPayloadRef(self, *coords):
@@ -213,6 +300,7 @@ class Fiber:
             index = self.coords.index(coords[0])
             payload = self.payloads[index]
         except:
+            # Coordinate didn't exist so create a payload
             payload = self._create_payload(coords[0])
 
         if len(coords) > 1:
@@ -293,7 +381,14 @@ class Fiber:
         if len(self.coords) == 0:
             return None
 
+        if not isinstance(self.coords[0], int):
+            #
+            # Coordinates aren't integers, so maxCoord doesn't make sense
+            #
+            return None
+
         return max(self.coords)
+
 
     def countValues(self):
         """Count values in the fiber tree
@@ -443,6 +538,10 @@ class Fiber:
 # Core methods
 #
 
+    def clear(self):
+        self.coords.clear()
+        self.payloads.clear()
+
     def payload(self, coord):
         """payload"""
 
@@ -557,6 +656,47 @@ class Fiber:
 
         return Fiber(coords, payloads)
 
+    def getRange(self, starting_coord, size, trans_fn=None, starting_pos=None):
+        """project"""
+
+        if trans_fn is None:
+            # Default trans_fn is identify function (inefficient but easy implementation)
+            trans_fn = lambda x: x
+
+        if starting_pos is not None:
+            assert(starting_pos < len(self.coords))
+
+        # Invariant: trans_fn is order preserving, but we check for reversals
+
+        min = starting_coord
+        max = starting_coord + size
+        
+        coords = []
+        payloads = []
+
+        # Start at starting_pos (if any)
+        pos = 0
+        for pos in range(int(starting_pos), len(self.coords)):
+            c = self.coords[pos]
+            p = self.payloads[pos]
+            new_c = trans_fn(c)
+            if new_c >= min and new_c < max:
+                coords.append(new_c)
+                payloads.append(p)
+            else:
+                break
+
+        # Note: This reversal implies a complex read order
+
+        if len(coords) > 1 and coords[1] < coords[0]:
+            coords.reverse()
+            payloads.reverse()
+
+        if starting_pos is not None:
+            return (Fiber(coords, payloads), pos)
+        else:
+            return Fiber(coords, payloads)
+
     def updateCoords(self, func, depth=0):
         """updateCoords
 
@@ -596,7 +736,7 @@ class Fiber:
         else:
             # Update my coordinates
             for i in range(len(self.coords)):
-                self.coords[i] = func(self.coords[i])
+                self.coords[i] = func(i, self.coords[i], self.payloads[i])
 
         return None
 
@@ -663,7 +803,15 @@ class Fiber:
 
 
     def _calcShape(self, shape, level):
-        """Find the maximum coordinate at each level of the tree"""
+        """ _calcShape()
+
+        Find the maximum coordinate at each level of the tree
+
+        TBD: Using maximum coordinate isn't really right because
+             the original array may have a empty value at its
+             maximum coordinate location
+
+        """
 
         #
         # Conditionaly append a new level to the shape array
@@ -671,13 +819,23 @@ class Fiber:
         if len(shape) < level+1:
             shape.append(0)
 
+        #
+        # If fiber is empty then shape doesn't change
+        #
+        if not len(self.coords):
+            return shape
+
+        #
+        # Try to determine the maximum coordinate
+        #
         max_coord = self.maxCoord()
 
         #
-        # If Fiber is empty then shape doesn't change
+        # If fiber is not empty, but max_coord isn't meaningful,
+        # assume fiber is dense and return count of elements
         #
         if max_coord is None:
-            return shape
+            max_coord = len(self.coords)
 
         #
         # Update shape for this Fiber at this level
@@ -817,7 +975,14 @@ class Fiber:
 
 
     def splitUnEqual(self, sizes, partitions=1, relativeCoords=False):
-        """splitUnEqual"""
+        """splitUnEqual
+
+        Split root fiber by the sizes in "sizes".
+
+        If there are more coordinates than the sum of the "sizes" all
+        remaining coordinates are put into the final split.
+
+        """
 
         class _SplitterUnEqual():
 
@@ -836,8 +1001,6 @@ class Fiber:
                         self.cur_count = float("inf")
 
                 return count, c
-
-        assert len(self.coords) <= sum(sizes)
 
         splitter = _SplitterUnEqual(sizes)
 
@@ -1284,7 +1447,7 @@ class Fiber:
 
             # TBD: Optimize with co-iteration...
 
-            a_payload = self.getPayload(b_coord)
+            a_payload = self.getPayload(b_coord, allocate=False)
             if a_payload is None:
                 a_payload = self._create_payload(b_coord)
 
@@ -1821,7 +1984,7 @@ class Fiber:
     def _maybe_box(self, value):
         """_maybe_box"""
 
-        if isinstance(value, (float, int)):
+        if isinstance(value, (bool, float, int, str, tuple, frozenset)):
             return Payload(value)
 
         return value

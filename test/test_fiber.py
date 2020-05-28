@@ -452,10 +452,19 @@ class TestFiber(unittest.TestCase):
         a = Fiber(coords, payloads)
 
         test = [0, 4, 6, 3]
-        answer = [None, 5, 7, None]
+        answer_allocate = [0, 5, 7, 0]
+        answer_noallocate = [None, 5, 7, None]
+        answer_default = [-1, 5, 7, -1]
         
         for i in range(len(test)):
-            self.assertEqual(a.getPayload(test[i]), answer[i])
+            self.assertEqual(a.getPayload(test[i]),
+                             answer_allocate[i])
+            self.assertEqual(a.getPayload(test[i], allocate=True),
+                             answer_allocate[i])
+            self.assertEqual(a.getPayload(test[i], allocate=False),
+                             answer_noallocate[i])
+            self.assertEqual(a.getPayload(test[i], allocate=False, default=-1),
+                             answer_default[i])
 
     def test_getPayload_2(self):
         """Access payloads - multilevel"""
@@ -468,12 +477,47 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.getPayload(2, 2), 3)
 
         # Multiple tests
-        test = [(0, 0), (2, 2), (1, 3), (2, 1)]
-        answer = [1, 3, None, None]
+        test = [(0, 0), (2, 2), (0, 3), (2, 1)]
+        answer_allocate = [1, 3, 4, 0]
+        answer_noallocate = [1, 3, 4, None]
 
         for i in range(len(test)):
             p = a.getPayload(*test[i])
-            self.assertEqual(p, answer[i])
+            self.assertEqual(p, answer_allocate[i])
+            p = a.getPayload(*test[i], allocate=True)
+            self.assertEqual(p, answer_allocate[i])
+            p = a.getPayload(*test[i], allocate=False)
+            self.assertEqual(p, answer_noallocate[i])
+
+    def test_getPayload_3(self):
+        """Access payloads - complex"""
+
+        a = Fiber.fromUncompressed([[1, 2, 0, 4, 5, 0],
+                                    [0, 0, 0, 0, 0, 0],
+                                    [0, 0, 3, 4, 0, 0]])
+
+        a_1 = Fiber([], [])
+        a_2 = Fiber([2, 3],[3, 4])
+
+        # Simple test
+        self.assertEqual(a.getPayload(2), a_2)
+
+        # Multiple tests
+        test = [(2,), (1,), (1, 2)]
+        answer_allocate = [a_2, a_1, 0 ]
+        answer_noallocate = [a_2, None, None ]
+        answer_default = [a_2, -1, -1]
+
+        for i in range(len(test)):
+            p = a.getPayload(*test[i])
+            self.assertEqual(p, answer_allocate[i])
+            p = a.getPayload(*test[i], allocate=True)
+            self.assertEqual(p, answer_allocate[i])
+            p = a.getPayload(*test[i], allocate=False)
+            self.assertEqual(p, answer_noallocate[i])
+            p = a.getPayload(*test[i], allocate=False, default=-1)
+            self.assertEqual(p, answer_default[i])
+
 
 
     def test_getPayloadRef(self):
@@ -702,7 +746,7 @@ class TestFiber(unittest.TestCase):
 
         split = f.splitUniform(coords)
         flat_split = split.flattenRanks()
-        flat_split.updateCoords(lambda c: c[1])
+        flat_split.updateCoords(lambda i, c, p: c[1])
 
         self.assertEqual(f, flat_split)
 
