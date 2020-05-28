@@ -42,6 +42,11 @@ class Payload:
 
         return bool(self.value)
 
+    def __int__(self):
+        """__int__"""
+
+        return int(self.value)
+
 #
 # Static methods
 #
