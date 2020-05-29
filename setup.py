@@ -4,6 +4,10 @@ def readme():
       with open('README.md') as f:
             return f.read()
 
+with open("requirements.txt", "r") as fh:
+   requirements = fh.readlines()
+
+
 setup(name='fiber-tree',
       version='0.1',
       description='Fiber-tree style tensor simulator',
@@ -20,6 +24,6 @@ setup(name='fiber-tree',
       author_email='jsemer@mit.edu',
       license='MIT',
       packages=['fibertree'],
-      install_requires=['pyyaml', 'matplotlib', 'networkx','opencv-python', 'Pillow', 'numpy', 'ipywidgets'],
+      install_requires=[req for req in requirements if req[:2] != "# "],
       include_package_data=True,
       zip_safe=False)
