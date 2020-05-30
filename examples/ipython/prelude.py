@@ -104,10 +104,10 @@ class FibertreeDisplay():
     #
     # Display actions
     #
-    def displayTensor(self, tensor, **kwargs):
+    def displayTensor(self, tensor, highlights=[], **kwargs):
         """ displayTensor """
 
-        im = TensorImage(tensor, style=self.style, **kwargs).im
+        im = TensorImage(tensor, style=self.style, highlights=highlights, **kwargs).im
 
         display(im)
 
@@ -261,10 +261,10 @@ def createRunallButton():
 # Convenience functions that just call the class methods
 # on the FTD object created below
 #
-def displayTensor(tensor, **kwargs):
+def displayTensor(tensor, highlights=[], **kwargs):
     """ displayTensor(<tensor|fiber>, hightlights=[ <point>...] ) """
 
-    FTD.displayTensor(tensor, **kwargs)
+    FTD.displayTensor(tensor, highlights=highlights, **kwargs)
 
 
 def displayGraph(am_s):
