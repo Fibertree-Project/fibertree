@@ -11,6 +11,13 @@ from fibertree.payload import Payload
 #
 CoordPayload = namedtuple('CoordPayload', 'coord payload')
 
+#
+# Define an error class
+#
+class CoordinateError(Exception):
+    """CoordinateError"""
+    pass
+
 
 #
 # Define the fiber class
@@ -708,7 +715,9 @@ class Fiber:
 
         return count
 
-
+#
+# Position based methods
+#
     def __getitem__(self, keys):
         """__getitem__
 
@@ -784,6 +793,73 @@ class Fiber:
             return Fiber(coords, payloads)
 
         raise(TypeError, "Invalid key type.")
+
+
+    def __setitem__(self, key, newvalue):
+        """__setitem__
+
+        The "newvalue" parameter is either a CoordPayload an arbitrary
+        value to assign to the position "key" in the fiber.  If
+        "newvalue" is not a CoordPayload or the Coord in the
+        CoordPayload is None the current coordinate will be left
+        unchanged. The payload will be boxed if appropriate. If the
+        payload is None, then the payload will be left unchanged.
+
+        Parameters
+        ----------
+        key: single integer
+        The position in the fiber to be set
+
+        newvalue: a CoordPayload or a payload value
+        The coordinate/payload or just payload to assign
+
+        Returns
+        -------
+        Nothing
+
+        Raises
+        ------
+
+        IndexError
+        Index out of range
+
+        TypeError
+        Invalid key type
+
+        CoordinateError
+        Invalid coordinate
+
+        """
+
+        position = key
+
+        #
+        # TBD: Get isinstance of CoordPayload to work...
+        #
+        try:
+            coord = newvalue.coord
+            payload = newvalue.payload
+        except:
+            coord = None
+            payload = newvalue
+
+        if coord is not None:
+            #
+            # Check that coordinate order is maintained
+            #
+            if position > 0 and coord <= self.coords[position-1]:
+                raise CoordinateError
+
+            if position+1 < len(self.coords) and coord >= self.coords[position+1]:
+                raise CoordinateError
+
+            self.coords[position] = coord
+
+        #
+        # A payload of None just updates the coordinate
+        #
+        if payload is not None:
+            self.payloads[position] = self._maybe_box(payload)
 
 
     def __len__(self):

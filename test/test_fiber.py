@@ -2,6 +2,7 @@ import unittest
 from fibertree.payload import Payload
 from fibertree.fiber import Fiber
 from fibertree.fiber import CoordPayload
+from fibertree.fiber import CoordinateError
 from fibertree.tensor import Tensor
 from fibertree.tensor_image import TensorImage
 
@@ -434,6 +435,92 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(f_13_12, f_13_12_ref)
 
+    def test_setitem_scalar(self):
+        """test_setitem_scalar"""
+
+        f = Fiber([0,1,3], [1,0,4])
+
+        newf = Fiber([], [])
+
+        newcoords = [ None, 0, 1, 2, 3, 4 ]
+        newpayloads = [ 6, (4, 8), newf, None]
+
+        ans_c = [0, 1, 3]
+        ans_p = [6, (4, 8), newf, newf]
+
+        for i in range(len(f)):
+            for j, p in enumerate(newpayloads):
+                f[i] = p
+                a = f[i]
+                self.assertEqual(a.coord, ans_c[i])
+                self.assertEqual(a.payload, ans_p[j])
+
+
+    def test_setitem_coordpayload(self):
+        """test_setitem_coordpayload"""
+
+        f = Fiber([0,1,3], [1,0,4])
+
+        newf = Fiber([], [])
+
+        newcoords = [ None, 0, 1, 2, 3, 4 ]
+        newpayloads = [ 6, (4, 8), newf, None]
+
+        #
+        # Dimensions position, newcoords-index, newpayload-index
+        #
+        ans_cvv = [[[0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None]],
+                   [[1, 1, 1, 1],
+                    [None, None, None, None],
+                    [1, 1, 1, 1],
+                    [2, 2, 2, 2],
+                    [None, None, None, None],
+                    [None, None, None, None]],
+                   [[3, 3, 3, 3],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [3, 3, 3, 3],
+                    [4, 4, 4, 4]]]
+
+        ans_pvv = [[[6, (4, 8), newf, newf],
+                    [6, (4, 8), newf, newf],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None]],
+                   [[6, (4, 8), newf, newf],
+                    [None, None, None, None],
+                    [6, (4, 8), newf, newf],
+                    [6, (4, 8), newf, newf ],
+                    [None, None, None, None],
+                    [None, None, None, None]],
+                   [[6, (4, 8), newf, newf],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [6, (4, 8), newf, newf],
+                    [6, (4, 8), newf, newf]]]
+
+        for i in range(len(f)):
+
+            for j, c in enumerate(newcoords):
+                for k, p in enumerate(newpayloads):
+                    a = f[i]
+                    if ans_cvv[i][j][k] is not None:
+                        f[i] = CoordPayload(c, p)
+                        b = f[i]
+                        self.assertEqual(b.coord, ans_cvv[i][j][k])
+                        self.assertEqual(b.payload, ans_pvv[i][j][k])
+                    else:
+                        with self.assertRaises(CoordinateError):
+                            f[i] = CoordPayload(c, p)
+
 
     def test_len(self):
         """Find lenght of a fiber"""
@@ -455,7 +542,7 @@ class TestFiber(unittest.TestCase):
         answer_allocate = [0, 5, 7, 0]
         answer_noallocate = [None, 5, 7, None]
         answer_default = [-1, 5, 7, -1]
-        
+
         for i in range(len(test)):
             self.assertEqual(a.getPayload(test[i]),
                              answer_allocate[i])

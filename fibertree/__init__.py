@@ -8,3 +8,7 @@ from fibertree.tensor_canvas import *
 from fibertree.rank import *
 from fibertree.fiber import *
 from fibertree.payload import *
+
+from collections import namedtuple
+
+CoordPayload = namedtuple('CoordPayload', 'coord payload')
