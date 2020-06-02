@@ -17,7 +17,9 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitUniform(25, depth=0)
 
         self.assertEqual(a_out, a_verify)
-        
+        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
+        self.assertEqual(a_out.getShape(), [26, 41, 42, 10])
+
 
     def test_splitUniform_1(self):
         """ Test splitUniform - depth=1 """
@@ -28,7 +30,9 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitUniform(15, depth=1)
 
         self.assertEqual(a_out, a_verify)
-        
+        self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
+        self.assertEqual(a_out.getShape(), [41, 31, 42, 10])
+
 
     def test_splitUniform_2(self):
         """ Test splitUniform - depth=2 """
@@ -39,6 +43,9 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitUniform(4, depth=2)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
+        self.assertEqual(a_out.getShape(), [41, 42, 9, 10])
+
 
 
     def test_splitNonUniform_0(self):
@@ -50,6 +57,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitNonUniform([0, 15, 35], depth=0)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
+        self.assertEqual(a_out.getShape(), [36, 41, 42, 10])
 
 
     def test_splitNonUniform_1(self):
@@ -61,6 +70,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitNonUniform([0, 15, 25], depth=1)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
+        self.assertEqual(a_out.getShape(), [41, 26, 42, 10])
 
 
     def test_splitNonUniform_2(self):
@@ -72,6 +83,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitNonUniform([0, 4, 19], depth=2)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
+        self.assertEqual(a_out.getShape(), [41, 42, 5, 10])
 
 
     def test_splitEqual_0(self):
@@ -83,6 +96,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitEqual(2, depth=0)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
+        self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
 
 
     def test_splitEqual_1(self):
@@ -94,6 +109,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitEqual(2, depth=1)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
+        self.assertEqual(a_out.getShape(), [41, 34, 42, 10])
 
 
     def test_splitEqual_2(self):
@@ -105,6 +122,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitEqual(2, depth=2)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
+        self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
 
 
@@ -117,6 +136,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitUnEqual([2, 1], depth=0)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
+        self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
 
 
 
@@ -129,6 +150,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitUnEqual([2, 1], depth=1)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
+        self.assertEqual(a_out.getShape(), [41, 42, 42, 10])
 
 
     def test_splitUnEqual_2(self):
@@ -140,6 +163,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.splitUnEqual([2, 1], depth=2)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
+        self.assertEqual(a_out.getShape(), [41, 42, 9, 10])
 
 
     def test_swapRanks_0(self):
@@ -151,6 +176,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.swapRanks(depth=0)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["N", "M", "K"])
+        self.assertEqual(a_out.getShape(), [42, 41, 10])
 
 
     def test_swapRanks_1(self):
@@ -162,6 +189,8 @@ class TestTensor(unittest.TestCase):
         a_out = a.swapRanks(depth=1)
 
         self.assertEqual(a_out, a_verify)
+        self.assertEqual(a_out.getRankIds(), ["M", "K", "N"])
+        self.assertEqual(a_out.getShape(), [41, 10, 42])
 
 
     def test_flattenRanks_0(self):
@@ -172,6 +201,10 @@ class TestTensor(unittest.TestCase):
         a_again = a_out.unflattenRanks(depth=0)
 
         self.assertEqual(a_again, a)
+        self.assertEqual(a_out.getRankIds(), [["M", "N"], "K"])
+
+        # TBD: Semantics for non-integer coordinates
+#       self.assertEqual(a_out.getShape(), [7, 10])
 
 
     def test_flattenRanks_1(self):
@@ -182,6 +215,10 @@ class TestTensor(unittest.TestCase):
         a_again = a_out.unflattenRanks(depth=1)
 
         self.assertEqual(a_again, a)
+        self.assertEqual(a_out.getRankIds(), ["M", ["N", "K"]])
+
+        # TBD: Semantics for non-integer coordinates
+#       self.assertEqual(a_out.getShape(), [7, 10])
 
 
 if __name__ == '__main__':

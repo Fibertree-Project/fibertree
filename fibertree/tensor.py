@@ -10,7 +10,7 @@ from fibertree.payload import Payload
 class Tensor:
     """ Tensor Class """
 
-    def __init__(self, yamlfile="", rank_ids=None):
+    def __init__(self, yamlfile="", rank_ids=None, shape=None):
         """__init__"""
 
         self.yamlfile = yamlfile
@@ -18,13 +18,16 @@ class Tensor:
         # TBD: Encourage use of Tensor.fromYAMLfile instead...
 
         if (yamlfile != ""):
-            assert(rank_ids is None)
+            assert(rank_ids is None and shape is None)
 
-            (rank_ids, fiber) = self.parse(yamlfile)
+            (rank_ids, root, shape) = self.parse(yamlfile)
 
-            self.set_rank_ids(rank_ids)
+            if shape is None:
+                shape = root.estimateShape()
+
+            self.setRankInfo(rank_ids, shape)
+            self.setRoot(root)
             self.setColor("red")
-            self.setRoot(fiber)
             return
 
         #
@@ -32,7 +35,7 @@ class Tensor:
         #
         assert(not rank_ids is None)
 
-        self.set_rank_ids(rank_ids)
+        self.setRankInfo(rank_ids, shape)
         self.setColor("red")
 
         if rank_ids == []:
@@ -49,45 +52,71 @@ class Tensor:
     def fromYAMLfile(cls, yamlfile):
         """Construct a Tensor from a YAML file"""
 
-        (rank_ids, root) = Tensor.parse(yamlfile)
+        (rank_ids, root, shape) = Tensor.parse(yamlfile)
 
         if not isinstance(root, Fiber):
-            t = Tensor(rank_ids=[])
+            t = Tensor(rank_ids=[], shape=shape)
             t._root = Payload(root)
             return t
 
-        return Tensor.fromFiber(rank_ids, root)
+        return Tensor.fromFiber(rank_ids, root, shape)
 
 
     @classmethod
-    def fromUncompressed(cls, rank_ids=None, root=None):
+    def fromUncompressed(cls, rank_ids=None, root=None, shape=None):
         """Construct a Tensor from uncompressed fiber tree"""
 
         assert(not root is None)
 
         if not isinstance(root, list):
             # Handle a rank zero tensor
-            t = Tensor(rank_ids=[])
+            t = Tensor(rank_ids=[], shape=[])
             t._root = Payload(root)
             return t
 
         assert(not rank_ids is None)
 
         fiber = Fiber.fromUncompressed(root)
-        return Tensor.fromFiber(rank_ids, fiber)
+
+        if shape is None:
+            # TBD: Maybe this is not needed because fibers get a max_coord...
+            shape = Tensor._calc_shape(root)
+
+        return Tensor.fromFiber(rank_ids, fiber, shape)
+
+
+    @staticmethod
+    def _calc_shape(ll):
+        """_calc_shape"""
+
+        shape = [len(ll)]
+
+        if not isinstance(ll[0], list):
+            return shape
+
+        if len(ll) == 1:
+            shape.extend(Tensor._calc_shape(ll[0]))
+            return shape
+
+        ll0 = Tensor._calc_shape(ll[0])
+        ll1 = Tensor._calc_shape(ll[1:])[1:]
+        rest = [max(a, b) for a, b in zip(ll0, ll1)]
+        shape.extend(rest)
+
+        return shape
 
 
     @classmethod
-    def fromFiber(cls, rank_ids=None, fiber=None):
+    def fromFiber(cls, rank_ids=None, fiber=None, shape=None):
         """Construct a Tensor from a fiber"""
 
         assert(not rank_ids is None)
         assert(not fiber is None)
 
-        tensor = cls(rank_ids=rank_ids)
+        tensor = cls(rank_ids=rank_ids, shape=shape)
 
-        tensor.setColor("red")
         tensor.setRoot(fiber)
+        tensor.setColor("red")
 
         return tensor
 
@@ -96,26 +125,55 @@ class Tensor:
 # Accessor methods
 #
 
-    # TBD: Fix style of this method name
+    def setRankInfo(self, rank_ids, shape):
+        """setRankInfo"""
 
-    def set_rank_ids(self, rank_ids):
-        """set_rank_ids"""
-
-        self.rank_ids = rank_ids
+        if shape is None:
+            shape = [None]*len(rank_ids)
 
         #
         # Create a linked list of ranks
         #
         self.ranks = []
-        for id in rank_ids:
-            new_rank = Rank(name=id)
-            self.ranks.append(new_rank)
+        last_rank = None
 
-        old_rank = None
-        for rank in self.ranks:
-            if not old_rank is None:
-                old_rank.set_next(rank)
-            old_rank = rank
+        for id, dimension in reversed(list(zip(rank_ids, shape))):
+            new_rank = Rank(id=id, shape=dimension, next_rank=last_rank)
+            self.ranks.insert(0, new_rank)
+            last_rank = new_rank
+
+
+    def syncRankInfo(self, ranks):
+        """resyncRankInfo"""
+
+        # TBD: Currently unused and untested, so probably broken
+
+        self.ranks = []
+        last_rank = None
+
+        for rank in reversed(ranks):
+            rank.set_next(last_rank)
+            last_rank = rank
+
+
+    def getRankIds(self):
+        """getRankIds"""
+
+        #
+        # Get the rank id for each rank
+        #
+        return [ r.getId() for r in self.ranks ]
+
+
+    def getShape(self):
+        """getShape"""
+
+        #
+        # Get the shape for each rank
+        #
+        # TBD: Fix awkward interface to getShape
+        #
+        return [ r.getShape(all_ranks=False)[0] for r in self.ranks ]
 
 
     def setRoot(self, root):
@@ -138,8 +196,9 @@ class Tensor:
 
         self.ranks[level].append(fiber)
 
-        # Note: The code below handles the transistion from
-        #       raw fibers as payloads to fibers in Payload
+        # Note: The code below handles the (probably abandoned)
+        #       transistion from raw fibers as payloads to fibers in
+        #       Payload
 
         for p in fiber.getPayloads():
             if Payload.contains(p, Fiber):
@@ -223,7 +282,10 @@ class Tensor:
     def __eq__(self, other):
         """__eq__"""
 
-        return (self.rank_ids == other.rank_ids) and (self.getRoot() == other.getRoot())
+        rankid_match = (self.getRankIds() == other.getRankIds())
+        fiber_match = (self.getRoot() == other.getRoot())
+
+        return  rankid_match and fiber_match
 
 
 #
@@ -277,10 +339,17 @@ class Tensor:
         #
         # Create new list of rank ids
         #
-        rank_ids = copy.deepcopy(self.rank_ids)
+        rank_ids = copy.deepcopy(self.getRankIds())
         id = rank_ids[depth]
         rank_ids[depth] = f"{id}.1"
         rank_ids.insert(depth+1, f"{id}.0")
+
+        #
+        # Create new shape list
+        #
+        # TBD: Create shape
+        #
+        shape = None
 
         #
         # Create new root fiber
@@ -295,7 +364,7 @@ class Tensor:
         #
         # Create Tensor from rank_ids and root fiber
         #
-        tensor = Tensor.fromFiber(rank_ids, root)
+        tensor = Tensor.fromFiber(rank_ids, root, shape)
         tensor.setColor(self.getColor())
 
         return tensor
@@ -309,10 +378,17 @@ class Tensor:
         #
         # Create new list of rank ids
         #
-        rank_ids = copy.deepcopy(self.rank_ids)
+        rank_ids = copy.deepcopy(self.getRankIds())
         id = rank_ids[depth]
         rank_ids[depth] = rank_ids[depth+1]
         rank_ids[depth+1] = id
+
+        #
+        # Create new shape list
+        #
+        # TBD: Create shape
+        #
+        shape = None
 
         root = self._modifyRoot(Fiber.swapRanks,
                                 Fiber.swapRanksBelow,
@@ -320,7 +396,7 @@ class Tensor:
         #
         # Create Tensor from rank_ids and root fiber
         #
-        tensor = Tensor.fromFiber(rank_ids, root)
+        tensor = Tensor.fromFiber(rank_ids, root, shape)
         tensor.setColor(self.getColor())
 
         return tensor
@@ -332,9 +408,16 @@ class Tensor:
         #
         # Create new list of rank ids
         #
-        rank_ids = copy.deepcopy(self.rank_ids)
+        rank_ids = copy.deepcopy(self.getRankIds())
         rank_ids[depth] = [rank_ids[depth], rank_ids[depth+1]]
         del rank_ids[depth+1]
+
+        #
+        # Create new shape list
+        #
+        # TBD: Create shape
+        #
+        shape = None
 
         root = self._modifyRoot(Fiber.flattenRanks,
                                 Fiber.flattenRanksBelow,
@@ -342,7 +425,7 @@ class Tensor:
         #
         # Create Tensor from rank_ids and root fiber
         #
-        tensor = Tensor.fromFiber(rank_ids, root)
+        tensor = Tensor.fromFiber(rank_ids, root, shape)
         tensor.setColor(self.getColor())
 
         return tensor
@@ -354,10 +437,17 @@ class Tensor:
         #
         # Create new list of rank ids
         #
-        rank_ids = copy.deepcopy(self.rank_ids)
+        rank_ids = copy.deepcopy(self.getRankIds())
         id = rank_ids[depth]
         rank_ids[depth] = id[0]
         rank_ids.insert(depth+1, id[1])
+
+        #
+        # Create new shape list
+        #
+        # TBD: Create shape
+        #
+        shape = None
 
         root = self._modifyRoot(Fiber.unflattenRanks,
                                 Fiber.unflattenRanksBelow,
@@ -365,7 +455,7 @@ class Tensor:
         #
         # Create Tensor from rank_ids and root fiber
         #
-        tensor = Tensor.fromFiber(rank_ids, root)
+        tensor = Tensor.fromFiber(rank_ids, root, shape)
         tensor.setColor(self.getColor())
 
         return tensor
@@ -402,7 +492,7 @@ class Tensor:
 
     def __str__(self):
         
-        str = "T(%s)/[" % ",".join(self.rank_ids)
+        str = "T(%s)/[" % ",".join(self.getRankIds())
 
         if self.ranks:
             str += "\n"
@@ -419,7 +509,7 @@ class Tensor:
     def __repr__(self):
         """__repr__"""
 
-        str = "T(%s)/[" % ",".join(self.rank_ids)
+        str = "T(%s)/[" % ",".join(self.getRankIds())
 
         if self.ranks:
             str += "\n"
@@ -466,6 +556,13 @@ class Tensor:
         rank_ids = y_tensor['rank_ids']
 
         #
+        # Deal with shape information
+        #
+        # TBD: yaml should have shape information
+        #
+        shape = None
+
+        #
         # Make sure key "root" exists
         #
         if 'root' not in y_tensor:
@@ -480,7 +577,7 @@ class Tensor:
         #
         fiber = Fiber.dict2fiber(y_root[0])
 
-        return (rank_ids, fiber)
+        return (rank_ids, fiber, shape)
 
 
     def dump(self, filename):
@@ -494,7 +591,7 @@ class Tensor:
             root_dict = root.fiber2dict()
 
         tensor_dict = { 'tensor':
-                        { 'rank_ids': self.rank_ids,
+                        { 'rank_ids': self.getRankIds(),
                           'root': [ root_dict ]
                         } }
         with open(filename, 'w') as file:

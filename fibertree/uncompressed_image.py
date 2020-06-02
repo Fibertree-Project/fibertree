@@ -115,7 +115,7 @@ class UncompressedImage():
             #
             # Recursively draw the fibers of a non-0-D tensor
             #
-            shape = fiber.getShape()
+            shape = fiber.getShape(all_ranks=True)
 
             if len(shape) == 3:
                 region_size = self.traverse_cube(shape, fiber, highlights=highlights)
@@ -134,7 +134,7 @@ class UncompressedImage():
         #
         # Print out the rank information (if available)
         #
-        self.draw_label(row_origin, col_origin+3, "Rank: "+self._getId(fiber)+" ----->")
+        self.draw_label(row_origin, col_origin, "Rank: "+self._getId(fiber)+" ----->")
 
         row_cur = row_origin + 1
         row_max = row_origin + 1
@@ -146,8 +146,10 @@ class UncompressedImage():
         highlight_coords = [ c[0] for c in highlights ]
 
 
-        for matrix_c in range(shape[0]):
-            matrix_p = fiber.getPayload(matrix_c)
+        #
+        # Just show the nonEmpty matrices
+        #
+        for matrix_c, matrix_p in fiber:
 
             highlight_next = [ p[1:] for p in highlights if len(p) > 1 and p[0] == matrix_c ]
 
@@ -155,6 +157,8 @@ class UncompressedImage():
             highlight_payload = highlight_subtree
             if len(highlight_next) == 0:
                 highlight_payload |= matrix_c in highlight_coords
+
+            self.draw_label(row_origin, col_cur+5, f"{matrix_c}")
 
             rc_range = self.traverse_matrix(shape[1:],
                                             matrix_p,

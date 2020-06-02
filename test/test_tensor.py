@@ -59,6 +59,20 @@ class TestTensor(unittest.TestCase):
         self.assertTrue(tensor == tensor_ref)
 
 
+    def test_fomYAMLfile_3D(self):
+        """Test construction of 0-D tensor from a YAML file"""
+
+        t = Tensor.fromYAMLfile("./data/tensor_3d.yaml")
+
+        # TBD: Check that data is good
+
+        rankids_ref = ["M", "N", "K"]
+        shape_ref = [21, 51, 11]
+
+        self.assertEqual(t.getRankIds(), rankids_ref)
+        self.assertEqual(t.getShape(), shape_ref)
+
+
     def test_fromUncompressed_1D(self):
         """Test construction of a tensor from nested lists"""
 

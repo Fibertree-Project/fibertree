@@ -33,8 +33,34 @@ class Fiber:
 
     """
 
-    def __init__(self, coords=None, payloads=None, default=0, initial=None):
-        """__init__"""
+    def __init__(self,
+                 coords=None,
+                 payloads=None,
+                 default=0,
+                 initial=None,
+                 max_coord=None):
+        """__init__
+
+        Create a fiber....
+
+        Parameters:
+
+        coords: list (default: [])
+        List of coordinate values
+
+        payloads: list (default: [])
+        List of corresponding payloads for the coordinates
+
+        default: value (default: 0)
+        A default payload value to use when creating a new element in fiber
+
+        initial: value (default: "default")
+        A value to initialize all payloads, if None use "default"
+
+        max_coord: value (default: no maximum coordinate)
+        The maximum legal coordinate value
+
+        """
 
         if coords is None:
             if payloads is None:
@@ -61,6 +87,13 @@ class Fiber:
         self.coords = coords
         self.payloads = [self._maybe_box(p) for p in payloads]
 
+        #
+        # Set a specific constant value to the maximum legal coordinate
+        #
+        # TBD: If not None there are lots of places this should be checked
+        #
+        self.max_legal_coord = max_coord
+
         # Owner rank... set on append to rank
         self.setOwner(None)
 
@@ -79,6 +112,7 @@ class Fiber:
         # Clear all stats
         #
         self.clearStats()
+
 
     @classmethod
     def fromCoordPayloadList(cls, *cp, default=0):
@@ -118,6 +152,9 @@ class Fiber:
 
         f = Fiber._makeFiber(payload_list)
 
+        #
+        # Check if the list was all zeros, so return an empty fiber
+        #
         if f is None:
             # Return something for an entirely empty input
             return Fiber([], [])
@@ -154,7 +191,7 @@ class Fiber:
         if len(coords) == 0:
             return None
 
-        return Fiber(coords, payloads)
+        return Fiber(coords, payloads, max_coord=len(coords)-1)
 
 #
 # Stats-related methods
@@ -674,7 +711,11 @@ class Fiber:
     # Computed attribute acccessors
     #
     def minCoord(self):
-        """min_coord"""
+        """min_coord
+
+        Return the minimum coordinate that exists in the fiber
+
+        """
 
         # TBD: Should check that the candidate is not an explicit zero
 
@@ -684,7 +725,11 @@ class Fiber:
         return min(self.coords)
 
     def maxCoord(self):
-        """max_coord"""
+        """max_coord
+
+        Return the maximum coordinate that exists in the fiber
+
+        """
 
         # TBD: Should check that the candidate is not an explicit zero
 
@@ -924,6 +969,7 @@ class Fiber:
         self.coords.clear()
         self.payloads.clear()
 
+
     def payload(self, coord):
         """payload"""
 
@@ -1049,7 +1095,12 @@ class Fiber:
 
 
     def unzip(self):
-        """Unzip"""
+        """Unzip
+
+        Unzip a fiber whose payloads are a tuple into two fibers each
+        with the same coordinates
+
+        """
 
         coords_a = list(self.coords)
         coords_b = list(self.coords)
@@ -1062,13 +1113,39 @@ class Fiber:
 # Shape-related methods
 #
 
-    def getShape(self):
+    def getShape(self, all_ranks=True):
         """Return shape of fiber tree"""
-        
-        return self._calcShape(shape=[], level=0)
+
+        owner = self.getOwner()
+
+        shape = None
+
+        if owner is not None:
+            shape = owner.getShape(all_ranks=all_ranks)
+
+        if shape is None or any([s == 0 for s in shape]):
+            # Backup for cases where there is no  owner
+            # or owner didn't know shape
+
+            shape = self.estimateShape()
+
+            if not all_ranks:
+                shape = shape[0:1]
+
+        return shape
 
 
-    def _calcShape(self, shape, level):
+    def estimateShape(self):
+        """estimateShape
+
+        Traverse a fiber tree to estimate its shape
+
+        """
+
+        return self._calcShape()
+
+
+    def _calcShape(self, shape=None, level=0):
         """ _calcShape()
 
         Find the maximum coordinate at each level of the tree
@@ -1078,6 +1155,12 @@ class Fiber:
              maximum coordinate location
 
         """
+
+        #
+        # Start recursion
+        #
+        if shape is None:
+            shape = []
 
         #
         # Conditionaly append a new level to the shape array
@@ -1094,7 +1177,10 @@ class Fiber:
         #
         # Try to determine the maximum coordinate
         #
-        max_coord = self.maxCoord()
+        if self.max_legal_coord is not None:
+            max_coord = self.max_legal_coord
+        else:
+            max_coord = self.maxCoord()
 
         #
         # If fiber is not empty, but max_coord isn't meaningful,
@@ -1122,7 +1208,7 @@ class Fiber:
         """Return an uncompressed fiber tree (i.e., a nest of lists)"""
 
         if shape is None:
-            shape = self.getShape()
+            shape = self.getShape(all_ranks=True)
 
         f = [ ]
 
