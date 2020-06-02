@@ -3,6 +3,7 @@
 from collections import namedtuple
 from functools import partialmethod
 import yaml
+import random
 
 from fibertree.payload import Payload
 
@@ -192,6 +193,56 @@ class Fiber:
             return None
 
         return Fiber(coords, payloads, max_coord=len(coords)-1)
+
+
+    @classmethod
+    def fromRandom(cls, shape, density, interval=10, seed=None):
+        """ Recursively create a random fiber tree
+
+        Parameters:
+        -----------
+
+        shape - list
+        The "shape" (i.e., size) of each level of the tree
+
+        density - list
+        The probability that an element of the fiber will not be empty
+        for each level of the tree
+
+        interval - number
+        The range (from 0 to "interval") of each value at the leaf of the tree
+
+        seed - a valid argument for random.seed
+        A seed to pass to random.seed
+
+        """
+
+        if seed is not None:
+            random.seed(seed)
+
+        coords = []
+        payloads = []
+
+        for c in range(shape[0]):
+            if random.random() < density[0]:
+                if len(shape) == 1:
+                    payload = random.randrange(interval)
+                    if payload == 0:
+                        break
+                else:
+                    payload = Fiber.fromRandom(shape[1:],
+                                               density[1:],
+                                               interval)
+                    if payload.isEmpty():
+                        break
+
+                coords.append(c)
+                payloads.append(payload)
+
+        f = Fiber(coords, payloads)
+
+        return f
+
 
 #
 # Stats-related methods

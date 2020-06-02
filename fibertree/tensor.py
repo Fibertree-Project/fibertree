@@ -121,6 +121,37 @@ class Tensor:
         return tensor
 
 
+    @classmethod
+    def fromRandom(cls, rank_ids=None, shape=None, density=None, interval=10, seed=None):
+        """ Create a random tensor
+
+        Parameters:
+        -----------
+
+        rank_ids - list
+        The "rank ids" for the tensor
+
+        shape - list
+        The "shape" (i.e., size) of each level of the tree
+
+        density - list
+        The probability that an element of the fiber will not be empty
+        for each level of the tree
+
+        interval - number
+        The range (from 0 to "interval") of each value at the leaf of the tree
+
+        seed - a valid argument for random.seed
+        A seed to pass to random.seed
+
+        """
+
+        f = Fiber.fromRandom(shape, density, interval, seed)
+
+        return Tensor.fromFiber(rank_ids=rank_ids, fiber=f, shape=shape)
+
+
+
 #
 # Accessor methods
 #
@@ -490,7 +521,20 @@ class Tensor:
         print("%s" % self)
         print("")
 
+
+    def __format__(self, format):
+        """__format__"""
+
+        #
+        # Just format the root fiber
+        #
+        return self.getRoot().__format__(format)
+
+
     def __str__(self):
+        """_str__"""
+
+        # TBD: Fix to use a format from a fiber...
         
         str = "T(%s)/[" % ",".join(self.getRankIds())
 
@@ -508,6 +552,8 @@ class Tensor:
         
     def __repr__(self):
         """__repr__"""
+
+        # TBD: Fix to use a repr from a fiber...
 
         str = "T(%s)/[" % ",".join(self.getRankIds())
 

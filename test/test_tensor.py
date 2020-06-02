@@ -143,6 +143,22 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(tensor, tensor_ref)
 
 
+    def test_fromRandom(self):
+        """Test construction of a random tensor"""
+
+        rank_ids = ["X", "Y"]
+        shape = [10, 10]
+        tensor_ref = Tensor.fromUncompressed(rank_ids,
+                                             [[0, 9, 9, 0, 0, 0],
+                                              [0, 0, 0, 0, 0, 0],
+                                              [0, 7, 0, 0, 2, 2]])
+
+        tensor = Tensor.fromRandom(rank_ids, shape, [0.5, 0.5], 10, seed=3)
+
+        self.assertEqual(tensor, tensor_ref)
+        self.assertEqual(tensor.getRankIds(), rank_ids)
+
+
     def test_print_0D(self):
         """Test printing a 0-D tensor"""
 

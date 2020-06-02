@@ -195,6 +195,20 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(f, f_ref)
 
+    def test_fromRandom_2D(self):
+        """Create a random 2D tensor"""
+
+        shape = [10, 10]
+
+        fiber_ref = Fiber.fromUncompressed([[0, 9, 9, 0, 0, 0],
+                                            [0, 0, 0, 0, 0, 0],
+                                            [0, 7, 0, 0, 2, 2]])
+
+        fiber = Fiber.fromRandom(shape, [0.5, 0.5], 10, seed=3)
+
+        self.assertEqual(fiber, fiber_ref)
+
+
     def test_getCoords(self):
         """Extract coordinates"""
 
