@@ -1,3 +1,4 @@
+import copy
 
 from fibertree import Tensor
 from fibertree import Fiber
@@ -49,26 +50,20 @@ class SpacetimeCanvas():
         else:
             final_coords = highlighted_coords_per_tensor
 
-#        assert(len(final_coords) == len(self.tensors))
-
-#        for n in range(len(self.tensors)):
-#            tensor = self.tensors[n]
-#            highlighted_coords = final_coords[n]
-#            im = TensorImage(tensor, style=self.style, highlights=highlighted_coords).im
-#            self.image_list_per_tensor[n].append(im)
-
         # TBD: Should fiber append get the root if you try to append a tensor
 
         for tensor, spacetime, highlights, hl_coords in zip(self.tensors, self.spacetime, self.highlights, final_coords):
 
-            spacetime.getRoot().append(self.frame, tensor.getRoot())
+            timestep = tensor.getRoot()
+            timestep_ranks = len(timestep.getShape(all_ranks=True))
+
+            if timestep_ranks > 1:
+                timestep = timestep.flattenRanks(levels=timestep_ranks-1)
+
+            spacetime.getRoot().append(self.frame, copy.deepcopy(timestep))
 
             highlight_t = list(hl_coords)
             highlight_t.append(self.frame)
-            #
-#            for h in hl_coords:
-#                highlight_t = [ self.frame ]
-#                highlight_t.append(h)
 
             highlights.append(highlight_t)
 
@@ -82,10 +77,74 @@ class SpacetimeCanvas():
 
         for spacetime, highlights in zip(self.spacetime, self.highlights):
 
+            if isinstance(spacetime, Tensor):
+                # Get the root out of tensor
+                spacetime_root = spacetime.getRoot()
+            else:
+                # A fiber is itself the root
+                spacetime_root = spacetime
+
+            shape = spacetime_root.getShape(all_ranks=True)
+
+            if len(shape) == 1:
+                #
+                # Original tensor was a vector
+                #
+                highlights_mapped = highlights
+            else:
+                #
+                # Original tensor was a matrix or bigger
+                #
+                #
+                # Build a map of spatial tensor points to flattened positions
+                #
+                # Note: points in the tensor look like (time, coord0, coord1, ..)
+                #       so we need to skip over the first rank
+                #
+                point2pos = {}
+
+                for position, (point, value)  in enumerate(spacetime_root[-1].payload):
+                    point2pos[point] = position
+
+                print(f"Point to position mapping:  {point2pos}")
+
+                #
+                # Map the highlights into the new flattened space
+                #
+                # Note: highlights look like: (coord0, coord1, ..., time)
+                #       and need to look like: (position, time)
+                #
+                highlights_mapped = []
+
+                for h in highlights:
+                    h1 = tuple(h[0:-1])
+                    h2 = h[-1]
+                    try:
+                        h12 = (point2pos[h1], h2)
+                        highlights_mapped.append(h12)
+                    except:
+                        print(f"Could not map point ({h1},{h2}) in point2pos array")
+
+
+                #
+                # Flatten the names of the coordinates in the spacetime tensor
+                #
+                spacetime_root.updateCoords(lambda i, c, p: i, depth=1)
+
+            #
+            # Swap the space and time ranks
+            #
             spacetime_swapped = spacetime.swapRanks()
 
-            image = TensorImage(spacetime_swapped, style='uncompressed', highlights=highlights).im
+            #
+            # Create spacetime image for this tensor and append to full image
+            #
+            image = TensorImage(spacetime_swapped,
+                                style='uncompressed',
+                                highlights=highlights_mapped).im
+
             images.append(image)
+
 
         return images
 

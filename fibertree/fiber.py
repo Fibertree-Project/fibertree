@@ -226,7 +226,7 @@ class Fiber:
         for c in range(shape[0]):
             if random.random() < density[0]:
                 if len(shape) == 1:
-                    payload = random.randrange(interval)
+                    payload = random.randint(1, interval)
                     if payload == 0:
                         break
                 else:

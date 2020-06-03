@@ -315,9 +315,15 @@ def datafileName(filename):
 # Parse the arguments (deprecated)
 #
 parser = argparse.ArgumentParser()
+
+parser.add_argument('--style')
+parser.add_argument('--animation')
+
+# Older style arguments
 parser.add_argument('--show-animations', dest='EnableAnimations', action='store_true')
 parser.add_argument('--no-show-animations', dest='EnableAnimations', action='store_false')
 parser.set_defaults(EnableAnimations=True)
+
 args = parser.parse_args()
 
 #
@@ -325,10 +331,22 @@ args = parser.parse_args()
 #
 FTD = FibertreeDisplay(have_ipywidgets)
 
+#
+# Handle older style arguments
+#
 if not args.EnableAnimations:
     FTD.setAnimation('none')
 else:
     FTD.setAnimation('movie')
+
+#
+# Handle arguments
+#
+if args.style is not None:
+    FTD.setStyle(args.style)
+
+if args.animation is not None:
+    FTD.setAnimation(args.animation)
 
 #
 # If possible create a runall button
