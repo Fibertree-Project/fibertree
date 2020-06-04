@@ -59,6 +59,20 @@ class TestTensor(unittest.TestCase):
         self.assertTrue(tensor == tensor_ref)
 
 
+    def test_fomYAMLfile_3D(self):
+        """Test construction of 0-D tensor from a YAML file"""
+
+        t = Tensor.fromYAMLfile("./data/tensor_3d.yaml")
+
+        # TBD: Check that data is good
+
+        rankids_ref = ["M", "N", "K"]
+        shape_ref = [21, 51, 11]
+
+        self.assertEqual(t.getRankIds(), rankids_ref)
+        self.assertEqual(t.getShape(), shape_ref)
+
+
     def test_fromUncompressed_1D(self):
         """Test construction of a tensor from nested lists"""
 
@@ -129,6 +143,29 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(tensor, tensor_ref)
 
 
+    def test_fromRandom(self):
+        """Test construction of a random tensor"""
+
+        rank_ids = ["X", "Y"]
+        shape = [10, 10]
+        tensor_ref = Tensor.fromUncompressed(rank_ids,
+                                             [[0, 10, 10, 1, 0, 9, 8, 0, 0, 3],
+                                              [9, 1, 0, 10, 1, 0, 10, 0, 0, 0],
+                                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                              [0, 3, 0, 3, 5, 0, 5, 7, 0, 0],
+                                              [6, 0, 0, 0, 0, 0, 6, 0, 0, 0],
+                                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                              [0, 0, 2, 8, 2, 3, 7, 0, 0, 10],
+                                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                              [0, 0, 0, 4, 0, 2, 9, 4, 0, 5],
+                                              [6, 3, 0, 8, 0, 10, 0, 9, 4, 0]])
+        
+        tensor = Tensor.fromRandom(rank_ids, shape, [0.5, 0.5], 10, seed=3)
+
+        self.assertEqual(tensor, tensor_ref)
+        self.assertEqual(tensor.getRankIds(), rank_ids)
+
+
     def test_print_0D(self):
         """Test printing a 0-D tensor"""
 
@@ -136,7 +173,7 @@ class TestTensor(unittest.TestCase):
         p = a.getRoot()
         p += 2
 
-        a_s_ref = "T()/[<2>]"
+        a_s_ref = "<2>"
 
         a_s = f"{a}"
 
@@ -154,20 +191,25 @@ class TestTensor(unittest.TestCase):
 
         a = Tensor.fromYAMLfile("./data/matrix-a.yaml")
 
-        a_s_ref = "T(M,K)/[\n" + \
-                  "  Rank: M F(M)/[( 0 -> F(K)/[(0 -> <1>) \n" + \
-                  "                             (2 -> <3>) ])\n" + \
-                  "                ( 1 -> F(K)/[(0 -> <1>) \n" + \
-                  "                             (3 -> <4>) ])\n" + \
-                  "                ( 3 -> F(K)/[(2 -> <3>) \n" + \
-                  "                             (3 -> <4>) ])\n" + \
-                  "  Rank: K F(K)/[(0 -> <1>) \n" + \
-                  "                (2 -> <3>) ],\n" + \
-                  "          F(K)/[(0 -> <1>) \n" + \
-                  "                (3 -> <4>) ],\n" + \
-                  "          F(K)/[(2 -> <3>) \n" + \
-                  "                (3 -> <4>) ]\n" + \
-                  "]"
+#
+# Old style print
+#
+#        a_s_ref = "T(M,K)/[\n" + \
+#                  "  Rank: M F(M)/[( 0 -> F(K)/[(0 -> <1>) \n" + \
+#                  "                             (2 -> <3>) ])\n" + \
+#                  "                ( 1 -> F(K)/[(0 -> <1>) \n" + \
+#                  "                             (3 -> <4>) ])\n" + \
+#                  "                ( 3 -> F(K)/[(2 -> <3>) \n" + \
+#                  "                             (3 -> <4>) ])\n" + \
+#                  "  Rank: K F(K)/[(0 -> <1>) \n" + \
+#                  "                (2 -> <3>) ],\n" + \
+#                  "          F(K)/[(0 -> <1>) \n" + \
+#                  "                (3 -> <4>) ],\n" + \
+#                  "          F(K)/[(2 -> <3>) \n" + \
+#                  "                (3 -> <4>) ]\n" + \
+#                  "]"
+
+        a_s_ref = "F(M)/[( 0 -> F(K)/[(0 -> <1>) (2 -> <3>) ])( 1 -> F(K)/[(0 -> <1>) (3 -> <4>) ])......"
 
         a_s = f"{a}"
 

@@ -2,6 +2,7 @@ import unittest
 from fibertree.payload import Payload
 from fibertree.fiber import Fiber
 from fibertree.fiber import CoordPayload
+from fibertree.fiber import CoordinateError
 from fibertree.tensor import Tensor
 from fibertree.tensor_image import TensorImage
 
@@ -193,6 +194,27 @@ class TestFiber(unittest.TestCase):
                                     [0, 0, 0, 0, 0, 0]])
 
         self.assertEqual(f, f_ref)
+
+    def test_fromRandom_2D(self):
+        """Create a random 2D tensor"""
+
+        shape = [10, 10]
+
+        fiber_ref = Fiber.fromUncompressed([[0, 10, 10, 1, 0, 9, 8, 0, 0, 3],
+                                            [9, 1, 0, 10, 1, 0, 10, 0, 0, 0],
+                                            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                            [0, 3, 0, 3, 5, 0, 5, 7, 0, 0],
+                                            [6, 0, 0, 0, 0, 0, 6, 0, 0, 0],
+                                            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                            [0, 0, 2, 8, 2, 3, 7, 0, 0, 10],
+                                            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                            [0, 0, 0, 4, 0, 2, 9, 4, 0, 5],
+                                            [6, 3, 0, 8, 0, 10, 0, 9, 4, 0]])
+
+        fiber = Fiber.fromRandom(shape, [0.5, 0.5], 10, seed=3)
+
+        self.assertEqual(fiber, fiber_ref)
+
 
     def test_getCoords(self):
         """Extract coordinates"""
@@ -434,6 +456,92 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(f_13_12, f_13_12_ref)
 
+    def test_setitem_scalar(self):
+        """test_setitem_scalar"""
+
+        f = Fiber([0,1,3], [1,0,4])
+
+        newf = Fiber([], [])
+
+        newcoords = [ None, 0, 1, 2, 3, 4 ]
+        newpayloads = [ 6, (4, 8), newf, None]
+
+        ans_c = [0, 1, 3]
+        ans_p = [6, (4, 8), newf, newf]
+
+        for i in range(len(f)):
+            for j, p in enumerate(newpayloads):
+                f[i] = p
+                a = f[i]
+                self.assertEqual(a.coord, ans_c[i])
+                self.assertEqual(a.payload, ans_p[j])
+
+
+    def test_setitem_coordpayload(self):
+        """test_setitem_coordpayload"""
+
+        f = Fiber([0,1,3], [1,0,4])
+
+        newf = Fiber([], [])
+
+        newcoords = [ None, 0, 1, 2, 3, 4 ]
+        newpayloads = [ 6, (4, 8), newf, None]
+
+        #
+        # Dimensions position, newcoords-index, newpayload-index
+        #
+        ans_cvv = [[[0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None]],
+                   [[1, 1, 1, 1],
+                    [None, None, None, None],
+                    [1, 1, 1, 1],
+                    [2, 2, 2, 2],
+                    [None, None, None, None],
+                    [None, None, None, None]],
+                   [[3, 3, 3, 3],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [3, 3, 3, 3],
+                    [4, 4, 4, 4]]]
+
+        ans_pvv = [[[6, (4, 8), newf, newf],
+                    [6, (4, 8), newf, newf],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None]],
+                   [[6, (4, 8), newf, newf],
+                    [None, None, None, None],
+                    [6, (4, 8), newf, newf],
+                    [6, (4, 8), newf, newf ],
+                    [None, None, None, None],
+                    [None, None, None, None]],
+                   [[6, (4, 8), newf, newf],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [None, None, None, None],
+                    [6, (4, 8), newf, newf],
+                    [6, (4, 8), newf, newf]]]
+
+        for i in range(len(f)):
+
+            for j, c in enumerate(newcoords):
+                for k, p in enumerate(newpayloads):
+                    a = f[i]
+                    if ans_cvv[i][j][k] is not None:
+                        f[i] = CoordPayload(c, p)
+                        b = f[i]
+                        self.assertEqual(b.coord, ans_cvv[i][j][k])
+                        self.assertEqual(b.payload, ans_pvv[i][j][k])
+                    else:
+                        with self.assertRaises(CoordinateError):
+                            f[i] = CoordPayload(c, p)
+
 
     def test_len(self):
         """Find lenght of a fiber"""
@@ -455,7 +563,7 @@ class TestFiber(unittest.TestCase):
         answer_allocate = [0, 5, 7, 0]
         answer_noallocate = [None, 5, 7, None]
         answer_default = [-1, 5, 7, -1]
-        
+
         for i in range(len(test)):
             self.assertEqual(a.getPayload(test[i]),
                              answer_allocate[i])
@@ -519,6 +627,32 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(p, answer_default[i])
 
 
+    def test_getPayload_shortcut(self):
+        """getPayload with shortcut"""
+
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+
+        test = [0, 4, 6, 3, 6]
+        start_pos = [0, 0, 1, 1, 2]
+
+        answer_saved_pos = [3, 1, 2, 3, 2]
+        answer_saved_stats = [(1, 3),
+                              (2, 4),
+                              (3, 5),
+                              (4, 7),
+                              (5, 7)]
+
+
+        for i in range(len(test)):
+            p = a.getPayload(test[i], start_pos=start_pos[i])
+            saved_pos = a.getSavedPos()
+            saved_pos_stats = a.getSavedPosStats(clear=False)
+            self.assertEqual(saved_pos, answer_saved_pos[i])
+            self.assertEqual(saved_pos_stats, answer_saved_stats[i])
+
 
     def test_getPayloadRef(self):
         """Get payload references"""
@@ -550,6 +684,68 @@ class TestFiber(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             a.getPayloadRef(3, 2, 4)
+
+
+    def test_getPayloadRef_shortcut(self):
+        """getPayloadRef with shortcut"""
+
+        # TBD: Fill in this test...
+
+        pass
+
+
+    def test_getRange(self):
+        """getRange"""
+
+        coords = [2, 4, 6, 8, 9, 12, 15, 16, 17, 20 ]
+        payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]
+
+        a = Fiber(coords, payloads)
+
+        startc = [4, 3, 5, 13, 9, 15]
+        size = [2, 3, 4, 2, 4, 3]
+        ans = [Fiber(coords[1:2], payloads[1:2]),
+               Fiber(coords[1:2], payloads[1:2]),
+               Fiber(coords[2:4], payloads[2:4]),
+               Fiber([], []),
+               Fiber(coords[4:6], payloads[4:6]),
+               Fiber(coords[6:9], payloads[6:9]),
+        ]
+
+        for i in range(len(startc)):
+            b = a.getRange(startc[i], size[i])
+            self.assertEqual(b, ans[i])
+
+
+    def test_getRange_shortcut(self):
+        """getRange_shortcut"""
+
+        coords = [2, 4, 6, 8, 9, 12 ]
+        payloads = [3, 5, 7, 9, 10, 13]
+
+        a = Fiber(coords, payloads)
+
+        startc = [4, 3, 5, 13, 9]
+        size = [2, 3, 4, 2, 3]
+        startp = [0, 1, 2, 3, 4]
+        ans = [[ 2, 2, None, None, None],
+               [2, 2, None, None, None],
+               [4, 4, 4, None, None],
+               [5, 5, 5, 5, 5],
+               [5, 5, 5, 5, 5]]
+
+        saved_pos_stats = (12,15)
+
+        for i in range(len(startc)):
+            for sp, aaa in zip(startp,ans[i]):
+                if aaa is not None:
+                    b = a.getRange(startc[i], size[i], start_pos=sp)
+                    self.assertEqual(a.getSavedPos(), aaa),
+                else:
+                    with self.assertRaises(AssertionError):
+                        b = a.getRange(startc[i], size[i], start_pos=sp)
+
+        self.assertEqual(a.getSavedPosStats(), saved_pos_stats)
 
 
     def test_append(self):
@@ -637,27 +833,27 @@ class TestFiber(unittest.TestCase):
             a.extend(1)
 
 
-    def test_insert(self):
-        """Insert payload at coordinates 0, 3, 7"""
-
-        coords = [2, 4, 6]
-        payloads = [3, 5, 7]
-
-        a = Fiber(coords, payloads)
-
-        insert_at = [0, 3, 7]
-
-        ans = {}
-        ans[0] = Fiber([0, 2, 4, 6], [1, 3, 5, 7])
-        ans[3] = Fiber([0, 2, 3, 4, 6], [1, 3, 10, 5, 7])
-        ans[7] = Fiber([0, 2, 3, 4, 6, 7], [1, 3, 10, 5, 7, 50])
-
-        for i in insert_at:
-            p = i*i+1
-            retval = a.insert(i, p)
-
-            self.assertIsNone(retval)
-            self.assertEqual(a, ans[i])
+#    def test_insert(self):
+#        """Insert payload at coordinates 0, 3, 7"""
+#
+#        coords = [2, 4, 6]
+#        payloads = [3, 5, 7]
+#
+#        a = Fiber(coords, payloads)
+#
+#        insert_at = [0, 3, 7]
+#
+#        ans = {}
+#        ans[0] = Fiber([0, 2, 4, 6], [1, 3, 5, 7])
+#        ans[3] = Fiber([0, 2, 3, 4, 6], [1, 3, 10, 5, 7])
+#        ans[7] = Fiber([0, 2, 3, 4, 6, 7], [1, 3, 10, 5, 7, 50])
+#
+#        for i in insert_at:
+#            p = i*i+1
+#            retval = a.insert(i, p)
+#
+#            self.assertIsNone(retval)
+#            self.assertEqual(a, ans[i])
 
 
     def test_shape(self):

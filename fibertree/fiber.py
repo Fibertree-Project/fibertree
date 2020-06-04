@@ -3,6 +3,7 @@
 from collections import namedtuple
 from functools import partialmethod
 import yaml
+import random
 
 from fibertree.payload import Payload
 
@@ -10,6 +11,13 @@ from fibertree.payload import Payload
 # Define a named tuple for coordinate/payload pairs
 #
 CoordPayload = namedtuple('CoordPayload', 'coord payload')
+
+#
+# Define an error class
+#
+class CoordinateError(Exception):
+    """CoordinateError"""
+    pass
 
 
 #
@@ -26,8 +34,34 @@ class Fiber:
 
     """
 
-    def __init__(self, coords=None, payloads=None, default=0, initial=None):
-        """__init__"""
+    def __init__(self,
+                 coords=None,
+                 payloads=None,
+                 default=0,
+                 initial=None,
+                 max_coord=None):
+        """__init__
+
+        Create a fiber....
+
+        Parameters:
+
+        coords: list (default: [])
+        List of coordinate values
+
+        payloads: list (default: [])
+        List of corresponding payloads for the coordinates
+
+        default: value (default: 0)
+        A default payload value to use when creating a new element in fiber
+
+        initial: value (default: "default")
+        A value to initialize all payloads, if None use "default"
+
+        max_coord: value (default: no maximum coordinate)
+        The maximum legal coordinate value
+
+        """
 
         if coords is None:
             if payloads is None:
@@ -54,6 +88,13 @@ class Fiber:
         self.coords = coords
         self.payloads = [self._maybe_box(p) for p in payloads]
 
+        #
+        # Set a specific constant value to the maximum legal coordinate
+        #
+        # TBD: If not None there are lots of places this should be checked
+        #
+        self.max_legal_coord = max_coord
+
         # Owner rank... set on append to rank
         self.setOwner(None)
 
@@ -63,6 +104,15 @@ class Fiber:
             self.setDefault(Fiber)
         else:
             self.setDefault(default)
+
+        # Initialize "saved position"
+
+        self._saved_pos = 0
+
+        #
+        # Clear all stats
+        #
+        self.clearStats()
 
 
     @classmethod
@@ -103,6 +153,9 @@ class Fiber:
 
         f = Fiber._makeFiber(payload_list)
 
+        #
+        # Check if the list was all zeros, so return an empty fiber
+        #
         if f is None:
             # Return something for an entirely empty input
             return Fiber([], [])
@@ -139,9 +192,66 @@ class Fiber:
         if len(coords) == 0:
             return None
 
-        return Fiber(coords, payloads)
+        return Fiber(coords, payloads, max_coord=len(coords)-1)
 
 
+    @classmethod
+    def fromRandom(cls, shape, density, interval=10, seed=None):
+        """ Recursively create a random fiber tree
+
+        Parameters:
+        -----------
+
+        shape - list
+        The "shape" (i.e., size) of each level of the tree
+
+        density - list
+        The probability that an element of the fiber will not be empty
+        for each level of the tree
+
+        interval - number
+        The range (from 0 to "interval") of each value at the leaf of the tree
+
+        seed - a valid argument for random.seed
+        A seed to pass to random.seed
+
+        """
+
+        if seed is not None:
+            random.seed(seed)
+
+        coords = []
+        payloads = []
+
+        for c in range(shape[0]):
+            if random.random() < density[0]:
+                if len(shape) == 1:
+                    payload = random.randint(1, interval)
+                    if payload == 0:
+                        break
+                else:
+                    payload = Fiber.fromRandom(shape[1:],
+                                               density[1:],
+                                               interval)
+                    if payload.isEmpty():
+                        break
+
+                coords.append(c)
+                payloads.append(payload)
+
+        f = Fiber(coords, payloads)
+
+        return f
+
+
+#
+# Stats-related methods
+#
+
+    def clearStats(self):
+        """clearStats"""
+
+        self._clearSavedPosStats()
 
 
 #
@@ -157,65 +267,38 @@ class Fiber:
 
         return self.payloads
 
-    def getPosition(self, coord):
-        """payload
 
-        Return the position of the coord, if any.
+#
+# Coordinate-based methods
+#
+# The following set of methods all reference an element in the fiber
+# by coordinate. Some just obtain information about the element (non-mutating)
+# others change the content of the fiber (mutating)
+#
 
-        Parameters
-        ----------
-        coord: coordinates to lookup
-
-        Returns
-        -------
-        position: an index that can be used to _getitem_(), or None
-
-        Raises
-        ------
-
-        None
-
-        """
-
-        try:
-            index = self.coords.index(coord)
-            return index
-        except:
-            return None
-
-
-    def getPositionRef(self, coord):
-        """payload
-
-        Return the position of the coord, adding it first not present.
-
-        Parameters
-        ----------
-        coord: coordinates to lookup
-
-        Returns
-        -------
-        position: an index that can be used to _getitem_(), or None
-
-        Raises
-        ------
-
-        None
-
-        """
-
-        try:
-            index = self.coords.index(coord)
-            return index
-        except:
-            self._create_payload(coord)
-            return len(self.payloads)-1 # TODO: This is wrong...
-            
-    def getPayload(self, *coords, default=None, allocate=True):
-        """payload
+    def getPayload(self, *coords, default=None, allocate=True, start_pos=None):
+        """getPayload
 
         Return the final payload after recursively traversing the
-        levels of the fiber tree for at each coordinate in coords.
+        levels of the fiber tree for at each coordinate in coords. If
+        the list of coordinates reaches a leaf of the tree, it returns
+        a value otherwise it will return a fiber. [Non-mutating]
+
+        This method operates in two modes: allocate=True and False.
+
+        For "allocate=True" mode, if any coordinate refers to a
+        non-existant element, a payload is created (a fiber for at a
+        non-leaf level or a zero at the leaf) recursively, but not
+        inserted into the fiber tree. The final such payload is
+        returned to the caller.
+
+        For "allocate=False" mode, if any coordinate refers to a
+        non-existant element, nothing is created and the "default"
+        value is returned.
+
+        If "start_pos" is specified it is used as a shortcut to start the 
+        search for the coordinate. And a new position is saved for use in
+        a later search. Only works for a one-deep search.
 
         Parameters
         ----------
@@ -230,6 +313,8 @@ class Fiber:
         A constant default value to return if coordinate is empty on
         no-allocate
 
+        start_pos: optional shortcut value to optimize search
+
         Returns
         -------
         payload: a scalar or Fiber
@@ -242,6 +327,9 @@ class Fiber:
         """
 
         assert default is None or not allocate
+        assert start_pos is None or len(coords) == 1
+
+        # TBD: Actually optimize the search
 
         try:
             index = self.coords.index(coords[0])
@@ -253,12 +341,10 @@ class Fiber:
             # create a default value to return (or recurse into)
             # but do not change anything in the actual fiber
             #
+            index = len(self.coords)
+
             if allocate or len(coords) > 1:
-                if callable(self._default):
-                    payload = self._default()
-                else:
-                    # TBD: Wrap in Payload object?
-                    payload = self._default
+                payload = self._createDefault()
             else:
                 payload = default
 
@@ -271,19 +357,28 @@ class Fiber:
                                       default=default,
                                       allocate=allocate)
 
+        if start_pos is not None:
+            self.setSavedPos(index, distance=index-start_pos)
+
         return payload
 
 
-    def getPayloadRef(self, *coords):
+    def getPayloadRef(self, *coords, start_pos=None):
         """payload
 
         Return the final payload after recursively traversing the
         levels of the fiber tree for at each coordinate in coords.
         If the payload is empty, then recursively return the default payload
 
+        If "start_pos" is specified it is used as a shortcut to start the 
+        search for the coordinate. And a new position is saved for use in
+        a later search. Only works for a one-deep search.
+
         Parameters
         ----------
         coords: list of coordinates to traverse
+
+        start_pos: optional shortcut value to optimize search
 
         Returns
         -------
@@ -296,12 +391,17 @@ class Fiber:
 
         """
 
+        assert start_pos is None or len(coords) == 1
+
+        # TBD: Actually optimize the search
+
         try:
             index = self.coords.index(coords[0])
             payload = self.payloads[index]
         except:
             # Coordinate didn't exist so create a payload
             payload = self._create_payload(coords[0])
+            index = self.coords.index(coords[0])
 
         if len(coords) > 1:
             # Recurse to the next level's fiber
@@ -310,13 +410,16 @@ class Fiber:
 
             return payload.getPayloadRef(*coords[1:])
 
+        if start_pos is not None:
+            self.setSavedPos(index, distance=index-start_pos)
+
         return payload
 
 
     def _create_payload(self, coord):
         """Create a payload in the fiber at coord
 
-        Optinally insert into the owners rank.
+        Optionally insert into the owners rank.
 
         Note: self._default must be set
         """
@@ -324,16 +427,24 @@ class Fiber:
         # Create a payload at coord
         # Iemporary value (should be None)
 
-        if callable(self._default):
-            value = self._default()
-        else:
-            value = self._default
+        value = self._createDefault()
 
-        self.insert(coord, value)
+        payload = self._maybe_box(value)
+
+        try:
+            index = next(x for x, val in enumerate(self.coords) if val > coord)
+            self.coords.insert(index, coord)
+            self.payloads.insert(index, payload)
+        except StopIteration:
+            index = len(self.coords)
+            self.coords.append(coord)
+            self.payloads.append(payload)
+
 
         # TBD: Inefficient since it does yet another search
 
-        payload = self.getPayload(coord)
+        #payload = self.getPayload(coord)
+        payload = self.payloads[index]
 
         if Payload.contains(value, Fiber):
             assert(not self._owner is None)
@@ -343,16 +454,234 @@ class Fiber:
 
         return payload
 
-    def setDefault(self, default):
-        """setDefault"""
 
-        self._default = default
+    def getRange(self, start_coord, size, trans_fn=None, start_pos=None):
+        """getRange"""
 
-    def getDefault(self):
-        """getDefault"""
+        if trans_fn is None:
+            # Default trans_fn is identify function (inefficient but easy implementation)
+            trans_fn = lambda x: x
 
-        return self._default
+        if start_pos is not None:
+            assert start_pos < len(self.coords)
+            assert start_pos == 0 or self.coords[start_pos-1] < start_coord
 
+            range_start = start_pos
+        else:
+            range_start = 0
+
+        # Invariant: trans_fn is order preserving, but we check for reversals
+
+        min = start_coord
+        max = start_coord + size - 1
+
+        coords = []
+        payloads = []
+
+        # Start at start_pos (if any)
+
+        first_pos = None
+
+        for pos in range(range_start, len(self.coords)):
+            c = self.coords[pos]
+            p = self.payloads[pos]
+            new_c = trans_fn(c)
+            if new_c > max:
+                break
+            if new_c >= min:
+
+                # For statistics
+                if first_pos is None:
+                    first_pos = pos
+
+                coords.append(new_c)
+                payloads.append(p)
+
+
+        # Note: This reversal implies a complex read order
+
+        if len(coords) > 1 and coords[1] < coords[0]:
+            coords.reverse()
+            payloads.reverse()
+
+        if start_pos is not None:
+            if first_pos is None:
+                self.setSavedPos(pos)
+            else:
+                self.setSavedPos(pos, distance=first_pos-start_pos)
+
+
+        return Fiber(coords, payloads)
+
+
+    def getPosition(self, coord, start_pos=None):
+        """getPosition
+
+        Return the position of the coord, if any. [Non-mutating]
+
+        If "start_pos" is specified it is used as a shortcut to start the
+        search for the coordinate. And a new position is saved for use in
+        a later search. Only works for a one-deep search.
+
+        Parameters
+        ----------
+        coord: coordinate to look up
+
+        start_pos: optional shortcut value to optimize search
+
+        Returns
+        -------
+        position: an index that can be used to _getitem_(), or None
+
+        Raises
+        ------
+
+        None
+
+        """
+
+        # TBD: Actually optimize the search
+
+        try:
+            index = self.coords.index(coord)
+        except:
+            index = None
+
+        if start_pos is not None and index is not None:
+            self.setSavedPos(index, distance=index-start_pos)
+
+        return index
+
+
+    def getPositionRef(self, coord):
+        """getPositionRef
+
+        Return the position of the given coordinate. If the coordinate
+        has no payload, then create it and assign the appropriatge
+        default payload (either an empty Fiber or zero). [Mutating]
+
+        If "start_pos" is specified it is used as a shortcut to start the
+        search for the coordinate. And a new position is saved for use in
+        a later search. Only works for a one-deep search.
+
+
+        Parameters
+        ----------
+        coord: coordinate to look up
+
+        start_pos: optional shortcut value to optimize search
+
+        Returns
+        -------
+        position: an index that can be used by _getitem_()
+
+        Raises
+        ------
+
+        None
+
+        """
+
+        # TBD: Actually optimize the search
+
+        try:
+            index = self.coords.index(coord)
+        except:
+            self._create_payload(coord)
+            index = len(self.payloads)-1 # TODO: This is wrong...
+
+        if start_pos is not None and index is not None:
+            self.setSavedPos(index, distance=index-start_pos)
+
+        return index
+
+
+    def project(self, trans_fn=None, interval=None):
+        """project"""
+
+        if trans_fn is None:
+            # Default trans_fn is identify function (inefficient but easy implementation)
+            trans_fn = lambda x: x
+
+        # Invariant: trans_fn is order preserving, but we check for reversals
+
+        if interval is None:
+            # All coordinates are legal
+
+            coords = [ trans_fn(c) for c in self.coords ]
+            payloads = self.payloads
+        else:
+            # Only pass coordinates in [ interval[0], interval[1] )
+
+            min = interval[0]
+            max = interval[1]
+
+            coords = []
+            payloads = []
+
+            for c,p in zip(self.coords, self.payloads):
+                new_c = trans_fn(c)
+                if new_c >= min and new_c < max:
+                    coords.append(new_c)
+                    payloads.append(p)
+
+            # Note: This reversal implies a complex read order
+
+            if len(coords) > 1 and coords[1] < coords[0]:
+                coords.reverse()
+                payloads.reverse()
+
+        return Fiber(coords, payloads)
+
+#
+# Deprecated coordinate-based methods
+#
+
+    def insertOrLookup(self, coord, value=None):
+        """insertOrLookup"""
+
+        Fiber._deprecated("Fiber.insertOrLookup() is deprecated use getPayloadRef()")
+
+        if value is None:
+            value = self._createDefault()
+
+        payload = self._maybe_box(value)
+
+        index = 0
+        try:
+            index = next(x for x, val in enumerate(self.coords) if val >= coord)
+            if self.coords[index] == coord:
+                return self.payloads[index]
+            self.coords.insert(index, coord)
+            self.payloads.insert(index, payload)
+            return self.payloads[index]
+        except StopIteration:
+            self.coords.append(coord)
+            self.payloads.append(payload)
+            return self.payloads[-1]
+
+
+    def insert(self, coord, value):
+        """insert"""
+
+        Fiber._deprecated("Fiber.insert() is deprecated use getPayloadRef()")
+
+        payload = self._maybe_box(value)
+
+        try:
+            index = next(x for x, val in enumerate(self.coords) if val > coord)
+            self.coords.insert(index, coord)
+            self.payloads.insert(index, payload)
+        except StopIteration:
+            self.coords.append(coord)
+            self.payloads.append(payload)
+
+        return None
+
+
+    #
+    # Owner rank related methods
+    #
     def setOwner(self, owner):
         """setOwner"""
 
@@ -363,8 +692,81 @@ class Fiber:
 
         return self._owner
 
+
+    #
+    # Default payload methods
+    #
+    def setDefault(self, default):
+        """setDefault"""
+
+        self._default = default
+
+
+    def getDefault(self):
+        """getDefault"""
+
+        return self._default
+
+
+    def _createDefault(self):
+        """_createDefault"""
+
+        if callable(self._default):
+            value = self._default()
+        else:
+            value = self._default
+
+        return value
+
+
+    #
+    # Saved position shortcut related methods
+    #
+    def setSavedPos(self, position, distance=None):
+        """setSavedPos"""
+
+        self._saved_pos = position
+
+        #
+        # Optionally save distanced moved statistics
+        #
+        if distance is not None:
+            self._saved_count += 1
+            self._saved_dist += abs(distance)
+
+
+    def getSavedPos(self):
+        """getSavedPos"""
+
+        return self._saved_pos
+
+
+    def getSavedPosStats(self, clear=True):
+        """getSavedDistance"""
+
+        stats = (self._saved_count, self._saved_dist)
+
+        if clear:
+            self._clearSavedPosStats()
+
+        return stats
+
+
+    def _clearSavedPosStats(self):
+        """_clearSavedPosStats"""
+
+        self._saved_count = 0
+        self._saved_dist = 0
+
+    #
+    # Computed attribute acccessors
+    #
     def minCoord(self):
-        """min_coord"""
+        """min_coord
+
+        Return the minimum coordinate that exists in the fiber
+
+        """
 
         # TBD: Should check that the candidate is not an explicit zero
 
@@ -374,7 +776,11 @@ class Fiber:
         return min(self.coords)
 
     def maxCoord(self):
-        """max_coord"""
+        """max_coord
+
+        Return the maximum coordinate that exists in the fiber
+
+        """
 
         # TBD: Should check that the candidate is not an explicit zero
 
@@ -405,13 +811,16 @@ class Fiber:
 
         return count
 
-
+#
+# Position based methods
+#
     def __getitem__(self, keys):
         """__getitem__
 
         For an integer key return a (coordinate, payload) tuple
         containing the contents of a fiber at "position", i.e., an
-        offset in the coordinate and payload arrays. For a slice key return a new fiber for the slice
+        offset in the coordinate and payload arrays. For a slice key
+        return a new fiber for the slice
 
         Parameters
         ----------
@@ -431,6 +840,7 @@ class Fiber:
 
         TypeError
         Invalid key type
+
         """
 
         if not isinstance(keys, tuple):
@@ -481,6 +891,73 @@ class Fiber:
         raise(TypeError, "Invalid key type.")
 
 
+    def __setitem__(self, key, newvalue):
+        """__setitem__
+
+        The "newvalue" parameter is either a CoordPayload an arbitrary
+        value to assign to the position "key" in the fiber.  If
+        "newvalue" is not a CoordPayload or the Coord in the
+        CoordPayload is None the current coordinate will be left
+        unchanged. The payload will be boxed if appropriate. If the
+        payload is None, then the payload will be left unchanged.
+
+        Parameters
+        ----------
+        key: single integer
+        The position in the fiber to be set
+
+        newvalue: a CoordPayload or a payload value
+        The coordinate/payload or just payload to assign
+
+        Returns
+        -------
+        Nothing
+
+        Raises
+        ------
+
+        IndexError
+        Index out of range
+
+        TypeError
+        Invalid key type
+
+        CoordinateError
+        Invalid coordinate
+
+        """
+
+        position = key
+
+        #
+        # TBD: Get isinstance of CoordPayload to work...
+        #
+        try:
+            coord = newvalue.coord
+            payload = newvalue.payload
+        except:
+            coord = None
+            payload = newvalue
+
+        if coord is not None:
+            #
+            # Check that coordinate order is maintained
+            #
+            if position > 0 and coord <= self.coords[position-1]:
+                raise CoordinateError
+
+            if position+1 < len(self.coords) and coord >= self.coords[position+1]:
+                raise CoordinateError
+
+            self.coords[position] = coord
+
+        #
+        # A payload of None just updates the coordinate
+        #
+        if payload is not None:
+            self.payloads[position] = self._maybe_box(payload)
+
+
     def __len__(self):
         """__len__"""
 
@@ -518,6 +995,7 @@ class Fiber:
 
         return Fiber(coords, payloads)
 
+#
 # Iterator methods
 #
 
@@ -541,6 +1019,7 @@ class Fiber:
     def clear(self):
         self.coords.clear()
         self.payloads.clear()
+
 
     def payload(self, coord):
         """payload"""
@@ -580,122 +1059,6 @@ class Fiber:
 
         return None
 
-
-    def insert(self, coord, value):
-        """insert"""
-
-        payload = self._maybe_box(value)
-
-        try:
-            index = next(x for x, val in enumerate(self.coords) if val > coord)
-            self.coords.insert(index, coord)
-            self.payloads.insert(index, payload)
-        except StopIteration:
-            self.coords.append(coord)
-            self.payloads.append(payload)
-
-        return None
-
-    def insertOrLookup(self, coord, value=None):
-        """insertOrLookup"""
-        if value is None:
-            if callable(self._default):
-                value = self._default()
-            else:
-                value = self._default
-
-        payload = self._maybe_box(value)
-
-        index = 0
-        try:
-            index = next(x for x, val in enumerate(self.coords) if val >= coord)
-            if self.coords[index] == coord:
-                return self.payloads[index]
-            self.coords.insert(index, coord)
-            self.payloads.insert(index, payload)
-            return self.payloads[index]
-        except StopIteration:
-            self.coords.append(coord)
-            self.payloads.append(payload)
-            return self.payloads[-1]
-
-    def project(self, trans_fn=None, interval=None):
-        """project"""
-
-        if trans_fn is None:
-            # Default trans_fn is identify function (inefficient but easy implementation)
-            trans_fn = lambda x: x
-
-        # Invariant: trans_fn is order preserving, but we check for reversals
-
-        if interval is None:
-            # All coordinates are legal
-
-            coords = [ trans_fn(c) for c in self.coords ]
-            payloads = self.payloads
-        else:
-            # Only pass coordinates in [ interval[0], interval[1] )
-
-            min = interval[0]
-            max = interval[1]
-
-            coords = []
-            payloads = []
-
-            for c,p in zip(self.coords, self.payloads):
-                new_c = trans_fn(c)
-                if new_c >= min and new_c < max:
-                    coords.append(new_c)
-                    payloads.append(p)
-
-            # Note: This reversal implies a complex read order
-
-            if len(coords) > 1 and coords[1] < coords[0]:
-                coords.reverse()
-                payloads.reverse()
-
-        return Fiber(coords, payloads)
-
-    def getRange(self, starting_coord, size, trans_fn=None, starting_pos=None):
-        """project"""
-
-        if trans_fn is None:
-            # Default trans_fn is identify function (inefficient but easy implementation)
-            trans_fn = lambda x: x
-
-        if starting_pos is not None:
-            assert(starting_pos < len(self.coords))
-
-        # Invariant: trans_fn is order preserving, but we check for reversals
-
-        min = starting_coord
-        max = starting_coord + size
-        
-        coords = []
-        payloads = []
-
-        # Start at starting_pos (if any)
-        pos = 0
-        for pos in range(int(starting_pos), len(self.coords)):
-            c = self.coords[pos]
-            p = self.payloads[pos]
-            new_c = trans_fn(c)
-            if new_c >= min and new_c < max:
-                coords.append(new_c)
-                payloads.append(p)
-            else:
-                break
-
-        # Note: This reversal implies a complex read order
-
-        if len(coords) > 1 and coords[1] < coords[0]:
-            coords.reverse()
-            payloads.reverse()
-
-        if starting_pos is not None:
-            return (Fiber(coords, payloads), pos)
-        else:
-            return Fiber(coords, payloads)
 
     def updateCoords(self, func, depth=0):
         """updateCoords
@@ -783,7 +1146,12 @@ class Fiber:
 
 
     def unzip(self):
-        """Unzip"""
+        """Unzip
+
+        Unzip a fiber whose payloads are a tuple into two fibers each
+        with the same coordinates
+
+        """
 
         coords_a = list(self.coords)
         coords_b = list(self.coords)
@@ -796,13 +1164,39 @@ class Fiber:
 # Shape-related methods
 #
 
-    def getShape(self):
+    def getShape(self, all_ranks=True):
         """Return shape of fiber tree"""
-        
-        return self._calcShape(shape=[], level=0)
+
+        owner = self.getOwner()
+
+        shape = None
+
+        if owner is not None:
+            shape = owner.getShape(all_ranks=all_ranks)
+
+        if shape is None or any([s == 0 for s in shape]):
+            # Backup for cases where there is no  owner
+            # or owner didn't know shape
+
+            shape = self.estimateShape()
+
+            if not all_ranks:
+                shape = shape[0:1]
+
+        return shape
 
 
-    def _calcShape(self, shape, level):
+    def estimateShape(self):
+        """estimateShape
+
+        Traverse a fiber tree to estimate its shape
+
+        """
+
+        return self._calcShape()
+
+
+    def _calcShape(self, shape=None, level=0):
         """ _calcShape()
 
         Find the maximum coordinate at each level of the tree
@@ -812,6 +1206,12 @@ class Fiber:
              maximum coordinate location
 
         """
+
+        #
+        # Start recursion
+        #
+        if shape is None:
+            shape = []
 
         #
         # Conditionaly append a new level to the shape array
@@ -828,7 +1228,10 @@ class Fiber:
         #
         # Try to determine the maximum coordinate
         #
-        max_coord = self.maxCoord()
+        if self.max_legal_coord is not None:
+            max_coord = self.max_legal_coord
+        else:
+            max_coord = self.maxCoord()
 
         #
         # If fiber is not empty, but max_coord isn't meaningful,
@@ -856,7 +1259,7 @@ class Fiber:
         """Return an uncompressed fiber tree (i.e., a nest of lists)"""
 
         if shape is None:
-            shape = self.getShape()
+            shape = self.getShape(all_ranks=True)
 
         f = [ ]
 
@@ -872,6 +1275,7 @@ class Fiber:
                 f.append(self._fillempty(shape, level+1))
 
         return f
+
 
     def _fillempty(self, shape, level):
         """Recursive fill empty"""

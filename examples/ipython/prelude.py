@@ -46,7 +46,7 @@ except ImportError:
 #
 # Import tensor class
 #
-from fibertree import Payload, Fiber, Tensor, TensorImage, TensorCanvas
+from fibertree import Payload, Fiber, CoordPayload, Tensor, TensorImage, TensorCanvas, SpacetimeCanvas
 
 #
 # Try to import ipywidgets
@@ -73,7 +73,7 @@ class FibertreeDisplay():
         self.have_ipywidgets = have_ipywidgets
 
         self.style = 'tree'
-        self.enable_animations = False
+        self.animation = 'none'
 
         self.setupWidgets()
 
@@ -92,10 +92,10 @@ class FibertreeDisplay():
         if sync:
             self.syncWidgets()
 
-    def showAnimations(self, enable_animations, sync=True):
-        """ showAnimations """
+    def setAnimation(self, animation='none', sync=True):
+        """ setAnimation """
 
-        self.enable_animations = enable_animations
+        self.animation = animation
 
         if sync:
             self.syncWidgets()
@@ -104,10 +104,10 @@ class FibertreeDisplay():
     #
     # Display actions
     #
-    def displayTensor(self, tensor, **kwargs):
+    def displayTensor(self, tensor, highlights=[], **kwargs):
         """ displayTensor """
 
-        im = TensorImage(tensor, style=self.style, **kwargs).im
+        im = TensorImage(tensor, style=self.style, highlights=highlights, **kwargs).im
 
         display(im)
 
@@ -115,13 +115,17 @@ class FibertreeDisplay():
     def createCanvas(self, *tensors, **kwargs):
         """ createCanvas """
 
-        return TensorCanvas(*tensors, style=self.style, **kwargs)
+        if self.animation == 'none':
+            return None
+
+        return TensorCanvas(*tensors, animation=self.animation, style=self.style, **kwargs)
+
 
 
     def addFrame(self, canvas, *points):
         """ addFrame """
 
-        if not self.enable_animations:
+        if self.animation == 'none':
             return None
 
         return canvas.addFrame(*points)
@@ -132,13 +136,24 @@ class FibertreeDisplay():
 
         AnimationDisabledError = "Note: Canvas animation has been disabled - showing final frame"
 
-        if not self.enable_animations:
+        if self.animation == 'none':
             #
             # Just create a frame from the last state and display it
             #
-            canvas.addFrame()
+
+            canvas.addFrame()  # TBD: Move this to getLastFrame...
             im = canvas.getLastFrame(AnimationDisabledError)
             display(im)
+            return
+
+        if self.animation == 'spacetime':
+            #
+            # Get the spacetime diagrams
+            #
+
+            for image in canvas.getLastFrame():
+                display(image)
+
             return
 
         if filename is None:
@@ -193,7 +208,7 @@ class FibertreeDisplay():
         if have_ipywidgets:
             self.w = interactive(self.updateWidgets,
                                  style=['tree', 'uncompressed', 'tree+uncompressed'],
-                                 animation=['enabled', 'disabled'])
+                                 animation=['none', 'movie', 'spacetime'])
 
             display(self.w)
         else:
@@ -203,29 +218,26 @@ class FibertreeDisplay():
             print("FTD.setStyle('tree')                   # Show tensor as a fiber tree")
             print("FTD.setStyle('tree+uncompressed')      # Show tensor in both styles")
             print("")
-            print("FTD.showAnimations(True)               # Turn on animations")
-            print("FTD.showAnimations(False)              # Turn off animations")
+            print("FTD.setAnimation('none')               # Turn off animations")
+            print("FTD.setAnimation('movie')              # Turn on movie animation")
+            print("FTD.setAnimation('spacetime')          # Turn on spacetime animation")
             print("")
             
 
-    def updateWidgets(self, style='tree', animation='disabled'):
+    def updateWidgets(self, style='tree', animation='none'):
         """ setup """
 
         #
         # Set attributes (but do not recurse back and sync widgets)
         #
         self.setStyle(style=style, sync=False)
-        self.showAnimations(animation == 'enabled', sync=False)
+        self.setAnimation(animation=animation, sync=False)
 
     def syncWidgets(self):
         """ syncWidgets """
 
         style = self.style
-
-        if self.enable_animations:
-            animation = 'enabled'
-        else:
-            animation = 'disabled'
+        animation = self.animation
 
         if self.have_ipywidgets:
             self.w.children[0].value = style
@@ -261,10 +273,10 @@ def createRunallButton():
 # Convenience functions that just call the class methods
 # on the FTD object created below
 #
-def displayTensor(tensor, **kwargs):
+def displayTensor(tensor, highlights=[], **kwargs):
     """ displayTensor(<tensor|fiber>, hightlights=[ <point>...] ) """
 
-    FTD.displayTensor(tensor, **kwargs)
+    FTD.displayTensor(tensor, highlights=highlights, **kwargs)
 
 
 def displayGraph(am_s):
@@ -303,9 +315,15 @@ def datafileName(filename):
 # Parse the arguments (deprecated)
 #
 parser = argparse.ArgumentParser()
+
+parser.add_argument('--style')
+parser.add_argument('--animation')
+
+# Older style arguments
 parser.add_argument('--show-animations', dest='EnableAnimations', action='store_true')
 parser.add_argument('--no-show-animations', dest='EnableAnimations', action='store_false')
 parser.set_defaults(EnableAnimations=True)
+
 args = parser.parse_args()
 
 #
@@ -313,7 +331,22 @@ args = parser.parse_args()
 #
 FTD = FibertreeDisplay(have_ipywidgets)
 
-FTD.showAnimations(args.EnableAnimations)
+#
+# Handle older style arguments
+#
+if not args.EnableAnimations:
+    FTD.setAnimation('none')
+else:
+    FTD.setAnimation('movie')
+
+#
+# Handle arguments
+#
+if args.style is not None:
+    FTD.setStyle(args.style)
+
+if args.animation is not None:
+    FTD.setAnimation(args.animation)
 
 #
 # If possible create a runall button
