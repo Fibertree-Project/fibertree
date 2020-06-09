@@ -236,6 +236,76 @@ class TestTensor(unittest.TestCase):
 
         self.assertEqual(tensor, tensor_ref)
 
+
+    def test_default(self):
+        """Test of default default"""
+
+        t = Tensor(rank_ids=["X", "Y", "Z"])
+
+        e = Fiber([], [])
+
+        self.assertEqual(t.getDefault(), 0)
+
+        t_root = t.getRoot()
+
+        x = t_root.getPayload(1)
+        self.assertEqual(x, e)
+        self.assertEqual(x.getDefault(), Fiber)
+
+        y = t_root.getPayload(1, 2)
+        self.assertEqual(y, e)
+        self.assertEqual(y.getDefault(), 0)
+
+        z = t_root.getPayload(1, 2, 3)
+        self.assertEqual(z, 0)
+
+
+    def test_default_nonzero(self):
+        """Test set/get of nonzero default"""
+
+        t = Tensor(rank_ids=["X", "Y", "Z"])
+
+        v = 10
+        e = Fiber([], [])
+
+        t.setDefault(v)
+        self.assertEqual(t.getDefault(), v)
+
+        t_root = t.getRoot()
+
+        x = t_root.getPayload(1)
+        self.assertEqual(x, e)
+
+        y = t_root.getPayload(1, 2)
+        self.assertEqual(y, e)
+
+        z = t_root.getPayload(1, 2, 3)
+        self.assertEqual(z, v)
+
+
+    def test_default_nonscalar(self):
+        """Test set/get of nonzero default"""
+
+        t = Tensor(rank_ids=["X", "Y", "Z"])
+
+        v = (10, 10)
+        e = Fiber([], [])
+
+        t.setDefault(v)
+        self.assertEqual(t.getDefault(), v)
+
+        t_root = t.getRoot()
+
+        x = t_root.getPayload(1)
+        self.assertEqual(x, e)
+
+        y = t_root.getPayload(1, 2)
+        self.assertEqual(y, e)
+
+        z = t_root.getPayload(1, 2, 3)
+        self.assertEqual(z, v)
+
+
     def test_values(self):
         """Test counting values in a tensor"""
 

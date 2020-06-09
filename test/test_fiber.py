@@ -101,13 +101,15 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a1, a_ref)
         self.assertEqual(a1.getDefault(), 0)
 
-        a2 = Fiber.fromCoordPayloadList(*cp, default=1)
-        self.assertEqual(a2, a_ref)
-        self.assertEqual(a2.getDefault(), 1)
+        # Removed functionality to set fiber default
 
-        a3 = Fiber.fromCoordPayloadList(default=2, *cp)
-        self.assertEqual(a3, a_ref)
-        self.assertEqual(a3.getDefault(), 2)
+#       a2 = Fiber.fromCoordPayloadList(*cp, default=1)
+#       self.assertEqual(a2, a_ref)
+#       self.assertEqual(a2.getDefault(), 1)
+
+#       a3 = Fiber.fromCoordPayloadList(default=2, *cp)
+#       self.assertEqual(a3, a_ref)
+#       self.assertEqual(a3.getDefault(), 2)
 
 
     def test_fromYAMLfile_1D(self):
@@ -1046,6 +1048,49 @@ class TestFiber(unittest.TestCase):
         ab = a | b
 
         self.assertEqual(ab, ab_ref)
+
+    def test_or_2d(self):
+        """Union test 2d"""
+
+        a1 = [[1, 2, 3, 0],
+              [1, 0, 3, 4],
+              [0, 2, 3, 4],
+              [1, 2, 0, 4]]
+
+        a2 = [[0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0]]
+
+        a3 = [[2, 3, 4, 5],
+              [0, 0, 0, 0],
+              [1, 0, 3, 4],
+              [1, 2, 0, 4]]
+
+        b1 = a2
+        b2 = a1
+        b3 = a3
+
+        au = [a1, a2, a3]
+        bu = [b1, b2, b3]
+
+        a = Fiber.fromUncompressed(au)
+        b = Fiber.fromUncompressed(bu)
+
+        x = a|b
+
+        ab_ref = ["A", "B", "AB"]
+        a1_fiber = Fiber.fromUncompressed(a1)
+        a2_fiber = Fiber([],[])
+        a3_fiber = Fiber.fromUncompressed(a3)
+
+        ab_a_ref = [a1_fiber, a2_fiber, a3_fiber]
+        ab_b_ref = [a2_fiber, a1_fiber, a3_fiber]
+
+        for n, (c, (ab, ab_a, ab_b)) in enumerate(x):
+            self.assertEqual(ab, ab_ref[n])
+            self.assertEqual(ab_a, ab_a_ref[n])
+            self.assertEqual(ab_b, ab_b_ref[n])
 
 
     def test_xor(self):

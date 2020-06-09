@@ -52,39 +52,45 @@ class Fiber:
         payloads: list (default: [])
         List of corresponding payloads for the coordinates
 
-        default: value (default: 0)
-        A default payload value to use when creating a new element in fiber
-
-        initial: value (default: "default")
-        A value to initialize all payloads, if None use "default"
+        initial: value (default: None)
+        A value to initialize all payloads.
 
         max_coord: value (default: no maximum coordinate)
         The maximum legal coordinate value
 
         """
 
+        assert default == 0, "Fiber defaults are no longer supported in constructor"
+
         if coords is None:
             if payloads is None:
+                #
                 # If neither coords or payloads are given create an empty fiber
+                #
                 coords = []
                 payloads = []
             else:
+                #
                 # If only payloads are given create a "dense" fiber
+                #
                 coords = range(len(payloads))
         else:
             if payloads is None:
-                # If only coords are given create a blank set of payloads
-                if initial is None:
-                    initial = default
+                #
+                # If only coords are given create a set of payloads
+                #
+                # TBD: Creating a set of zeros is odd...
+                #
                 payloads = [initial for x in range(len(coords))]
 
 
         assert (len(coords) == len(payloads)), "Coordinates and payloads must be same length"
 
+        #
         # Note:
         #    We do not eliminate explicit zeros in the payloads
         #    so zeros will be preserved
-
+        #
         self.coords = coords
         self.payloads = [self._maybe_box(p) for p in payloads]
 
@@ -95,18 +101,19 @@ class Fiber:
         #
         self.max_legal_coord = max_coord
 
+        #
         # Owner rank... set on append to rank
+        #
         self.setOwner(None)
 
-        # Default value assigned to new coordinates
+        #
+        # Create default value
+        #
+        self._default = 0
 
-        if len(payloads) > 0 and isinstance(payloads[0], Fiber):
-            self.setDefault(Fiber)
-        else:
-            self.setDefault(default)
-
+        #
         # Initialize "saved position"
-
+        #
         self._saved_pos = 0
 
         #
@@ -123,7 +130,6 @@ class Fiber:
         ----------
 
         cp: sequence of (coord, payload) tuples
-        default: default payload
 
         """
 
@@ -336,10 +342,16 @@ class Fiber:
             payload = self.payloads[index]
         except:
             #
-            # The requested coordinate did not exist.
-            # Unless we are at the last coordinate in the tree
-            # create a default value to return (or recurse into)
-            # but do not change anything in the actual fiber
+            # The requested coordinate did not exist
+            #
+            # If we are allocating missing elements or
+            # are not at the last coordinate in the given coord list
+            # create a default value to return (or recurse into),
+            # but do not change anything in the actual fiber.
+            #
+            # Otherwise return the provided default.
+            #
+            # Note: we record we found it at the final index
             #
             index = len(self.coords)
 
@@ -405,8 +417,7 @@ class Fiber:
 
         if len(coords) > 1:
             # Recurse to the next level's fiber
-            assert isinstance(payload, Fiber), \
-                   "Too many coordinates"
+            assert isinstance(payload, Fiber), "Too many coordinates"
 
             return payload.getPayloadRef(*coords[1:])
 
@@ -421,7 +432,6 @@ class Fiber:
 
         Optionally insert into the owners rank.
 
-        Note: self._default must be set
         """
 
         # Create a payload at coord
@@ -441,14 +451,19 @@ class Fiber:
             self.payloads.append(payload)
 
 
-        # TBD: Inefficient since it does yet another search
-
-        #payload = self.getPayload(coord)
+        #
+        # Get the payload out of the payloads array
+        # TBD: Not sure why I felt this was needed
+        #
         payload = self.payloads[index]
 
+        #
+        # If the payload we created is a fiber,
+        # then insert it into the its proper rank
+        #
         if Payload.contains(value, Fiber):
             assert(not self._owner is None)
-            next_rank = self._owner.get_next()
+            next_rank = self._owner.getNextRank()
             if not next_rank is None:
                 next_rank.append(payload)
 
@@ -699,22 +714,74 @@ class Fiber:
     def setDefault(self, default):
         """setDefault"""
 
+        Fiber._deprecated("Fiber.setDefault() default values should be set by the owning rank")
+
         self._default = default
 
 
     def getDefault(self):
-        """getDefault"""
+        """getDefault
 
-        return self._default
+        Get the default payload for this fiber. Ideally from the owner rank
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        value: value
+        The (unboxed) default payload of fibers in this rank
+
+        Raises
+        ------
+        None
+
+        """
+
+        #
+        # Try to get default from owning rank
+        #
+        owner = self.getOwner()
+
+        if owner is not None:
+            return owner.getDefault()
+
+        #
+        # For unowned fibers, try to guess a default value
+        #
+        if len(self.payloads) > 0 and isinstance(self.payloads[0], Fiber):
+            return Fiber
+
+        if self._default != 0:
+            Fiber._deprecated("Fiber.getDefault() used a fiber-level default values")
+
+            return self._default
+
+        return 0
+
 
 
     def _createDefault(self):
         """_createDefault"""
 
-        if callable(self._default):
-            value = self._default()
+        default = self.getDefault()
+
+        if callable(default):
+            value = default()
+
+            #
+            # Conditionaly set the owning rank
+            #
+            # TBD: This is a messy interaction with rank
+            #      See Rank.append()
+            #
+            if isinstance(value, Fiber):
+                owner = self.getOwner()
+                if owner:
+                    value.setOwner(owner.next_rank)
         else:
-            value = self._default
+            value = default
 
         return value
 
@@ -1630,6 +1697,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
+
             return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
@@ -1641,6 +1709,9 @@ class Fiber:
                 (coord, payload) = get_next(iter)
 
             return CoordPayload(coord, payload)
+
+        a_fiber = self
+        b_fiber = other
 
         a = self.__iter__()
         b = other.__iter__()
@@ -1663,29 +1734,35 @@ class Fiber:
 
             if a_coord < b_coord:
                 z_coords.append(a_coord)
-                # TODO: Append the right b_payload, e.g., maybe a Fiber()
-                z_payloads.append(("A", a_payload, 0))
+
+                b_default = b_fiber._createDefault()
+                z_payloads.append(("A", a_payload, b_default))
 
                 a_coord, a_payload = get_next_nonempty(a)
                 continue
 
             if a_coord > b_coord:
                 z_coords.append(b_coord)
-                # TODO: Append the right a_payload, e.g., maybe a Fiber()
-                z_payloads.append(("B", 0, b_payload))
+
+                a_default = a_fiber._createDefault()
+                z_payloads.append(("B", a_default, b_payload))
 
                 b_coord, b_payload = get_next_nonempty(b)
                 continue
 
         while not a_coord is None:
             z_coords.append(a_coord)
-            z_payloads.append(("A", a_payload, 0))
+
+            b_default = b_fiber._createDefault()
+            z_payloads.append(("A", a_payload, b_default))
 
             a_coord, a_payload = get_next_nonempty(a)
 
         while  not b_coord is None:
             z_coords.append(b_coord)
-            z_payloads.append(("B", 0, b_payload))
+
+            a_default = a_fiber._createDefault()
+            z_payloads.append(("B", a_default, b_payload))
 
             b_coord, b_payload = get_next_nonempty(b)
 

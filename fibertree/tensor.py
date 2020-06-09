@@ -301,8 +301,66 @@ class Tensor:
         return self._color
 
 
+    def setDefault(self, value):
+        """setDefault
+
+        Set the default value for the leaf payloads of the tensor
+
+        Parameters
+        ----------
+        value: value
+        A value to use for leaf payload values in tensor
+
+        Returns
+        -------
+        self:
+        So method can be used in a chain
+
+        Raises
+        ------
+        None
+
+        """
+
+        assert value != Fiber, "Leaf payloads cannot be a Fiber"
+
+        #
+        # Set default for leaf rank
+        #
+        self.ranks[-1].setDefault(value)
+
+        return self
+
+
+    def getDefault(self):
+        """GetDefault
+
+        Get the default payload for leaf ranks
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        value: value
+        Default payload of the leaf rank
+
+        Raises
+        ------
+        None
+
+        """
+
+        return self.ranks[-1].getDefault()
+
+
     def countValues(self):
-        """Count of values in the tensor"""
+        """countValues
+
+        Count of non-empty payload values in the leaf rank of tensor
+
+        """
 
         return self.getRoot().countValues()
 

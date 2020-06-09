@@ -18,7 +18,8 @@ class Rank:
             self.estimated_shape = False
             self.shape = shape
 
-        self.next_rank = next_rank
+        self.setNextRank(next_rank)
+
         self.fibers = []
 
 #
@@ -59,6 +60,61 @@ class Rank:
 
         self.fibers = []
 
+    #
+    # Default payload methods
+    #
+    def setDefault(self, value):
+        """setDefault
+
+        Set the default payload value for fibers in this rank
+
+        Parameters
+        ----------
+        value: value
+        An (unboxed) value to use as the payload value for fibers in this rank
+
+        Returns
+        -------
+        self:
+        So method can be used in a chain
+
+        Raises
+        ------
+        None
+
+        """
+
+        self._default_is_set = True
+        self._default = value
+
+        return self
+
+
+    def getDefault(self):
+        """getDefault
+
+        Get the default payload for fibers in this rank
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        value: value
+        The (unboxed) default payload of fibers in this rank
+
+        Raises
+        ------
+        None
+
+        """
+
+        assert self._default_is_set
+
+        return self._default
+
+
 #
 # Fundamental methods
 #
@@ -87,30 +143,36 @@ class Rank:
         fiber.setOwner(self)
 
         #
-        # Set proper default value for new coordinates in the fiber
-        #
-        # TBD: Move this information to rank...
+        # Check default value for new coordinates in the fiber
         #
         if self.next_rank is None:
-            fiber.setDefault(0)
+            assert self.getDefault() != Fiber, "Leaf rank default should not be Fiber"
         else:
-            fiber.setDefault(Fiber)
+            assert self.getDefault() == Fiber, "Non-leaf rank default should be Fiber"
 
+        #
         # Add fiber to list of fibers of rank
+        #
         self.fibers.append(fiber)
 
 #
 # Linked list methods
 #
-    def get_next(self):
-        """get_next"""
-
-        return self.next_rank
-
-    def set_next(self, next_rank):
-        """set_next"""
+    def setNextRank(self, next_rank):
+        """setNextRank"""
 
         self.next_rank = next_rank
+
+        if next_rank is None:
+            self.setDefault(0)
+        else:
+            self.setDefault(Fiber)
+
+
+    def getNextRank(self):
+        """getNextRank"""
+
+        return self.next_rank
 
 #
 # String methods
