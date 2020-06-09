@@ -1147,6 +1147,51 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(ab, ab_ref)
 
+    def test_xor_2d(self):
+        """Union test 2d"""
+
+        a1 = [[1, 2, 3, 0],
+              [1, 0, 3, 4],
+              [0, 2, 3, 4],
+              [1, 2, 0, 4]]
+
+        a2 = [[0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0]]
+
+        a3 = [[2, 3, 4, 5],
+              [0, 0, 0, 0],
+              [1, 0, 3, 4],
+              [1, 2, 0, 4]]
+
+        b1 = a2
+        b2 = a1
+        b3 = a3
+
+        au = [a1, a2, a3]
+        bu = [b1, b2, b3]
+        abu_ref = [a1, b2, []]
+        
+        a = Fiber.fromUncompressed(au)
+        b = Fiber.fromUncompressed(bu)
+
+        x = a ^ b
+
+        ab_ref = ["A", "B"]
+        a1_fiber = Fiber.fromUncompressed(a1)
+        a2_fiber = Fiber([],[])
+
+        ab_a_ref = [a1_fiber, a2_fiber]
+        ab_b_ref = [a2_fiber, a1_fiber]
+
+        for n, (c, (ab, ab_a, ab_b)) in enumerate(x):
+            self.assertEqual(ab, ab_ref[n])
+            self.assertEqual(ab_a, ab_a_ref[n])
+            self.assertEqual(ab_b, ab_b_ref[n])
+
+
+
     def test_xor_empty(self):
         """Uniontest - with explict zeros"""
 

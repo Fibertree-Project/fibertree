@@ -1856,6 +1856,9 @@ class Fiber:
 
             return CoordPayload(coord, payload)
 
+        a_fiber = self
+        b_fiber = other
+
         a = self.__iter__()
         b = other.__iter__()
 
@@ -1873,29 +1876,35 @@ class Fiber:
 
             if a_coord < b_coord:
                 z_coords.append(a_coord)
-                # TODO: Append the right b_payload, e.g., maybe a Fiber()
-                z_payloads.append(("A", a_payload, 0))
+
+                b_default = b_fiber._createDefault()
+                z_payloads.append(("A", a_payload, b_default))
 
                 a_coord, a_payload = get_next_nonempty(a)
                 continue
 
             if a_coord > b_coord:
                 z_coords.append(b_coord)
-                # TODO: Append the right a_payload, e.g., maybe a Fiber()
-                z_payloads.append(("B", 0, b_payload))
+
+                a_default = a_fiber._createDefault()
+                z_payloads.append(("B", a_default, b_payload))
 
                 b_coord, b_payload = get_next_nonempty(b)
                 continue
 
         while not a_coord is None:
             z_coords.append(a_coord)
-            z_payloads.append(("A", a_payload, 0))
+
+            b_default = b_fiber._createDefault()
+            z_payloads.append(("A", a_payload, b_default))
 
             a_coord, a_payload = get_next_nonempty(a)
 
         while  not b_coord is None:
             z_coords.append(b_coord)
-            z_payloads.append(("B", 0, b_payload))
+
+            a_default = a_fiber._createDefault()
+            z_payloads.append(("B", a_default, b_payload))
 
             b_coord, b_payload = get_next_nonempty(b)
 
@@ -2041,7 +2050,6 @@ class Fiber:
 
             if a_coord < b_coord:
                 z_coords.append(a_coord)
-                # TODO: Append the right b_payload, e.g., maybe a Fiber()
                 z_payloads.append(a_payload)
 
                 a_coord, a_payload = get_next(a)
