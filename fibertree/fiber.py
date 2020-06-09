@@ -529,6 +529,44 @@ class Fiber:
         return Fiber(coords, payloads)
 
 
+    def prune(self, trans_fn=None, start_pos=None):
+        """prune"""
+
+        if start_pos is not None:
+            assert start_pos < len(self.coords)
+            range_start = start_pos
+        else:
+            range_start = 0
+
+        coords = []
+        payloads = []
+
+        # Start at start_pos (if any)
+
+        first_pos = None
+
+        for pos in range(range_start, len(self.coords)):
+            c = self.coords[pos]
+            p = self.payloads[pos]
+
+            status = trans_fn(pos, c, p)
+
+            if status is None: break
+
+            if status:
+                coords.append(c)
+                payloads.append(p)
+
+
+#        if start_pos is not None:
+#            if first_pos is None:
+#                self.setSavedPos(pos)
+#            else:
+#                self.setSavedPos(pos, distance=first_pos-start_pos)
+
+        return Fiber(coords, payloads)
+
+
     def getPosition(self, coord, start_pos=None):
         """getPosition
 
@@ -1621,7 +1659,9 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
+
             return CoordPayload(coord, payload)
+
 
         def get_next_nonempty(iter):
             """get_next_nonempty"""
@@ -2027,9 +2067,12 @@ class Fiber:
 #
     def swapRanks(self):
         """Swap the (highest) two ranks of the fiber.
+
         This function relies on flattenRanks() and unflattenRanks().
         FIXME: flattenRanks() could be more general to support all p1 types,
-        including tuples."""
+        including tuples.
+
+        """
 
         # Flatten the (highest) two ranks
         flattened = self.flattenRanks()

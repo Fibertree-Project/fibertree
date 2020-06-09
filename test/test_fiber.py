@@ -908,6 +908,45 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(ap, ap_ref)
 
 
+    def test_prune(self):
+        """Test pruning a fiber"""
+
+        f = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+
+        fl2_ref = Fiber([2, 4], [4, 8])
+        fu2_ref = Fiber([6, 8], [12, 16])
+
+        #
+        # Prune out lower half
+        #
+        f0 = f.prune(lambda n, c, p: n < 2)
+        self.assertEqual(f0, fl2_ref)
+
+        f1 = f.prune(lambda n, c, p: c < 5)
+        self.assertEqual(f1, fl2_ref)
+
+        f2 = f.prune(lambda n, c, p: p < 10)
+        self.assertEqual(f2, fl2_ref)
+
+        #
+        # Prune out upper half
+        #
+        f3 = f.prune(lambda n, c, p: n >= 2)
+        self.assertEqual(f3, fu2_ref)
+
+        f4 = f.prune(lambda n, c, p: c > 5)
+        self.assertEqual(f4, fu2_ref)
+
+        f5 = f.prune(lambda n, c, p: p > 10)
+        self.assertEqual(f5, fu2_ref)
+
+        #
+        # Prune out lower half and stop
+        #
+        f6 = f.prune(lambda n, c, p: True if p < 10 else None)
+        self.assertEqual(f6, fl2_ref)
+
+    
     def test_upzip(self):
         """Test unzipping a fiber"""
 
