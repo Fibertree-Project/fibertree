@@ -1,4 +1,6 @@
 tensor:
+  name: tensor_0d
   rank_ids: []
+  shape: []
   root:
   - 2

@@ -1,6 +1,8 @@
 tensor:
+  name: conv-output-os-a
   rank_ids:
   - Q
+  shape: [6]
   root:
   - fiber:
       coords:

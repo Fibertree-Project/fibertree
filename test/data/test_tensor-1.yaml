@@ -1,5 +1,7 @@
 tensor:
+  name: test_tensor-1
   rank_ids: [ M, K ]
+  shape: [7, 4]
   root:
     - fiber:
         coords:

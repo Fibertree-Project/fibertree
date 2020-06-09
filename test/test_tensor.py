@@ -11,7 +11,37 @@ class TestTensor(unittest.TestCase):
     def test_constructor_empty(self):
         """Test construction of empty tensor"""
 
-        Tensor(rank_ids=["M", "K"])
+        ranks = ["M", "K"]
+
+        t = Tensor(rank_ids=ranks)
+        self.assertEqual(t.getRankIds(), ranks)
+
+    def test_constructor_shape(self):
+        """Test construction of shape of tensor"""
+
+        ranks = ["M", "K"]
+        shape = [4, 8]
+
+        t = Tensor(rank_ids=ranks, shape=shape)
+
+        self.assertEqual(t.getRankIds(), ranks)
+        self.assertEqual(t.getShape(), shape)
+
+        
+    def test_constructor_shape(self):
+        """Test construction of shape of tensor"""
+
+        ranks = ["M", "K"]
+        name = "ME"
+
+        t1 = Tensor(rank_ids=ranks, name=name)
+
+        self.assertEqual(t1.getName(), name)
+
+        t2 = Tensor(rank_ids=ranks)
+        t2.setName(name)
+
+        self.assertEqual(t2.getName(), name)
 
 
     def test_constructor_rank_0D(self):
@@ -27,7 +57,12 @@ class TestTensor(unittest.TestCase):
     def test_new(self):
         """Test construction of a tensor from a file"""
 
-        Tensor("./data/test_tensor-1.yaml")
+        t = Tensor("./data/test_tensor-1.yaml")
+
+        self.assertEqual(t.getName(), "test_tensor-1")
+        self.assertEqual(t.getRankIds(),[ "M", "K" ])
+        self.assertEqual(t.getShape(), [7, 4])
+
 
     def test_equal(self):
         """Test equality comparison"""

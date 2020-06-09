@@ -1,5 +1,7 @@
 tensor:
+  name: spMspV-a-t
   rank_ids: [ K, M ]
+  shape: [7, 8]
   root:
     - fiber:
         coords: [ 0, 3, 6]

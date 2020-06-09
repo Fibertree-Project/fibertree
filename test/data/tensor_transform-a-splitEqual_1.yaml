@@ -1,9 +1,11 @@
 tensor:
+  name: tensor_transform-a-splitEqual_1
   rank_ids:
   - M
   - N.1
   - N.0
   - K
+  shape: [41, 34, 42, 10]
   root:
   - fiber:
       coords:

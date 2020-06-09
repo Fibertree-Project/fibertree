@@ -1,5 +1,7 @@
 tensor:
+  name: matrix-a
   rank_ids: [ M, K ]
+  shape: [4, 4]
   root:
     - fiber:
         coords: [ 0, 1, 3]

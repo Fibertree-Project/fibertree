@@ -1,5 +1,7 @@
 tensor:
+  name: sparse-matrix-b
   rank_ids: [K, N]
+  shape: [6, 7]
   root:
   - fiber:
       coords: [0, 1, 3, 4, 5]

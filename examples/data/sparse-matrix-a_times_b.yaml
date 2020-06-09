@@ -1,5 +1,7 @@
 tensor:
+  name: sparse-matrix-a_times_b
   rank_ids:
+  shape: [6, 7]
   - M
   - N
   root:

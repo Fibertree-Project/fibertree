@@ -1,9 +1,11 @@
 tensor:
+  name: tensor_transform-a-splitUniform_2
   rank_ids:
   - M
   - N
   - K.1
   - K.0
+  shape: [41, 42, 9, 10]
   root:
   - fiber:
       coords:

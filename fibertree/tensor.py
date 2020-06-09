@@ -10,7 +10,7 @@ from fibertree.payload import Payload
 class Tensor:
     """ Tensor Class """
 
-    def __init__(self, yamlfile="", rank_ids=None, shape=None):
+    def __init__(self, yamlfile="", rank_ids=None, shape=None, name=""):
         """__init__"""
 
         self.yamlfile = yamlfile
@@ -20,13 +20,14 @@ class Tensor:
         if (yamlfile != ""):
             assert(rank_ids is None and shape is None)
 
-            (rank_ids, root, shape) = self.parse(yamlfile)
+            (rank_ids, root, shape, name) = self.parse(yamlfile)
 
             if shape is None:
                 shape = root.estimateShape()
 
             self.setRankInfo(rank_ids, shape)
             self.setRoot(root)
+            self.setName(name)
             self.setColor("red")
             return
 
@@ -36,6 +37,7 @@ class Tensor:
         assert(not rank_ids is None)
 
         self.setRankInfo(rank_ids, shape)
+        self.setName(name)
         self.setColor("red")
 
         if rank_ids == []:
@@ -52,10 +54,10 @@ class Tensor:
     def fromYAMLfile(cls, yamlfile):
         """Construct a Tensor from a YAML file"""
 
-        (rank_ids, root, shape) = Tensor.parse(yamlfile)
+        (rank_ids, root, shape, name) = Tensor.parse(yamlfile)
 
         if not isinstance(root, Fiber):
-            t = Tensor(rank_ids=[], shape=shape)
+            t = Tensor(rank_ids=[], shape=shape, name=name)
             t._root = Payload(root)
             return t
 
@@ -107,7 +109,7 @@ class Tensor:
 
 
     @classmethod
-    def fromFiber(cls, rank_ids=None, fiber=None, shape=None):
+    def fromFiber(cls, rank_ids=None, fiber=None, shape=None, name=""):
         """Construct a Tensor from a fiber"""
 
         assert(not rank_ids is None)
@@ -116,6 +118,7 @@ class Tensor:
         tensor = cls(rank_ids=rank_ids, shape=shape)
 
         tensor.setRoot(fiber)
+        tensor.setName(name)
         tensor.setColor("red")
 
         return tensor
@@ -256,6 +259,52 @@ class Tensor:
         return self.getRoot()
 
 
+    def setName(self, name):
+        """setName
+
+        Set name for the tensor
+
+        Parameters
+        ----------
+        name: string
+        Name to use for tensor
+
+        Returns
+        -------
+        self: So method can be used in a chain
+
+        Raises
+        ------
+        None
+
+        """
+
+        self._name = name
+        return self
+
+
+    def getName(self):
+        """Getname
+
+        Get name of tensor
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        name: Name of tensor
+
+        Raises
+        ------
+        None
+
+        """
+
+        return self._name
+
+
     def setColor(self, color):
         """setColor
 
@@ -369,7 +418,14 @@ class Tensor:
 #
 
     def __eq__(self, other):
-        """__eq__"""
+        """__eq__
+
+        Check for equivalence of two tensors by matching their rank
+        ids and root fiber.
+
+        Note: The tenor's names and colors do not need to match
+
+        """
 
         rankid_match = (self.getRankIds() == other.getRankIds())
         fiber_match = (self.getRoot() == other.getRoot())
@@ -454,6 +510,7 @@ class Tensor:
         # Create Tensor from rank_ids and root fiber
         #
         tensor = Tensor.fromFiber(rank_ids, root, shape)
+        tensor.setName(self.getName()+"+split")
         tensor.setColor(self.getColor())
 
         return tensor
@@ -486,6 +543,7 @@ class Tensor:
         # Create Tensor from rank_ids and root fiber
         #
         tensor = Tensor.fromFiber(rank_ids, root, shape)
+        tensor.setName(self.getName()+"+swapped")
         tensor.setColor(self.getColor())
 
         return tensor
@@ -515,6 +573,7 @@ class Tensor:
         # Create Tensor from rank_ids and root fiber
         #
         tensor = Tensor.fromFiber(rank_ids, root, shape)
+        tensor.setName(self.getName()+"+flattened")
         tensor.setColor(self.getColor())
 
         return tensor
@@ -545,6 +604,7 @@ class Tensor:
         # Create Tensor from rank_ids and root fiber
         #
         tensor = Tensor.fromFiber(rank_ids, root, shape)
+        tensor.setName(self.getName()+"+unflattened")
         tensor.setColor(self.getColor())
 
         return tensor
@@ -660,11 +720,21 @@ class Tensor:
         rank_ids = y_tensor['rank_ids']
 
         #
-        # Deal with shape information
+        # Get shape information
         #
-        # TBD: yaml should have shape information
+        if 'shape' in y_tensor:
+            shape = y_tensor['shape']
+        else:
+            shape = None
+
         #
-        shape = None
+        # Get tensor name
+        #
+        if 'name' in y_tensor:
+            name = y_tensor['name']
+        else:
+            # TBD: Maybe extract something from filename
+            name = ""
 
         #
         # Make sure key "root" exists
@@ -681,7 +751,7 @@ class Tensor:
         #
         fiber = Fiber.dict2fiber(y_root[0])
 
-        return (rank_ids, fiber, shape)
+        return (rank_ids, fiber, shape, name)
 
 
     def dump(self, filename):
@@ -694,10 +764,13 @@ class Tensor:
         else:
             root_dict = root.fiber2dict()
 
-        tensor_dict = { 'tensor':
-                        { 'rank_ids': self.getRankIds(),
-                          'root': [ root_dict ]
-                        } }
+        tensor_dict = {'tensor':
+                       {'rank_ids': self.getRankIds(),
+                        'shape': self.getShape(),
+                        'name': self.getName(),
+                        'root': [root_dict]
+                       }}
+
         with open(filename, 'w') as file:
             document = yaml.dump(tensor_dict, file)
 

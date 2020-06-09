@@ -1,6 +1,8 @@
 tensor:
+  name: tensor_sum_z
   rank_ids:
   - M
+  shape: [1]
   root:
   - fiber:
       coords:

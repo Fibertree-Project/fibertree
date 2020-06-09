@@ -1,5 +1,7 @@
 tensor:
+  name: elementwise-b
   rank_ids: [ M ]
+  shape: [5]
   root:
     - fiber:
         coords:   [ 2, 4 ]

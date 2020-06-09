@@ -1,5 +1,7 @@
 tensor:
+  name: draw-c
   rank_ids: [ M, N, K ]
+  shape: [41, 42, 10]
   root:
     - fiber:
         coords: [ 10, 20, 40 ]

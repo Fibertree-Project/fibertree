@@ -1,5 +1,7 @@
 tensor:
+  name: dot-product-a
   rank_ids: [ M, K ]
+  shape: [1, 7]
   root:
     - fiber:
         coords: [ 0 ]

@@ -1,8 +1,10 @@
 tensor:
+  name: tensor_transform-a-swapRanks_0
   rank_ids:
   - N
   - M
   - K
+  shape: [42, 41, 10]
   root:
   - fiber:
       coords:
