@@ -549,15 +549,26 @@ class Tensor:
         return tensor
 
 
-    def flattenRanks(self, depth=0):
+    def flattenRanks(self, depth=0, levels=1):
         """ swapRanks """
 
         #
         # Create new list of rank ids
         #
+        # Note: we need to handle the case where existing ranks are lists
+        #
         rank_ids = copy.deepcopy(self.getRankIds())
-        rank_ids[depth] = [rank_ids[depth], rank_ids[depth+1]]
-        del rank_ids[depth+1]
+
+        if not isinstance(rank_ids[depth], list):
+            rank_ids[depth] = list(rank_ids[depth])
+
+        for d in range(levels):
+            if isinstance(rank_ids[depth+1],list):
+                rank_ids[depth].extend(rank_ids[depth+1])
+            else:
+                rank_ids[depth].append(rank_ids[depth+1])
+
+            del rank_ids[depth+1]
 
         #
         # Create new shape list
@@ -568,7 +579,8 @@ class Tensor:
 
         root = self._modifyRoot(Fiber.flattenRanks,
                                 Fiber.flattenRanksBelow,
-                                depth=depth)
+                                depth=depth,
+                                levels=levels)
         #
         # Create Tensor from rank_ids and root fiber
         #
@@ -579,16 +591,21 @@ class Tensor:
         return tensor
 
 
-    def unflattenRanks(self, depth=0):
+    def unflattenRanks(self, depth=0, levels=1):
         """ swapRanks """
 
         #
         # Create new list of rank ids
         #
         rank_ids = copy.deepcopy(self.getRankIds())
-        id = rank_ids[depth]
-        rank_ids[depth] = id[0]
-        rank_ids.insert(depth+1, id[1])
+
+        for d in range(levels):
+            id = rank_ids[depth+d]
+            rank_ids[depth+d] = id[0]
+            if len(id) == 2:
+                rank_ids.insert(depth+d+1, id[1])
+            else:
+                rank_ids.insert(depth+d+1, id[1:])
 
         #
         # Create new shape list
@@ -599,7 +616,8 @@ class Tensor:
 
         root = self._modifyRoot(Fiber.unflattenRanks,
                                 Fiber.unflattenRanksBelow,
-                                depth=depth)
+                                depth=depth,
+                                levels=levels)
         #
         # Create Tensor from rank_ids and root fiber
         #
@@ -610,16 +628,16 @@ class Tensor:
         return tensor
 
 
-    def _modifyRoot(self, func, funcBelow, depth=0):
+    def _modifyRoot(self, func, funcBelow, depth=0, **kwargs):
         #
         # Create new root fiber
         #
         root_copy = copy.deepcopy(self.getRoot())
         if depth == 0:
-            root = func(root_copy)
+            root = func(root_copy, **kwargs)
         else:
             root = root_copy
-            funcBelow(root, depth=depth-1)
+            funcBelow(root, depth=depth-1, **kwargs)
 
         #
         # Create Tensor from rank_ids and root fiber

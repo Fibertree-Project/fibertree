@@ -220,6 +220,61 @@ class TestTensor(unittest.TestCase):
         # TBD: Semantics for non-integer coordinates
 #       self.assertEqual(a_out.getShape(), [7, 10])
 
+    def test_flattenRanks_f01(self):
+        """ Test flattenRanks - f01 """
+
+        t0 = Tensor.fromYAMLfile("./data/tensor_3d-0.yaml")
+
+        f01 = t0.flattenRanks(depth=0, levels=1)
+        u01 = f01.unflattenRanks(depth=0, levels=1)
+        
+        self.assertEqual(u01, t0)
+
+    def test_flattenRanks_f02(self):
+        """ Test flattenRanks - f02 """
+
+        t0 = Tensor.fromYAMLfile("./data/tensor_3d-0.yaml")
+
+        f02 = t0.flattenRanks(depth=0, levels=2)
+        u02a = f02.unflattenRanks(depth=0, levels=1)
+        u02b = u02a.unflattenRanks(depth=1, levels=1)
+
+        self.assertEqual(u02b, t0)
+
+        u02 = f02.unflattenRanks(depth=0, levels=2)
+
+        self.assertEqual(u02, t0)
+
+    def test_flattenRanks_f12(self):
+        """ Test flattenRanks - f12 """
+
+        t0 = Tensor.fromYAMLfile("./data/tensor_3d-0.yaml")
+
+        f12 = t0.flattenRanks(depth=1, levels=1)
+        u12 = f12.unflattenRanks(depth=1, levels=1)
+        self.assertEqual(u12, t0)
+
+
+    def test_flattenRanks_f02(self):
+        """ Test flattenRanks - f02 """
+
+        t0 = Tensor.fromYAMLfile("./data/tensor_3d-0.yaml")
+        t1 = Tensor.fromYAMLfile("./data/tensor_3d-1.yaml")
+
+        t2 = Tensor.fromFiber(["A", "B", "C", "D"], 
+                              Fiber([1, 4], [t0.getRoot(), t1.getRoot()]),
+                              name="t2")
+
+        f13 = t2.flattenRanks(depth=1, levels=2)
+        u13 = f13.unflattenRanks(depth=1, levels=2)
+
+        self.assertEqual(u13, t2)
+
+        f04 = t2.flattenRanks(depth=0, levels=3)
+        u04 = f04.unflattenRanks(depth=0, levels=3)
+
+        self.assertEqual(u04, t2)
+
 
 if __name__ == '__main__':
     unittest.main()

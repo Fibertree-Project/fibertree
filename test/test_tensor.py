@@ -97,7 +97,7 @@ class TestTensor(unittest.TestCase):
     def test_fomYAMLfile_3D(self):
         """Test construction of 0-D tensor from a YAML file"""
 
-        t = Tensor.fromYAMLfile("./data/tensor_3d.yaml")
+        t = Tensor.fromYAMLfile("./data/tensor_3d-0.yaml")
 
         # TBD: Check that data is good
 
