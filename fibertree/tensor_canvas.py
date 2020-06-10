@@ -28,10 +28,10 @@ class TensorCanvas():
         self.canvas.addFrame(*highlighted_coords_per_tensor)
 
 
-    def getLastFrame(self):
+    def getLastFrame(self, message=None):
         """ getLastFrame """
 
-        return self.canvas.getLastFrame()
+        return self.canvas.getLastFrame(message=message)
 
 
     def saveMovie(self, filename=None):

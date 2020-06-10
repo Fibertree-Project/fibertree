@@ -116,7 +116,8 @@ class FibertreeDisplay():
         """ createCanvas """
 
         if self.animation == 'none':
-            return None
+            # For 'none' we create a movie but don't add any frames
+            return TensorCanvas(*tensors, animation='movie', style=self.style, **kwargs)
 
         return TensorCanvas(*tensors, animation=self.animation, style=self.style, **kwargs)
 

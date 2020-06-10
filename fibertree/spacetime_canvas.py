@@ -6,6 +6,7 @@ from fibertree.payload import Payload
 
 from fibertree import TensorImage
 
+
 class SpacetimeCanvas():
     """SpaceTimeCanvas"""
 
@@ -25,11 +26,19 @@ class SpacetimeCanvas():
         self.highlights = []
 
         for tensor in tensors:
+
             self.tensors.append(Payload.get(tensor))
 
-            spacetime = Tensor(rank_ids=["T", "S"])
             if isinstance(tensor, Tensor):
+                assert tensor.getShape() != [], "No support for 0-D tensors"
+
+                spacetime = Tensor(rank_ids=["T"] + tensor.getRankIds())
+                spacetime.setName(tensor.getName())
                 spacetime.setColor(tensor.getColor())
+            else:
+                assert len(tensor.getShape()) == 1, "Only 1-D fibers are supported"
+
+                spacetime = Tensor(rank_ids=["T", "S"])
 
             self.spacetime.append(spacetime)
             self.highlights.append([])
@@ -54,11 +63,10 @@ class SpacetimeCanvas():
 
         for tensor, spacetime, highlights, hl_coords in zip(self.tensors, self.spacetime, self.highlights, final_coords):
 
-            timestep = tensor.getRoot()
-            timestep_ranks = len(timestep.getShape(all_ranks=True))
-
-            if timestep_ranks > 1:
-                timestep = timestep.flattenRanks(levels=timestep_ranks-1)
+            if isinstance(tensor, Tensor):
+                timestep = tensor.getRoot()
+            else:
+                timestep = tensor
 
             spacetime.getRoot().append(self.frame, copy.deepcopy(timestep))
 
@@ -70,41 +78,51 @@ class SpacetimeCanvas():
         self.frame += 1
 
 
-    def getLastFrame(self):
+    def getLastFrame(self, message=None):
         """getLastFrame"""
 
         images = []
 
         for spacetime, highlights in zip(self.spacetime, self.highlights):
+            #
+            # Get spacetime tensor name & ranks
+            #
+            #
+            spacetime_name = spacetime.getName()
+            spacetime_ranks = len(spacetime.getShape())
 
-            if isinstance(spacetime, Tensor):
-                # Get the root out of tensor
-                spacetime_root = spacetime.getRoot()
-            else:
-                # A fiber is itself the root
-                spacetime_root = spacetime
-
-            shape = spacetime_root.getShape(all_ranks=True)
-
-            if len(shape) == 1:
+            if spacetime_ranks == 2:
                 #
                 # Original tensor was a vector
                 #
                 highlights_mapped = highlights
             else:
                 #
-                # Original tensor was a matrix or bigger
+                # Original tensor was a matrix or bigger, so flatten it
+                #
+                # Note: points in the tensor look like (time, coord0,
+                #       coord1, ..)  so we need to skip over the first
+                #       rank before flattening
+                #
+                spacetime = spacetime.flattenRanks(depth=1, levels=spacetime_ranks-2)
+                spacetime_root = spacetime.getRoot()
                 #
                 #
-                # Build a map of spatial tensor points to flattened positions
+                # Build a map of original tensor points to a scalar
+                # number space, i.e., 0, 1, 2...
                 #
-                # Note: points in the tensor look like (time, coord0, coord1, ..)
-                #       so we need to skip over the first rank
+                # Note: We rely on the fact that the last time step
+                #       has all the possible points, so the scalar
+                #       number space is actually the position in the
+                #       final timestep.
                 #
                 point2pos = {}
 
                 for position, (point, value)  in enumerate(spacetime_root[-1].payload):
-                    point2pos[point] = position
+                    if isinstance(point, tuple):
+                        point2pos[point] = position
+                    else:
+                        point2pos[(point,)] = position
 
                 print(f"Point to position mapping:  {point2pos}")
 
@@ -125,16 +143,16 @@ class SpacetimeCanvas():
                     except:
                         print(f"Could not map point ({h1},{h2}) in point2pos array")
 
-
                 #
                 # Flatten the names of the coordinates in the spacetime tensor
                 #
-                spacetime_root.updateCoords(lambda i, c, p: i, depth=1)
+                spacetime_root.updateCoords(lambda i, c, p: point2pos[c], depth=1)
 
             #
             # Swap the space and time ranks
             #
             spacetime_swapped = spacetime.swapRanks()
+            spacetime_swapped.setName(spacetime_name)
 
             #
             # Create spacetime image for this tensor and append to full image

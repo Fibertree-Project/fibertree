@@ -7,8 +7,23 @@ from fibertree.payload import Payload
 class TreeImage():
     """TreeImage"""
 
-    def __init__(self, object, highlights=[]):
-        """__init__"""
+
+    def __init__(self, object, highlights=[], extent=(30, 200)):
+        """__init__
+
+        Parameters
+        ----------
+        object: tensor or fiber
+        A tensor or fiber object to draw
+
+        highlight: list of points (each point is a list of coordinates)
+        Points in the tensor to highlight
+
+        extent: tuple
+        Maximum row/col to use for image
+
+        """
+
         #
         # If highlights is a single point convert to list
         #
@@ -22,26 +37,20 @@ class TreeImage():
 
 
         #
-        # Conditionally unwrap Payload objects
+        # Record paramters
         #
-        object = Payload.get(object)
+        # Note: We conditionally unwrap Payload objects
+        #
+        self.object = Payload.get(object)
+        self.highlights = highlights
+        self.row_extent = extent[0]
+        self.col_extent = extent[1]
 
-        self.create_tree(object, highlights)
+        self.create_tree()
 
 
-    def create_tree(self, object, highlights=[]):
+    def create_tree(self):
         """create_tree: Create an image of a tensor or fiber tree
-
-        Parameters
-        ----------
-        object: tensor or fiber
-        A tensor or fiber object to draw
-        highlight: list of points (each point is a list of coordinates)
-        Points in the tensor to highlight
-
-        Returns
-        -------
-        Nothing
 
         Notes
         ------
@@ -54,6 +63,9 @@ class TreeImage():
 
         """
 
+        object = self.object
+        highlights = self.highlights
+
         #
         # Create the objects for the image
         #
@@ -63,13 +75,39 @@ class TreeImage():
         # Display either the root of a tensor or a raw fiber
         #
         if isinstance(object, Tensor):
+            #
+            # Displaying a tensor
+            #
             root = object.getRoot()
+            #
+            # Get tensor's name
+            #
+            name = object.getName()
+            #
+            # Get tensor's color
+            #
             self._color = object.getColor()
-            self.draw_rank(0, "File: %s" % object.yamlfile)
+            #
+            # Create rank_id string
+            #
+            # Note: a rank_id may be a list that needs to be convert to a string
+            #
+            ranks = ", ".join([ str(r) for r in object.getRankIds()])
+
+            if name:
+                self.draw_rank(0, f"Tensor: {name}[{ranks}]")
+            else:
+                self.draw_rank(0, f"File: {object.yamlfile}")
         elif isinstance(object, Fiber):
+            #
+            # Displaying a fiber
+            #
             root = object
             self._color = "red"
         else:
+            #
+            # Displaying nothing?
+            #
             root = None
             self._color = "red"
 
@@ -77,13 +115,17 @@ class TreeImage():
         # Process appropriately if root has 0 dimensions or more
         #
         if not Payload.contains(root, Fiber):
+            #
             # Draw a 0-D tensor, i.e., a value
+            #
             self.draw_coord(0, 0, "R")
             self.draw_line(0, 1/2, 1, 1/2)
             self.draw_value(1, 0, Payload.get(root))
             region_end = 1
         else:
+            #
             # Draw a non-0-D tensor or a fiber, i.e., the fiber tree
+            #
             region_end = self.traverse(root, highlights=highlights)
 
         #
@@ -161,7 +203,9 @@ class TreeImage():
         #
         highlight_coords = [ c[0] for c in highlights ]
 
-        for (c, p) in fiber:
+        for n, (c, p) in enumerate(fiber):
+#            if n > 10: break
+
             if Payload.contains(p, Fiber):
                 highlight_next = [ p[1:] for p in highlights if len(p) > 1 and p[0] == c ]
 
@@ -177,7 +221,10 @@ class TreeImage():
             targets.append(coordinate_start+(region_end-coordinate_start)/2)
             coordinate_start = region_end
 
+
         region_size = region_end - region_start
+
+
 
         #
         # Display fiber for this level
@@ -211,13 +258,16 @@ class TreeImage():
 #
     def image_setup(self):
 
-        # TBD: Estimate image size based on size of tensor
+        # Constrain image size (overage matches crop above)
+
+        x_pixels = self.offset2x(self.col_extent+1) + 200 # was 8192
+        y_pixels = self.level2y(self.row_extent+1) + 20 # was 1024
 
         # Create an image at least this tall (in pixels)
         self.max_y = 100
 
         # Do image related setup
-        self.im = Image.new("RGB", (8192, 1024), "wheat")
+        self.im = Image.new("RGB", (x_pixels, y_pixels), "wheat")
         self.fnt = ImageFont.truetype('Pillow/Tests/fonts/FreeMono.ttf', 20)
         self.draw = ImageDraw.Draw(self.im)
 

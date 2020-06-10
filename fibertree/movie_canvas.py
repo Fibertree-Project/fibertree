@@ -133,7 +133,7 @@ class MovieCanvas():
         out.release()
 
 
-    def getLastFrame(self, text = "Foo"):
+    def getLastFrame(self, message=None):
         #
         # Add an final frame with nothing highlighted (it looks better)
         #
@@ -141,10 +141,12 @@ class MovieCanvas():
 
         end = len(self.image_list_per_tensor[0])
         (final_images, final_width, final_height) = self._combineFrames(end-1, end)
-        if text is None:
+
+        if message is None:
             return final_images[-1]
+
         im = final_images[-1].copy()
-        ImageDraw.Draw(im).text((15, final_height-65), text, font=ImageFont.truetype('Pillow/Tests/fonts/DejaVuSans.ttf', 16), fill="black")
+        ImageDraw.Draw(im).text((15, final_height-65), message, font=ImageFont.truetype('Pillow/Tests/fonts/DejaVuSans.ttf', 16), fill="black")
         return im
 
 if __name__ == "__main__":
