@@ -1,0 +1,9 @@
+tensor:
+  rank_ids: [Q, P]
+  root:
+    - fiber:
+        coords: [0]
+        payloads:
+          - fiber:
+              coords: [0, 1, 2, 3, 4]
+              payloads: [-0.081428, 0.027971, -0.050585, 0.054922, 0.036176]
