@@ -122,14 +122,22 @@ class FibertreeDisplay():
         return TensorCanvas(*tensors, animation=self.animation, style=self.style, **kwargs)
 
 
+    def addActivity(self, canvas, *points, **kwargs):
+        """addActvity"""
 
-    def addFrame(self, canvas, *points):
+        if self.animation == 'none':
+            return None
+
+        return canvas.addActivity(*points, **kwargs)
+
+
+    def addFrame(self, canvas, *points, **kwargs):
         """ addFrame """
 
         if self.animation == 'none':
             return None
 
-        return canvas.addFrame(*points)
+        return canvas.addFrame(*points, **kwargs)
 
 
     def displayCanvas(self, canvas, filename=None, width="100%", loop=True, autoplay=True, controls=True, center=False):
@@ -151,6 +159,8 @@ class FibertreeDisplay():
             #
             # Get the spacetime diagrams
             #
+
+            print("Spacetime")
 
             for image in canvas.getLastFrame():
                 display(image)
@@ -292,10 +302,16 @@ def createCanvas(*tensors, **kwargs):
     return FTD.createCanvas(*tensors, **kwargs)
 
 
-def addFrame(canvas, *points):
+def addActivity(canvas, *points, **kwargs):
+    """ addActivity"""
+
+    return FTD.addActivity(canvas, *points, **kwargs)
+
+
+def addFrame(canvas, *points, **kwargs):
     """ addFrame """
 
-    return FTD.addFrame(canvas, *points)
+    return FTD.addFrame(canvas, *points, **kwargs)
 
 
 def displayCanvas(*args, **kwargs):

@@ -8,7 +8,7 @@ class TreeImage():
     """TreeImage"""
 
 
-    def __init__(self, object, highlights=[], extent=(30, 200)):
+    def __init__(self, object, highlights={}, extent=(30, 200)):
         """__init__
 
         Parameters
@@ -16,25 +16,13 @@ class TreeImage():
         object: tensor or fiber
         A tensor or fiber object to draw
 
-        highlight: list of points (each point is a list of coordinates)
-        Points in the tensor to highlight
+        highlights: dictionary
+        A dictionary of "workers" each with list of points to highlight
 
         extent: tuple
         Maximum row/col to use for image
 
         """
-
-        #
-        # If highlights is a single point convert to list
-        #
-        if len(highlights):
-            try:
-                temp = highlights[0][0]
-            except Exception:
-                temp = highlights
-                highlights = []
-                highlights.append(temp)
-
 
         #
         # Record paramters
@@ -46,6 +34,27 @@ class TreeImage():
         self.row_extent = extent[0]
         self.col_extent = extent[1]
 
+        #
+        # Map worker names to colors
+        #
+        hl_colors = [0xdaa520,   # worker 0 d (goldenrod)
+                     0x977316,   # worker 1 a
+                     0xe4b849,   # worker 2 f
+                     0xc4941d,   # worker 3 c
+                     0xea1f33,   # worker 4 e
+                     0xae8319,   # worker 5 b
+                     0xe8c15f]   # worker 6 g
+
+        worker_color = {}
+
+        for n, worker in enumerate(highlights.keys()):
+            worker_color[worker] = hl_colors[n % len(hl_colors)]
+
+        self.worker_color = worker_color
+
+        #
+        # Create the tree image
+        #
         self.create_tree()
 
 
@@ -144,7 +153,7 @@ class TreeImage():
 #
 # Method to traverse (and draw) all the levels of the tree
 #
-    def traverse(self, fiber, level=0, offset=0, highlights=[], highlight_subtensor=False):
+    def traverse(self, fiber, level=0, offset=0, highlights={}, highlight_subtensor={}):
         """traverse"""
         #
         # Check if this is level0, which may just be a payload
@@ -201,20 +210,50 @@ class TreeImage():
         #
         # Set up the highlighting for this level
         #
-        highlight_coords = [ c[0] for c in highlights ]
+        #
+        # The points to highlight for each worker at this level are
+        # based on the first coordinate in each point
+        #
+        highlight_coords = {}
 
+        for worker, points in highlights.items():
+            highlight_coords[worker] = [c[0] for c in points]
+
+        #
+        # Traverse the fiber at this level
+        #
         for n, (c, p) in enumerate(fiber):
 #            if n > 10: break
 
             if Payload.contains(p, Fiber):
-                highlight_next = [ p[1:] for p in highlights if len(p) > 1 and p[0] == c ]
+                #
+                # The payload is a fiber so we need to recurse, but we
+                # also need to figure out what to highlight at the
+                # next level So these variables hold the highlight
+                # information with one less coordinate, and a list of
+                # workers that are highlighting the remaining
+                # subtensor
+                #
+                highlight_next = {}
+                highlight_subtensor_next = {}
 
-                # Once we start highlighting a fiber, highlight the entire subtensor.
-                highlight_payload = highlight_subtensor
-                if len(highlight_next) == 0:
-                    highlight_payload |= c in highlight_coords
+                for worker, points in highlights.items():
+                    highlight_next[worker] = [ p[1:] for p in points if len(p) > 1 and p[0] == c ]
+                    #
+                    # Once we start highlighting a fiber, highlight the entire subtensor.
+                    # TBD: Maybe we should have just copied highlight_subtensor
+                    #
+                    if worker in highlight_subtensor:
+                        highlight_subtensor_next[worker] = True
 
-                region_end = self.traverse(Payload.get(p), level+1, region_end, highlight_next, highlight_payload)
+                    #
+                    # If there are no more coordinates, maybe start highlighting a subtensor 
+                    #
+                    if len(highlight_next[worker]) == 0 and c in highlight_coords[worker]:
+                        highlight_subtensor_next[worker] = True
+
+
+                region_end = self.traverse(Payload.get(p), level+1, region_end, highlight_next, highlight_subtensor_next)
             else:
                 region_end += 1
 
@@ -237,17 +276,28 @@ class TreeImage():
         pos=fiber_start
 
         for c,p in fiber:
-            self.draw_coord(level, pos, c, (c in highlight_coords) or highlight_subtensor)
-            if (c in highlight_coords) and not highlight_subtensor:
+            #
+            # Create sets of workers to be colored
+            #
+            color_coord = set([worker for worker, coords in highlight_coords.items() if c in coords])
+            color_subtensor = set([worker for worker in highlight_subtensor.keys()])
+            color_coord_or_subtensor = color_coord | color_subtensor
+
+            #
+            # Draw the coordinates, lines and maybe values
+            #
+            self.draw_coord(level, pos, c, color_coord_or_subtensor)
+
+            if len(color_coord - color_subtensor):
                 self.draw_intra_line(level, fiber_start + fiber_size / 2, pos+0.5, True)
 
             # Only draw the line if the next level will actually draw something.
             if not Payload.contains(p, Fiber) or not p.isEmpty():
-                self.draw_line(level, pos+0.5, level+1, targets.pop(0), (c in highlight_coords) or highlight_subtensor)
+                self.draw_line(level, pos+0.5, level+1, targets.pop(0), len(color_coord_or_subtensor)>0)
 
             if not Payload.contains(p, Fiber):
-                highlight_payload = c in highlight_coords    # How could this not be the leaf --- "and rest_of_highlighting == []"
-                self.draw_value(level+1, pos, Payload.get(p), highlight_payload or highlight_subtensor)
+                # How could this not be the leaf --- "and rest_of_highlighting == []"
+                self.draw_value(level+1, pos, Payload.get(p), color_coord_or_subtensor)
 
             pos += 1
 
@@ -312,14 +362,14 @@ class TreeImage():
         self.draw.ellipse(((x1,y1), (x2,y2)), fill_color, (0, 0, 0))
 
 
-    def draw_coord(self, level, offset, coord, highlight=False):
+    def draw_coord(self, level, offset, coord, highlight=[]):
         """draw_coord"""
 
         x1 = self.offset2x(offset) + 20
         y1 = self.level2y(level)
         x2 = x1 + 40
         y2 = y1 + 40
-        color = "goldenrod" if highlight else "black"
+        color = "goldenrod" if len(highlight)>0 else "black"
         x_text = x1+15
         if coord != "R" and isinstance(coord, int):
             if int(coord) >= 10:
@@ -335,7 +385,7 @@ class TreeImage():
         self.draw.text((x_text,y1+10), str(coord), font=self.fnt, fill="white")
 
 
-    def draw_value(self, level, offset, value, highlight=False):
+    def draw_value(self, level, offset, value, highlight=[]):
         """draw_value"""
 
         if isinstance(value, Payload):
@@ -355,9 +405,19 @@ class TreeImage():
         if y2 > self.max_y:
             self.max_y = y2
 
-        fill_color = "goldenrod" if highlight else self._color
+        if len(highlight) == 0:
+            fill_color = self._color
+            self.draw.rectangle(((x1,y1), (x2,y2)), fill_color, 1)
+        else:
+            step = (y2-y1) // len(highlight)
+            y1c = y1
+            for worker in highlight:
+                y2c = y1c + step
+                fill_color = self.worker_color[worker]
+                self.draw.rectangle(((x1,y1c), (x2,y2c)), fill_color, 1)
+                y1c = y2c
 
-        self.draw.rectangle(((x1,y1), (x2,y2)), fill_color, 1)
+
 
         for i,v in enumerate(value):
             if isinstance(v, Payload):

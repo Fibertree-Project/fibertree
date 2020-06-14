@@ -10,19 +10,28 @@ from fibertree.uncompressed_image import UncompressedImage
 class TensorImage():
     """TensorImage"""
 
-    def __init__(self, object, *args, highlights=[], style='tree', **kwargs):
-        """__init__"""
-        #
-        # If highlights is a single point convert to list
-        #
-        if len(highlights):
-            try:
-                temp = highlights[0][0]
-            except Exception:
-                temp = highlights
-                highlights = []
-                highlights.append(temp)
+    def __init__(self, object, *args, highlights={}, style='tree', **kwargs):
+        """__init__
 
+        Parameters
+        ----------
+        object: tensor or fiber
+        A tensor or fiber object to draw
+
+        highlights: dictionary or list or tuple
+        A dictionary of "workers" each with list of points to highlight
+        list is a list of point tuples to highlight (assumes one "worker")
+        tuple is a single point to highlight (assumes one "worker")
+
+        style: One of "tree", "uncompressed" or "tree+uncompressed"
+        Style of image to create
+
+        extent: tuple
+        Maximum row/col to use for image
+
+        """
+
+        highlights = self.canonicalizeHighlights(highlights)
 
         #
         # Conditionally unwrap Payload objects
@@ -73,6 +82,37 @@ class TensorImage():
         self.im.show()
 
 
+    @staticmethod
+    def canonicalizeHighlights(highlights):
+        """canonicalizeHighlights"""
+
+        if not isinstance(highlights, dict):
+            #
+            # Massage highlights into proper form
+            #
+            highlights = { "PE0": highlights}
+            
+
+        #
+        # Wrap highlights specified as a single point into a list
+        #
+        for pe, pe_highlights in highlights.items():
+            #
+            # If highlights is a single point convert to list
+            #
+            if len(pe_highlights):
+                try:
+                    temp = pe_highlights[0][0]
+                except Exception:
+                    temp = pe_highlights
+                    pe_highlights = []
+                    pe_highlights.append(temp)
+                    highlights[pe] = pe_highlights
+
+        return highlights
+
+
+        
 
 if __name__ == "__main__":
 

@@ -559,14 +559,18 @@ class Tensor:
         #
         rank_ids = copy.deepcopy(self.getRankIds())
 
-        if not isinstance(rank_ids[depth], list):
-            rank_ids[depth] = list(rank_ids[depth])
+        cur_rankid= rank_ids[depth]
+        if not isinstance(cur_rankid, list):
+            rank_ids[depth] = []
+            rank_ids[depth].append(cur_rankid)
 
         for d in range(levels):
-            if isinstance(rank_ids[depth+1],list):
-                rank_ids[depth].extend(rank_ids[depth+1])
+            next_rankid = rank_ids[depth+1]
+
+            if isinstance(next_rankid, list):
+                rank_ids[depth] = cur_rankid + next_rankid
             else:
-                rank_ids[depth].append(rank_ids[depth+1])
+                rank_ids[depth].append(next_rankid)
 
             del rank_ids[depth+1]
 
