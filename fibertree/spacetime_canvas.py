@@ -163,6 +163,7 @@ class SpacetimeCanvas():
                 # Original tensor was a vector
                 #
                 highlights_mapped = highlights
+                pos2point = None
             else:
                 #
                 # Original tensor was a matrix or bigger, so flatten it
@@ -184,17 +185,20 @@ class SpacetimeCanvas():
                 #       final timestep.
                 #
                 point2pos = {}
+                pos2point = {}
 
                 for position, (point, value)  in enumerate(spacetime_root[-1].payload):
                     if isinstance(point, tuple):
                         point2pos[point] = position
+                        pos2point[position] = point
                     else:
                         point2pos[(point,)] = position
+                        pos2point[postion] = point
 
                 #
                 # Let user know the point mapping
                 #
-                print(f"Point to position mapping:  {point2pos}")
+                #print(f"Point to position mapping:  {point2pos}")
 
                 #
                 # Remap the highlights into the new flattened space
@@ -231,7 +235,8 @@ class SpacetimeCanvas():
             #
             image = TensorImage(spacetime_swapped,
                                 style='uncompressed',
-                                highlights=highlights_mapped).im
+                                highlights=highlights_mapped,
+                                row_map=pos2point).im
 
             images.append(image)
 

@@ -8,7 +8,7 @@ class UncompressedImage():
     """UncompressedImage"""
 
 
-    def __init__(self, object, highlights={}, extent=(30, 200)):
+    def __init__(self, object, highlights={}, extent=(30, 200), row_map=None):
         """__init__
 
         Parameters
@@ -33,6 +33,7 @@ class UncompressedImage():
         self.highlights = highlights
         self.row_extent = extent[0]
         self.col_extent = extent[1]
+        self.row_map = row_map
 
         #
         # Map worker names to colors (copied from tree_image)
@@ -220,7 +221,7 @@ class UncompressedImage():
         # Print out the rank information (if available)
         #
         label = "Rank: "+self._getId(fiber)
-        self.draw_label(row_origin+1, col_origin, label)
+        self.draw_label(row_origin+2, col_origin, label)
 
         #
         # Set up variables to track rows and columns (note offset for rank label)
@@ -239,6 +240,11 @@ class UncompressedImage():
 
         for row_c in range(shape[0]):
 
+            if self.row_map:
+                coord_label = str(self.row_map[row_c])
+            else:
+                coord_label = row_c
+
             if fiber is not None:
                 row_p = fiber.getPayload(row_c)
 
@@ -250,7 +256,8 @@ class UncompressedImage():
                                              col_origin=col_cur,
                                              highlights=highlight_next,
                                              highlight_subtensor=highlight_subtensor_next,
-                                             label=row_first)
+                                             rank_label=row_first,
+                                             coord_label=coord_label)
 
             row_max = max(row_max, rc_range[0])
             row_cur = row_max
@@ -265,26 +272,58 @@ class UncompressedImage():
         return [row_max, col_max]
 
 
-    def traverse_vector(self, shape, fiber, row_origin=1, col_origin=0, highlights={}, highlight_subtensor={}, label=True):
+    def traverse_vector(self,
+                        shape,
+                        fiber,
+                        row_origin=1,
+                        col_origin=0,
+                        highlights={},
+                        highlight_subtensor={},
+                        rank_label=True,
+                        coord_label=None):
+
         # Default payload
 
         #
         # Print out the rank information (if available)
         #
-        if label:
-            self.draw_label(row_origin, col_origin, "Rank: "+self._getId(fiber))
-            label_offset = 1
+        # TBD: Align column more inteligently
+        #
+        if coord_label is not None:
+            col_hack = 3
         else:
-            label_offset = 0
+            col_hack = 0
+
+        if rank_label:
+            self.draw_label(row_origin, col_origin+col_hack, "Rank: "+self._getId(fiber))
+
+            for c in range(fiber.getShape(all_ranks=False)[0]):
+                self.draw_label(row_origin+1, col_origin+col_hack+c, f"{c:^3}")
+
+            rank_label_offset = 2
+        else:
+            rank_label_offset = 0
 
         #
-        # Set up variables to track rows and columns (note offset for rank label)
+        # Print out coordinate information (if available)
         #
-        row_cur = row_origin + label_offset
-        row_max = row_origin + label_offset
+        if coord_label is not None:
+            self.draw_label(row_origin+rank_label_offset, col_origin, f"{coord_label:>9}")
+            coord_label_offset = col_hack
+        else:
+            coord_label_offset = 0
 
-        col_cur = col_origin
-        col_max = col_origin
+
+        #
+        # Set up variables to track rows and columns
+        #
+        # Note: offsets for rank and coordinate labels
+        #
+        row_cur = row_origin + rank_label_offset
+        row_max = row_origin + rank_label_offset
+
+        col_cur = col_origin + coord_label_offset
+        col_max = col_origin + coord_label_offset
 
         payload = 0
 
@@ -301,8 +340,6 @@ class UncompressedImage():
             color_subtensor = set([worker for worker in highlight_subtensor.keys()])
             color_coord_or_subtensor = color_coord | color_subtensor
 
-            col_cur = col_origin + coord
-
             if isinstance(fiber, Fiber):
                 payload = fiber.getPayload(coord)
 
@@ -310,7 +347,8 @@ class UncompressedImage():
 
             # row_cur does not change
             row_max = max(row_max, row_cur+row_count)
-            # col_cur is set above
+
+            col_cur += 1
             col_max = col_cur
 
             if col_max > self.col_extent: break
