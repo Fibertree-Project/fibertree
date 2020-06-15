@@ -29,6 +29,7 @@ class Tensor:
             self.setRoot(root)
             self.setName(name)
             self.setColor("red")
+            self.setMutable(False)
             return
 
         #
@@ -39,6 +40,7 @@ class Tensor:
         self.setRankInfo(rank_ids, shape)
         self.setName(name)
         self.setColor("red")
+        self.setMutable(True)
 
         if rank_ids == []:
             # Create a rank zero tensor, i.e., just a payload
@@ -58,6 +60,7 @@ class Tensor:
 
         if not isinstance(root, Fiber):
             t = Tensor(rank_ids=[], shape=shape, name=name)
+            t.setMutable(False)
             t._root = Payload(root)
             return t
 
@@ -120,6 +123,7 @@ class Tensor:
         tensor.setRoot(fiber)
         tensor.setName(name)
         tensor.setColor("red")
+        tensor.setMutable(False)
 
         return tensor
 
@@ -402,6 +406,59 @@ class Tensor:
         """
 
         return self.ranks[-1].getDefault()
+
+
+    def setMutable(self, value):
+        """setDefault
+
+        Set the "hint" as to whether the tensor is mutable or not,
+        i.e., its value will change. Note: this property is not
+        enforced, but is useful for the *Canvas methods that want to
+        save the current value of the tensor, so they know if they
+        need to copy the tensor or not.
+
+        Parameters
+        ----------
+        value: Bool
+        Is the tensor mutable or not.
+
+        Returns
+        -------
+        self:
+        So method can be used in a chain
+
+        Raises
+        ------
+        None
+
+        """
+
+        self._mutable = value
+
+        return self
+
+
+    def isMutable(self):
+        """isMutable
+
+        Returns the "hint" that the tensor is mutable
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        value: Bool
+        Whether the tensor is set mutable or not
+
+        Raises
+        ------
+        None
+
+        """
+
+        return self._mutable
 
 
     def countValues(self):

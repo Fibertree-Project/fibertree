@@ -77,9 +77,12 @@ class SpacetimeCanvas():
 
         for tensor in self.tensors:
             #
-            # TBD: Make copy conditional on whether the tensor is mutable
+            # Make copy conditional on whether it is a mutable tensor
             #
-            self.saved_tensors.append(copy.deepcopy(tensor))
+            if isinstance(tensor, Tensor) and tensor.isMutable():
+                self.saved_tensors.append(copy.deepcopy(tensor))
+            else:
+                self.saved_tensors.append(tensor)
 
 
     def deleteSnapshot(self):
