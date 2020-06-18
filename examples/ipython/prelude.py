@@ -11,6 +11,7 @@ import argparse
 import os
 import string
 import random
+from functools import *
 
 #
 # Import display classes/utilities
@@ -46,7 +47,8 @@ except ImportError:
 #
 # Import tensor class
 #
-from fibertree import Payload, Fiber, CoordPayload, Tensor, TensorImage, TensorCanvas, SpacetimeCanvas
+from fibertree import Payload, Fiber, CoordPayload, Tensor
+from fibertree import TensorImage, TensorCanvas
 
 #
 # Try to import ipywidgets
@@ -125,6 +127,9 @@ class FibertreeDisplay():
     def addActivity(self, canvas, *points, **kwargs):
         """addActvity"""
 
+        if canvas is None:
+            return None
+
         if self.animation == 'none':
             return None
 
@@ -133,6 +138,9 @@ class FibertreeDisplay():
 
     def addFrame(self, canvas, *points, **kwargs):
         """ addFrame """
+
+        if canvas is None:
+            return None
 
         if self.animation == 'none':
             return None
@@ -143,12 +151,14 @@ class FibertreeDisplay():
     def displayCanvas(self, canvas, filename=None, width="100%", loop=True, autoplay=True, controls=True, center=False):
         """ displayCanvas """
 
-        AnimationDisabledError = "Note: Canvas animation has been disabled - showing final frame"
+        if canvas is None:
+            return None
 
         if self.animation == 'none':
             #
             # Just create a frame from the last state and display it
             #
+            AnimationDisabledError = "Note: Canvas animation has been disabled - showing final frame"
 
             canvas.addFrame()  # TBD: Move this to getLastFrame...
             im = canvas.getLastFrame(AnimationDisabledError)
@@ -257,6 +267,27 @@ class FibertreeDisplay():
             print(f"Style: {style}")
             print(f"Animation:  {animation}")
             print("")
+
+#
+# Functions for a Boolean enable dropdown
+#
+enable = {}
+
+def createEnableControl(name):
+
+    enable[name] = False
+
+    def set_enable(animate):
+
+        global enable
+
+        enable[name] = animate
+
+
+    w = interactive(set_enable,
+                    animate=[False, True])
+
+    display(w)
 
 #
 # Functions for a "run_all" button
