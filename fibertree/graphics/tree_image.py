@@ -2,7 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from fibertree import Tensor
 from fibertree import Fiber
-from fibertree.payload import Payload
+from fibertree import Payload
 
 
 class TreeImage():

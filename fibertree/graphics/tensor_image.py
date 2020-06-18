@@ -2,10 +2,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 from fibertree import Tensor
 from fibertree import Fiber
-from fibertree.payload import Payload
+from fibertree import Payload
 
-from fibertree.tree_image import TreeImage
-from fibertree.uncompressed_image import UncompressedImage
+from .tree_image import TreeImage
+from .uncompressed_image import UncompressedImage
 
 class TensorImage():
     """TensorImage"""

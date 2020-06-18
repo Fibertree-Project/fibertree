@@ -2,10 +2,10 @@
 
 import unittest
 
-from fibertree.payload import Payload
-from fibertree.fiber import Fiber
-from fibertree.rank import Rank
-from fibertree.tensor import Tensor
+from fibertree import Payload
+from fibertree import Fiber
+from fibertree import Rank
+from fibertree import Tensor
 
 
 class TestTensor(unittest.TestCase):

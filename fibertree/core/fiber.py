@@ -5,7 +5,7 @@ from functools import partialmethod
 import yaml
 import random
 
-from fibertree.payload import Payload
+from .payload import Payload
 
 #
 # Define a named tuple for coordinate/payload pairs

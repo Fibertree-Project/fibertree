@@ -8,7 +8,7 @@ from fibertree import Tensor
 from fibertree import TensorImage
 from fibertree import UncompressedImage
 from fibertree import Fiber
-from fibertree.payload import Payload
+from fibertree import Payload
 
 class MovieCanvas():
     """MovieCanvas"""

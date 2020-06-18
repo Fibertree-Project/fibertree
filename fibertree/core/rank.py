@@ -1,5 +1,5 @@
-from fibertree.fiber import Fiber
-from fibertree.payload import Payload
+from .fiber import Fiber
+from .payload import Payload
 
 """ Rank """
 

@@ -53,7 +53,7 @@ class Payload:
     @staticmethod
     def isEmpty(p):
 
-        from fibertree.fiber import Fiber
+        from .fiber import Fiber
 
         if isinstance(p, Fiber):
             return p.isEmpty()
@@ -325,7 +325,7 @@ class Payload:
     def payload2dict(payload):
         """Return payload converted to dictionry or simple value"""
 
-        from fibertree.fiber import Fiber
+        from .fiber import Fiber
 
         if isinstance(payload, Fiber):
             # Note: this leg is deprecated and should be removed

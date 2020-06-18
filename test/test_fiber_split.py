@@ -1,8 +1,8 @@
 import unittest
-from fibertree.payload import Payload
-from fibertree.fiber import Fiber
+from fibertree import Payload
+from fibertree import Fiber
 
-from fibertree.tensor_image import TensorImage
+from fibertree import TensorImage
 
 class TestFiberSplit(unittest.TestCase):
 

@@ -1,17 +1,16 @@
 
-from fibertree.tensor import *
+from .core.tensor import *
+from .core.rank import *
+from .core.fiber import *
+from .core.payload import *
 
-from fibertree.tensor_image import *
-from fibertree.tree_image import *
-from fibertree.uncompressed_image import *
+from .graphics.tensor_image import *
+from .graphics.tree_image import *
+from .graphics.uncompressed_image import *
 
-from fibertree.tensor_canvas import *
-from fibertree.movie_canvas import *
-from fibertree.spacetime_canvas import *
-
-from fibertree.rank import *
-from fibertree.fiber import *
-from fibertree.payload import *
+from .graphics.tensor_canvas import *
+from .graphics.movie_canvas import *
+from .graphics.spacetime_canvas import *
 
 from collections import namedtuple
 

@@ -1,10 +1,6 @@
 import unittest
-from fibertree.payload import Payload
-from fibertree.fiber import Fiber
-from fibertree.fiber import CoordPayload
-from fibertree.fiber import CoordinateError
-from fibertree.tensor import Tensor
-from fibertree.tensor_image import TensorImage
+
+from fibertree import *
 
 class TestFiber(unittest.TestCase):
 

@@ -1,6 +1,6 @@
 import unittest
-from fibertree.payload import Payload
 
+from fibertree import Payload
 
 class TestPayload(unittest.TestCase):
 

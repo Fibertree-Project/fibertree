@@ -1,9 +1,9 @@
 import copy
 import yaml
 
-from fibertree.rank    import Rank
-from fibertree.fiber   import Fiber
-from fibertree.payload import Payload
+from .rank    import Rank
+from .fiber   import Fiber
+from .payload import Payload
 
 """ Tensor """
 

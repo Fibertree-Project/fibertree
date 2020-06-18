@@ -1,12 +1,12 @@
 
 from fibertree import Tensor
 from fibertree import Fiber
-from fibertree.payload import Payload
+from fibertree import Payload
 
-from fibertree.movie_canvas import MovieCanvas
-from fibertree.spacetime_canvas import SpacetimeCanvas
+from .movie_canvas import MovieCanvas
+from .spacetime_canvas import SpacetimeCanvas
 
-from fibertree import TensorImage
+from .tensor_image import TensorImage
 
 class TensorCanvas():
     """TensorCanvas"""
