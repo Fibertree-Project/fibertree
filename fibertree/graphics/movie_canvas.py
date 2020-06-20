@@ -42,6 +42,12 @@ class MovieCanvas():
             self.image_list_per_tensor.append([])
 
         self.saved_tensors = None
+
+        #
+        # Font to use for text
+        #
+        self.font = ImageFont.truetype('Pillow/Tests/fonts/DejaVuSans.ttf', 16)
+
         #
         # Add an initial frame with nothing highlighted (it looks good)
         #
@@ -114,8 +120,16 @@ class MovieCanvas():
         if message is None:
             return final_images[-1]
 
+        #
+        # Add message to final image
+        #
         im = final_images[-1].copy()
-        ImageDraw.Draw(im).text((15, final_height-65), message, font=ImageFont.truetype('Pillow/Tests/fonts/DejaVuSans.ttf', 16), fill="black")
+
+        ImageDraw.Draw(im).text((15, final_height-65),
+                                message,
+                                font=self.font,
+                                fill="black")
+
         return im
 
 
@@ -152,10 +166,24 @@ class MovieCanvas():
         for n in range(start, end):
             for t in range(len(self.tensors)):
                 image = self.image_list_per_tensor[t][n]
+
                 x_center = final_width // 2 - (image.width // 2)
                 # Start where the last image finished.
                 y_final = 0 if t == 0 else flattened_height[t-1]
+
                 final_images[n-start].paste(image, (x_center, y_final))
+
+        #
+        # Add cycle information to the images
+        # (skipping extra frames at beginning and end)
+        #
+        for n, im in enumerate(final_images[1:]):
+            message = f"Cycle: {n}"
+
+            ImageDraw.Draw(im).text((15, final_height-80),
+                                    message,
+                                    font=self.font,
+                                    fill="black")
 
         return (final_images, final_width, final_height)
 
