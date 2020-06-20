@@ -491,6 +491,42 @@ class Tensor:
 
 
 #
+# Tensor equivalent of Fiber methods where operating on the
+# root fiber is the logical activity
+#
+
+    def getPayload(self, *args, **kwargs):
+        """getPayload"""
+
+        return self.getRoot().getPayload(*args, **kwargs)
+
+
+    def getPayloadRef(self, *args, **kwargs):
+        """getPayload"""
+
+        return self.getRoot().getPayloadRef(*args, **kwargs)
+
+
+    def countValues(self, *args, **kwargs):
+        """getPayload"""
+
+        return self.getRoot().countValues(*args, **kwargs)
+
+
+    def __iter__(self):
+        """__iter__"""
+
+        return self.getRoot().__iter__()
+
+
+    def __reversed__(self):
+        """Return reversed fiber"""
+
+        return self.getRoot().__reversed__()
+
+
+
+#
 # Split methods
 #
 # Note: all these methods return a new tensor
