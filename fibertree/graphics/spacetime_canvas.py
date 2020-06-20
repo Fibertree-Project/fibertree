@@ -24,7 +24,6 @@ class SpacetimeCanvas():
         # Structures to hold infomation about each tracked tensor
         #
         self.tensors = []
-        self.saved_tensors = None
         self.spacetime = []
         self.highlights = []
 
@@ -65,40 +64,8 @@ class SpacetimeCanvas():
         self.frame_num = 0
 
 
-    def createSnapshot(self):
-        """createSnapshot
-
-        Hold a copy of the current state of the tracked tensors for display
-        at a later time.
-
-        """
-
-        self.saved_tensors = []
-
-        for tensor in self.tensors:
-            #
-            # Make copy conditional on whether it is a mutable tensor
-            #
-            if isinstance(tensor, Tensor) and tensor.isMutable():
-                self.saved_tensors.append(copy.deepcopy(tensor))
-            else:
-                self.saved_tensors.append(tensor)
-
-
-    def deleteSnapshot(self):
-        """deleteSnapshot"""
-
-        self.saved_tensors = None
-
-
     def addFrame(self, *highlighted_coords_per_tensor):
         """addFrame"""
-
-        #
-        # Create snapshot if necessary
-        #
-        if self.saved_tensors is None:
-            self.createSnapshot()
 
         #
         # Handle the case where nothing should be highlighted anywhere.
@@ -111,12 +78,16 @@ class SpacetimeCanvas():
         #
         # For each tracked tensor collect the information for the new frame
         #
-        for tensor, spacetime, highlights, hl_info in zip(self.saved_tensors, self.spacetime, self.highlights, final_coords):
+        for tensor, spacetime, highlights, hl_info in zip(self.tensors,
+                                                          self.spacetime,
+                                                          self.highlights,
+                                                          final_coords):
 
             #
             # Get fiber holding current state
             #
-            # TBD: Should fiber append get the root if you try to append a tensor
+            # TBD: Should fiber append get the root,
+            #      if you try to append a tensor
             #
             if isinstance(tensor, Tensor):
                 timestep = tensor.getRoot()
@@ -130,7 +101,8 @@ class SpacetimeCanvas():
             spacetime.getRoot().append(self.frame_num, copy.deepcopy(timestep))
 
             #
-            # Delicate sequence to add highlight into spacetime tensor's highlight object
+            # Delicate sequence to add highlight into
+            # spacetime tensor's highlight object
             #
             for worker, hl_list in hl_info.items():
                 hl_list_new = []
@@ -144,7 +116,6 @@ class SpacetimeCanvas():
                 else:
                     highlights[worker] = highlights[worker] + hl_list_new
 
-        self.deleteSnapshot()
         self.frame_num += 1
 
 
@@ -175,7 +146,9 @@ class SpacetimeCanvas():
                 #       coord1, ..)  so we need to skip over the first
                 #       rank before flattening
                 #
-                spacetime = spacetime.flattenRanks(depth=1, levels=spacetime_ranks-2)
+                spacetime = spacetime.flattenRanks(depth=1,
+                                                   levels=spacetime_ranks-2)
+
                 spacetime_root = spacetime.getRoot()
                 #
                 #
@@ -190,7 +163,9 @@ class SpacetimeCanvas():
                 point2pos = {}
                 pos2point = {}
 
-                for position, (point, value)  in enumerate(spacetime_root[-1].payload):
+                last_payload = spacetime_root[-1].payload
+
+                for position, (point, value) in enumerate(last_payload):
                     if isinstance(point, tuple):
                         point2pos[point] = position
                         pos2point[position] = point
@@ -201,7 +176,7 @@ class SpacetimeCanvas():
                 #
                 # Let user know the point mapping
                 #
-                #print(f"Point to position mapping:  {point2pos}")
+                # print(f"Point to position mapping:  {point2pos}")
 
                 #
                 # Remap the highlights into the new flattened space
@@ -218,12 +193,12 @@ class SpacetimeCanvas():
                         try:
                             h12 = (point2pos[h1], h2)
                             highlights_mapped[worker].append(h12)
-                        except:
+                        except Exception:
                             print(f"Could not map point ({h1},{h2}) in point2pos array")
 
                 #
-                # Remap the names of the coordinates in the spacetime tensor from
-                # (coord0, coord1, ....) to a scalar.
+                # Remap the names of the coordinates in the spacetime
+                # tensor from (coord0, coord1, ....) to a scalar.
                 #
                 spacetime_root.updateCoords(lambda i, c, p: point2pos[c], depth=1)
 
@@ -242,7 +217,6 @@ class SpacetimeCanvas():
                                 row_map=pos2point).im
 
             images.append(image)
-
 
         return images
 
@@ -264,7 +238,7 @@ if __name__ == "__main__":
     canvas = TensorCanvas(a, b)
     canvas.addFrame()
     canvas.addFrame([10], [4])
-    canvas.addFrame([10,40], [4,1])
-    canvas.addFrame([10,40,1], [4,1,0])
+    canvas.addFrame([10, 40], [4, 1])
+    canvas.addFrame([10, 40, 1], [4, 1, 0])
     canvas.addFrame()
     canvas.saveMovie("tmp.mp4")
