@@ -1395,7 +1395,54 @@ class Fiber:
 
         return f
 
+#
+# Arithmetic operations
+#
+
+
+    def __ilshift__(self, other):
+        """__ilshift__
+
+        This operator will make a recursive assignment of all the
+        elements of one fiber ("other") into another fiber ("self")
+        using getPayloadRef(), so subfibers in new fiber are
+        properly inserted into their owning rank/tensor
+
+        Note: we use <<= in place of base '=' since we don't want a
+        pointer to the existing fiber but an copy of "other" in the
+        new fiber.
+
+        Parameters
+        ----------
+
+        other: Fiber
+        A fiber whose elements will be inserted into "self"
+
+        """
+
+        assert isinstance(other, Fiber)
+
+        if len(self.coords) != 0:
+            #
+            # Clear out any existing data
+            #
+            self.coords = []
+            self.payloads = []
+
+
+        for c, p in other:
+            #
+            # For each non-empty element of other, insert it into the
+            # target, note that this works regardless of whether p is
+            # a Fiber or a Payload
+            #
+            if Payload.isEmpty(value):
+                continue
             
+            ref = self.getPayloadRef(c)
+            ref <<= p
+
+
 #
 # Split methods
 #

@@ -197,12 +197,7 @@ class TensorCanvas():
                 points[tnum].append(point)
 
                 payload = tensors[tnum].getPayload(*point)
-
-                if isinstance(payload, Fiber):
-                    # TBD: This should be handled more precisely
-                    values[tnum].append(copy.deepcopy(payload))
-                else:
-                    values[tnum].append(payload.value)
+                values[tnum].append(copy.deepcopy(payload))
 
 
     def _replayChanges(self):
@@ -225,14 +220,8 @@ class TensorCanvas():
                         continue
 
                     ref = shadow.getPayloadRef(*point)
+                    ref <<= value
 
-                    if isinstance(value, Fiber):
-                        # TBD: Add Fiber support for <<=
-                        assert isinstance(ref, Fiber)
-                        ref.coords = value.coords
-                        ref.payloads = value.payloads
-                    else:
-                        ref <<= value
 
         del self.log[0]
 
