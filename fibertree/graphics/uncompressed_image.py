@@ -238,7 +238,16 @@ class UncompressedImage():
         row_p = Fiber([], [])
         row_first = True
 
-        for row_c in range(shape[0]):
+        #
+        # For non-integer coordinates traverse just them
+        # otherwise traverse all the coordinates in the shape
+        #
+        if isinstance(fiber, Fiber) and not isinstance(fiber.coords[0], int):
+            coords = fiber.coords
+        else:
+            coords = range(shape[0])
+
+        for row_c in coords:
 
             if self.row_map:
                 coord_label = str(self.row_map[row_c])
@@ -308,7 +317,12 @@ class UncompressedImage():
         # Print out coordinate information (if available)
         #
         if coord_label is not None:
-            self.draw_label(row_origin+rank_label_offset, col_origin, f"{coord_label:>9}")
+            try:
+                label = f"{coord_label:>9}"
+            except Exception:
+                label = f"{str(coord_label):>9}"
+
+            self.draw_label(row_origin+rank_label_offset, col_origin, label)
             coord_label_offset = col_hack
         else:
             coord_label_offset = 0

@@ -28,7 +28,6 @@ class SpacetimeCanvas():
         self.highlights = []
 
         for tensor in tensors:
-
             #
             # Append each tensor being tracked, conditionally
             # unwraping it if it is a Payload object
@@ -107,9 +106,10 @@ class SpacetimeCanvas():
             for worker, hl_list in hl_info.items():
                 hl_list_new = []
                 for point in hl_list:
-                    point_list = list(point)
-                    point_list.append(self.frame_num)
-                    hl_list_new.append(tuple(point_list))
+                    if len(point) == 1:
+                        point = point[0]
+
+                    hl_list_new.append((point, self.frame_num))
 
                 if worker not in highlights:
                     highlights[worker] = hl_list_new
@@ -132,13 +132,7 @@ class SpacetimeCanvas():
             spacetime_name = spacetime.getName()
             spacetime_ranks = len(spacetime.getShape())
 
-            if spacetime_ranks == 2:
-                #
-                # Original tensor was a vector
-                #
-                highlights_mapped = highlights
-                pos2point = None
-            else:
+            if spacetime_ranks > 2:
                 #
                 # Original tensor was a matrix or bigger, so flatten it
                 #
@@ -149,59 +143,6 @@ class SpacetimeCanvas():
                 spacetime = spacetime.flattenRanks(depth=1,
                                                    levels=spacetime_ranks-2)
 
-                spacetime_root = spacetime.getRoot()
-                #
-                #
-                # Build a map of original tensor points to a scalar
-                # number space, i.e., 0, 1, 2...
-                #
-                # Note: We rely on the fact that the last time step
-                #       has all the possible points, so the scalar
-                #       number space is actually the position in the
-                #       final timestep.
-                #
-                point2pos = {}
-                pos2point = {}
-
-                last_payload = spacetime_root[-1].payload
-
-                for position, (point, value) in enumerate(last_payload):
-                    if isinstance(point, tuple):
-                        point2pos[point] = position
-                        pos2point[position] = point
-                    else:
-                        point2pos[(point,)] = position
-                        pos2point[postion] = point
-
-                #
-                # Let user know the point mapping
-                #
-                # print(f"Point to position mapping:  {point2pos}")
-
-                #
-                # Remap the highlights into the new flattened space
-                #
-                # Note: highlights look like: (coord0, coord1, ..., time)
-                #       and need to look like: (position, time)
-                #
-                highlights_mapped = {worker: [] for worker in highlights.keys()}
-
-                for worker, points in highlights.items():
-                    for point in points:
-                        h1 = tuple(point[0:-1])
-                        h2 = point[-1]
-                        try:
-                            h12 = (point2pos[h1], h2)
-                            highlights_mapped[worker].append(h12)
-                        except Exception:
-                            print(f"Could not map point ({h1},{h2}) in point2pos array")
-
-                #
-                # Remap the names of the coordinates in the spacetime
-                # tensor from (coord0, coord1, ....) to a scalar.
-                #
-                spacetime_root.updateCoords(lambda i, c, p: point2pos[c], depth=1)
-
             #
             # Swap the space and time ranks
             #
@@ -209,12 +150,12 @@ class SpacetimeCanvas():
             spacetime_swapped.setName(spacetime_name)
 
             #
-            # Create spacetime image for this tensor and append to full image
+            # Create spacetime image for this tensor and append to
+            # full image
             #
             image = TensorImage(spacetime_swapped,
                                 style='uncompressed',
-                                highlights=highlights_mapped,
-                                row_map=pos2point).im
+                                highlights=highlights).im
 
             images.append(image)
 
