@@ -4,6 +4,9 @@ from .core.rank import *
 from .core.fiber import *
 from .core.payload import *
 
+from .codec.tensor_codec import *
+from .codec.compression_types import *
+
 from .graphics.tensor_image import *
 from .graphics.tree_image import *
 from .graphics.uncompressed_image import *
