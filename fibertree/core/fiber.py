@@ -1457,7 +1457,7 @@ class Fiber:
             # target, note that this works regardless of whether p is
             # a Fiber or a Payload
             #
-            if Payload.isEmpty(value):
+            if Payload.isEmpty(p):
                 continue
             
             ref = self.getPayloadRef(c)
