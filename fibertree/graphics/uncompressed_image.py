@@ -314,6 +314,27 @@ class UncompressedImage():
             rank_label_offset = 0
 
         #
+        # Handle spans of empty rows
+        #
+        if len(fiber) != 0 or rank_label:
+            #
+            # On non-empty (or first) row reset empty row counter
+            #
+            self._empty_count = 0
+        else:
+            #
+            # After first row, check for empty rows
+            #
+            self._empty_count += 1
+
+            if self._empty_count == 2:
+                self.draw_label(row_origin, col_origin+col_hack, "...")
+                return [ row_origin+1, col_origin]
+
+            if self._empty_count > 2:
+                return [ row_origin, col_origin]
+
+        #
         # Print out coordinate information (if available)
         #
         if coord_label is not None:
