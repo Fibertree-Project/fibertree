@@ -2174,7 +2174,7 @@ class Fiber:
         #
         # Flatten the (highest) two ranks
         #
-        flattened = self.flattenRanks(nested_coords=True)
+        flattened = self.flattenRanks(style="pair")
 
         # Make sure the coord is a >=2-element tuple
         assert(len(flattened.coords[0]) >= 2)
@@ -2198,7 +2198,7 @@ class Fiber:
         return swapped
 
 
-    def flattenRanks(self, levels=1, nested_coords=False):
+    def flattenRanks(self, levels=1, style="tuple"):
         """Flatten two ranks into one - COO-style"""
 
         #
@@ -2227,7 +2227,7 @@ class Fiber:
                 for c0, p0 in p1:
                     coords.append(self._flattenCoords(c1,
                                                       c0,
-                                                      nested_coords=nested_coords))
+                                                      style=style))
                     payloads.append(p0)
 
             elif Payload.contains(p1, tuple):
@@ -2243,16 +2243,16 @@ class Fiber:
                 for c0, p0 in p1[0]:
                     coords.append(self._flattenCoords(c1,
                                                       c0,
-                                                      nested_coords=nested_cords))
+                                                      style=style))
                     payloads.append( (p0,) + p1[1:] )
 
         return Fiber(coords, payloads)
 
     @staticmethod
-    def _flattenCoords(c1, c0, nested_coords=False):
+    def _flattenCoords(c1, c0, style="nested"):
         """_flattenCoords"""
 
-        if not nested_coords:
+        if style == "tuple":
             #
             # Combine coordinates into a single flat tuple, flattening
             # contents of the individual coordinates that are tuples
@@ -2272,11 +2272,17 @@ class Fiber:
             # Concatenate the two coordinates
             #a
             c1_c0 = c1 + c0
-        else:
+        elif style == "pair":
             #
             # Create a new coordinante as a two element tuple
             #
             c1_c0 = (c1, c0)
+        elif style == "absolute":
+            c1_c0 = c0
+        elif style == "relative":
+            c1_c0 = c1 + c0
+        else:
+          assert False, f"Supported coordinate styles are: tuple, pair, absolute, relative. Got: {style}"
 
         return c1_c0
 

@@ -10,7 +10,7 @@ from .payload import Payload
 class Tensor:
     """ Tensor Class """
 
-    def __init__(self, yamlfile="", rank_ids=None, shape=None, name=""):
+    def __init__(self, yamlfile="", rank_ids=None, shape=None, name="", color="red"):
         """__init__"""
 
         self.yamlfile = yamlfile
@@ -28,7 +28,7 @@ class Tensor:
             self.setRankInfo(rank_ids, shape)
             self.setRoot(root)
             self.setName(name)
-            self.setColor("red")
+            self.setColor(color)
             self.setMutable(False)
             return
 
@@ -39,7 +39,7 @@ class Tensor:
 
         self.setRankInfo(rank_ids, shape)
         self.setName(name)
-        self.setColor("red")
+        self.setColor(color)
         self.setMutable(True)
 
         if rank_ids == []:
@@ -64,11 +64,11 @@ class Tensor:
             t._root = Payload(root)
             return t
 
-        return Tensor.fromFiber(rank_ids, root, shape)
+        return Tensor.fromFiber(rank_ids, root, shape=shape)
 
 
     @classmethod
-    def fromUncompressed(cls, rank_ids=None, root=None, shape=None):
+    def fromUncompressed(cls, rank_ids=None, root=None, shape=None, name = "", color="red"):
         """Construct a Tensor from uncompressed fiber tree"""
 
         assert(not root is None)
@@ -87,7 +87,7 @@ class Tensor:
             # TBD: Maybe this is not needed because fibers get a max_coord...
             shape = Tensor._calc_shape(root)
 
-        return Tensor.fromFiber(rank_ids, fiber, shape)
+        return Tensor.fromFiber(rank_ids, fiber, shape=shape, name=name, color=color)
 
 
     @staticmethod
@@ -112,7 +112,7 @@ class Tensor:
 
 
     @classmethod
-    def fromFiber(cls, rank_ids=None, fiber=None, shape=None, name=""):
+    def fromFiber(cls, rank_ids=None, fiber=None, shape=None, name="", color="red"):
         """Construct a Tensor from a fiber"""
 
         assert(not rank_ids is None)
@@ -129,7 +129,7 @@ class Tensor:
 
 
     @classmethod
-    def fromRandom(cls, rank_ids=None, shape=None, density=None, interval=10, seed=None):
+    def fromRandom(cls, rank_ids=None, shape=None, density=None, interval=10, seed=None, name="", color="red"):
         """ Create a random tensor
 
         Parameters:
@@ -155,7 +155,7 @@ class Tensor:
 
         f = Fiber.fromRandom(shape, density, interval, seed)
 
-        return Tensor.fromFiber(rank_ids=rank_ids, fiber=f, shape=shape)
+        return Tensor.fromFiber(rank_ids=rank_ids, fiber=f, shape=shape, name=name, color=color)
 
 
 
@@ -333,7 +333,7 @@ class Tensor:
 
 
     def getColor(self):
-        """Getcolor
+        """Getcolror
 
         Get color for elements of tensor
 
@@ -409,7 +409,7 @@ class Tensor:
 
 
     def setMutable(self, value):
-        """setDefault
+        """setMutable
 
         Set the "hint" as to whether the tensor is mutable or not,
         i.e., its value will change. Note: this property is not
@@ -642,7 +642,7 @@ class Tensor:
         return tensor
 
 
-    def flattenRanks(self, depth=0, levels=1):
+    def flattenRanks(self, depth=0, levels=1, coord_style="tuple"):
         """ swapRanks """
 
         #
@@ -677,7 +677,8 @@ class Tensor:
         root = self._modifyRoot(Fiber.flattenRanks,
                                 Fiber.flattenRanksBelow,
                                 depth=depth,
-                                levels=levels)
+                                levels=levels,
+                                style=coord_style)
         #
         # Create Tensor from rank_ids and root fiber
         #
