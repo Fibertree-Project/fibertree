@@ -239,13 +239,15 @@ class UncompressedImage():
         row_first = True
 
         #
-        # For non-integer coordinates traverse just them
-        # otherwise traverse all the coordinates in the shape
+        # For integer coordinates traverse all the coordinates in the shape
+        # otherwise traverse all the non-empty coordinates
         #
-        if isinstance(fiber, Fiber) and not isinstance(fiber.coords[0], int):
-            coords = fiber.coords
-        else:
-            coords = range(shape[0])
+        coords = range(shape[0])
+
+        if isinstance(fiber, Fiber):
+            if len(fiber) > 0 and not isinstance(fiber.coords[0], int):
+                coords = fiber.coords
+
 
         for row_c in coords:
 
