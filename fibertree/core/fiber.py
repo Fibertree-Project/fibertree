@@ -308,18 +308,19 @@ class Fiber:
 
         Parameters
         ----------
-        coords: 
+        coords: list
         list of coordinates to traverse
 
-        allocate:
+        allocate: Boolean
         Automatically generate the default value if needed at each
         level of the tree, but don't insert into the tree.
 
-        default:
+        default: value
         A constant default value to return if coordinate is empty on
         no-allocate
 
-        start_pos: optional shortcut value to optimize search
+        start_pos: scalar or Payload() containing a scalar
+        An optional shortcut value to optimize search
 
         Returns
         -------
@@ -334,6 +335,8 @@ class Fiber:
 
         assert default is None or not allocate
         assert start_pos is None or len(coords) == 1
+
+        start_pos = Payload.get(start_pos)
 
         # TBD: Actually optimize the search
 
@@ -388,9 +391,11 @@ class Fiber:
 
         Parameters
         ----------
-        coords: list of coordinates to traverse
+        coords: coordinates
+        List of coordinates to traverse
 
-        start_pos: optional shortcut value to optimize search
+        start_pos: scalar or Payload() containing a scalar
+        Optional shortcut value to optimize search
 
         Returns
         -------
@@ -406,6 +411,8 @@ class Fiber:
         assert start_pos is None or len(coords) == 1
 
         # TBD: Actually optimize the search
+
+        start_pos = Payload.get(start_pos)
 
         try:
             index = self.coords.index(coords[0])
@@ -477,6 +484,8 @@ class Fiber:
             # Default trans_fn is identify function (inefficient but easy implementation)
             trans_fn = lambda x: x
 
+        start_pos = Payload.get(start_pos)
+
         if start_pos is not None:
             assert start_pos < len(self.coords)
             assert start_pos == 0 or self.coords[start_pos-1] < start_coord
@@ -532,6 +541,8 @@ class Fiber:
     def prune(self, trans_fn=None, start_pos=None):
         """prune"""
 
+        start_pos = Payload.get(start_pos)
+
         if start_pos is not None:
             assert start_pos < len(self.coords)
             range_start = start_pos
@@ -578,9 +589,11 @@ class Fiber:
 
         Parameters
         ----------
-        coord: coordinate to look up
+        coord: coordinate
+        Coordinate to look up
 
-        start_pos: optional shortcut value to optimize search
+        start_pos: scalar or Payload() containing a scalar
+        Optional shortcut value to optimize search
 
         Returns
         -------
@@ -595,6 +608,8 @@ class Fiber:
 
         # TBD: Actually optimize the search
 
+        start_pos = Payload.get(start_pos)
+
         try:
             index = self.coords.index(coord)
         except:
@@ -606,7 +621,7 @@ class Fiber:
         return index
 
 
-    def getPositionRef(self, coord):
+    def getPositionRef(self, coord, start_pos=None):
         """getPositionRef
 
         Return the position of the given coordinate. If the coordinate
@@ -620,9 +635,11 @@ class Fiber:
 
         Parameters
         ----------
-        coord: coordinate to look up
+        coord: coordinate
+        Coordinate to look up
 
-        start_pos: optional shortcut value to optimize search
+        start_pos: scalar or Payload() containing a scalar
+        Optional shortcut value to optimize search
 
         Returns
         -------
@@ -634,6 +651,8 @@ class Fiber:
         None
 
         """
+
+        start_pos = Payload.get(start_pos)
 
         # TBD: Actually optimize the search
 
@@ -829,6 +848,8 @@ class Fiber:
     #
     def setSavedPos(self, position, distance=None):
         """setSavedPos"""
+
+        position = Payload.get(position)
 
         self._saved_pos = position
 
