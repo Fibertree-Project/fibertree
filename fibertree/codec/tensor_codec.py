@@ -9,6 +9,7 @@ from .compression_types import descriptor_to_fmt
 # import compression formats
 from .formats.uncompressed import Uncompressed
 from .formats.coord_list import CoordinateList
+from .formats.bitvector import Bitvector
 
 class Codec:
     # format descriptor should be a tuple of valid formats
@@ -67,7 +68,6 @@ class Codec:
             # iterate nonzeroes in the fiber
             for ind, (val) in a:
                 assert isinstance(val, Payload)
-                
                 # if coords are implicit, add zeroes between nzs
                 # TODO: make a list of the format classes and call from those
                 to_add = self.fmts[depth].encodePayload(prev_payloads_nz, ind, val.value)
@@ -78,16 +78,14 @@ class Codec:
                 # if this rank has explicit coords
                 coords = self.fmts[depth].encodeCoord(prev_coords_nz, ind)
                 occupancy = occupancy + len(coords)
-                prev_coords_nz = ind
+                prev_coords_nz = ind + 1
                 output[coords_key].extend(coords)
-
-            output[payloads_key].extend(self.fmts[depth].endPayloads(dim_len - prev_payloads_nz))
+            
+            # if coords proportional to dim len, pad the end (e.g. in bitvector)
+            output[coords_key].extend(self.fmts[depth].endCoords(dim_len - prev_coords_nz))
+            
             # if coords are implicit, fill in zeroes at end of payloads
-            """
-            if self.format_descriptor[depth] in implicit_coords:
-                for i in range(prev_payloads_nz, dim_len):
-                    output[payloads_key].append(0)
-            """     
+            output[payloads_key].extend(self.fmts[depth].endPayloads(dim_len - prev_payloads_nz))
             return occupancy
                 
         # internal levels
@@ -129,7 +127,7 @@ class Codec:
                     occ_list.append(cumulative_occupancy)
 
                     # store coordinate explicitly
-                    coords = CoordinateList.encodeCoord(prev_nz, ind)
+                    coords = fmt.encodeCoord(prev_nz, ind)
                     output[coords_key].extend(coords)
                     fiber_occupancy = fiber_occupancy + len(coords)
                     

@@ -25,6 +25,9 @@ class CompressionFormat:
         return None
 
     @staticmethod
+    def endCoords(num_to_pad):
+        return [] 
+    @staticmethod
     def endPayloads(num_to_pad):
         return [] # None
 
