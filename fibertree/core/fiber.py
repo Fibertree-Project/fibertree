@@ -555,25 +555,46 @@ class Fiber:
         # Start at start_pos (if any)
 
         first_pos = None
+        end_pos_offset = 1
 
+        #
+        # Traverse positions in fiber starting at range_start
+        #
         for pos in range(range_start, len(self.coords)):
             c = self.coords[pos]
             p = self.payloads[pos]
 
+            #
+            # Call pruning function
+            #
             status = trans_fn(pos, c, p)
 
-            if status is None: break
+            #
+            # End processing if status is None
+            #
+            if status is None:
+                end_pos_offset = 0
+                break
 
+            #
+            # Include element if status is True
+            #
             if status:
+                if first_pos is None: first_pos = pos
+
                 coords.append(c)
                 payloads.append(p)
 
+        #
+        # Record start_pos information
+        #
+        if start_pos is not None:
+            if first_pos is None:
+                self.setSavedPos(pos+end_pos_offset)
+            else:
+                self.setSavedPos(pos+end_pos_offset,
+                                 distance=first_pos-start_pos)
 
-#        if start_pos is not None:
-#            if first_pos is None:
-#                self.setSavedPos(pos)
-#            else:
-#                self.setSavedPos(pos, distance=first_pos-start_pos)
 
         return Fiber(coords, payloads)
 
