@@ -634,7 +634,7 @@ class TestFiber(unittest.TestCase):
         a = Fiber(coords, payloads)
 
         test = [0, 4, 6, 3, 6]
-        start_pos = [0, 0, 1, 1, 2]
+        start_pos = [0, 0, 1, 1, Payload(2)]
 
         answer_saved_pos = [3, 1, 2, 3, 2]
         answer_saved_stats = [(1, 3),
@@ -725,7 +725,7 @@ class TestFiber(unittest.TestCase):
 
         startc = [4, 3, 5, 13, 9]
         size = [2, 3, 4, 2, 3]
-        startp = [0, 1, 2, 3, 4]
+        startp = [0, 1, 2, 3, Payload(4)]
         ans = [[ 2, 2, None, None, None],
                [2, 2, None, None, None],
                [4, 4, 4, None, None],

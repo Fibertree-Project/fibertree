@@ -308,18 +308,19 @@ class Fiber:
 
         Parameters
         ----------
-        coords: 
+        coords: list
         list of coordinates to traverse
 
-        allocate:
+        allocate: Boolean
         Automatically generate the default value if needed at each
         level of the tree, but don't insert into the tree.
 
-        default:
+        default: value
         A constant default value to return if coordinate is empty on
         no-allocate
 
-        start_pos: optional shortcut value to optimize search
+        start_pos: scalar or Payload() containing a scalar
+        An optional shortcut value to optimize search
 
         Returns
         -------
@@ -334,6 +335,8 @@ class Fiber:
 
         assert default is None or not allocate
         assert start_pos is None or len(coords) == 1
+
+        start_pos = Payload.get(start_pos)
 
         # TBD: Actually optimize the search
 
@@ -388,9 +391,11 @@ class Fiber:
 
         Parameters
         ----------
-        coords: list of coordinates to traverse
+        coords: coordinates
+        List of coordinates to traverse
 
-        start_pos: optional shortcut value to optimize search
+        start_pos: scalar or Payload() containing a scalar
+        Optional shortcut value to optimize search
 
         Returns
         -------
@@ -406,6 +411,8 @@ class Fiber:
         assert start_pos is None or len(coords) == 1
 
         # TBD: Actually optimize the search
+
+        start_pos = Payload.get(start_pos)
 
         try:
             index = self.coords.index(coords[0])
@@ -477,6 +484,8 @@ class Fiber:
             # Default trans_fn is identify function (inefficient but easy implementation)
             trans_fn = lambda x: x
 
+        start_pos = Payload.get(start_pos)
+
         if start_pos is not None:
             assert start_pos < len(self.coords)
             assert start_pos == 0 or self.coords[start_pos-1] < start_coord
@@ -532,6 +541,8 @@ class Fiber:
     def prune(self, trans_fn=None, start_pos=None):
         """prune"""
 
+        start_pos = Payload.get(start_pos)
+
         if start_pos is not None:
             assert start_pos < len(self.coords)
             range_start = start_pos
@@ -578,9 +589,11 @@ class Fiber:
 
         Parameters
         ----------
-        coord: coordinate to look up
+        coord: coordinate
+        Coordinate to look up
 
-        start_pos: optional shortcut value to optimize search
+        start_pos: scalar or Payload() containing a scalar
+        Optional shortcut value to optimize search
 
         Returns
         -------
@@ -595,6 +608,8 @@ class Fiber:
 
         # TBD: Actually optimize the search
 
+        start_pos = Payload.get(start_pos)
+
         try:
             index = self.coords.index(coord)
         except:
@@ -606,7 +621,7 @@ class Fiber:
         return index
 
 
-    def getPositionRef(self, coord):
+    def getPositionRef(self, coord, start_pos=None):
         """getPositionRef
 
         Return the position of the given coordinate. If the coordinate
@@ -620,9 +635,11 @@ class Fiber:
 
         Parameters
         ----------
-        coord: coordinate to look up
+        coord: coordinate
+        Coordinate to look up
 
-        start_pos: optional shortcut value to optimize search
+        start_pos: scalar or Payload() containing a scalar
+        Optional shortcut value to optimize search
 
         Returns
         -------
@@ -634,6 +651,8 @@ class Fiber:
         None
 
         """
+
+        start_pos = Payload.get(start_pos)
 
         # TBD: Actually optimize the search
 
@@ -829,6 +848,8 @@ class Fiber:
     #
     def setSavedPos(self, position, distance=None):
         """setSavedPos"""
+
+        position = Payload.get(position)
 
         self._saved_pos = position
 
@@ -1436,7 +1457,7 @@ class Fiber:
             # target, note that this works regardless of whether p is
             # a Fiber or a Payload
             #
-            if Payload.isEmpty(value):
+            if Payload.isEmpty(p):
                 continue
             
             ref = self.getPayloadRef(c)
@@ -2129,20 +2150,34 @@ class Fiber:
 
         """
 
+        #
         # Flatten the (highest) two ranks
-        flattened = self.flattenRanks()
-        # Make sure the coord is a 2-element tuple
-        assert(len(flattened.coords[0]) == 2)
+        #
+        flattened = self.flattenRanks(nested_coords=True)
 
-        # Swap the ranks and sort based on the swapped (new) structure
-        swapped = sorted([ (c[::-1], p) for c, p in flattened ])
+        # Make sure the coord is a >=2-element tuple
+        assert(len(flattened.coords[0]) >= 2)
 
-        # Return the unflattened fiber
-        coords = [ c for c,_ in swapped]
-        payloads = [ p for _,p in swapped ]
-        return Fiber(coords, payloads).unflattenRanks()
+        #
+        # Sort on secord coordinate of flattened fiber
+        # and create new sorted fiber
+        #
+        sorted_cp = sorted([ (c[::-1], p) for c, p in flattened ])
 
-    def flattenRanks(self, levels=1):
+        coords = [c for c, _ in sorted_cp]
+        payloads = [p for _, p in sorted_cp]
+
+        flattened_sorted = Fiber(coords, payloads)
+
+        #
+        # Unflatten to get original coordinates in swapped ranks
+        #
+        swapped = flattened_sorted.unflattenRanks()
+
+        return swapped
+
+
+    def flattenRanks(self, levels=1, nested_coords=False):
         """Flatten two ranks into one - COO-style"""
 
         #
@@ -2167,19 +2202,13 @@ class Fiber:
 
         for c1, p1 in zip(self.coords, cur_payloads):
 
-            # Convert c1 to tuple, if necessary
-            if not isinstance(c1, tuple):
-                c1 = (c1, )
-
             if Payload.contains(p1, Fiber):
                 for c0, p0 in p1:
-
-                    # Convert c0 to tuple, if necessary
-                    if not isinstance(c0, tuple):
-                        c0 = (c0,)
-
-                    coords.append( c1 + c0 )
+                    coords.append(self._flattenCoords(c1,
+                                                      c0,
+                                                      nested_coords=nested_coords))
                     payloads.append(p0)
+
             elif Payload.contains(p1, tuple):
                 # zgw: p1 could be tuples.
                 # In general, a payload contains one the the following three
@@ -2190,15 +2219,45 @@ class Fiber:
                 # where c0 is the highest rank of the fiber p1[0]
                 assert(isinstance(p1[0], Fiber))
 
-                # Convert c0 to tuple, if necessary
-                if not isinstance(c0, tuple):
-                    c0 = (c0,)
-
                 for c0, p0 in p1[0]:
-                    coords.append( c1 + c0 )
+                    coords.append(self._flattenCoords(c1,
+                                                      c0,
+                                                      nested_coords=nested_cords))
                     payloads.append( (p0,) + p1[1:] )
 
         return Fiber(coords, payloads)
+
+    @staticmethod
+    def _flattenCoords(c1, c0, nested_coords=False):
+        """_flattenCoords"""
+
+        if not nested_coords:
+            #
+            # Combine coordinates into a single flat tuple, flattening
+            # contents of the individual coordinates that are tuples
+            #
+            # Convert c1 to tuple, if necessary
+            #
+            if not isinstance(c1, tuple):
+                c1 = (c1, )
+
+            #
+            # Convert c0 to tuple, if necessary
+            #
+            if not isinstance(c0, tuple):
+                c0 = (c0,)
+
+            #
+            # Concatenate the two coordinates
+            #a
+            c1_c0 = c1 + c0
+        else:
+            #
+            # Create a new coordinante as a two element tuple
+            #
+            c1_c0 = (c1, c0)
+
+        return c1_c0
 
 
     def unflattenRanks(self, levels=1):
@@ -2206,29 +2265,60 @@ class Fiber:
 
         assert(isinstance(self.coords[0], tuple))
 
+        #
+        # Place to collect cordinates/payloads for new top rank
+        #
         coords1 = []
         payloads1 = []
 
-        c1_last = -1
+        first = True
 
-        for ( cx, p0 ) in zip(self.coords, self.payloads):
-            # Little dance to get the coordinates from the two ranks
+        #
+        # Traverse the rank being unflattened in order to collect all
+        # the coordinates/payloads to put in the final top (c1) rank
+        #
+        for cx, p0 in zip(self.coords, self.payloads):
+            #
+            # Little dance to get the coordinates of the two ranks,
+            # which also deals with the case where the coordinates
+            # were not nested.
+            #
             c1 = cx[0]
             if len(cx) > 2:
                 c0 = cx[1:]
             else:
                 c0 = cx[1]
 
-            if (c1 > c1_last):
-                if c1_last != -1:
-                     coords1.append(c1_last)
+            #
+            # Check if we finished all the elements of the lower (c0)
+            # rank and have moved on to a new coordinate in the higher
+            # (c1) rank. If so add the collected c0 coordinates and
+            # payloads as a fiber to the c1 rank, and start a new
+            # collection of coordinates and fibers.
+            #
+            if first or (c1 > c1_last):
+                if not first:
+                    #
+                    # Except when starting to work on the first c1
+                    # coordinate, add a new coordinate/payload pair
+                    # (maybe after a recursive unflattening) to the
+                    # new top (c1) rank
+                    #
+                    coords1.append(c1_last)
 
-                     cur_fiber = Fiber(coords0, payloads0)
-                     if levels > 1:
-                         cur_fiber = cur_fiber.unflattenRanks(levels=levels-1)
+                    cur_fiber = Fiber(coords0, payloads0)
+                    if levels > 1:
+                        cur_fiber = cur_fiber.unflattenRanks(levels=levels-1)
 
-                     payloads1.append(cur_fiber)
+                    payloads1.append(cur_fiber)
 
+                #
+                # Start working on a new c1 coordinate (c1_last) and
+                # create a place to collect lower rank (c0)
+                # coordinates/payloads to form the payload (fiber) of
+                # that c1 coordinate.
+                #
+                first = False
                 c1_last = c1
                 coords0 = []
                 payloads0 = []
@@ -2236,6 +2326,9 @@ class Fiber:
             coords0.append(c0)
             payloads0.append(p0)
 
+        #
+        # Pick up the last element of the new top rank
+        #
         coords1.append(c1_last)
 
         cur_fiber = Fiber(coords0, payloads0)
@@ -2244,6 +2337,9 @@ class Fiber:
 
         payloads1.append(cur_fiber)
 
+        #
+        # Create (and return) the new top (c1) rank
+        #
         return Fiber(coords1, payloads1)
 
 #

@@ -78,6 +78,8 @@ class Payload:
     def contains(payload, type):
         """Return whether "payload" is of type "type" - checking inside payload if necessary"""
 
+        assert type != Payload, "Cannot check for Payload type"
+
         if not isinstance(payload, Payload):
             return isinstance(payload, type)
 
