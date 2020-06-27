@@ -246,3 +246,84 @@ class TensorCanvas():
         new_highlights = [{} for n in range(num_tensors)]
 
         self.log.append(FrameLog(new_points, new_values, new_highlights))
+
+
+#
+# Utility class to manage cycles
+#
+class CycleManager():
+    """CycleManager
+
+    A class to allow a program to manage the current cycle, for using
+    in canvas displays
+
+    TBD: Allow nested parallel regions
+
+    """
+
+    def __init__(self):
+        """__init__
+
+        Initialize some variables
+
+        """
+
+        self.cycle = 0
+        self.parallel = 0
+        self.worker_max = 0
+
+
+    def __call__(self):
+        """__call__
+
+        Call the class to return the current cycle and move to the
+        next cycle
+
+        """
+        cycle = self.cycle
+        self.cycle += 1
+
+        return cycle
+
+
+    def startParallel(self):
+        """startParallel
+
+        Start a parallel region by remembering the current cycle
+
+        """
+
+        self.parallel = self.cycle
+
+
+    def startWorker(self):
+        """startWorker
+
+        Reset the cycle for a worker
+
+        """
+
+        self.cycle = self.parallel
+
+
+    def finishWorker(self):
+        """finishWorker
+
+        Remember the maximum cycle (actually the cycle after any
+        activity in that worker) arrived at by any worker in the
+        parallel region.
+
+        """
+
+        self.worker_max = max(self.worker_max, self.cycle)
+
+
+    def finishParallel(self):
+        """finishParallel
+
+        Finish the parallel region and set the current cycle to the
+        cycle after the longest running worker
+
+        """
+
+        self.cycle = self.worker_max
