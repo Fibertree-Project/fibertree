@@ -5,10 +5,11 @@ from fibertree import Tensor
 from fibertree import Fiber
 from fibertree import Payload
 
+from .image_utils import ImageUtils
+from .tensor_image import TensorImage
+
 from .movie_canvas import MovieCanvas
 from .spacetime_canvas import SpacetimeCanvas
-
-from .tensor_image import TensorImage
 
 class TensorCanvas():
     """TensorCanvas
@@ -64,7 +65,14 @@ class TensorCanvas():
         self.log = []
         self.inframe = False
 
+        #
+        # Reset image highlighting
+        #
+        ImageUtils.resetColors()
 
+        #
+        # Create desired canvas
+        #
         if animation == 'movie':
             self.canvas = MovieCanvas(*self.shadow_tensors, style=style)
         elif animation == 'spacetime':
