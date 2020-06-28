@@ -15,6 +15,7 @@ class TestTensor(unittest.TestCase):
 
         t = Tensor(rank_ids=ranks)
         self.assertEqual(t.getRankIds(), ranks)
+        self.assertEqual(t.getRoot().getRankIds(), ranks)
 
     def test_constructor_shape(self):
         """Test construction of shape of tensor"""
@@ -25,7 +26,10 @@ class TestTensor(unittest.TestCase):
         t = Tensor(rank_ids=ranks, shape=shape)
 
         self.assertEqual(t.getRankIds(), ranks)
+        self.assertEqual(t.getRoot().getRankIds(), ranks)
+
         self.assertEqual(t.getShape(), shape)
+        self.assertEqual(t.getRoot().getShape(), shape)
 
         
     def test_constructor_shape(self):
