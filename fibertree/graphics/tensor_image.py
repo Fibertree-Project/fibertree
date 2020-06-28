@@ -82,7 +82,7 @@ class TensorImage():
                 im2_xoffset = diff//2
             else:
                 # im2 is bigger
-                im1_xoffset = diff//2
+                im1_xoffset = -diff//2
                 im2_xoffset = 0
 
             im.paste(im1, (im1_xoffset, 0))
