@@ -8,10 +8,20 @@ from .tree_image import TreeImage
 from .uncompressed_image import UncompressedImage
 
 class TensorImage():
-    """TensorImage"""
+    """TensorImage
+
+    Class to create images of a tensor or fiber. Basically a
+    trampoline to the desired style, except when multiple images need
+    to be combined.
+
+    """
 
     def __init__(self, object, *args, highlights={}, style='tree', **kwargs):
         """__init__
+
+        Create an image corresponding the a given tensor or fiber in
+        style "style". Optionally highlight elements of the
+        tensor/fiber
 
         Parameters
         ----------
@@ -23,11 +33,15 @@ class TensorImage():
         list is a list of point tuples to highlight (assumes one "worker")
         tuple is a single point to highlight (assumes one "worker")
 
-        style: One of "tree", "uncompressed" or "tree+uncompressed"
-        Style of image to create
+        style: string or list
+        String containing "tree", "uncompressed" or
+        "tree+uncompressed" indicating the style of the image to create
 
         extent: tuple
         Maximum row/col to use for image
+
+        **kwargs: keyword arguments
+        Additional keyword arguments to pass on to the desired style
 
         """
 
@@ -49,6 +63,8 @@ class TensorImage():
 
         #
         # Create the final image 
+        #
+        # TBD: Allow style to be a list
         #
         if style == "tree":
             self.im = im1
@@ -77,20 +93,86 @@ class TensorImage():
             print(f"TensorImage: Unsupported image style - {style}")
 
 
-
     def show(self):
         self.im.show()
 
 
     @staticmethod
-    def canonicalizeHighlights(highlights):
-        """canonicalizeHighlights"""
+    def canonicalizeHighlights(highlights, worker="PE"):
+        """canonicalizeHighlights
+
+        In methods that accept highlights there is considerable
+        flexibility in the form that the highlights are provided. This
+        method converts any of those forms into the canonical form,
+        using keyword "worker" to assign a worker if one isn't
+        provided in the "highlights" argument.  The canonical form is
+        a dictionary of workers and lists of their highlighted points:
+
+
+        {worker0: [(point0_coord0, point0_coord1, ...),
+                   (point1_coord0, point1_coord1, ...),
+                    ...],
+         worker1: [(point0_coord0, point0_coord1, ...),
+                   (point1_coord0, point1_coord1, ...),
+                   ...],
+         ...,
+        }
+
+
+        Alternative forms:
+
+        1) Single point per worker
+
+        {worker0: (point0_coord0, point0_coord1, ...),
+         worker1: (point0_coord0, point0_coord1, ...),
+          ...
+        }
+
+
+        2) List of points, no worker
+
+        [(point0_coord0, point0_coord1, ...),
+         (point1_coord0, point1_coord1, ...),
+         ...]
+
+
+        3) Single point, no worker
+
+        (point1_coord0, point1_coord1, ...)
+
+
+        Warning: if a coordinate is a tuple there is ambiguity in forms
+        1 and 3, so they cannot be used.
+
+
+        Parameters:
+        -----------
+
+        highlights: dictionary, list or tuple
+        A specification of highlights, maybe not in canonical form
+
+        worker: string
+        A name to use for the worker, if highlights doesn't include one
+
+        Returns:
+        --------
+
+        highlights: dictionary
+        A specification of highlights in canonical form
+
+
+        Raises:
+        -------
+
+        Nothing
+
+        """
 
         if not isinstance(highlights, dict):
             #
             # Massage highlights into proper form
             #
-            highlights = { "PE0": highlights}
+            highlights = {worker: highlights}
             
 
         #
@@ -111,8 +193,6 @@ class TensorImage():
 
         return highlights
 
-
-        
 
 if __name__ == "__main__":
 

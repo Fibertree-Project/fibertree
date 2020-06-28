@@ -57,6 +57,10 @@ class TensorCanvas():
         self.shadow_tensors = []
 
         for t in tensors:
+            #
+            # Create a tensor to hold a shadow tensor that tracks
+            # updates to the tracked tensors at the right time
+            #
             if t.isMutable():
                 self.shadow_tensors.append(copy.deepcopy(t))
             else:
@@ -84,24 +88,41 @@ class TensorCanvas():
     def addActivity(self, *highlights, worker="anon", skew=0, end_frame=False):
         """ addActivity """
         #
-        # Note: The highlights parameter is a list of points or list
-        # of lists of points one for each tracked tensor They will be
-        # turned into an actual highlight data strcture by addFrame
+        # Set that we are in a frame
         #
         self.inframe = True
 
         #
+        # Canonicalize highlights
+        #
+        # Note: The highlights parameter is a list of points or list
+        # of lists of points one for each tracked tensor They will be
+        # turned into an actual highlight data strcture here
+        #
+        highlights_list = []
+
+        for hl in highlights:
+            highlights_list.append(TensorImage.canonicalizeHighlights(hl, worker=worker))
+
+
+        #
         # Tell the canvas to remember the current tensor states
         #
-        self._logChanges(*highlights, skew=skew)
+        self._logChanges(*highlights_list, skew=skew)
 
         #
         # Collect the highlights for this frame accounting for skew
         #
+        # TBD: There must be a better way to combine the highlights.
+        #      Using this code exactly one addActivity() must have all
+        #      the activity for a worker
         #
-        for n, highlight in enumerate(highlights):
+        for n, highlight in enumerate([highlights[worker] for highlights in highlights_list]):
             self.log[skew].highlights[n][worker] = highlight
 
+        #
+        # Sometimes addActivity should end the frame
+        #
         if end_frame or worker == "anon":
             self.addFrame()
 
@@ -126,14 +147,6 @@ class TensorCanvas():
         highlights = self.log[0].highlights if len(self.log) else {}
 
         #
-        # Canonicalize highlights
-        #
-        new_highlights = []
-
-        for hl in highlights:
-            new_highlights.append(TensorImage.canonicalizeHighlights(hl))
-
-        #
         # Populate shadow tensors with values for this frame
         #
         # Note: The log gets popped, so we needed to get the
@@ -144,7 +157,7 @@ class TensorCanvas():
         #
         # Add the frame
         #
-        self.canvas.addFrame(*new_highlights)
+        self.canvas.addFrame(*highlights)
 
 
     def getLastFrame(self, message=None):
@@ -176,7 +189,21 @@ class TensorCanvas():
 #
 
     def _logChanges(self, *highlights, skew=0):
-        """ logChanges """
+        """logChanges
+
+        Log current values (at the highlighted points) to the mutable
+        tensors for later replay into the shadow tensors at time
+        "skew".
+
+        Parameters:
+
+        highlights: a highlights dictionary
+        A per PE list of highlighted points for each tracked tensor
+
+        skew: integer
+        The relative time at which these values are to be replayed
+
+        """
 
         tensors = self.orig_tensors
 
@@ -196,16 +223,16 @@ class TensorCanvas():
             #
             # Log the points being highlighted
             #
-            std_highlights = TensorImage.canonicalizeHighlights(highlight)
+            for worker, highlight_list in highlight.items():
+                for point in highlight_list:
+                    if not isinstance(point, tuple):
+                        point = (point,)
 
-            for point in std_highlights["PE0"]:
-                if not isinstance(point, tuple):
-                    point = (point,)
+                    points[tnum].append(point)
 
-                points[tnum].append(point)
+                    payload = tensors[tnum].getPayload(*point)
+                    values[tnum].append(copy.deepcopy(payload))
 
-                payload = tensors[tnum].getPayload(*point)
-                values[tnum].append(copy.deepcopy(payload))
 
 
     def _replayChanges(self):
