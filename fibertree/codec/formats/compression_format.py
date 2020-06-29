@@ -14,21 +14,24 @@ class CompressionFormat:
 
     @staticmethod 
     # current_fiber = HFA fiber
-    # def encodeCoord(current_fiber, current_scratchpad, prev_ind, ind)
     def encodeCoord(prev_ind, ind):
-        return None
-        # append new_entries to end of scratchpad
-        # return new_entries
+        return []
 
+    # coord
     @staticmethod
     def encodePayload(prev_ind, ind, payload):
         return None
 
+    # pad end of coordinates if necessary
     @staticmethod
     def endCoords(num_to_pad):
         return [] 
+
+    # pad end of payloads if necessary
     @staticmethod
     def endPayloads(num_to_pad):
-        return [] # None
+        return []
+
+    # 
 
     # todo: maybe eventually combine the encode and decode like serialization

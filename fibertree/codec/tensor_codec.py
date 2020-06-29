@@ -90,7 +90,6 @@ class Codec:
                 
         # internal levels
         else:
-            # TODO: map labels to types
             next_fmt = self.fmts[depth + 1] 
            
             # keep track of occupancy of children and at current height
