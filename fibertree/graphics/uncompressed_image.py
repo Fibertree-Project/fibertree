@@ -4,6 +4,8 @@ from fibertree import Tensor
 from fibertree import Fiber
 from fibertree import Payload
 
+from fibertree import ImageUtils
+
 class UncompressedImage():
     """UncompressedImage"""
 
@@ -36,20 +38,12 @@ class UncompressedImage():
         self.row_map = row_map
 
         #
-        # Map worker names to colors (copied from tree_image)
+        # Cache worker colors
         #
-        hl_colors = [0xdaa520,   # worker 0 d (goldenrod)
-                     0x977316,   # worker 1 a
-                     0xe4b849,   # worker 2 f
-                     0xc4941d,   # worker 3 c
-                     0xea1f33,   # worker 4 e
-                     0xae8319,   # worker 5 b
-                     0xe8c15f]   # worker 6 g
-
         worker_color = {}
 
         for n, worker in enumerate(highlights.keys()):
-            worker_color[worker] = hl_colors[n % len(hl_colors)]
+            worker_color[worker] = ImageUtils.getColor(worker)
 
         self.worker_color = worker_color
 

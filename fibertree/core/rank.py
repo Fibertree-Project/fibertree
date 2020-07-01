@@ -31,6 +31,17 @@ class Rank:
         return self.id
 
 
+    def getRankIds(self, all_ranks=True):
+        """Return list of ranks"""
+
+        rankids =  [self.id]
+
+        if all_ranks and self.next_rank is not None:
+            rankids.extend(self.next_rank.getRankIds(all_ranks=True))
+
+        return rankids
+
+
     def getName(self):
         """Return name of rank"""
 

@@ -1401,7 +1401,32 @@ class Fiber:
 
         return shape
 
+#
+# Rankid methods
+#
+    def getRankIds(self, all_ranks=True):
+        """Return rankids of fiber tree"""
 
+        owner = self.getOwner()
+
+        if owner is not None:
+            return owner.getRankIds(all_ranks=True)
+
+        #
+        # Approximate rankids for fiber not in a tensor
+        #
+
+        rankids = [f"X.{len(self.getShape())-1}"]
+
+        if len(self) > 0 and Payload.contains(self.payloads[0], Fiber):
+            rankids.extend(self.payloads[0].getRankIds())
+
+        return rankids
+
+
+#
+# Miscelaneous methods
+#
     def uncompress(self, shape=None, level=0):
         """Return an uncompressed fiber tree (i.e., a nest of lists)"""
 

@@ -872,6 +872,15 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(s, [0])
 
+    def test_rankids(self):
+        """Test finding rankids of a fiber"""
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+
+        r = a.getRankIds()
+
+        self.assertEqual(r, ["X.1", "X.0"])
+
     def test_uncompress(self):
         """Test recursive iteration"""
 

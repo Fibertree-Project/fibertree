@@ -48,7 +48,7 @@ except ImportError:
 # Import tensor class
 #
 from fibertree import Payload, Fiber, CoordPayload, Tensor
-from fibertree import TensorImage, TensorCanvas
+from fibertree import TensorImage, TensorCanvas, CycleManager
 
 #
 # Try to import ipywidgets
