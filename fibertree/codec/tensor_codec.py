@@ -64,7 +64,8 @@ class Codec:
             # if U, may have to add some zeroes, so we need indexing
             prev_payloads_nz = 0
             prev_coords_nz = 0
-            
+            # may need to add all 0s
+
             # iterate nonzeroes in the fiber
             for ind, (val) in a:
                 assert isinstance(val, Payload)
@@ -83,7 +84,6 @@ class Codec:
             
             # if coords proportional to dim len, pad the end (e.g. in bitvector)
             output[coords_key].extend(self.fmts[depth].endCoords(dim_len - prev_coords_nz))
-            
             # if coords are implicit, fill in zeroes at end of payloads
             output[payloads_key].extend(self.fmts[depth].endPayloads(dim_len - prev_payloads_nz))
             return occupancy
@@ -96,25 +96,21 @@ class Codec:
             cumulative_occupancy = 0
             fiber_occupancy = 0
             prev_nz = 0
-
+            child_occupancy = 0
             # TODO: can you merge the iterations? one is over nz, while the other is over dim_len
             # if coords at this depth are implicit, recurse on *every* coordinate (may be empty)
             occ_list = list()
+
+            # init
+            # fiber_occupancy, occ_list = fmt.encodeFiber(a, dim_len, self, depth, ranks, output)
             if not fmt.encodeCoords():
-                for i in range(0, dim_len):
-                    child_occupancy = self.encode(depth + 1, a.getPayload(i), ranks, output)
-                    
-                    # keep track of actual occupancy
-                    if not a.getPayload(i).isEmpty():
-                        fiber_occupancy = fiber_occupancy + 1
-                    
-                    cumulative_occupancy = cumulative_occupancy + child_occupancy
-                    occ_list.append(cumulative_occupancy)
-                        
+                fiber_occupancy, occ_list = fmt.encodeFiber(a, dim_len, self, depth, ranks, output)
+            # TODO: also move this into format-dependent
             # if coords at this depth are explicit, only the nonzeroes appear
             # at lower ranks             
             else:
                 # iterate through nonzeroes at this rank
+                occ_list.append(cumulative_occupancy)
                 for ind, (val) in a:
                     assert isinstance(val, Fiber)
 
@@ -131,7 +127,6 @@ class Codec:
                     fiber_occupancy = fiber_occupancy + len(coords)
                     
                     prev_nz = ind + 1
-
             # whether there are payloads here depends on the format of the next rank
             # store occupancy in previous payloads if necessary
             if next_fmt.encodeUpperPayload():
@@ -171,14 +166,15 @@ class Codec:
             # hierarchical yaml according to ranks
             scratchpads = dict()
             if len(tensor_in_format["payloads_root"]) > 0:
-                    scratchpads["root"] = { "payloads" : tensor_in_format["payloads_root"] }
-            
+                    # scratchpads["root"] = { "payloads" : tensor_in_format["payloads_root"] }
+                    scratchpads["rank_0"] = { "payloads" : tensor_in_format["payloads_root"] }
+
             # write one rank at a time
             for i in range(0, len(rank_names)):
                     rank_name = rank_names[i].lower()
                     coords_key = "coords_{}".format(rank_name)
                     payloads_key = "payloads_{}".format(rank_name)
-                    key = "rank_" + str(i)
+                    key = "rank_" + str(i+1)
                     rank_dict = dict()
                     
                     # only write if scratchpad is nonempty

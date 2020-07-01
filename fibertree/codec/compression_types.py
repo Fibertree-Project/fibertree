@@ -1,6 +1,7 @@
 from .formats.uncompressed import Uncompressed
 from .formats.coord_list import CoordinateList
 from .formats.bitvector import Bitvector
+# from .formats.bu import UncompressedBitvector
 """
 # U = uncompressed
     # size of vector = shape of fiber
@@ -51,3 +52,4 @@ descriptor_to_fmt = {uncompressed : Uncompressed, coord_list: CoordinateList}
 # TODO: figure out how to register yourself
 
 descriptor_to_fmt = {"U" : Uncompressed, "C": CoordinateList, "B": Bitvector}
+# , "UB": UncompressedBitvector}
