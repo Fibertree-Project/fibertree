@@ -10,6 +10,7 @@ from .compression_types import descriptor_to_fmt
 from .formats.uncompressed import Uncompressed
 from .formats.coord_list import CoordinateList
 from .formats.bitvector import Bitvector
+from .formats.hashtable import HashTable
 
 class Codec:
     # format descriptor should be a tuple of valid formats
@@ -36,11 +37,14 @@ class Codec:
 
     # encode
     def encode(self, depth, a, ranks, output):
+        if depth >= len(ranks):
+            return -1
         # keys are in the form payloads_{rank name}, coords_{rank name}
+        # deal with the root separately
+        # TODO: make this a function
         payloads_key = "payloads_{}".format(ranks[depth].lower())
         coords_key = "coords_{}".format(ranks[depth].lower())
 
-        # deal with the root separately
         if depth == -1:           
             # recurse one level down without adding to output yet
             size = self.encode(depth + 1, a, ranks, output)
@@ -51,103 +55,36 @@ class Codec:
                 payloads_key = "payloads_root"
                 output[payloads_key].append(size)
             return None
-        
+
+        # otherwise, we are in the fibertree
         fmt = self.fmts[depth]
         # self.format_descriptor[depth]
         dim_len = a.getShape()[0]
-        
-        # leaf level
-        if depth == self.num_ranks - 1:
-            # keep track of the occupancy of this fiber 
-            occupancy = 0
-            
-            # if U, may have to add some zeroes, so we need indexing
-            prev_payloads_nz = 0
-            prev_coords_nz = 0
-            # may need to add all 0s
 
-            # iterate nonzeroes in the fiber
-            for ind, (val) in a:
-                assert isinstance(val, Payload)
-                # if coords are implicit, add zeroes between nzs
-                # TODO: make a list of the format classes and call from those
-                to_add = self.fmts[depth].encodePayload(prev_payloads_nz, ind, val.value)
-                prev_payloads_nz = ind + 1
-                output[payloads_key].extend(to_add)
-
-                # encode coords
-                # if this rank has explicit coords
-                coords = self.fmts[depth].encodeCoord(prev_coords_nz, ind)
-                occupancy = occupancy + len(coords)
-                prev_coords_nz = ind + 1
-                output[coords_key].extend(coords)
-            
-            # if coords proportional to dim len, pad the end (e.g. in bitvector)
-            output[coords_key].extend(self.fmts[depth].endCoords(dim_len - prev_coords_nz))
-            # if coords are implicit, fill in zeroes at end of payloads
-            output[payloads_key].extend(self.fmts[depth].endPayloads(dim_len - prev_payloads_nz))
-            return occupancy
-                
-        # internal levels
-        else:
-            next_fmt = self.fmts[depth + 1] 
-           
-            # keep track of occupancy of children and at current height
-            cumulative_occupancy = 0
-            fiber_occupancy = 0
-            prev_nz = 0
-            child_occupancy = 0
-            # TODO: can you merge the iterations? one is over nz, while the other is over dim_len
-            # if coords at this depth are implicit, recurse on *every* coordinate (may be empty)
-            occ_list = list()
-
-            # init
-            # fiber_occupancy, occ_list = fmt.encodeFiber(a, dim_len, self, depth, ranks, output)
-            if not fmt.encodeCoords():
-                fiber_occupancy, occ_list = fmt.encodeFiber(a, dim_len, self, depth, ranks, output)
-            # TODO: also move this into format-dependent
-            # if coords at this depth are explicit, only the nonzeroes appear
-            # at lower ranks             
-            else:
-                # iterate through nonzeroes at this rank
-                occ_list.append(cumulative_occupancy)
-                for ind, (val) in a:
-                    assert isinstance(val, Fiber)
-
-                    # recursive call to sub-fibers (DFS traversal)
-                    child_occupancy = self.encode(depth + 1, val, ranks, output)
-
-                    # keep track of cumulative occupancy
-                    cumulative_occupancy = cumulative_occupancy + child_occupancy
-                    occ_list.append(cumulative_occupancy)
-
-                    # store coordinate explicitly
-                    coords = fmt.encodeCoord(prev_nz, ind)
-                    output[coords_key].extend(coords)
-                    fiber_occupancy = fiber_occupancy + len(coords)
-                    
-                    prev_nz = ind + 1
-            # whether there are payloads here depends on the format of the next rank
-            # store occupancy in previous payloads if necessary
-            if next_fmt.encodeUpperPayload():
-                output[payloads_key].extend(occ_list)
-            
-            return fiber_occupancy
+        fiber_occupancy, occ_list = fmt.encodeFiber(a, dim_len, self, depth, ranks, output)
+        return fiber_occupancy
  
     # encode
     # static functions
     # rank output dict based on rank names
     @staticmethod
-    def get_output_dict(rank_names):
+    def get_output_dict(rank_names, format_descriptor):
             output = dict()
             output["payloads_root"] = []
 
-            for name in rank_names:
+            for i in range(0, len(rank_names)):
+                    name = rank_names[i]
                     coords_key = "coords_{}".format(name.lower())
                     payloads_key = "payloads_{}".format(name.lower())
 
                     output[coords_key] = []
                     output[payloads_key] = []  
+                    if format_descriptor[i] == "Hf":
+                        ptrs_key = "ptrs_{}".format(name.lower())
+                        ht_key = "ht_{}".format(name.lower())
+
+                        output[ptrs_key] = []
+                        output[ht_key] = []
             return output
 
     # given a tensor, descriptor, and dict of tensor encoded in that format
@@ -163,10 +100,10 @@ class Codec:
             header["formats"] = descriptor
             rank_names = tensor.getRankIds()
 
+            # print(tensor_in_format)
             # hierarchical yaml according to ranks
             scratchpads = dict()
             if len(tensor_in_format["payloads_root"]) > 0:
-                    # scratchpads["root"] = { "payloads" : tensor_in_format["payloads_root"] }
                     scratchpads["rank_0"] = { "payloads" : tensor_in_format["payloads_root"] }
 
             # write one rank at a time
@@ -174,6 +111,8 @@ class Codec:
                     rank_name = rank_names[i].lower()
                     coords_key = "coords_{}".format(rank_name)
                     payloads_key = "payloads_{}".format(rank_name)
+                    ptrs_key = "ptrs_{}".format(rank_name)
+                    ht_key = "ht_{}".format(rank_name)
                     key = "rank_" + str(i+1)
                     rank_dict = dict()
                     
@@ -182,7 +121,9 @@ class Codec:
                         rank_dict["coords"] = tensor_in_format[coords_key]
                     if len(tensor_in_format[payloads_key]) > 0:
                         rank_dict["payloads"] = tensor_in_format[payloads_key]
-                    
+                    if descriptor[i] == "Hf":
+                        rank_dict["ptrs"] = tensor_in_format[ptrs_key]
+                        rank_dict["bin_heads"] = tensor_in_format[ht_key]
                     if len(rank_dict) > 0:
                         scratchpads[key] = rank_dict
                     

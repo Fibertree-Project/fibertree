@@ -5,11 +5,11 @@ class CoordinateList(CompressionFormat):
         self.name = "C"
 
     @staticmethod
-    def encodeFiber(self, a, dim_len, codec, depth, ranks, output):
+    def encodeFiber(a, dim_len, codec, depth, ranks, output):
         # import codec
         from ..tensor_codec import Codec
         coords_key = "coords_{}".format(ranks[depth].lower())
-        
+        payloads_key = "payloads_{}".format(ranks[depth].lower())
         # init vars
         fiber_occupancy = 0
         cumulative_occupancy = 0
@@ -21,14 +21,17 @@ class CoordinateList(CompressionFormat):
 
             # keep track of actual occupancy (nnz in this fiber)
             # fiber_occupancy = fiber_occupancy + 1
-
             cumulative_occupancy = cumulative_occupancy + child_occupancy
-            occ_list.append(cumulative_occupancy)
+
             # store coordinate explicitly
-            coords = encodeCoord(prev_nz, ind)
+            coords = CoordinateList.encodeCoord(prev_nz, ind)
             output[coords_key].extend(coords)
             fiber_occupancy = fiber_occupancy + len(coords)
 
+            if depth == len(ranks) - 1:
+                output[payloads_key].append(val.value)
+            elif codec.fmts[depth+1].encodeUpperPayload():
+                output[payloads_key].append(cumulative_occupancy)
             prev_nz = ind + 1
 
         return fiber_occupancy, occ_list

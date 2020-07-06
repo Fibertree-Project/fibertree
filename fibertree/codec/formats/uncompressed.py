@@ -11,20 +11,37 @@ class Uncompressed(CompressionFormat):
     def encodeFiber(a, dim_len, codec, depth, ranks, output):
         # import codec
         from ..tensor_codec import Codec
-        
+        payloads_key = "payloads_{}".format(ranks[depth].lower())
         # init vars
         fiber_occupancy = 0
         cumulative_occupancy = 0
         occ_list = list()
-        
+        prev_nz = 0
+        # internal levels
         for i in range(0, dim_len):
-            child_occupancy = codec.encode(depth + 1, a.getPayload(i), ranks, output)
+            # print("i {}".format(i))
+            if depth < len(ranks) - 1:
+                child_occupancy = codec.encode(depth + 1, a.getPayload(i), ranks, output)
 
+                cumulative_occupancy = cumulative_occupancy + child_occupancy
+                occ_list.append(cumulative_occupancy)
+            else: # leaf level
+                if a.getPayload(i) is 0:
+                    output[payloads_key].append(0)
+                else:
+                    output[payloads_key].append(a.getPayload(i).value)
+                
+            # print("\tdepth {}: {}".format(depth, output[payloads_key]))
+                # if a.getPayload(i) is not 0:
+                #     fiber 
+                # if not a.getPayload(i).isEmpty():
+                #     to_add = codec.fmts[depth].encodePayload(prev_nz, ind, a.getPayload(i).value)
+                #     prev_nz = ind + 1
+                #     output[payloads_key].extend(to_add)
             # keep track of actual occupancy (nnz in this fiber)
-            if not a.getPayload(i).isEmpty():
-                fiber_occupancy = fiber_occupancy + 1
-            cumulative_occupancy = cumulative_occupancy + child_occupancy
-            occ_list.append(cumulative_occupancy)
+#             if not a.getPayload(i).isEmpty():
+ #               fiber_occupancy = fiber_occupancy + 1
+
         return fiber_occupancy, occ_list
 
     @staticmethod
