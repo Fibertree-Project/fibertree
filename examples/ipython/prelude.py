@@ -273,19 +273,28 @@ class FibertreeDisplay():
 #
 enable = {}
 
-def createEnableControl(name):
+def createEnableControl(name, choices=None):
+    """ createEnableControl
 
-    enable[name] = False
+    Create a widget with a dropdown box for setting
+    the variable "enable[name]" with "choices".
 
-    def set_enable(animate):
+    """
+
+    def set_enable(**kwargs):
 
         global enable
 
-        enable[name] = animate
+        for key, value in kwargs.items():
+            enable[key] = value
 
+    if choices is None:
+        choices = [False, True]
+
+    kwargs = {name: choices}
 
     w = interactive(set_enable,
-                    animate=[False, True])
+                    **kwargs)
 
     display(w)
 
