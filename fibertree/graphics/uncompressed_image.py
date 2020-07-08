@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 from fibertree import Tensor
 from fibertree import Fiber
@@ -473,7 +473,7 @@ class UncompressedImage():
 
         # Do image related setup
         self.im = Image.new("RGB", (x_pixels, y_pixels), "wheat")
-        self.fnt = ImageFont.truetype('Pillow/Tests/fonts/FreeMono.ttf', 20)
+        self.fnt = ImageUtils.getFont()
         self.draw = ImageDraw.Draw(self.im)
 
 #

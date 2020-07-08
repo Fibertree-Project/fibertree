@@ -1,3 +1,5 @@
+import os
+
 from PIL import Image, ImageDraw, ImageFont
 
 class ImageUtils():
@@ -66,3 +68,34 @@ class ImageUtils():
 
         ImageUtils.hl_next = 0
         ImageUtils.hl_map = {}
+
+
+    @staticmethod
+    def getFont():
+        """getFont
+
+        Get a standard font for various image classes to use. First
+        looks for a file as specified by environment variable
+        "FIBERTREE_FONT", then at a well-known location.
+
+        To set the environment variable in Python try the following:
+
+        import os
+        os.environ['FIBERTREE_FONT'] = 'Pillow/Tests/fonts/FreeMono.ttf'
+
+
+        TBD: Make more robust for use on different systems
+
+        """
+
+        font_file = os.getenv('FIBERTREE_FONT')
+
+        if font_file is None:
+            font_file = 'Pillow/Tests/fonts/FreeMono.ttf'
+
+        try:
+            font = ImageFont.truetype(font_file, 20)
+            return font
+        except Exception as e:
+            print(f"Could not find font file: {font_file}")
+            raise e

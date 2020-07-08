@@ -47,3 +47,25 @@ Run tests
    % cd test
    % python3 -m unittest discover [-v]
 ```
+
+
+FAQ
+===
+
+Q: How do I fix font-related errors when displaying graphics?
+
+A: On Ubuntu/Debian systems you can try installing fonts-freefon-ttf with:
+
+```
+   apt install fonts-freefont-ttf
+```
+
+   If you know where the fonts are on your system then you can set the
+   environment variable FIBERTREE_FONT in Python code you can do this
+   with something like:
+
+```
+   import os
+
+   os.environ['FIBERTREE_FONT'] = 'Pillow/Tests/fonts/FreeMono.ttf'
+```
