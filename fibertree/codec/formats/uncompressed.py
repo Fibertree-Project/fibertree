@@ -26,7 +26,7 @@ class Uncompressed(CompressionFormat):
                 cumulative_occupancy = cumulative_occupancy + child_occupancy
                 occ_list.append(cumulative_occupancy)
             else: # leaf level
-                if a.getPayload(i) is 0:
+                if a.getPayload(i) == 0:
                     output[payloads_key].append(0)
                 else:
                     output[payloads_key].append(a.getPayload(i).value)
