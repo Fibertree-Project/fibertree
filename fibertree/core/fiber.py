@@ -2526,6 +2526,17 @@ class Fiber:
             return '(' + ', '.join(format_coord(c) for c in coord) + ')'
 
 
+        def format_payload(payload):
+            """Return "payload" properly formatted with "payload_fmt" """
+
+            try:
+                result = f"{payload:{payload_fmt}}"
+            except Exception:
+                result = f"{payload}"
+
+            return result
+
+
         def cond_string(string):
             """Return "string" if newline is True"""
 
@@ -2581,7 +2592,7 @@ class Fiber:
 
             str += cond_string(coord_indent*' ')
             str += f"({format_coord(self.coords[i])} -> "
-            str += f"{self.payloads[i]:{payload_fmt}}) "
+            str += f"{format_payload(self.payloads[i])}) "
             coord_indent = next_indent
 
         if items > cutoff:

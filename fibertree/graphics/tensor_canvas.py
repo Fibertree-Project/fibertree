@@ -53,10 +53,20 @@ class TensorCanvas():
         num_tensors = len(tensors)
 
         self.num_tensors = num_tensors
-        self.orig_tensors = list(tensors)
+        self.orig_tensors = []
         self.shadow_tensors = []
 
         for t in tensors:
+            #
+            # Build list of orignal tensors,
+            # but convert Fibers into a Tensor with the Fiber as its root
+            #
+            if isinstance(t, Fiber):
+                # TBD: We do not really know if the fiber is mutable...
+                t = Tensor.fromFiber(fiber=t)
+
+            self.orig_tensors.append(t)
+
             #
             # Create a tensor to hold a shadow tensor that tracks
             # updates to the tracked tensors at the right time

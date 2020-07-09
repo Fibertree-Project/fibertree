@@ -150,6 +150,30 @@ class TestTensor(unittest.TestCase):
 
         self.assertEqual(tensor, tensor_ref)
 
+    def test_fromUncompressed_2D_wo_ids(self):
+        """Test construction of a tensor from nested lists without ids"""
+
+        tensor_in = Tensor("./data/test_tensor-1.yaml")
+
+        root = tensor_in.getRoot()
+        tensor_ref = Tensor.fromFiber(["R1", "R0"], root)
+
+        # Manual copy of test_tensor-1.yaml
+
+        #         0    1    2    3
+        #
+        t = [ [   0,   0,   0,   0 ],  # 0
+              [ 100, 101, 102,   0 ],  # 1
+              [   0, 201,   0, 203 ],  # 2
+              [   0,   0,   0,   0 ],  # 3
+              [ 400,   0, 402,   0 ],  # 4
+              [   0,   0,   0,   0 ],  # 5
+              [   0, 601,   0, 603 ] ] # 6
+
+        tensor = Tensor.fromUncompressed(["R1", "R0"], t)
+
+        self.assertEqual(tensor, tensor_ref)
+
     def test_fromUncompressed_20(self):
         """Test construction of a tensor a scalar"""
 
@@ -181,6 +205,18 @@ class TestTensor(unittest.TestCase):
 
         self.assertEqual(tensor, tensor_ref)
 
+    def test_fromFiber_wo_ids(self):
+        """Test construction of a tensor from a fiber without rank ids"""
+
+        tensor_in = Tensor("./data/test_tensor-1.yaml")
+
+        root = tensor_in.getRoot()
+        tensor_ref = Tensor.fromFiber(["R1", "R0"], root)
+
+        tensor = Tensor.fromFiber(fiber=root)
+
+        self.assertEqual(tensor, tensor_ref)
+
 
     def test_fromRandom(self):
         """Test construction of a random tensor"""
@@ -200,6 +236,29 @@ class TestTensor(unittest.TestCase):
                                               [6, 3, 0, 8, 0, 10, 0, 9, 4, 0]])
         
         tensor = Tensor.fromRandom(rank_ids, shape, [0.5, 0.5], 10, seed=3)
+
+        self.assertEqual(tensor, tensor_ref)
+        self.assertEqual(tensor.getRankIds(), rank_ids)
+
+
+    def test_fromRandom_wo_ids(self):
+        """Test construction of a random tensor without rankids"""
+
+        rank_ids = ["R1", "R0"]
+        shape = [10, 10]
+        tensor_ref = Tensor.fromUncompressed(rank_ids,
+                                             [[0, 10, 10, 1, 0, 9, 8, 0, 0, 3],
+                                              [9, 1, 0, 10, 1, 0, 10, 0, 0, 0],
+                                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                              [0, 3, 0, 3, 5, 0, 5, 7, 0, 0],
+                                              [6, 0, 0, 0, 0, 0, 6, 0, 0, 0],
+                                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                              [0, 0, 2, 8, 2, 3, 7, 0, 0, 10],
+                                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                              [0, 0, 0, 4, 0, 2, 9, 4, 0, 5],
+                                              [6, 3, 0, 8, 0, 10, 0, 9, 4, 0]])
+
+        tensor = Tensor.fromRandom(None, shape, [0.5, 0.5], 10, seed=3)
 
         self.assertEqual(tensor, tensor_ref)
         self.assertEqual(tensor.getRankIds(), rank_ids)

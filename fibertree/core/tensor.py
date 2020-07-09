@@ -11,7 +11,38 @@ class Tensor:
     """ Tensor Class """
 
     def __init__(self, yamlfile="", rank_ids=None, shape=None, name="", color="red"):
-        """__init__"""
+        """__init__
+
+        Construct a Tensor.
+
+        This constructor should be used to create an empty tensor,
+        which has the given "rank_ids" and optionally the given
+        "shape", "name" and "color".
+
+        For historical reasons, this constructor tries to get a Tensor
+        from the specified "yamlfile", which is the first argument, so
+        existing code uses it with the "yamlfile" keyword. That usage
+        is deprecated in favor of using Tensor.fromYAMLfile().
+
+        Parameters:
+        ------------
+
+        rank_ids: list
+        List containing names of ranks.
+        Default: Must be provided (unless yamlfile is non-empty)
+
+        shape: list
+        A list of shapes of the ranks
+
+        name: string
+        A name for the tensor
+        Default: "" (unless yamlfile is non-empty)
+
+        color: string
+        The color to paint values when displaying the tensor
+        Default: "red"
+
+        """
 
         self.yamlfile = yamlfile
 
@@ -54,8 +85,20 @@ class Tensor:
 
     @classmethod
     def fromYAMLfile(cls, yamlfile):
-        """Construct a Tensor from a YAML file"""
+        """Tensor.fromYAMLfile()
 
+        Construct a Tensor from a YAML file
+
+        This constructor creates a Tensor from the specified
+        "yamlfile".
+
+        Parameters:
+        ------------
+
+        yamlfile: string
+        Filename of file containing a YAML representation of a tensor
+
+        """
         (rank_ids, root, shape, name) = Tensor.parse(yamlfile)
 
         if not isinstance(root, Fiber):
@@ -68,8 +111,36 @@ class Tensor:
 
 
     @classmethod
-    def fromUncompressed(cls, rank_ids=None, root=None, shape=None, name = "", color="red"):
-        """Construct a Tensor from uncompressed fiber tree"""
+    def fromUncompressed(cls, rank_ids=None, root=None, shape=None, name="", color="red"):
+        """Tensor.fromUncompressed()
+
+        Construct a Tensor from uncompressed fiber tree
+
+        Parameters:
+        ------------
+
+        rank_ids: list
+        List containing names of ranks.
+        Default: ["Rn", "Rn-1", ... "R0"]
+
+        root: list of lists
+
+        A list of lists with an uncompressed represenation of the
+        tensor, zero values are assumed empty.
+
+        shape: list
+        A list of shapes of the ranks
+        Default: calculated from shape of "root"
+
+        name: string
+        A name for the tensor
+        Default: ""
+
+        color: string
+        The color to paint values when displaying the tensor
+        Default: "red"
+
+        """
 
         assert(not root is None)
 
@@ -113,10 +184,47 @@ class Tensor:
 
     @classmethod
     def fromFiber(cls, rank_ids=None, fiber=None, shape=None, name="", color="red"):
-        """Construct a Tensor from a fiber"""
+        """Tensor.fromFiber
 
-        assert(not rank_ids is None)
+        Construct a Tensor from a Fiber
+
+        Parameters:
+        ------------
+
+        rank_ids: list
+        List containing names of ranks.
+        Default: ["Rn", "Rn-1", ... "R0"]
+
+        fiber: Fiber
+        A fiber to form the root of the new Tensor
+
+        shape: list
+        A list of shapes of the ranks
+        Default: The shape of "fiber"
+
+        name: string
+        A name for the tensor
+        Default: ""
+
+        color: string
+        The color to paint values when displaying the tensor
+        Default: "red"
+
+
+        """
+
         assert(not fiber is None)
+
+        #
+        # If rank_ids is not given, synthesize something reasonable
+        #
+        if rank_ids is None:
+            if shape is not None:
+                maxrank = len(shape)-1
+            else:
+                maxrank = len(fiber.getShape())-1
+
+            rank_ids = [f"R{maxrank-i}" for i in range(maxrank+1)]
 
         tensor = cls(rank_ids=rank_ids, shape=shape)
 
@@ -130,7 +238,9 @@ class Tensor:
 
     @classmethod
     def fromRandom(cls, rank_ids=None, shape=None, density=None, interval=10, seed=None, name="", color="red"):
-        """ Create a random tensor
+        """Tensor.fromRandom()
+
+        Create a random tensor
 
         Parameters:
         -----------
