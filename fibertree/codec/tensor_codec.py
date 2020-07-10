@@ -61,6 +61,7 @@ class Codec:
         # self.format_descriptor[depth]
         dim_len = a.getShape()[0]
 
+        # 
         fiber_occupancy, occ_list = fmt.encodeFiber(a, dim_len, self, depth, ranks, output)
         return fiber_occupancy
  
@@ -120,7 +121,12 @@ class Codec:
                     if len(tensor_in_format[coords_key]) > 0:
                         rank_dict["coords"] = tensor_in_format[coords_key]
                     if len(tensor_in_format[payloads_key]) > 0:
-                        rank_dict["payloads"] = tensor_in_format[payloads_key]
+                        if descriptor[i] == "U" and i < len(rank_names) - 1:
+                            rank_dict["offsets"] = tensor_in_format[payloads_key]
+                        elif descriptor[i] == "Hf" and i < len(rank_names) - 1:
+                            rank_dict["offsets"] = tensor_in_format[payloads_key]
+                        else:
+                            rank_dict["payloads"] = tensor_in_format[payloads_key]
                     if descriptor[i] == "Hf":
                         rank_dict["ptrs"] = tensor_in_format[ptrs_key]
                         rank_dict["bin_heads"] = tensor_in_format[ht_key]

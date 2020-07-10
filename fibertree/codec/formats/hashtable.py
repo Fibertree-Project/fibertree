@@ -1,5 +1,5 @@
 from .compression_format import CompressionFormat
-
+import operator
 # hash table per fiber
 
 class HashTable(CompressionFormat):
@@ -25,10 +25,13 @@ class HashTable(CompressionFormat):
         # init vars
         fiber_occupancy = 0
         cumulative_occupancy = 0
+        if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] is "Hf":
+            cumulative_occupancy = (0, 0)
         occ_list = list()
         num_coords = len(a.getCoords())
         hashtable_len = 6
-        # ht = list()
+
+        # init scratchpads
         ht = [None] * hashtable_len
         ptrs = list()
         coords = list()
@@ -36,10 +39,15 @@ class HashTable(CompressionFormat):
 
         for ind, (val) in a:
             child_occupancy = codec.encode(depth + 1, val, ranks, output)
-            
-            cumulative_occupancy = cumulative_occupancy + child_occupancy
+            # print(child_occupancy)
+            # print(cumulative_occupancy)
+            # TODO: make this a function
+            # cumulative_occupancy = cumulative_occupancy + child_occupancy
+            if isinstance(cumulative_occupancy, int):
+                cumulative_occupancy = cumulative_occupancy + child_occupancy
+            else:
+                cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
             occ_list.append(cumulative_occupancy)
-
             # encode coord
             hash_key = ind % hashtable_len
             # print("ind: {}, hash key {}".format(ind, hash_key))
@@ -83,12 +91,14 @@ class HashTable(CompressionFormat):
         # 1. like the segment table in CSR, that points to the start of what was in that bucket
         # 2. linearization of buckets in contiguous order
 
+        """
         print("ht " + str(ht))
         print("ptrs " + str(ptrs))
         print("coords " + str(coords))
         print("payloads " + str(payloads))
+        """
         total_size = hashtable_len + len(ptrs) + len(coords) + len(payloads)
-        return total_size, occ_list
+        return [fiber_occupancy, hashtable_len], occ_list
 
     @staticmethod
     def encodeCoord(prev_ind, ind):

@@ -2,7 +2,6 @@
 CompressionFormat class
 mostly just here to be inherited
 """
-
 class CompressionFormat:
     def __init__(self):
         self.name = ""

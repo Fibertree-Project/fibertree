@@ -20,7 +20,11 @@ class Bitvector(CompressionFormat):
         # init vars
         fiber_occupancy = 0
         cumulative_occupancy = 0
+        if depth < len(ranks) - 1:
+            if codec.format_descriptor[depth + 1] is "Hf" or codec.format_descriptor[depth + 1] is "T":
+                cumulative_occupancy = [0, 0]
         occ_list = list()
+        occ_list.append(cumulative_occupancy)
         prev_nz = 0
 
         for ind, (val) in a:
@@ -29,9 +33,14 @@ class Bitvector(CompressionFormat):
             # keep track of actual occupancy (nnz in this fiber)
             # fiber_occupancy = fiber_occupancy + 1
 
-            cumulative_occupancy = cumulative_occupancy + child_occupancy
+            # cumulative_occupancy = cumulative_occupancy + child_occupancy
             # store coordinate explicitly
-            
+            if isinstance(cumulative_occupancy, int):
+                cumulative_occupancy = cumulative_occupancy + child_occupancy
+            else:
+                cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
+            occ_list.append(cumulative_occupancy)        
+
             coords = Bitvector.encodeCoord(prev_nz, ind)
             output[coords_key].extend(coords)
             fiber_occupancy = fiber_occupancy + len(coords)
@@ -39,14 +48,14 @@ class Bitvector(CompressionFormat):
 	    # encode payload if necessary
             if depth == len(ranks) - 1:
                 output[payloads_key].append(val.value)
-            elif codec.fmts[depth+1].encodeUpperPayload():
-                output[payloads_key].append(cumulative_occupancy)
-
             prev_nz = ind + 1
 
         # pad end if necessary
         end_zeroes = Bitvector.endCoords(dim_len - prev_nz)
         output[coords_key].extend(end_zeroes)
+
+        if depth < len(ranks) - 1 and codec.fmts[depth+1].encodeUpperPayload():
+            output[payloads_key].extend(occ_list)
         return fiber_occupancy, occ_list
 
 

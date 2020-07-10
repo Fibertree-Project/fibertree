@@ -1,5 +1,5 @@
 from .compression_format import CompressionFormat
-
+import operator
 class Uncompressed(CompressionFormat):
     def __init__(self):
         self.name = "U"
@@ -14,35 +14,41 @@ class Uncompressed(CompressionFormat):
         payloads_key = "payloads_{}".format(ranks[depth].lower())
         # init vars
         fiber_occupancy = 0
+        
         cumulative_occupancy = 0
+        if depth < len(ranks) - 1 and (codec.format_descriptor[depth + 1] is "Hf" or codec.format_descriptor[depth + 1] is "T"):
+            cumulative_occupancy = [0, 0]
         occ_list = list()
         prev_nz = 0
-        # internal levels
+        occ_list.append(cumulative_occupancy)
+        
+        # iterate through all coords (nz or not)
         for i in range(0, dim_len):
-            # print("i {}".format(i))
+            # internal levels
             if depth < len(ranks) - 1:
                 child_occupancy = codec.encode(depth + 1, a.getPayload(i), ranks, output)
 
-                cumulative_occupancy = cumulative_occupancy + child_occupancy
+                # keep track of occupancy (cumulative requires ordering)
+                # cumulative_occupancy = cumulative_occupancy + child_occupancy
+
+                if isinstance(cumulative_occupancy, int):
+                    cumulative_occupancy = cumulative_occupancy + child_occupancy
+                else:
+                    cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
+                    # cumulative_occupancy = map(operator.add, cumulative_occupancy, child_occupancy)
                 occ_list.append(cumulative_occupancy)
             else: # leaf level
                 if a.getPayload(i) == 0:
                     output[payloads_key].append(0)
                 else:
                     output[payloads_key].append(a.getPayload(i).value)
-                
-            # print("\tdepth {}: {}".format(depth, output[payloads_key]))
-                # if a.getPayload(i) is not 0:
-                #     fiber 
-                # if not a.getPayload(i).isEmpty():
-                #     to_add = codec.fmts[depth].encodePayload(prev_nz, ind, a.getPayload(i).value)
-                #     prev_nz = ind + 1
-                #     output[payloads_key].extend(to_add)
-            # keep track of actual occupancy (nnz in this fiber)
-#             if not a.getPayload(i).isEmpty():
- #               fiber_occupancy = fiber_occupancy + 1
+        
+        # store payload if necessary
+        if depth < len(ranks) - 1 and codec.fmts[depth+1].encodeUpperPayload():
+            output[payloads_key].extend(occ_list)
 
-        return fiber_occupancy, occ_list
+        # return 1 so if upper levels encode payloads, 
+        return 1, occ_list
 
     @staticmethod
     def encodeCoord(prev_ind, ind):
