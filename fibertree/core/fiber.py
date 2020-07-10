@@ -19,6 +19,10 @@ class CoordinateError(Exception):
     """CoordinateError"""
     pass
 
+class PayloadError(Exception):
+    """PayloadError"""
+    pass
+
 
 #
 # Define the fiber class
@@ -2249,6 +2253,11 @@ class Fiber:
         for c1, p1 in zip(self.coords, cur_payloads):
 
             if Payload.contains(p1, Fiber):
+                #
+                # Handle case where payload of next rank is a Fiber
+                #
+                p1 = Payload.get(p1)
+
                 for c0, p0 in p1:
                     coords.append(self._flattenCoords(c1,
                                                       c0,
@@ -2256,20 +2265,55 @@ class Fiber:
                     payloads.append(p0)
 
             elif Payload.contains(p1, tuple):
-                # zgw: p1 could be tuples.
-                # In general, a payload contains one the the following three
-                # 1) a Fiber
-                # 2) a tuple
-                # 3) a (fibertree-)structure-irrelevant type (e.g., a Python number)
-                # If p1 is a tuple, flattenRanks() flattens rank c1 and c0,
-                # where c0 is the highest rank of the fiber p1[0]
-                assert(isinstance(p1[0], Fiber))
+                #
+                # Handle case where payload is a tuple. In this case,
+                # look for the first fiber in the "p1" tuple and use
+                # that fiber to flatten the ranks. The payloads of the
+                # new flattened rank is a new tuple containing a
+                # payload from that fiber and the the other values in
+                # the "p1" tuple.
+                #
+                # Note: unflattening the fiber tree created in this
+                # scenario will not recreate the original pre-flattened
+                # fiber tree
+                #
+                p1 = Payload.get(p1)
 
-                for c0, p0 in p1[0]:
+                #
+                # Find the fiber..
+                #
+                p1_fiber = None
+
+                for n, p1_p in enumerate(p1):
+                    if isinstance(p1_p, Fiber):
+                        p1_fiber = p1_p
+
+                        if len(p1) == 2:
+                            # value is other element of tuple
+                            p1_value = p1[(n+1) % 2]
+                        else:
+                            # value is tuple without fiber
+                            p1_value = p1[:n] + p1[n+1:]
+
+                        break
+
+                if p1_fiber is None:
+                    raise PayloadError
+
+                #
+                # Create the flattened fiber
+                #
+                for c0, p0 in p1_fiber:
                     coords.append(self._flattenCoords(c1,
                                                       c0,
                                                       style=style))
-                    payloads.append( (p0,) + p1[1:] )
+
+                    payloads.append((p0, p1_value))
+            else:
+                #
+                # I don't know how to handle this payload
+                #
+                raise PayloadError
 
         return Fiber(coords, payloads)
 
