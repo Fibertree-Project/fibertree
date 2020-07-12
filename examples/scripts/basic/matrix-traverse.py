@@ -9,7 +9,7 @@ print("")
 
 data_dir = "../../data"
 
-a = Tensor(os.path.join(data_dir, "matrix-a.yaml"))
+a = Tensor.fromYAMLfile(os.path.join(data_dir, "matrix-a.yaml"))
 
 a.print("Matrix")
 

@@ -196,7 +196,7 @@ class TensorImage():
 
 if __name__ == "__main__":
 
-    a = Tensor("examples/data/draw-a.yaml")
+    a = Tensor.fromYAMLfile("../../examples/data/draw-a.yaml")
     a.print()
     i = TensorImage(a)
     i.show()

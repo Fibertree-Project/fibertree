@@ -9,7 +9,7 @@ print("")
 
 data_dir = "../../data"
 
-a = Tensor(os.path.join(data_dir, "elementwise-a.yaml"))
+a = Tensor.fromYAMLfile(os.path.join(data_dir, "elementwise-a.yaml"))
 z = Tensor(rank_ids=["M"])
 
 a.print("A Tensor")

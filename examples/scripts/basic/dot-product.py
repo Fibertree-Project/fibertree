@@ -14,8 +14,8 @@ print("")
 
 data_dir = "../../data"
 
-a = Tensor(os.path.join(data_dir, "dot-product-a.yaml"))
-b = Tensor(os.path.join(data_dir, "dot-product-b.yaml"))
+a = Tensor.fromYAMLfile(os.path.join(data_dir, "dot-product-a.yaml"))
+b = Tensor.fromYAMLfile(os.path.join(data_dir, "dot-product-b.yaml"))
 z = Tensor(rank_ids=["M"])
 
 a.print("A Tensor")

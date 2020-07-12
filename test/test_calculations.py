@@ -8,7 +8,7 @@ class TestCalculations(unittest.TestCase):
     def test_traverse(self):
         """Traverse a tensor"""
 
-        a = Tensor("./data/test_tensor-1.yaml")
+        a = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
         
         a_m = a.getRoot()
 
@@ -24,7 +24,7 @@ class TestCalculations(unittest.TestCase):
     def test_copy(self):
         """Copy a tensor"""
 
-        a = Tensor("./data/test_tensor-1.yaml")
+        a = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
         z = Tensor(rank_ids=["M", "K"])
 
         a_m = a.getRoot()
@@ -39,8 +39,8 @@ class TestCalculations(unittest.TestCase):
     def test_sum(self):
         "Test sum"
 
-        a = Tensor("./data/tensor_sum_a.yaml")
-        b = Tensor("./data/tensor_sum_b.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_sum_a.yaml")
+        b = Tensor.fromYAMLfile("./data/tensor_sum_b.yaml")
         z = Tensor(rank_ids=["M"])
 
         a_m = a.getRoot()
@@ -52,15 +52,15 @@ class TestCalculations(unittest.TestCase):
                 z_ref += a_val + b_val
 
 
-        z_correct = Tensor("./data/tensor_sum_z.yaml")
+        z_correct = Tensor.fromYAMLfile("./data/tensor_sum_z.yaml")
 
         self.assertEqual(z, z_correct)
 
     def test_dot(self):
         "Test dot product"
 
-        a = Tensor("./data/tensor_sum_a.yaml")
-        b = Tensor("./data/tensor_sum_b.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_sum_a.yaml")
+        b = Tensor.fromYAMLfile("./data/tensor_sum_b.yaml")
         z = Tensor(rank_ids=["M"])
 
         a_m = a.getRoot()
@@ -71,14 +71,14 @@ class TestCalculations(unittest.TestCase):
             for k_coord, (a_val, b_val) in a_k & b_k:
                 z_ref += a_val * b_val
 
-        z_correct = Tensor("./data/tensor_dot_z.yaml")
+        z_correct = Tensor.fromYAMLfile("./data/tensor_dot_z.yaml")
 
         self.assertEqual(z, z_correct)
 
     def test_0D(self):
         "Test sum to rank 0 tensor"
 
-        a = Tensor("./data/conv-activations-a.yaml")
+        a = Tensor.fromYAMLfile("./data/conv-activations-a.yaml")
         z = Tensor(rank_ids=[])
 
         a_m = a.getRoot()
@@ -92,8 +92,8 @@ class TestCalculations(unittest.TestCase):
     def test_conv1d_ws(self):
         """Convolution 1d ws"""
 
-        w = Tensor("./data/conv-weights-a.yaml")
-        i = Tensor("./data/conv-activations-a.yaml")
+        w = Tensor.fromYAMLfile("./data/conv-weights-a.yaml")
+        i = Tensor.fromYAMLfile("./data/conv-activations-a.yaml")
         o = Tensor(rank_ids=["Q"])
 
         w_r = w.getRoot()
@@ -108,15 +108,15 @@ class TestCalculations(unittest.TestCase):
             for q, (o_q_ref, i_val) in o_q << i_h.project(lambda h: h-r, (0, Q)):
                 o_q_ref += w_val * i_val
 
-        o_ref = Tensor("./data/conv-output-a.yaml")
+        o_ref = Tensor.fromYAMLfile("./data/conv-output-a.yaml")
         
         self.assertEqual(o, o_ref)
 
     def test_conv1d_is(self):
         """Convolution 1d is"""
 
-        w = Tensor("./data/conv-weights-a.yaml")
-        i = Tensor("./data/conv-activations-a.yaml")
+        w = Tensor.fromYAMLfile("./data/conv-weights-a.yaml")
+        i = Tensor.fromYAMLfile("./data/conv-activations-a.yaml")
         o = Tensor(rank_ids=["Q"])
 
         w_r = w.getRoot()
@@ -131,15 +131,15 @@ class TestCalculations(unittest.TestCase):
             for q, (o_q_ref, w_val) in o_q << w_r.project(lambda r: h-r, (0, Q)):
                 o_q_ref += w_val * i_val
 
-        o_ref = Tensor("./data/conv-output-a.yaml")
+        o_ref = Tensor.fromYAMLfile("./data/conv-output-a.yaml")
         
         self.assertEqual(o, o_ref)
 
     def test_conv1d_os(self):
         """Convolution 1d os"""
 
-        w = Tensor("./data/conv-weights-a.yaml")
-        i = Tensor("./data/conv-activations-a.yaml")
+        w = Tensor.fromYAMLfile("./data/conv-weights-a.yaml")
+        i = Tensor.fromYAMLfile("./data/conv-activations-a.yaml")
         o = Tensor(rank_ids=["Q"])
 
         w_r = w.getRoot()
@@ -156,7 +156,7 @@ class TestCalculations(unittest.TestCase):
             for r, (w_val, i_val) in w_r.project(lambda r: q+r) & i_h:
                 o_q_ref += w_val * i_val
 
-        o_ref = Tensor("./data/conv-output-os-a.yaml")
+        o_ref = Tensor.fromYAMLfile("./data/conv-output-os-a.yaml")
         
         self.assertEqual(o, o_ref)
         

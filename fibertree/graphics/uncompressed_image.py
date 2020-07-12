@@ -589,20 +589,20 @@ class UncompressedImage():
 if __name__ == "__main__":
                          
     print("a - multiple highlights")
-    a = Tensor("examples/data/sparse-matrix-a.yaml")
+    a = Tensor.fromYAMLfile("../../examples/data/sparse-matrix-a.yaml")
     a.setColor("blue")
-    i = UncompressedImage(a, highlights=[(0,1), (1,2), (3,)])
+    i = UncompressedImage(a, highlights={"PE": [(0, 1), (1, 2), (3,)]})
     i.show()
 
     #
     print("a - single highlights")
-    i = UncompressedImage(a, (1,2))
+    i = UncompressedImage(a, {"PE": [(1, 2)]})
     i.show()
 
     #
     print("b")
     b = Tensor.fromUncompressed(["X"], [1, 2, 0, 0, 4])
-    i = UncompressedImage(b, [(1,), (4,)])
+    i = UncompressedImage(b, {"PE": [(1,), (4,)]})
     i.show()
 
     #

@@ -174,8 +174,8 @@ if __name__ == "__main__":
     #
     # This is broken...
     #
-    a = Tensor("../examples/data/draw-a.yaml")
-    b = Tensor("../examples/data/draw-b.yaml")
+    a = Tensor.fromYAMLfile("../examples/data/draw-a.yaml")
+    b = Tensor.fromYAMLfile("../examples/data/draw-b.yaml")
     canvas = TensorCanvas(a, b)
     canvas.addFrame()
     canvas.addFrame([10], [4])

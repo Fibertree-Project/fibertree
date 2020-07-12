@@ -36,7 +36,7 @@ class TestTensor(unittest.TestCase):
     def test_shape_new(self):
         """Test shape of a tensor from a file"""
 
-        t1 = Tensor("./data/test_tensor-1.yaml")
+        t1 = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
         self.assertEqual(t1.getRankIds(), ["M", "K"])
         self.assertEqual(t1.getShape(), [7, 4])
@@ -99,7 +99,7 @@ class TestTensor(unittest.TestCase):
     def test_shape_fromFiber(self):
         """Test shape of a tensor from a fiber"""
 
-        y1 = Tensor("./data/test_tensor-1.yaml")
+        y1 = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
         f1 = y1.getRoot()
 
         t1 = Tensor.fromFiber(["K", "M"], f1)
@@ -108,7 +108,7 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(t1.getShape(), [7, 4])
     
 
-        y2 = Tensor("./data/test_tensor-1.yaml")
+        y2 = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
         f2 = y2.getRoot()
         t2 = Tensor.fromFiber(["K100", "M100"], f2, [100,200] )
         

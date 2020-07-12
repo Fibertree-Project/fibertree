@@ -195,12 +195,13 @@ class MovieCanvas():
 
 if __name__ == "__main__":
 
-    a = Tensor("../examples/data/draw-a.yaml")
-    b = Tensor("../examples/data/draw-b.yaml")
+    a = Tensor.fromYAMLfile("../../examples/data/draw-a.yaml")
+    b = Tensor.fromYAMLfile("../../examples/data/draw-b.yaml")
     canvas = MovieCanvas(a, b)
     canvas.addFrame()
     canvas.addFrame([10], [4])
     canvas.addFrame([10, 40], [4, 1])
     canvas.addFrame([10, 40, 1], [4, 1, 0])
     canvas.addFrame()
-    canvas.saveMovie("tmp.mp4")
+    canvas.saveMovie("/tmp/tmp.mp4")
+    print("Try playing /tmp/tmp.mp4")
