@@ -193,6 +193,46 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(a_out.getShape(), [41, 10, 42])
 
 
+    def test_swizzleRanks(self):
+        """ Test swizzleRanks """
+
+        a_MK = Tensor.fromUncompressed(["M", "K"], 
+                               [[0, 0, 4, 0, 0, 5],
+                                [3, 2, 0, 3, 0, 2],
+                                [0, 2, 0, 0, 1, 2],
+                                [0, 0, 0, 0, 0, 0],
+                                [2, 5, 0, 0, 0, 5],
+                                [4, 1, 0, 0, 0, 0],
+                                [5, 0, 0, 1, 0, 0],
+                                [4, 0, 0, 5, 1, 3]])
+
+        a_KM = a_MK.swapRanks()
+
+        M = 8
+        M1 = 2
+        M0 = (M+1)//M1
+
+        K = 6
+        K1 = 2
+        K0 = (K+1)//K1
+
+        a_MMKK = a_MK.splitUniform(M0).splitUniform(K0, depth=2)
+        a_MKMK = a_MMKK.swapRanks(depth=1)
+        a_KMMK = a_KM.splitUniform(K0).swapRanks(depth=1).splitUniform(M0, depth=1)
+
+        a_KM_2 = a_MK.swizzleRanks(["K", "M"])
+        self.assertEqual(a_KM_2, a_KM)
+
+        a_MK_2 = a_KM_2.swizzleRanks(["M", "K"])
+        self.assertEqual(a_MK_2, a_MK)
+
+        a_MKMK_2 = a_MMKK.swizzleRanks(["M.1","K.1", "M.0", "K.0"])
+        self.assertEqual(a_MKMK_2, a_MKMK)
+
+        a_MMKK_2 = a_MKMK.swizzleRanks(["M.1", "M.0", "K.1", "K.0"])
+        self.assertEqual(a_MMKK_2, a_MMKK)
+
+
     def test_flattenRanks_0(self):
         """ Test flattenRanks - depth=0 """
 

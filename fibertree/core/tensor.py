@@ -719,8 +719,40 @@ class Tensor:
         return tensor
 
 #
-# Swap method
+# Swizzle and swap methods
 #
+    def swizzleRanks(self, rank_ids):
+        """swizzleRanks
+
+        Re-arrange (swizzle) the ranks of the tensor so they match the
+        given rank_ids
+
+        """
+
+        swizzled = self
+        swizzled_rank_ids = swizzled.getRankIds()
+        swizzled_name = swizzled.getName()
+
+        for target_rank_idx, target_rank_id in enumerate(rank_ids):
+            #
+            # While target rank is not in desired place
+            #
+            while target_rank_idx != swizzled_rank_ids.index(target_rank_id):
+                #
+                # Swap the target rank id up one level
+                #
+                swizzled_rank_idx = next(idx
+                                         for idx, id in enumerate(swizzled_rank_ids)
+                                         if id == target_rank_id)
+
+                swizzled = swizzled.swapRanks(depth=swizzled_rank_idx-1)
+                swizzled_rank_ids = swizzled.getRankIds()
+
+        swizzled.setName(f"{swizzled_name}+swizzled")
+
+        return swizzled
+
+
     def swapRanks(self, depth=0):
         """ swapRanks """
 
