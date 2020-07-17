@@ -5,6 +5,7 @@ from fibertree import Fiber
 from fibertree import Payload
 
 from fibertree import ImageUtils
+from fibertree import HighlightManager
 
 
 class TreeImage():
@@ -27,14 +28,15 @@ class TreeImage():
         """
 
         #
-        # Record paramters
+        # Record parameters
         #
         # Note: We conditionally unwrap Payload objects
         #
         self.object = Payload.get(object)
-        self.highlights = highlights
         self.row_extent = extent[0]
         self.col_extent = extent[1]
+
+        self.highlight_manager = HighlightManager(highlights)
 
         #
         # Cache worker colors
@@ -67,7 +69,6 @@ class TreeImage():
         """
 
         object = self.object
-        highlights = self.highlights
 
         #
         # Create the objects for the image
@@ -129,7 +130,8 @@ class TreeImage():
             #
             # Draw a non-0-D tensor or a fiber, i.e., the fiber tree
             #
-            region_end = self.traverse(root, highlights=highlights)
+            region_end = self.traverse(root,
+                                       highlight_manager=self.highlight_manager)
 
         #
         # Crop the image
@@ -151,9 +153,10 @@ class TreeImage():
                  fiber,
                  level=0,
                  offset=0,
-                 highlights={},
-                 highlight_subtensor={}):
+                 highlight_manager=None):
         """traverse"""
+
+
         #
         # Check if this is level0, which may just be a payload
         #
@@ -175,8 +178,7 @@ class TreeImage():
                 region_end = self.traverse(fiber,
                                            level=1,
                                            offset=offset,
-                                           highlights=highlights,
-                                           highlight_subtensor=highlight_subtensor)
+                                           highlight_manager=highlight_manager)
 
                 region_size = region_end - region_start
                 #
@@ -212,18 +214,6 @@ class TreeImage():
         coordinate_start = region_start
 
         #
-        # Set up the highlighting for this level
-        #
-        #
-        # The points to highlight for each worker at this level are
-        # based on the first coordinate in each point
-        #
-        highlight_coords = {}
-
-        for worker, points in highlights.items():
-            highlight_coords[worker] = [pt[0] for pt in points]
-
-        #
         # Traverse the fiber at this level
         #
         for n, (c, p) in enumerate(fiber):
@@ -234,41 +224,18 @@ class TreeImage():
 
             if Payload.contains(p, Fiber):
                 #
-                # The payload is a fiber so we need to recurse, but we
-                # also need to figure out what to highlight at the
-                # next level So these variables hold the highlight
-                # information with one less coordinate (in
-                # "highlight_next") for each worker, and a dictionary
-                # of workers (in "highlight_subtensor_next") that are
-                # highlighting the remaining subtensor
+                # Configure highlights for this fiber
                 #
-                highlight_next = {}
-                highlight_subtensor_next = {}
-
-                for worker, points in highlights.items():
-                    highlight_next[worker] = [ pt[1:] for pt in points if len(pt) > 1 and pt[0] == c ]
-                    #
-                    # Once we start highlighting a fiber, highlight the entire subtensor.
-                    # TBD: Maybe we should have just copied highlight_subtensor
-                    #
-                    if worker in highlight_subtensor:
-                        highlight_subtensor_next[worker] = True
-
-                    #
-                    # If there are no more coordinates,
-                    # maybe start highlighting a subtensor
-                    #
-                    if len(highlight_next[worker]) == 0 and c in highlight_coords[worker]:
-                        highlight_subtensor_next[worker] = True
+                next_highlight_manager = highlight_manager.addFiber(c)
 
                 #
                 # Draw the object below this coordinate (in "c")
                 #
                 region_end = self.traverse(Payload.get(p),
-                                           level+1,
-                                           region_end,
-                                           highlight_next,
-                                           highlight_subtensor_next)
+                                           level=level+1,
+                                           offset=region_end,
+                                           highlight_manager=next_highlight_manager)
+
             else:
                 region_end += 1
 
@@ -289,6 +256,11 @@ class TreeImage():
         region_size = region_end - region_start
 
         #
+        # Set up the highlighting for this level
+        #
+        highlight_subtensor = highlight_manager.highlight_subtensor
+
+        #
         # Display fiber for this level
         #
         fiber_size = len(fiber)
@@ -303,10 +275,10 @@ class TreeImage():
 
         for c, p in fiber:
             #
-            # Create sets of workers to be colored
+            # Gets sets of workers to be colored
             #
-            color_coord = set([worker for worker, coords in highlight_coords.items() if c in coords])
-            color_subtensor = set([worker for worker in highlight_subtensor.keys()])
+            color_coord = highlight_manager.getColorCoord(c)
+            color_subtensor = highlight_manager.getColorSubtensor()
             color_coord_or_subtensor = color_coord | color_subtensor
 
             #
