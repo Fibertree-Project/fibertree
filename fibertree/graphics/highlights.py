@@ -65,3 +65,99 @@ class HighlightManager():
         color_subtensor = set([worker for worker in self.highlight_subtensor.keys()])
         return color_subtensor
 
+
+    @staticmethod
+    def canonicalizeHighlights(highlights, worker="PE"):
+        """canonicalizeHighlights
+
+        In methods that accept highlights there is considerable
+        flexibility in the form that the highlights are provided. This
+        method converts any of those forms into the canonical form,
+        using keyword "worker" to assign a worker if one isn't
+        provided in the "highlights" argument.  The canonical form is
+        a dictionary of workers and lists of their highlighted points:
+
+
+        {worker0: [(point0_coord0, point0_coord1, ...),
+                   (point1_coord0, point1_coord1, ...),
+                    ...],
+         worker1: [(point0_coord0, point0_coord1, ...),
+                   (point1_coord0, point1_coord1, ...),
+                   ...],
+         ...,
+        }
+
+
+        Alternative forms:
+
+        1) Single point per worker
+
+        {worker0: (point0_coord0, point0_coord1, ...),
+         worker1: (point0_coord0, point0_coord1, ...),
+          ...
+        }
+
+
+        2) List of points, no worker
+
+        [(point0_coord0, point0_coord1, ...),
+         (point1_coord0, point1_coord1, ...),
+         ...]
+
+
+        3) Single point, no worker
+
+        (point1_coord0, point1_coord1, ...)
+
+
+        Warning: if a coordinate is a tuple there is ambiguity in forms
+        1 and 3, so they cannot be used.
+
+
+        Parameters:
+        -----------
+
+        highlights: dictionary, list or tuple
+        A specification of highlights, maybe not in canonical form
+
+        worker: string
+        A name to use for the worker, if highlights doesn't include one
+
+        Returns:
+        --------
+
+        highlights: dictionary
+        A specification of highlights in canonical form
+
+
+        Raises:
+        -------
+
+        Nothing
+
+        """
+
+        if not isinstance(highlights, dict):
+            #
+            # Massage highlights into proper form
+            #
+            highlights = {worker: highlights}
+
+        #
+        # Wrap highlights specified as a single point into a list
+        #
+        for pe, pe_highlights in highlights.items():
+            #
+            # If highlights is a single point convert to list
+            #
+            if len(pe_highlights):
+                try:
+                    temp = pe_highlights[0][0]
+                except Exception:
+                    temp = pe_highlights
+                    pe_highlights = []
+                    pe_highlights.append(temp)
+                    highlights[pe] = pe_highlights
+
+        return highlights
+

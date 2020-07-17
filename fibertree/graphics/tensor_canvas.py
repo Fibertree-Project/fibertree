@@ -6,7 +6,7 @@ from fibertree import Fiber
 from fibertree import Payload
 
 from .image_utils import ImageUtils
-from .tensor_image import TensorImage
+from .highlights import HighlightManager
 
 from .movie_canvas import MovieCanvas
 from .spacetime_canvas import SpacetimeCanvas
@@ -112,7 +112,7 @@ class TensorCanvas():
         highlights_list = []
 
         for hl in highlights:
-            highlights_list.append(TensorImage.canonicalizeHighlights(hl, worker=worker))
+            highlights_list.append(HighlightManager.canonicalizeHighlights(hl, worker=worker))
 
 
         #
