@@ -1,63 +1,127 @@
 class HighlightManager():
     """HighlightManager """
 
-    def __init__(self, highlights={}, highlight_subtensor={}):
+    def __init__(self, highlights={}, highlight_subtensor={}, parent=None, level=None):
 
         self.highlights = highlights
         self.highlight_subtensor = highlight_subtensor
 
+        self.parent = parent
+        self.level = level
+
+        self.current_coord = None
+        self.highlight_coords = {}
+
         #
         # The points to highlight for each worker at this level are
-        # based on the first coordinate in each point
+        # based on the first coordinate in each point, unless the
+        # coordinate is a wildcard ('?')
         #
-        self.highlight_coords = {}
+        self.active_coords = {}
     
         for worker, points in highlights.items():
-            self.highlight_coords[worker] = [pt[0] for pt in points]
+
+            active_coords_temp = []
+
+            for point in points:
+                if point[0] not in ['?']:
+                    active_coords_temp.append(point[0])
+
+            self.active_coords[worker] = set(active_coords_temp)
 
 
     def addFiber(self, c):
         #
-        # The each payload that was a fiber we need to recurse, but we
+        # For each payload that was a fiber we need to recurse, but we
         # also need to figure out what to highlight at the next level
         # So these variables hold the highlight information with one
-        # less coordinate (in "highlight_next") for each worker, and a
-        # dictionary of workers (in "highlight_subtensor_next") that
-        # are highlighting the remaining subtensor
+        # less coordinate (in "highlights_next") for each worker, and
+        # a dictionary of workers (in "highlight_subtensor_next") that
+        # are highlighting the remaining levels of the subtensor
         #
+        self.current_coord = c
+
         highlights = self.highlights
         highlight_subtensor = self.highlight_subtensor
-        highlight_coords = self.highlight_coords
+        active_coords = self.active_coords
 
-        highlight_next = {}
+        highlights_next = {}
         highlight_subtensor_next = {}
 
         for worker, points in highlights.items():
             #
-            # Create the tail of the highlight coordinates
-            #
-            highlight_next[worker] = [pt[1:] for pt in points if len(pt) > 1 and pt[0] == c]
-            #
             # Once we start highlighting a fiber, highlight the entire subtensor.
+            #
             # TBD: Maybe we should have just copied highlight_subtensor
             #
             if worker in highlight_subtensor:
                 highlight_subtensor_next[worker] = True
 
             #
-            # If there are no more coordinates,
-            # maybe start highlighting a subtensor
+            # Create the tail of the highlight coordinates as the next
+            # highlights
             #
-            if len(highlight_next[worker]) == 0 and c in highlight_coords[worker]:
-                highlight_subtensor_next[worker] = True
+            highlights_next[worker] = []
 
-        highlight_manager_next = HighlightManager(highlight_next, highlight_subtensor_next)
+            for point in points:
+                len_point = len(point)
+
+                #
+                # If there are more than one coordinate in the point,
+                # then add the remaining coordinates to the next
+                # highlights
+                #
+                if len_point > 1 and (point[0] == c or point[0] == '?'):
+                    highlights_next[worker].append(point[1:])
+
+                #
+                # If this was the last coordinate
+                # maybe start highlighting a subtensor
+                #
+                if len_point == 1 and point[0] == c and c in active_coords[worker]:
+                    highlight_subtensor_next[worker] = True
+                    self.addHighlight(worker)
+
+
+        highlight_manager_next = HighlightManager(highlights_next,
+                                                  highlight_subtensor_next,
+                                                  self,
+                                                  self.level-1)
 
         return highlight_manager_next
 
+    def addHighlight(self, worker):
+
+        if not worker in self.highlight_coords:
+            self.highlight_coords[worker] = set([self.current_coord])
+        else:
+            self.highlight_coords[worker].add(self.current_coord)
+
+        parent = self.parent
+        if parent is not None:
+            parent.addHighlight(worker)
+
+
     def getColorCoord(self, c):
 
+        #
+        # For level 0, the highlight coords are the active coords and
+        # tell the parent which of this child's workers were
+        # highlighted
+        #
+        if self.level == 0:
+            self.highlight_coords = self.active_coords
+
+            for worker, coords in self.highlight_coords.items():
+                if c in coords:
+                    # print(f"highlights[{worker}] = {self.highlights[worker]}")
+                    parent = self.parent
+                    if parent is not None:
+                        self.parent.addHighlight(worker)
+
+
         color_coord = set([worker for worker, coords in self.highlight_coords.items() if c in coords])
+
         return color_coord
 
     def getColorSubtensor(self):
@@ -135,6 +199,13 @@ class HighlightManager():
 
         Nothing
 
+
+        Bugs:
+        -----
+
+        A single point with a character as a coordinate is
+        misinterpreted as a list of points
+
         """
 
         if not isinstance(highlights, dict):
@@ -153,6 +224,7 @@ class HighlightManager():
             if len(pe_highlights):
                 try:
                     temp = pe_highlights[0][0]
+
                 except Exception:
                     temp = pe_highlights
                     pe_highlights = []

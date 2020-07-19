@@ -37,7 +37,8 @@ class UncompressedImage():
         self.col_extent = extent[1]
         self.row_map = row_map
 
-        self.highlight_manager = HighlightManager(highlights)
+        level = len(self.object.getShape())-1
+        self.highlight_manager = HighlightManager(highlights, level=level)
 
         #
         # Cache worker colors
