@@ -12,8 +12,12 @@ class RBTree(CompressionFormat):
         if root == NIL:
             output.append(empty)
             return
-        # print("depth {}, data {}".format(depth, root.data))
-        strout = ','.join(str(v) for v in root.data)
+        # write data at node into a string
+        strout = ''
+        if isinstance(root.data, int):
+            strout = str(root.data)
+        else:
+            strout = ','.join(str(v) for v in root.data)
         output.append("({})".format(strout))
         RBTree.serializeTree(root.left, output, depth + 1, empty)
         RBTree.serializeTree(root.right, output, depth + 1, empty)
