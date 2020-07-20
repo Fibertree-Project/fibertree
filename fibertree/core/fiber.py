@@ -481,8 +481,39 @@ class Fiber:
         return payload
 
 
-    def getRange(self, start_coord, size, trans_fn=None, start_pos=None):
-        """getRange"""
+    def getRange(self, start_coord, size=None, end_coord=None, trans_fn=None, start_pos=None):
+        """getRange
+
+        Return a fiber in the range starting at start_coord and ending
+        either when the size is exceeded or the fiber reaches the end
+        of the open interval ending at end_coord.
+
+        Note1: either "size" or "end_coord" must be specified, but not both.
+
+        Note2: The resulting fiber will NOT include "end_coord"
+
+        Parameters
+        ----------
+        start_coord: coordinate
+        A coordinate indicating where start the new fiber
+
+        size: integer
+        The size of the range in coordinate space
+
+        end_coord: coordinate
+        A coordinate indicating the end of the open interval
+
+        trans_fn: function: coord -> coord
+        A function that converts a coordinate in the orginal fiber
+        into a cordinate in the new fiber
+
+        start_pos: scalar or Payload() containing a scalar
+        Optional shortcut value to optimize search for start_coord
+
+        """
+
+        assert not (size is None and end_coord is None)
+        assert size is not None or end_coord is not None
 
         if trans_fn is None:
             # Default trans_fn is identify function (inefficient but easy implementation)
@@ -501,7 +532,11 @@ class Fiber:
         # Invariant: trans_fn is order preserving, but we check for reversals
 
         min = start_coord
-        max = start_coord + size - 1
+
+        if size is not None:
+            max = start_coord + size
+        else:
+            max = end_coord
 
         coords = []
         payloads = []
@@ -514,7 +549,7 @@ class Fiber:
             c = self.coords[pos]
             p = self.payloads[pos]
             new_c = trans_fn(c)
-            if new_c > max:
+            if new_c >= max:
                 break
             if new_c >= min:
 

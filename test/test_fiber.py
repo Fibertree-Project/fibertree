@@ -702,6 +702,8 @@ class TestFiber(unittest.TestCase):
 
         startc = [4, 3, 5, 13, 9, 15]
         size = [2, 3, 4, 2, 4, 3]
+        end_coord = [6, 6, 9, 15, 13, 18]
+
         ans = [Fiber(coords[1:2], payloads[1:2]),
                Fiber(coords[1:2], payloads[1:2]),
                Fiber(coords[2:4], payloads[2:4]),
@@ -713,6 +715,36 @@ class TestFiber(unittest.TestCase):
         for i in range(len(startc)):
             b = a.getRange(startc[i], size[i])
             self.assertEqual(b, ans[i])
+
+            c = a.getRange(startc[i], end_coord=end_coord[i])
+            self.assertEqual(c, ans[i])
+
+
+    def test_getRange_flattened(self):
+        """getRange flattened coordinates"""
+
+        coords = [(0, 2), (0, 4), (0, 6), (0, 8), (0, 9),
+                  (1, 2), (1, 5),(1, 5), (1, 7),
+                  (2, 0)]
+
+        payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]
+
+        a = Fiber(coords, payloads)
+
+        startc = [(0, 4), (0, 3), (0, 5), (1, 3) , (0, 9), (1, 5)]
+        end_coord = [(0, 6),(0, 6), (0, 9), (1, 5), (1, 3), (1, 8)]
+
+        ans = [Fiber(coords[1:2], payloads[1:2]),
+               Fiber(coords[1:2], payloads[1:2]),
+               Fiber(coords[2:4], payloads[2:4]),
+               Fiber([], []),
+               Fiber(coords[4:6], payloads[4:6]),
+               Fiber(coords[6:9], payloads[6:9]),
+        ]
+
+        for i in range(len(startc)):
+            c = a.getRange(startc[i], end_coord=end_coord[i])
+            self.assertEqual(c, ans[i])
 
 
     def test_getRange_shortcut(self):
