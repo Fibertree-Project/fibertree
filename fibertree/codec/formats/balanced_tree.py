@@ -7,7 +7,7 @@ class RBTree(CompressionFormat):
 
     # preorder serialziation
     @staticmethod
-    def serializeTree(root, output, depth, empty):
+    def serializeTree(root, output, depth, ind, empty):
         if root == None: return
         if root == NIL:
             output.append(empty)
@@ -15,12 +15,19 @@ class RBTree(CompressionFormat):
         # write data at node into a string
         strout = ''
         if isinstance(root.data, int):
-            strout = str(root.data)
+            # strout = str(root.data)
+            output.append(root.data)
         else:
-            strout = ','.join(str(v) for v in root.data)
-        output.append("({})".format(strout))
-        RBTree.serializeTree(root.left, output, depth + 1, empty)
-        RBTree.serializeTree(root.right, output, depth + 1, empty)
+            # strout = str(root.data[ind])
+            # strout = ','.join(str(v) for v in root.data)
+            if isinstance(root.data[ind], tuple):
+                strout = "({})".format(','.join(str(v) for v in root.data[ind]))
+                output.append(strout)
+            else:
+                output.append(root.data[ind])
+        # output.append("{}".format(strout))
+        RBTree.serializeTree(root.left, output, depth + 1, ind, empty)
+        RBTree.serializeTree(root.right, output, depth + 1, ind, empty)
 
     @staticmethod
     def encodeFiber(a, dim_len, codec, depth, ranks, output):
@@ -60,19 +67,35 @@ class RBTree(CompressionFormat):
                 tree.add((ind, val.value))
             fiber_occupancy = fiber_occupancy + 1
             
-            prev_nz = ind + 1
+            # prev_nz = ind + 1
 
         # serialize tree
-        result = list()
-        empty = '(-1, -1)'
-        if depth < len(ranks) - 1 and not codec.fmts[depth + 1].encodeUpperPayload():
-            empty = '-1'
-        RBTree.serializeTree(tree.root, result, 0, empty)
-        # print(result)
+        empty = -1
 
-        # add to coords list
-        output[coords_key].extend(result)
-        
+        # struct of arrays
+        result = list()
+        if tree.root is None or isinstance(tree.root.data, int):
+            RBTree.serializeTree(tree.root, result, 0, 0, empty)
+            # print(result)
+
+            # add to coords list
+            output[coords_key].extend(result)
+        else: 
+            RBTree.serializeTree(tree.root, result, 0, 0, empty)
+            # print(result)
+
+            # add to coords list
+            output[coords_key].extend(result)
+
+            # payloads
+            result = list()
+
+            RBTree.serializeTree(tree.root, result, 0, 1, empty)
+            # print(result)
+
+            # add to coords list
+            output[payloads_key].extend(result)
+
         # explicit payloads for next level
         return [fiber_occupancy, len(result)], occ_list
 

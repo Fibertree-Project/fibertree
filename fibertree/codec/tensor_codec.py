@@ -75,6 +75,8 @@ class Codec:
 
             for i in range(0, len(rank_names)):
                     name = rank_names[i]
+                    if isinstance(name, list):
+                        name = ''.join(name)
                     coords_key = "coords_{}".format(name.lower())
                     payloads_key = "payloads_{}".format(name.lower())
 
@@ -92,14 +94,13 @@ class Codec:
     # print and write out yaml in that format
     # TODO: change the output file name (currently just writes it to [descriptor string].yaml)
     @staticmethod
-    def write_yaml(tensor, descriptor, tensor_in_format):
+    def write_yaml(tensor, rank_names, descriptor, tensor_in_format):
             # header
             header = dict()
             header["name"] = "tensor-a" # TODO: take this as input later
             header["rank_ids"] = tensor.getRankIds()
             header["shapes"] = tensor.getShape()
             header["formats"] = descriptor
-            rank_names = tensor.getRankIds()
 
             # print(tensor_in_format)
             # hierarchical yaml according to ranks
