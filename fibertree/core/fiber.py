@@ -5,12 +5,8 @@ from functools import partialmethod
 import yaml
 import random
 
+from .coord_payload import CoordPayload
 from .payload import Payload
-
-#
-# Define a named tuple for coordinate/payload pairs
-#
-CoordPayload = namedtuple('CoordPayload', 'coord payload')
 
 #
 # Define an error class
