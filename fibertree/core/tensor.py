@@ -635,6 +635,16 @@ class Tensor:
         return self.getRoot().__reversed__()
 
 
+    def __getitem__(self, keys):
+        """__getitem__"""
+
+        return self.getRoot().__getitem__(keys)
+
+    def __setitem__(self, key, newvalue):
+        """__setitem__"""
+
+        self.getRoot().__setitem__(key, newvalue)
+
 
 #
 # Split methods
