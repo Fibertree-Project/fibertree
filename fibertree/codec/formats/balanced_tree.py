@@ -5,14 +5,31 @@ class RBTree(CompressionFormat):
     def __init__(self):
         self.name = "T"
 
-    # preorder serialziation
+    @staticmethod 
+    def getHeight(root):
+        if root == None or root == NIL: return 0
+        left_height = RBTree.getHeight(root.left)
+        right_height = RBTree.getHeight(root.right)
+        if left_height > right_height:
+            return left_height + 1
+        else: return right_height + 1
+
+    # TODO: full binary tree serialization
+    # preorder serializiation
     @staticmethod
-    def serializeTree(root, output, depth, ind, empty):
-        if root == None: return
+    def serializeTree(root, output, depth, ind, empty, height):
+        if depth == height:
+        # if root == None: 
+            return
+        # otherwise, depth < height
         if root == NIL:
             output.append(empty)
+            RBTree.serializeTree(NIL, output, depth + 1, ind, empty, height)
+            RBTree.serializeTree(NIL, output, depth + 1, ind, empty, height)
             return
+        # return
         # write data at node into a string
+        
         strout = ''
         if isinstance(root.data, int):
             # strout = str(root.data)
@@ -25,9 +42,9 @@ class RBTree(CompressionFormat):
                 output.append(strout)
             else:
                 output.append(root.data[ind])
-        # output.append("{}".format(strout))
-        RBTree.serializeTree(root.left, output, depth + 1, ind, empty)
-        RBTree.serializeTree(root.right, output, depth + 1, ind, empty)
+        
+        RBTree.serializeTree(root.left, output, depth + 1, ind, empty, height)
+        RBTree.serializeTree(root.right, output, depth + 1, ind, empty, height)
 
     @staticmethod
     def encodeFiber(a, dim_len, codec, depth, ranks, output):
@@ -52,7 +69,6 @@ class RBTree(CompressionFormat):
             child_occupancy = codec.encode(depth + 1, val, ranks, output)
             # keep track of actual occupancy (nnz in this fiber)
             
-            # print("ind {}, depth {}, child {}, cumulative {}".format(ind, depth, child_occupancy, cumulative_occupancy))
             if isinstance(cumulative_occupancy, int):
                 cumulative_occupancy = cumulative_occupancy + child_occupancy
             else:
@@ -67,37 +83,36 @@ class RBTree(CompressionFormat):
                 tree.add((ind, val.value))
             fiber_occupancy = fiber_occupancy + 1
             
-            # prev_nz = ind + 1
-
         # serialize tree
         empty = -1
 
         # struct of arrays
         result = list()
+        height = RBTree.getHeight(tree.root)
+        size_of_tree = 2**height - 1
         if tree.root is None or isinstance(tree.root.data, int):
-            RBTree.serializeTree(tree.root, result, 0, 0, empty)
-            # print(result)
-
+            RBTree.serializeTree(tree.root, result, 0, 0, empty, height)
+            assert len(result) == size_of_tree
             # add to coords list
             output[coords_key].extend(result)
         else: 
-            RBTree.serializeTree(tree.root, result, 0, 0, empty)
-            # print(result)
-
+            RBTree.serializeTree(tree.root, result, 0, 0, empty, height)
             # add to coords list
             output[coords_key].extend(result)
 
             # payloads
             result = list()
 
-            RBTree.serializeTree(tree.root, result, 0, 1, empty)
-            # print(result)
-
+            RBTree.serializeTree(tree.root, result, 0, 1, empty, height)
+            assert len(result) == size_of_tree
+            
             # add to coords list
             output[payloads_key].extend(result)
 
         # explicit payloads for next level
-        return [fiber_occupancy, len(result)], occ_list
+        return len(result), occ_list
+
+        # return [fiber_occupancy, len(result)], occ_list
 
     # encode coord explicitly
     @staticmethod

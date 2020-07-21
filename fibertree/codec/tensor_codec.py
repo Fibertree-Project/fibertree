@@ -35,6 +35,15 @@ class Codec:
     def get_num_ranks(self):
         return self.num_ranks
 
+    def get_occupancies(self, depth, a, num_ranks, output):
+        if depth >= num_ranks:
+            return 
+        count = 0
+        for ind, (val) in a:
+            self.get_occupancies(depth + 1, val, num_ranks, output)
+            count = count + 1
+        output[depth] = output[depth] + count
+
     # encode
     def encode(self, depth, a, ranks, output):
         if depth >= len(ranks):
@@ -93,15 +102,18 @@ class Codec:
     # given a tensor, descriptor, and dict of tensor encoded in that format
     # print and write out yaml in that format
     # TODO: change the output file name (currently just writes it to [descriptor string].yaml)
-    @staticmethod
-    def write_yaml(tensor, rank_names, descriptor, tensor_in_format):
+    # @staticmethod
+    def write_yaml(self, tensor, rank_names, descriptor, tensor_in_format):
             # header
             header = dict()
             header["name"] = "tensor-a" # TODO: take this as input later
             header["rank_ids"] = tensor.getRankIds()
             header["shapes"] = tensor.getShape()
             header["formats"] = descriptor
+            occupancies = [0]*len(rank_names)
+            self.get_occupancies(0, tensor.getRoot(), len(rank_names), occupancies)
 
+            header["occupancies"] = occupancies
             # print(tensor_in_format)
             # hierarchical yaml according to ranks
             scratchpads = dict()

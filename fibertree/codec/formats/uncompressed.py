@@ -16,7 +16,9 @@ class Uncompressed(CompressionFormat):
         fiber_occupancy = 0
         
         cumulative_occupancy = 0
-        if depth < len(ranks) - 1 and (codec.format_descriptor[depth + 1] is "Hf" or codec.format_descriptor[depth + 1] is "T"):
+        if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] is "Hf": 
+        # (codec.format_descriptor[depth + 1] is "Hf": 
+                # or codec.format_descriptor[depth + 1] is "T"):
             cumulative_occupancy = [0, 0]
         occ_list = list()
         prev_nz = 0
@@ -30,7 +32,7 @@ class Uncompressed(CompressionFormat):
 
                 # keep track of occupancy (cumulative requires ordering)
                 # cumulative_occupancy = cumulative_occupancy + child_occupancy
-
+                # print(child_occupancy)
                 if isinstance(cumulative_occupancy, int):
                     cumulative_occupancy = cumulative_occupancy + child_occupancy
                 else:
