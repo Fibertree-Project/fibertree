@@ -29,9 +29,14 @@ class TensorCanvas():
     the addFrame() method in a {Movie,SpaceTime}Canvas, which displays
     those highlignts on the current state of the shadow tensors.
 
+    This class also provides primitive support for having an activity
+    "wait" for a corrdinate in another tensor to be updated. To do
+    this it tracks the update time of each coordinate that changes
+    a value. This capability is enabled with the "enable_wait" keyword.
+
     """
 
-    def __init__(self, *tensors, animation='movie', style='tree'):
+    def __init__(self, *tensors, animation='movie', style='tree', enable_wait=False):
         """__init__
 
         Parameters
@@ -45,6 +50,9 @@ class TensorCanvas():
         style: string
         Display style for movies ('tree', 'uncompressed', 'tree+uncompressed')
 
+        enable_wait: Boolean
+        Enable tracking update times to allow waiting for an update
+
         """
 
         #
@@ -55,6 +63,7 @@ class TensorCanvas():
         self.num_tensors = num_tensors
         self.orig_tensors = []
         self.shadow_tensors = []
+        self.update_times = [] if enable_wait else None
 
         for t in tensors:
             #
@@ -66,7 +75,6 @@ class TensorCanvas():
                 t = Tensor.fromFiber(fiber=t)
 
             self.orig_tensors.append(t)
-
             #
             # Create a tensor to hold a shadow tensor that tracks
             # updates to the tracked tensors at the right time
@@ -76,8 +84,20 @@ class TensorCanvas():
             else:
                 self.shadow_tensors.append(t)
 
+            #
+            # Create a tensor to hold last update time
+            # of each element of a tensor
+            #
+            if enable_wait:
+                self.update_times.append(Tensor(rank_ids=t.getRankIds()))
+
         self.log = []
         self.inframe = False
+
+        #
+        # Global cycle tracker
+        #
+        self.cycle = 0
 
         #
         # Reset image highlighting
@@ -95,7 +115,7 @@ class TensorCanvas():
             print(f"TensorCanvas: No animation type: {animation}")
 
 
-    def addActivity(self, *highlights, worker="anon", skew=0, end_frame=False):
+    def addActivity(self, *highlights, worker="anon", skew=0, wait=None, end_frame=False):
         """ addActivity """
         #
         # Set that we are in a frame
@@ -114,6 +134,32 @@ class TensorCanvas():
         for hl in highlights:
             highlights_list.append(HighlightManager.canonicalizeHighlights(hl, worker=worker))
 
+        #
+        # If wait is a list it is a list of input tensors that this
+        # activity depended on and the skew is delayed by the latest
+        # time among those inputs
+        #
+        if wait is not None:
+            assert self.update_times is not None, "Keyword 'enable_wait' not set"
+
+            delay = -1
+
+            #
+            # Look at each input and see which is the latest
+            #
+            # TBD: We wait for all the highlighted points in an input,
+            #      maybe it should be selective
+            #
+            for tnum, xmit_time in wait.items():
+                for hl in highlights_list[tnum][worker]:
+                    update_time = self.update_times[tnum].getPayload(*hl)
+                    update_delay = update_time.value - self.cycle + xmit_time
+                    if update_delay > delay:
+                        delay = update_delay
+
+            assert delay >= 0, "Tensor never updated for wait"
+
+            skew = max(skew, delay)
 
         #
         # Tell the canvas to remember the current tensor states
@@ -216,6 +262,7 @@ class TensorCanvas():
         """
 
         tensors = self.orig_tensors
+        update_times = self.update_times
 
         for n in range(len(self.log), skew+1):
             self._createChanges()
@@ -243,6 +290,9 @@ class TensorCanvas():
                     payload = tensors[tnum].getPayload(*point)
                     values[tnum].append(copy.deepcopy(payload))
 
+                    if update_times is not None:
+                        updatetime_ref = update_times[tnum].getPayloadRef(*point)
+                        updatetime_ref <<= self.cycle + skew
 
 
     def _replayChanges(self):
@@ -269,6 +319,7 @@ class TensorCanvas():
 
 
         del self.log[0]
+        self.cycle += 1
 
 
     def _createChanges(self):
