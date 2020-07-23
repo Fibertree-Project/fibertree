@@ -646,6 +646,33 @@ class Tensor:
         self.getRoot().__setitem__(key, newvalue)
 
 
+    def updateCoords(self, func, depth=0):
+        """updateCoords
+
+        Trampoline to fiber function
+
+        """
+
+        new_tensor = copy.deepcopy(self)
+
+        new_tensor.getRoot().updateCoords(func, depth)
+
+        return new_tensor
+
+
+    def updatePayloads(self, func, depth=0):
+        """updatePayloads
+
+        Trampoline to fiber function
+
+        """
+
+        new_tensor = copy.deepcopy(self)
+
+        new_tensor.getRoot().updatePayloads(func, depth)
+
+        return new_tensor
+
 #
 # Split methods
 #
@@ -893,6 +920,7 @@ class Tensor:
         # Create Tensor from rank_ids and root fiber
         #
         return root
+
 
 
 #
