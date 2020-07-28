@@ -502,6 +502,8 @@ class UncompressedImage():
                     x_text = x_text - 7
                 if v >= 1000:
                     x_text = x_text - 7
+            elif (isinstance(v, float)):
+                v = round(v, 2)
 
 
             # Hack: drawing text twice looks better in PIL
