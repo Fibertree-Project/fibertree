@@ -63,7 +63,9 @@ class TensorCanvas():
         self.num_tensors = num_tensors
         self.orig_tensors = []
         self.shadow_tensors = []
+
         self.update_times = [] if enable_wait else None
+        self.waitname_map = {}
 
         for t in tensors:
             #
@@ -150,7 +152,10 @@ class TensorCanvas():
             # TBD: We wait for all the highlighted points in an input,
             #      maybe it should be selective
             #
-            for tnum, xmit_time in wait.items():
+            for tname, xmit_time in wait.items():
+
+                tnum = self.waitname_map.get(tname, self._insertWaitname(tname))
+
                 for hl in highlights_list[tnum][worker]:
                     update_time = self.update_times[tnum].getPayload(*hl)
                     update_delay = update_time.value - self.cycle + xmit_time
@@ -181,6 +186,24 @@ class TensorCanvas():
         #
         if end_frame or worker == "anon":
             self.addFrame()
+
+
+    def _insertWaitname(self, tname):
+
+        if isinstance(tname, int):
+            self.waitname_map[tname] = tname
+            return tname
+
+        for tnum, t in enumerate(self.orig_tensors):
+            if t.getName() == tname:
+                self.waitname_map[tname] = tnum
+                return tnum
+
+        #
+        # Didn't find the tensor, so
+        # return None to cause an error in the caller
+        #
+        return None
 
 
     def addFrame(self, *highlights):
