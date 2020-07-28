@@ -11,18 +11,14 @@ class Uncompressed(CompressionFormat):
     def encodeFiber(a, dim_len, codec, depth, ranks, output):
         # import codec
         from ..tensor_codec import Codec
-        payloads_key = "payloads_{}".format(ranks[depth].lower())
+        coords_key, payloads_key = codec.get_keys(ranks, depth)
+        
         # init vars
         fiber_occupancy = 0
         
-        cumulative_occupancy = 0
-        if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] is "Hf": 
-        # (codec.format_descriptor[depth + 1] is "Hf": 
-                # or codec.format_descriptor[depth + 1] is "T"):
-            cumulative_occupancy = [0, 0]
+        cumulative_occupancy = codec.get_start_occ(depth)
+
         occ_list = list()
-        prev_nz = 0
-        occ_list.append(cumulative_occupancy)
         
         # iterate through all coords (nz or not)
         for i in range(0, dim_len):
@@ -32,13 +28,12 @@ class Uncompressed(CompressionFormat):
 
                 # keep track of occupancy (cumulative requires ordering)
                 # cumulative_occupancy = cumulative_occupancy + child_occupancy
-                # print(child_occupancy)
                 if isinstance(cumulative_occupancy, int):
                     cumulative_occupancy = cumulative_occupancy + child_occupancy
                 else:
                     cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
-                    # cumulative_occupancy = map(operator.add, cumulative_occupancy, child_occupancy)
-                occ_list.append(cumulative_occupancy)
+                codec.add_payload(depth, occ_list, cumulative_occupancy, child_occupancy)
+
             else: # leaf level
                 if a.getPayload(i) == 0:
                     output[payloads_key].append(0)

@@ -50,17 +50,14 @@ class RBTree(CompressionFormat):
     def encodeFiber(a, dim_len, codec, depth, ranks, output):
         # import codec
         from ..tensor_codec import Codec
-        coords_key = "coords_{}".format(ranks[depth].lower())
-        payloads_key = "payloads_{}".format(ranks[depth].lower())
+        coords_key, payloads_key = codec.get_keys(ranks, depth)
 
         tree = RedBlackTree()
 
         # init vars
         fiber_occupancy = 0
-        cumulative_occupancy = 0
-        if depth < len(ranks) - 1:
-            if codec.format_descriptor[depth + 1] is "Hf" or codec.format_descriptor[depth+1] is "T":
-    	        cumulative_occupancy = [0, 0] 
+
+        cumulative_occupancy = codec.get_start_occ(depth)
         occ_list = list()
         occ_list.append(cumulative_occupancy)
         prev_nz = 0
@@ -76,7 +73,10 @@ class RBTree(CompressionFormat):
             
             if depth < len(ranks) - 1:
                 if codec.fmts[depth + 1].encodeUpperPayload():
-                    tree.add((ind, cumulative_occupancy))
+                    if codec.cumulative_payloads[depth]:
+                        tree.add((ind, cumulative_occupancy))
+                    else:
+                        tree.add((ind, child_occupancy))
                 else:
                     tree.add(ind)
             else:
@@ -84,18 +84,20 @@ class RBTree(CompressionFormat):
             fiber_occupancy = fiber_occupancy + 1
             
         # serialize tree
+        # null value for empty nodes
         empty = -1
 
-        # struct of arrays
         result = list()
         height = RBTree.getHeight(tree.root)
         size_of_tree = 2**height - 1
+
+        # serialize only coords
         if tree.root is None or isinstance(tree.root.data, int):
             RBTree.serializeTree(tree.root, result, 0, 0, empty, height)
             assert len(result) == size_of_tree
             # add to coords list
             output[coords_key].extend(result)
-        else: 
+        else: # struct of arrays in yaml, write two serializations
             RBTree.serializeTree(tree.root, result, 0, 0, empty, height)
             # add to coords list
             output[coords_key].extend(result)
@@ -110,9 +112,8 @@ class RBTree(CompressionFormat):
             output[payloads_key].extend(result)
 
         # explicit payloads for next level
+        # return size of tree representation
         return len(result), occ_list
-
-        # return [fiber_occupancy, len(result)], occ_list
 
     # encode coord explicitly
     @staticmethod

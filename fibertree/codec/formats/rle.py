@@ -1,8 +1,8 @@
 from .compression_format import CompressionFormat
 
-class CoordinateList(CompressionFormat):
+class RunLengthEncoding(CompressionFormat):
     def __init__(self):
-        self.name = "C"
+        self.name = "R"
 
     @staticmethod
     def encodeFiber(a, dim_len, codec, depth, ranks, output):
@@ -24,9 +24,7 @@ class CoordinateList(CompressionFormat):
         
         for ind, (val) in a:
             child_occupancy = codec.encode(depth + 1, val, ranks, output)
-            # keep track of actual occupancy (nnz in this fiber)
             
-            # print("ind {}, depth{}, child {}, cumulative {}".format(ind, depth, child_occupancy, cumulative_occupancy))
             if isinstance(cumulative_occupancy, int):
                 cumulative_occupancy = cumulative_occupancy + child_occupancy
             else:
@@ -36,7 +34,7 @@ class CoordinateList(CompressionFormat):
             codec.add_payload(depth, occ_list, cumulative_occupancy, child_occupancy)
             
             # store coordinate explicitly
-            coords = CoordinateList.encodeCoord(prev_nz, ind)
+            coords = RunLengthEncoding.encodeCoord(prev_nz, ind)
             output[coords_key].extend(coords)
 
             # keep track of nnz in this fiber
@@ -46,7 +44,7 @@ class CoordinateList(CompressionFormat):
             if depth == len(ranks) - 1:
                 output[payloads_key].append(val.value)
 
-            prev_nz = ind + 1
+            prev_nz = ind
         
         # explicit payloads for next level
         if depth < len(ranks) - 1 and codec.fmts[depth+1].encodeUpperPayload():
@@ -56,7 +54,7 @@ class CoordinateList(CompressionFormat):
     # encode coord explicitly
     @staticmethod
     def encodeCoord(prev_ind, ind):
-        return [ind]
+        return [ind - prev_ind]
 
     @staticmethod
     def encodePayload(prev_ind, ind, payload):

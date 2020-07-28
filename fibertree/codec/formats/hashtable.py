@@ -29,6 +29,8 @@ class HashTable(CompressionFormat):
             cumulative_occupancy = (0, 0)
         occ_list = list()
         num_coords = len(a.getCoords())
+
+        # if the hashtable length is fixed, don't need to write it as a payload
         hashtable_len = 6
 
         # init scratchpads
@@ -76,8 +78,7 @@ class HashTable(CompressionFormat):
             
             fiber_occupancy = fiber_occupancy + 1
 
-        coords_key = "coords_{}".format(ranks[depth].lower())
-        payloads_key = "payloads_{}".format(ranks[depth].lower())
+        coords_key, payloads_key = codec.get_keys(ranks, depth)
         ptrs_key = "ptrs_{}".format(ranks[depth].lower())
         ht_key = "ht_{}".format(ranks[depth].lower())
 
@@ -127,3 +128,7 @@ class HashTable(CompressionFormat):
     @staticmethod
     def encodeUpperPayload():
         return True
+    
+    @staticmethod 
+    def startOccupancy():
+        return [0, 0]

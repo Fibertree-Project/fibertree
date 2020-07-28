@@ -3,7 +3,7 @@ from .formats.coord_list import CoordinateList
 from .formats.bitvector import Bitvector
 from .formats.hashtable import HashTable
 from .formats.balanced_tree import RBTree
-# from .formats.bu import UncompressedBitvector
+from .formats.rle import RunLengthEncoding
 """
 # U = uncompressed
     # size of vector = shape of fiber
@@ -53,4 +53,4 @@ descriptor_to_fmt = {uncompressed : Uncompressed, coord_list: CoordinateList}
 
 # TODO: figure out how to register yourself
 
-descriptor_to_fmt = {"U" : Uncompressed, "C": CoordinateList, "B": Bitvector, "Hf" : HashTable(), "T": RBTree }# , "UB": UncompressedBitvector}
+descriptor_to_fmt = {"U" : Uncompressed, "C": CoordinateList, "B": Bitvector, "Hf" : HashTable(), "T": RBTree, "R": RunLengthEncoding }# , "UB": UncompressedBitvector}

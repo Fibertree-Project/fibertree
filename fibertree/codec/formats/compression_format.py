@@ -31,6 +31,8 @@ class CompressionFormat:
     def endPayloads(num_to_pad):
         return []
 
-    # 
+    @staticmethod
+    def startOccupancy():
+        return 0
 
     # todo: maybe eventually combine the encode and decode like serialization

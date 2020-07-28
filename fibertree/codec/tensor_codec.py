@@ -6,21 +6,17 @@ from fibertree import Tensor
 #import compression groupings
 from .compression_types import descriptor_to_fmt
 
-# import compression formats
-from .formats.uncompressed import Uncompressed
-from .formats.coord_list import CoordinateList
-from .formats.bitvector import Bitvector
-from .formats.hashtable import HashTable
-
 class Codec:
     # format descriptor should be a tuple of valid formats
     # order descriptor specified SoA or AoS at each rank (currently unused)
     # AoS / SoA doesn't apply to some formats (e.g. U) -> C (SoA, default should be here) / Ca (AoS)
-    def __init__(self, format_descriptor):
+    def __init__(self, format_descriptor, cumulative_payloads):
         # take a list of compression formats
         # TODO: check that they are valid
         self.format_descriptor = format_descriptor
-        
+        self.cumulative_payloads = cumulative_payloads
+        # print(cumulative_payloads)
+        assert len(cumulative_payloads) == len(format_descriptor)
         # convert descriptor to list of formats
         self.fmts = list()
         for fmt in self.format_descriptor:
@@ -28,10 +24,19 @@ class Codec:
         
         # assumes pre-flattened for now
         self.num_ranks = len(format_descriptor)
-                 
+
+    def add_payload(self, depth, output, cumulative, noncumulative):
+        if self.cumulative_payloads[depth]:
+            output.append(cumulative)
+        else:
+            output.append(noncumulative)
+
     def get_format_descriptor(self):
         return self.format_descriptor
-                 
+
+    def get_start_occ(self, depth):
+        return self.fmts[depth].startOccupancy()
+
     def get_num_ranks(self):
         return self.num_ranks
 
@@ -44,23 +49,25 @@ class Codec:
             count = count + 1
         output[depth] = output[depth] + count
 
+    # return coords_{rank}, payloads_{rank}
+    def get_keys(self, ranks, depth):
+        assert depth < len(ranks)
+        return "coords_{}".format(ranks[depth].lower()), "payloads_{}".format(ranks[depth].lower()),
+
     # encode
     def encode(self, depth, a, ranks, output):
         if depth >= len(ranks):
             return -1
         # keys are in the form payloads_{rank name}, coords_{rank name}
         # deal with the root separately
-        # TODO: make this a function
-        payloads_key = "payloads_{}".format(ranks[depth].lower())
-        coords_key = "coords_{}".format(ranks[depth].lower())
+        coords_key, payloads_key = self.get_keys(ranks, depth)
 
         if depth == -1:           
             # recurse one level down without adding to output yet
             size = self.encode(depth + 1, a, ranks, output)
 
             if self.fmts[depth + 1].encodeUpperPayload():
-                # output[payloads_key].extend(occ_list)
-            # store at most one payload at the root (size of first rank)
+                # store at most one payload at the root (size of first rank)
                 payloads_key = "payloads_root"
                 output[payloads_key].append(size)
             return None
@@ -77,23 +84,20 @@ class Codec:
     # encode
     # static functions
     # rank output dict based on rank names
-    @staticmethod
-    def get_output_dict(rank_names, format_descriptor):
+    # @staticmethod
+    # def get_output_dict(rank_names, format_descriptor):
+    def get_output_dict(self, rank_names):
             output = dict()
             output["payloads_root"] = []
 
             for i in range(0, len(rank_names)):
-                    name = rank_names[i]
-                    if isinstance(name, list):
-                        name = ''.join(name)
-                    coords_key = "coords_{}".format(name.lower())
-                    payloads_key = "payloads_{}".format(name.lower())
+                    coords_key, payloads_key = self.get_keys(rank_names, i)
 
                     output[coords_key] = []
                     output[payloads_key] = []  
-                    if format_descriptor[i] == "Hf":
-                        ptrs_key = "ptrs_{}".format(name.lower())
-                        ht_key = "ht_{}".format(name.lower())
+                    if self.format_descriptor[i] == "Hf":
+                        ptrs_key = "ptrs_{}".format(rank_names[i].lower())
+                        ht_key = "ht_{}".format(rank_names[i].lower())
 
                         output[ptrs_key] = []
                         output[ht_key] = []
