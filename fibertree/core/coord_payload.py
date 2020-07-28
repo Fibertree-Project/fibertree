@@ -131,7 +131,7 @@ class CoordPayload():
 
         return self.payload == other
 
-    def __lt__(self,other):
+    def __lt__(self, other):
         """__lt__"""
 
         if isinstance(other, CoordPayload):
@@ -139,7 +139,7 @@ class CoordPayload():
 
         return self.payload < other
 
-    def __le__(self,other):
+    def __le__(self, other):
         """__le__"""
 
         if isinstance(other, CoordPayload):
@@ -147,7 +147,7 @@ class CoordPayload():
 
         return self.payload <= other
 
-    def __gt__(self,other):
+    def __gt__(self, other):
         """__gt__"""
 
         if isinstance(other, CoordPayload):
@@ -155,7 +155,7 @@ class CoordPayload():
 
         return self.payload > other
 
-    def __ge__(self,other):
+    def __ge__(self, other):
         """__ge__"""
 
         if isinstance(other, CoordPayload):
@@ -206,7 +206,7 @@ if __name__ == "__main__":
 
     print("")
 
-    p  = Payload(4)
+    p = Payload(4)
     print(f"p = Payload(4) -> {p}")
 
     z = a + p
@@ -288,7 +288,7 @@ if __name__ == "__main__":
 
     print("")
 
-    p  = Payload(4)
+    p = Payload(4)
     print(f"p = Payload(4) -> {p}")
 
     z = a * p
@@ -343,4 +343,3 @@ if __name__ == "__main__":
     c *= p
     print(f"c*=p -> {c}")
     c = CoordPayload(coord=7, payload=Payload(8))
-

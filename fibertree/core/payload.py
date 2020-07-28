@@ -1,5 +1,6 @@
 """ Payload class"""
 
+
 class Payload:
     """Payload class"""
 
@@ -62,7 +63,7 @@ class Payload:
             assert isinstance(p, tuple)
 
         if (p == 0):
-            return  True
+            return True
 
         return False
 
@@ -76,7 +77,10 @@ class Payload:
 #
     @staticmethod
     def contains(payload, type):
-        """Return whether "payload" is of type "type" - checking inside payload if necessary"""
+        """Return whether "payload" is of type "type"
+
+        Note: it checks inside payload if necessary
+        """
 
         assert type != Payload, "Cannot check for Payload type"
 
@@ -228,7 +232,6 @@ class Payload:
 #
 # Comparison operations
 #
-
     def __eq__(self, other):
         """__eq__"""
 
@@ -237,7 +240,7 @@ class Payload:
 
         return self.value == other
 
-    def __lt__(self,other):
+    def __lt__(self, other):
         """__lt__"""
 
         if isinstance(other, Payload):
@@ -245,7 +248,7 @@ class Payload:
 
         return self.value < other
 
-    def __le__(self,other):
+    def __le__(self, other):
         """__le__"""
 
         if isinstance(other, Payload):
@@ -253,7 +256,7 @@ class Payload:
 
         return self.value <= other
 
-    def __gt__(self,other):
+    def __gt__(self, other):
         """__gt__"""
 
         if isinstance(other, Payload):
@@ -261,7 +264,7 @@ class Payload:
 
         return self.value > other
 
-    def __ge__(self,other):
+    def __ge__(self, other):
         """__ge__"""
 
         if isinstance(other, Payload):
@@ -314,11 +317,6 @@ class Payload:
 
         return Payload(ans)
 
-
-    def __int__(self):
-        """__int__"""
-        
-        return int(self.value)
 #
 # Conversion methods - to/from dictionaries
 #
@@ -347,4 +345,3 @@ if __name__ == "__main__":
     a = Payload(1)
     print("A = %s" % a)
     print("---")
-

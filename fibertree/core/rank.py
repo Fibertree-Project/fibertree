@@ -3,6 +3,7 @@ from .payload import Payload
 
 """ Rank """
 
+
 class Rank:
     """ Rank class """
 
@@ -13,7 +14,7 @@ class Rank:
 
         if shape is None:
             self.estimated_shape = True
-            self.shape= 0
+            self.shape = 0
         else:
             self.estimated_shape = False
             self.shape = shape
@@ -34,7 +35,7 @@ class Rank:
     def getRankIds(self, all_ranks=True):
         """Return list of ranks"""
 
-        rankids =  [self.id]
+        rankids = [self.id]
 
         if all_ranks and self.next_rank is not None:
             rankids.extend(self.next_rank.getRankIds(all_ranks=True))
@@ -157,9 +158,11 @@ class Rank:
         # Check default value for new coordinates in the fiber
         #
         if self.next_rank is None:
-            assert self.getDefault() != Fiber, "Leaf rank default should not be Fiber"
+            assert self.getDefault() != Fiber, \
+                "Leaf rank default should not be Fiber"
         else:
-            assert self.getDefault() == Fiber, "Non-leaf rank default should be Fiber"
+            assert self.getDefault() == Fiber, \
+                "Non-leaf rank default should be Fiber"
 
         #
         # Add fiber to list of fibers of rank
@@ -192,17 +195,17 @@ class Rank:
     def __str__(self, indent=0):
         """__str__"""
 
-        string = indent*' '
+        string = indent * ' '
         string += f"Rank: {self.id} "
 
         next_indent = len(string)
 
-        separator = ",\n" + " "*next_indent
+        separator = ",\n" + " " * next_indent
         fibers = [x.__str__(indent=next_indent, cutoff=1000, newline=True) for x in self.fibers]
         string += separator.join(fibers)
 
         return string
-    
+
     def __repr__(self):
         """__repr__"""
 
