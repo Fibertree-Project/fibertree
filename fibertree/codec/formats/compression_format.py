@@ -4,7 +4,19 @@ mostly just here to be inherited
 """
 class CompressionFormat:
     def __init__(self):
-        self.name = ""
+        # self.name = ""
+        self.coords = []
+        self.payloads = []
+        
+    # return a list of handles and the cost to get those handles
+    def iterate():
+        return [], 0
+
+    # given a list of handles, return the coords at those handles
+    # and the cost in accesses to get those coords
+    # TODO: question: 
+    def handles_to_coords(handles):
+        return [], 0
 
     # e.g. U, C
     @staticmethod 
