@@ -17,7 +17,10 @@ class Uncompressed(CompressionFormat):
         cumulative_occupancy = codec.get_start_occ(depth)
 
         occ_list = list()
-        
+
+        # keep track of shape during encoding
+        self.shape = dim_len
+
         # iterate through all coords (nz or not)
         for i in range(0, dim_len):
             # internal levels
@@ -51,6 +54,33 @@ class Uncompressed(CompressionFormat):
     def getPayloads(self):
         return self.payloads
 
+    def printFiber(self):
+        print(self.payloads)
+
+    def handleToCoord(self, handle):
+        if handle is None or handle >= self.shape:
+            return None
+        return handle
+    # API methods
+    
+    # max number of elements in a slice is proportional to the shape
+    def getSliceMaxLength(self):
+        return self.shape
+
+    def coordToHandle(self, coord):
+        if coord < 0 or coord >= self.shape:
+            return None
+        return coord
+    
+    def insertElement(self, coord):
+        assert coord < self.shape
+        return coord
+
+    def updatePayload(self, handle, payload):
+        assert handle < self.shape
+        self.payloads[handle] = payload
+
+    ### static methods
     @staticmethod
     def encodeCoord(prev_ind, ind):
         return []
