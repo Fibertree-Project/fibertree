@@ -53,4 +53,6 @@ descriptor_to_fmt = {uncompressed : Uncompressed, coord_list: CoordinateList}
 
 # TODO: figure out how to register yourself
 
-descriptor_to_fmt = {"U" : Uncompressed, "C": CoordinateList, "B": Bitvector, "Hf" : HashTable(), "T": RBTree, "R": RunLengthEncoding }# , "UB": UncompressedBitvector}
+descriptor_to_fmt = {"U" : Uncompressed, "C":CoordinateList }
+
+# , "C": CoordinateList, "B": Bitvector, "Hf" : HashTable(), "T": RBTree, "R": RunLengthEncoding }# , "UB": UncompressedBitvector}

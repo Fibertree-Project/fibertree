@@ -50,12 +50,13 @@ class Codec:
         output[depth] = output[depth] + count
 
     # return coords_{rank}, payloads_{rank}
-    def get_keys(self, ranks, depth):
+    @staticmethod
+    def get_keys(ranks, depth):
         assert depth < len(ranks)
         return "coords_{}".format(ranks[depth].lower()), "payloads_{}".format(ranks[depth].lower()),
 
     # encode
-    def encode(self, depth, a, ranks, output):
+    def encode(self, depth, a, ranks, output, output_tensor):
         if depth >= len(ranks):
             return -1
         # keys are in the form payloads_{rank name}, coords_{rank name}
@@ -64,7 +65,7 @@ class Codec:
 
         if depth == -1:           
             # recurse one level down without adding to output yet
-            size = self.encode(depth + 1, a, ranks, output)
+            size = self.encode(depth + 1, a, ranks, output, output_tensor)
 
             if self.fmts[depth + 1].encodeUpperPayload():
                 # store at most one payload at the root (size of first rank)
@@ -74,11 +75,13 @@ class Codec:
 
         # otherwise, we are in the fibertree
         fmt = self.fmts[depth]
+        fiber = fmt()
+        # fmt = self.fmts[depth]
         # self.format_descriptor[depth]
         dim_len = a.getShape()[0]
 
-        # 
-        fiber_occupancy, occ_list = fmt.encodeFiber(a, dim_len, self, depth, ranks, output)
+        fiber_occupancy, occ_list = fiber.encodeFiber(a, dim_len, self, depth, ranks, output, output_tensor)
+        output_tensor[depth].append(fiber)
         return fiber_occupancy
  
     # encode
@@ -90,8 +93,9 @@ class Codec:
             output = dict()
             output["payloads_root"] = []
 
+            # print("in output dict {}".format(self))
             for i in range(0, len(rank_names)):
-                    coords_key, payloads_key = self.get_keys(rank_names, i)
+                    coords_key, payloads_key = Codec.get_keys(rank_names, i)
 
                     output[coords_key] = []
                     output[payloads_key] = []  
