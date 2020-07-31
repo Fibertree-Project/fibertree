@@ -1,9 +1,8 @@
 from .compression_format import CompressionFormat
 import sys
 import math
-import bisect
 
-
+# coordinate-payload list format (C)
 class CoordinateList(CompressionFormat):
     def __init__(self):
         self.name = "C"
@@ -71,7 +70,10 @@ class CoordinateList(CompressionFormat):
     # return handle to existing coord that is at least coord
     def coordToHandle(self, coord):
         # if out of range, return None
-        if coord > self.coords[-1]: 
+        # print(coord)
+        # print(self.coords)
+        # print("coord to handle: coord {}, coords {}".format(coord, self.coords))
+        if len(self.coords) is 0 or coord > self.coords[-1]: 
             return None
         lo = 0
         hi = len(self.coords) - 1
@@ -94,7 +96,16 @@ class CoordinateList(CompressionFormat):
     # make space in coords and payloads for elt
     # return the handle
     def insertElement(self, coord):
+        if coord is None:
+            return None
+
         handle_to_add = self.coordToHandle(coord)
+        # if went off the end 
+        if handle_to_add is None:
+            self.coords = self.coords + [coord]
+            self.payloads = self.payloads + [None]
+            return len(self.coords) - 1
+
 
         # if adding a new coord, make room for it
         if self.coords[handle_to_add] is not coord:
@@ -108,10 +119,17 @@ class CoordinateList(CompressionFormat):
 
     # return handle for termination
     def updatePayload(self, handle, payload):
+        if handle is None:
+            return None
+        
         if handle >= 0 and handle < len(self.payloads):
+            # print(self.payloads)
+            # print("setting payload at {} to {}".format(handle, payload))
             self.payloads[handle] = payload
+            # print(self.payloads)
         return handle
 
+    # print this fiber representation in C
     def printFiber(self):
         print("coords: {}, payloads: {}".format(self.coords, self.payloads))
     #### static methods

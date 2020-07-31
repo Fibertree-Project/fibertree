@@ -34,12 +34,16 @@ class Codec:
     def get_format_descriptor(self):
         return self.format_descriptor
 
+    
     def get_start_occ(self, depth):
         return self.fmts[depth].startOccupancy()
 
+    @staticmethod
     def get_num_ranks(self):
         return self.num_ranks
 
+    # return a list of occupancies per-rank 
+    @staticmethod
     def get_occupancies(self, depth, a, num_ranks, output):
         if depth >= num_ranks:
             return 
