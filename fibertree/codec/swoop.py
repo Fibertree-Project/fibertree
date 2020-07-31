@@ -41,18 +41,35 @@ class Fiber:
 # AST
 #
 # Base Class for all AST nodes
-# Currently all AST nodes contain a reference to a Swoop Fiber.
+# Most have a reference to a Fiber. Additionally, track the "fanout" number
+# which is the number of receivers. If this remains 0, this Node is unconnected
+# and can be eliminated as dead code.
 #
 class AST:
 
-  def __init__(self, fiber):
+  def __init__(self, fiber = None):
     self.fiber = fiber
+    self.num_fanout = 0
+    self.cur_fanout = 0
+    self.cur_result = None
+    
+  def connect(self, other):
+    self.num_fanout += 1
+    # other unused for now...
 
   def initialize(self):
     pass
     
   def evaluate(self):
     return None
+  
+  def nextValue(self):
+    if self.cur_fanout == 0 and self.num_fanout != 0:
+      self.cur_result = self.evaluate()
+    self.cur_fanout += 1
+    if self.cur_fanout == self.num_fanout:
+      self.cur_fanout = 0
+    return self.cur_result
   
   def trace(self, args):
     if (hasattr(self, "fiber") and self.fiber != None):
@@ -103,12 +120,13 @@ class HandlesToCoords (AST):
   def __init__(self, fiber, handles):
     super().__init__(fiber)
     self.handles = handles
+    handles.connect(self)
 
   def initialize(self):
     self.handles.initialize()
 
   def evaluate(self):
-    handle = self.handles.evaluate()
+    handle = self.handles.nextValue()
     if handle is None:
       return None
     coord = self.fiber.handleToCoord(handle)
@@ -126,12 +144,13 @@ class HandlesToPayloads (AST):
   def __init__(self, fiber, handles):
     super().__init__(fiber)
     self.handles = handles
+    handles.connect(self)
 
   def initialize(self):
     self.handles.initialize()
 
   def evaluate(self):
-    handle = self.handles.evaluate()
+    handle = self.handles.nextValue()
     if handle is None:
       return None
     payload = self.fiber.handleToPayload(handle)
@@ -145,7 +164,6 @@ class HandlesToPayloads (AST):
 # Simple convenience alias for concise code
 #
 #def HandlesToCoordsAndPayloads(fiber, handles):
-#  handles2 = Split(handles)
 #  return (HandlesToCoords(fiber, handles2), HandlesToPayloads(fiber, handles2))
   
 
@@ -163,12 +181,13 @@ class CoordsToHandles (AST):
   def __init__(self, fiber, coords):
     super().__init__(fiber)
     self.coords = coords
+    coords.connect(self)
 
   def initialize(self):
     self.coords.initialize()
     
   def evaluate(self):
-    coord = self.coords.evaluate()
+    coord = self.coords.nextValue()
     if coord is None:
       return None
     handle = self.fiber.coordToHandle(coord)
@@ -190,12 +209,13 @@ class InsertElement (AST):
   def __init__(self, fiber, coords):
     super().__init__(fiber)
     self.coords = coords
+    coords.connect(self)
 
   def initialize(self):
     self.coords.initialize()
 
   def evaluate(self):
-    coord = self.coords.evaluate()
+    coord = self.coords.nextValue()
     if coord is None:
       return None
     handle = self.fiber.insertElement(coord)
@@ -215,17 +235,19 @@ class UpdatePayload (AST):
   def __init__(self, fiber, handles, payloads):
     super().__init__(fiber)
     self.handles = handles
+    handles.connect(self)
     self.payloads = payloads
+    payloads.connect(self)
 
   def initialize(self):
     self.handles.initialize()
     self.payloads.initialize()
 
   def evaluate(self):
-    handle = self.handles.evaluate()
+    handle = self.handles.nextValue()
     if handle is None:
       return None
-    payload = self.payloads.evaluate()
+    payload = self.payloads.nextValue()
     if payload is None:
       return None
     self.trace(f"UpdatePayload: {handle}, {payload}")
@@ -239,11 +261,15 @@ class UpdatePayload (AST):
 
 class Intersect (AST):
   def __init__(self, a_coords, a_handles, b_coords, b_handles):
-    self.fiber = None
+    super().__init__()
     self.a_coords = a_coords
+    a_coords.connect(self)
     self.a_handles = a_handles
+    a_handles.connect(self)
     self.b_coords = b_coords
+    b_coords.connect(self)
     self.b_handles = b_handles
+    b_handles.connect(self)
   
   def initialize(self):
     self.a_coords.initialize()
@@ -252,54 +278,25 @@ class Intersect (AST):
     self.b_handles.initialize()
 
   def evaluate(self):
-    a_coord = self.a_coords.evaluate()
-    a_handle = self.a_handles.evaluate()
-    b_coord = self.b_coords.evaluate()
-    b_handle = self.b_handles.evaluate()
+    a_coord = self.a_coords.nextValue()
+    a_handle = self.a_handles.nextValue()
+    b_coord = self.b_coords.nextValue()
+    b_handle = self.b_handles.nextValue()
     while a_coord != None and b_coord != None:
       if a_coord == b_coord:
         self.trace(f"Intersection found at: {a_coord}: ({a_handle}, {b_handle})")
         return (a_coord, a_handle, b_handle)
       while a_coord != None and b_coord != None and a_coord < b_coord:
-        a_coord = self.a_coords.evaluate()
-        a_handle = self.a_handles.evaluate()
+        a_coord = self.a_coords.nextValue()
+        a_handle = self.a_handles.nextValue()
         self.trace(f"Intersection advancing A: {a_coord}, {b_coord} ({a_handle}, {b_handle})")
       while b_coord != None and a_coord != None and b_coord < a_coord:
-        b_coord = self.b_coords.evaluate()
-        b_handle = self.b_handles.evaluate()
+        b_coord = self.b_coords.nextValue()
+        b_handle = self.b_handles.nextValue()
         self.trace(f"Intersection advancing B: {a_coord}, {b_coord} ({a_handle}, {b_handle})")
     self.trace("Intersection done.")
     return (None, None, None)
   
-
-#
-# FanOut
-#
-# Given an AST node that produces a 1-stream, fan it out into N 1-streams,
-# each with all values from the original stream
-#
-
-class FanOut (AST):
-  def __init__(self, stream, num):
-    self.stream = stream
-    self.num = num
-    self.cur = 0
-  
-  def initialize(self):
-    if self.cur == 0:
-      self.stream.initialize()
-    self.cur += 1
-    if self.cur == self.num:
-      self.cur = 0
-
-  def evaluate(self):
-    if self.cur == 0:
-      self.result = self.stream.evaluate()
-    self.trace(f"Fanout[{self.cur}]: {self.result}")
-    self.cur += 1
-    if self.cur == self.num:
-      self.cur = 0
-    return self.result
 
 #
 # Split
@@ -310,7 +307,9 @@ class FanOut (AST):
 
 class Split (AST):
   def __init__(self, stream, num):
+    super().__init__()
     self.stream = stream
+    stream.connect(self)
     self.num = num
     self.cur = 0
   
@@ -323,7 +322,7 @@ class Split (AST):
     
   def evaluate(self):
     if self.cur == 0:
-      self.result = self.stream.evaluate()
+      self.result = self.stream.nextValue()
     res = self.result[self.cur]
     self.trace(f"Split[{self.cur}]: {res}")
     self.cur += 1
@@ -341,7 +340,10 @@ class Split (AST):
 
 class Compute (AST):
   def __init__(self, function, *streams):
+    super().__init__()
     self.streams = streams
+    for stream in streams:
+      stream.connect(self)
     self.function = function
   
   def initialize(self):
@@ -351,7 +353,7 @@ class Compute (AST):
   def evaluate(self):
     args = [None] * len(self.streams)
     for x, stream in enumerate(self.streams):
-      args[x] = stream.evaluate()
+      args[x] = stream.nextValue()
     result = self.function(*args)
     self.trace(f"Compute({args}) => {result}")
     return result
@@ -417,11 +419,9 @@ Z = Fiber("Z")
 
 a_handles = Iterate(A)
 b_handles = Iterate(B)
-a_handles_fanout = FanOut(a_handles, 2)
-b_handles_fanout = FanOut(b_handles, 2)
-a_coords = HandlesToCoords(A, a_handles_fanout)
-b_coords = HandlesToCoords(B, b_handles_fanout)
-ab = Intersect(a_coords, a_handles_fanout, b_coords, b_handles_fanout)
+a_coords = HandlesToCoords(A, a_handles)
+b_coords = HandlesToCoords(B, b_handles)
+ab = Intersect(a_coords, a_handles, b_coords, b_handles)
 ab2 = Split(ab, 3)
 z_handles = InsertElement(Z, ab2)
 a_values = HandlesToPayloads(A, ab2)
@@ -437,5 +437,7 @@ A.setImplementation(myA)
 B.setImplementation(myB)
 Z.setImplementation(myZ)
 evaluate(final_program)
+
 print(myZ.vals)
 assert(myZ.vals == [4, 10, 18])
+
