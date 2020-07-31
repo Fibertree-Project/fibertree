@@ -299,36 +299,45 @@ class Intersect (AST):
   
 
 #
-# Split
+# Splitter
 #
-# Given an AST node that produces a 1-stream of tuples, split it into
-# the first and second element.
+# Helper module for splitting tuple streams.
+# Note: explicitly over-rides default fanout behavior.
 #
 
-class Split (AST):
+class Splitter (AST):
   def __init__(self, stream, num):
     super().__init__()
     self.stream = stream
     stream.connect(self)
     self.num = num
-    self.cur = 0
-  
+      
   def initialize(self):
-    if self.cur == 0:
-      self.stream.initialize()
-    self.cur += 1
-    if self.cur == self.num:
-      self.cur = 0
-    
+    self.stream.initialize()
+
   def evaluate(self):
-    if self.cur == 0:
-      self.result = self.stream.nextValue()
-    res = self.result[self.cur]
-    self.trace(f"Split[{self.cur}]: {res}")
-    self.cur += 1
-    if self.cur == self.num:
-      self.cur = 0
-    return res
+    return self.stream.nextValue()
+
+  def nextValue(self):
+    if self.cur_fanout == 0 and self.num_fanout != 0:
+      self.cur_result = self.evaluate()
+    self.cur_fanout += 1
+    if self.cur_fanout == self.num_fanout:
+      self.cur_fanout = 0
+    return self.cur_result[self.num]
+  
+#
+# SplitTuple
+#
+# Given an AST node that produces a 1-stream of N-tuples, split it into
+# N 1-streams of fields.
+#
+
+def SplitTuple(tuple_stream, num):
+  res = []
+  for n in range(num):
+    res.append(Splitter(tuple_stream, n))
+  return tuple(res)
 
 #
 # Compute
@@ -421,11 +430,11 @@ a_handles = Iterate(A)
 b_handles = Iterate(B)
 a_coords = HandlesToCoords(A, a_handles)
 b_coords = HandlesToCoords(B, b_handles)
-ab = Intersect(a_coords, a_handles, b_coords, b_handles)
-ab2 = Split(ab, 3)
-z_handles = InsertElement(Z, ab2)
-a_values = HandlesToPayloads(A, ab2)
-b_values = HandlesToPayloads(B, ab2)
+ab_tuple = Intersect(a_coords, a_handles, b_coords, b_handles)
+(ab_coords, ab_a_handles, ab_b_handles) = SplitTuple(ab_tuple, 3)
+z_handles = InsertElement(Z, ab_coords)
+a_values = HandlesToPayloads(A, ab_a_handles)
+b_values = HandlesToPayloads(B, ab_b_handles)
 results = Compute(lambda a, b: a*b, a_values, b_values)
 final_program = UpdatePayload(Z, z_handles, results)
 
