@@ -435,7 +435,9 @@ Z_HFA = Tensor.fromUncompressed(ranks, Z_data)
 myA = encodeTensorInFormat(A_HFA, descriptor)[0][0]
 myB = encodeTensorInFormat(B_HFA, descriptor)[0][0]
 myZ = encodeTensorInFormat(Z_HFA, descriptor)[0][0]
-
+myA.setName("A0")
+myB.setName("B0")
+myZ.setName("Z0")
 # might roll the HFA into something like this 
 # myA = BasicFiberImplementation([1, 2, 3])
 # myB = BasicFiberImplementation([4, 5, 6])
@@ -446,6 +448,9 @@ B.setImplementation(myB)
 Z.setImplementation(myZ)
 evaluate(final_program)
 
-print(myZ.payloads)
 assert(myZ.payloads == [4, 10, 18])
-
+stats_dict = dict()
+myA.dumpStats(stats_dict)
+myB.dumpStats(stats_dict)
+myZ.dumpStats(stats_dict)
+print(stats_dict)

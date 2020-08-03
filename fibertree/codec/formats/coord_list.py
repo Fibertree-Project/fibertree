@@ -7,8 +7,8 @@ class CoordinateList(CompressionFormat):
     def __init__(self):
         self.name = "C"
         CompressionFormat.__init__(self)
+        # cached coord 
 
-    # @staticmethod
     def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
         # import codec
         from ..tensor_codec import Codec
@@ -69,20 +69,30 @@ class CoordinateList(CompressionFormat):
 
     # return handle to existing coord that is at least coord
     def coordToHandle(self, coord):
+        print("\t{} coordToHandle for coord {}".format(self.name, coord))
         # if out of range, return None
-        # print(coord)
-        # print(self.coords)
-        # print("coord to handle: coord {}, coords {}".format(coord, self.coords))
-        if len(self.coords) is 0 or coord > self.coords[-1]: 
+        if len(self.coords) is 0:
             return None
+        elif coord > self.coords[-1]:  
+            # add an access to append space to the end and look at the end
+            self.num_accesses += 1
+            return None
+
+        # if cached, incur no cost
+        if self.prevCoordSearched is not None and self.prevCoordSearched == coord:
+            return self.prevHandleAtCoordSearched
+        # do a binary search if in range
         lo = 0
         hi = len(self.coords) - 1
         mid = 0
+        print("\t{} access before binary search {}".format(self.name, self.num_accesses))
         while lo <= hi:
+            self.num_accesses += 1; # add to num accesses in binary search
             mid = math.ceil((hi + lo) / 2)
             # print("target {}, lo: {}, hi: {}, mid {}, coord {}".format(coord, lo, hi, mid, self.coords[mid]))
             if self.coords[mid] == coord:
-                # print()
+                self.prevCoordSearched = coord
+                self.prevHandleAtCoordSearched = mid
                 return mid
             elif self.coords[mid] < coord:
                 lo = mid + 1
@@ -91,6 +101,9 @@ class CoordinateList(CompressionFormat):
         # print()
         if (coord > self.coords[mid]):
             mid += 1
+        self.prevCoordSearched = coord
+        self.prevHandleAtCoordSearched = mid
+        print("\taccess after binary search {}".format(self.num_accesses))
         return mid
 
     # make space in coords and payloads for elt
@@ -104,8 +117,8 @@ class CoordinateList(CompressionFormat):
         if handle_to_add is None:
             self.coords = self.coords + [coord]
             self.payloads = self.payloads + [None]
+            self.num_accesses += 1
             return len(self.coords) - 1
-
 
         # if adding a new coord, make room for it
         if self.coords[handle_to_add] is not coord:
@@ -115,6 +128,8 @@ class CoordinateList(CompressionFormat):
             # move payloads to make space
             self.payloads = self.payloads[:handle_to_add] + [None] + self.payloads[handle_to_add:]
 
+            # count number of accesses (number of elts shifted)
+            self.num_accesses += len(self.coords) - handle_to_add
         return handle_to_add
 
     # return handle for termination
@@ -125,6 +140,7 @@ class CoordinateList(CompressionFormat):
         if handle >= 0 and handle < len(self.payloads):
             # print(self.payloads)
             # print("setting payload at {} to {}".format(handle, payload))
+            self.num_accesses += 1
             self.payloads[handle] = payload
             # print(self.payloads)
         return handle
