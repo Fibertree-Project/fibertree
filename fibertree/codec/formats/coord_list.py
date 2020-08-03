@@ -74,9 +74,10 @@ class CoordinateList(CompressionFormat):
         if len(self.coords) is 0:
             return None
         elif coord > self.coords[-1]:  
-            # add an access to append space to the end and look at the end
-            self.num_accesses += 1
+            # TODO: how to count cost out of range?add an access to append space to the end and look at the end
             return None
+        elif coord <= self.coords[0]:
+            return 0
 
         # if cached, incur no cost
         if self.prevCoordSearched is not None and self.prevCoordSearched == coord:
@@ -85,9 +86,9 @@ class CoordinateList(CompressionFormat):
         lo = 0
         hi = len(self.coords) - 1
         mid = 0
-        print("\t{} access before binary search {}".format(self.name, self.num_accesses))
+        # print("\t{} access before binary search {}".format(self.name, self.num_accesses))
         while lo <= hi:
-            self.num_accesses += 1; # add to num accesses in binary search
+            self.stats[self.coords_read_key] += 1; # add to num accesses in binary search
             mid = math.ceil((hi + lo) / 2)
             # print("target {}, lo: {}, hi: {}, mid {}, coord {}".format(coord, lo, hi, mid, self.coords[mid]))
             if self.coords[mid] == coord:
@@ -103,7 +104,7 @@ class CoordinateList(CompressionFormat):
             mid += 1
         self.prevCoordSearched = coord
         self.prevHandleAtCoordSearched = mid
-        print("\taccess after binary search {}".format(self.num_accesses))
+        # print("\taccess after binary search {}".format(self.num_accesses))
         return mid
 
     # make space in coords and payloads for elt
@@ -117,7 +118,8 @@ class CoordinateList(CompressionFormat):
         if handle_to_add is None:
             self.coords = self.coords + [coord]
             self.payloads = self.payloads + [None]
-            self.num_accesses += 1
+            self.stats[self.coords_write_key] += 1
+            # NOTE: maybe charge for shifting payloads?
             return len(self.coords) - 1
 
         # if adding a new coord, make room for it
@@ -129,7 +131,7 @@ class CoordinateList(CompressionFormat):
             self.payloads = self.payloads[:handle_to_add] + [None] + self.payloads[handle_to_add:]
 
             # count number of accesses (number of elts shifted)
-            self.num_accesses += len(self.coords) - handle_to_add
+            self.stats[self.coords_write_key] += len(self.coords) - handle_to_add
         return handle_to_add
 
     # return handle for termination
@@ -140,7 +142,7 @@ class CoordinateList(CompressionFormat):
         if handle >= 0 and handle < len(self.payloads):
             # print(self.payloads)
             # print("setting payload at {} to {}".format(handle, payload))
-            self.num_accesses += 1
+            self.stats[self.payloads_write_key] += 1
             self.payloads[handle] = payload
             # print(self.payloads)
         return handle
@@ -148,6 +150,10 @@ class CoordinateList(CompressionFormat):
     # print this fiber representation in C
     def printFiber(self):
         print("coords: {}, payloads: {}".format(self.coords, self.payloads))
+    
+    def getSize(self): 
+        return len(self.coords) + len(self.payloads)
+    
     #### static methods
 
     # encode coord explicitly

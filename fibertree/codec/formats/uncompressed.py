@@ -51,23 +51,18 @@ class Uncompressed(CompressionFormat):
         # return 1 so if upper levels encode payloads, 
         return 1, occ_list
 
-    def getPayloads(self):
-        return self.payloads
-
-    def printFiber(self):
-        print(self.payloads)
-
+    ## SWOOP API functions 
     def handleToCoord(self, handle):
-        if handle is None or handle >= self.shape:
-            return None
+        assert(handle is not None)
+        assert(handle < self.shape)
         return handle
-    # API methods
     
     # max number of elements in a slice is proportional to the shape
     def getSliceMaxLength(self):
         return self.shape
 
     def coordToHandle(self, coord):
+        print("{} coordToHandle {}, shape {}".format(self.name, coord, self.shape))
         if coord < 0 or coord >= self.shape:
             return None
         return coord
@@ -78,7 +73,16 @@ class Uncompressed(CompressionFormat):
 
     def updatePayload(self, handle, payload):
         assert handle < self.shape
+        self.stats[self.payloads_write_key] += 1
         self.payloads[handle] = payload
+        return handle
+
+    # helper functions for stats
+    def getPayloads(self):
+        return self.payloads
+
+    def printFiber(self):
+        print("{}: {}".format(self.name, self.payloads))
 
     ### static methods
     @staticmethod

@@ -10,10 +10,19 @@ class CompressionFormat:
         self.coords = []
         self.payloads = []
         self.cur_handle = -1
-        self.num_accesses = 0
-        self.stats_name = "accesses"
+        
+        # stats 
+        self.stats = dict()
+        self.coords_write_key = "num_coords_writes"
+        self.stats[self.coords_write_key] = 0
+        self.payloads_write_key = "num_payloads_writes"
+        self.stats[self.payloads_write_key] = 0
+        self.coords_read_key = "num_coords_reads"
+        self.stats[self.coords_read_key] = 0
+        self.payloads_read_key = "num_payloads_reads"
+        self.stats[self.payloads_read_key] = 0
 
-	# cached coord
+        # cached coord
         self.prevCoordSearched = None
         self.prevHandleAtCoordSearched = None
         self.prevHandleSearched = None
@@ -41,8 +50,8 @@ class CompressionFormat:
             return self.prevCoordSearched
         elif handle is self.prevHandleSearched:
             return self.prevCoordAtHandleSearched
-        self.num_accesses += 1
-        print("\thandleToCoord: num accesses {}".format(self.num_accesses))
+        self.stats[self.coords_read_key] += 1
+        # print("\thandleToCoord: num accesses {}".format(self.num_accesses))
         
         return self.coords[handle]
 
@@ -52,8 +61,8 @@ class CompressionFormat:
             return None
         elif handle == self.prevPayloadHandle:
             return self.prevPayloadAtHandle
-        self.num_accesses += 1
-        print("\thandleToPayload: num accesses {}".format(self.num_accesses))
+        self.stats[self.payloads_read_key] += 1
+        # print("\thandleToPayload: num accesses {}".format(self.num_accesses))
         self.prevPayloadHandle = handle
         self.prevPayloadAtHandle = self.payloads[handle]
         return self.payloads[handle]
@@ -69,7 +78,7 @@ class CompressionFormat:
 
     # get next handle during iteration through slice
     def nextInSlice(self):
-        # print("in next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.start_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
+        print("\tin next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.start_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
         if self.start_handle >= self.getSliceMaxLength():
             return None
         if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far + 1:
@@ -90,14 +99,16 @@ class CompressionFormat:
 
     def updatePayload(self, handle, payload):
         return handle
-
+    
+    # get size of the representation in words
+    # needs to be implemented by subclasses
+    def getSize(self):
+        assert(False)
     # at the end of execution, dump stats in YAML
     # add to the stats dict
     def dumpStats(self, stats_dict):
-        key = "_".join([self.stats_name, self.name])
-        stats_dict[key] = [self.num_accesses]
-        print("{} num accesses {}".format(self.name, self.num_accesses))
-
+        stats_dict[self.name] = self.stats
+    
     #### class methods
     # e.g. U, C
     @staticmethod 
