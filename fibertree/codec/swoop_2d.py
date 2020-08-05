@@ -1,7 +1,7 @@
 from fibertree import Fiber
 from fibertree import Tensor
 from fibertree import Codec
-
+import yaml
 #
 # Tensor
 #
@@ -739,7 +739,7 @@ def encodeTensorInFormat(tensor, descriptor):
 
     # get output dict based on rank names
     rank_names = tensor.getRankIds()
-
+    # print("encode tensor: rank names {}, descriptor {}".format(rank_names, descriptor))
     # TODO: move output dict generation into codec
     output = codec.get_output_dict(rank_names)
     # print("output dict {}".format(output))
@@ -756,15 +756,17 @@ def encodeTensorInFormat(tensor, descriptor):
     for rank in output_tensor:
         fiber_idx = 0
         for fiber in rank:
-            fiber_name = "_".join([tensor.getName(), rank_names[i], str(fiber_idx)])
+            fiber_name = "_".join([tensor.getName(), rank_names[rank_idx], str(fiber_idx)])
             fiber.setName(fiber_name)
             fiber_idx += 1
         rank_idx += 1
     return output_tensor
 
 def dumpAllStatsFromTensor(tensor, output):
+    # print(tensor)
     for rank in tensor:
         for fiber in rank:
+            # fiber.printFiber()
             fiber.dumpStats(output)
 
 ## Test program: Element-wise multiplication
@@ -837,17 +839,19 @@ evaluate(z_k_update_acks)
 # NOTE: to get the payloads for comparison requires some knowledge of the output format.
 # for example, in C, the outputs will be compressed, while they will not be in U
 output_fiber = myZ[0][0]
-print("===========================")
-print(f"Final element-wise result: {output_fiber.payloads}")
-print("===========================")
-assert(output_fiber.payloads == [4, 10, 18])
-
 # dump stats
 stats_dict = dict()
 dumpAllStatsFromTensor(myA, stats_dict)
 dumpAllStatsFromTensor(myB, stats_dict)
 dumpAllStatsFromTensor(myZ, stats_dict)
-print(stats_dict)
+print("\nElt-wise multiply: A = <C>, B = <C>, Z = <C>")
+print(yaml.dump(stats_dict))
+
+
+print("===========================")
+print(f"Final element-wise result: {output_fiber.payloads}")
+print("===========================")
+assert(output_fiber.payloads == [4, 10, 18])
 
 ## Test program: A-Stationary vector-matrix multiplication
 #for k, (a, b_n) in a_k & b_k:
@@ -943,8 +947,103 @@ stats_dict = dict()
 dumpAllStatsFromTensor(A_tensor, stats_dict)
 dumpAllStatsFromTensor(B_tensor, stats_dict)
 dumpAllStatsFromTensor(Z_tensor, stats_dict)
-print(stats_dict)
+print("\nA-stationary vector-matrix: A = <C>, B = <C, C>, Z = <C>")
+print(yaml.dump(stats_dict))
 print()
+
+## Test program: Z-Stationary vector-matrix multiplication
+#for n, (z, b_k) in z_n << b_n:
+#  for k, (a, b) in a_k & b_k:
+#    z += a * b
+print("\n*** Z-stationary vector-matrix ***")
+a = SwoopTensor(name="A", rank_ids=["K"])
+b = SwoopTensor(name="B", rank_ids=["N", "K"])
+z = SwoopTensor(name="Z", rank_ids=["N"])
+
+a_k = a["K"]
+b_n = b["N"]
+b_k = b["K"]
+z_n = z["N"]
+
+# z_n << b_n
+b_n_handles = Iterate(b_n)
+b_n_coords = HandlesToCoords(b_n, b_n_handles)
+b_n_payloads = HandlesToPayloads(b_n, b_n_handles)
+z_n_coords = b_n_coords
+z_n_handles = InsertElement(z_n, z_n_coords)
+z_n_payloads = HandlesToPayloads(z_n, z_n_handles)
+b_k_n_fiber_handles = PayloadsToFiberHandles(b_n, b_n_payloads)
+
+
+# a_k & b_k
+b_k_handles = Scan(b_k, b_k_n_fiber_handles)
+# Repeat a_k iteration for each b_k
+a_k_fiber_handle = Stream0(a_k.getRootFiberHandle())
+a_k_fiber_handles = Amplify(a_k_fiber_handle, b_k_n_fiber_handles)
+a_k_handles = Scan(a_k, a_k_fiber_handles) 
+a_k_coords = HandlesToCoords(a_k, a_k_handles)
+b_k_coords = HandlesToCoords(b_k, b_k_handles)
+(ab_k_coords, ab_a_k_handles, ab_b_k_handles) = Intersect(a_k_coords, a_k_handles, b_k_coords, b_k_handles)
+ab_a_k_payloads = HandlesToPayloads(a_k, ab_a_k_handles)
+ab_b_k_payloads = HandlesToPayloads(b_k, ab_b_k_handles)
+
+
+# z_ref += a_val * b_val
+a_values = PayloadsToValues(a_k, ab_a_k_payloads)
+b_values = PayloadsToValues(b_k, ab_b_k_payloads)
+# NOTE: MUL and ADD broken out for efficiency
+body_func = lambda a_val, b_val: a_val * b_val
+partial_products = Compute(body_func, a_values, b_values)
+z_values = z_n_payloads
+# Reduce into the same value until end of rank
+z_new_values = Reduce(z_values, partial_products)
+z_n_update_acks = UpdatePayloads(z_n, z_n_handles, z_new_values)
+
+# convert to HFA
+A_HFA = Tensor.fromUncompressed(["K"], A_data, name = "A")
+B_HFA = Tensor.fromUncompressed(["N", "K"], B_data, name = "B")
+Z_HFA = Tensor.fromUncompressed(["N"], Z_data, name = "Z")
+
+A_tensor = encodeTensorInFormat(A_HFA, ["C"])
+B_tensor = encodeTensorInFormat(B_HFA, ["C", "C"])
+Z_tensor = encodeTensorInFormat(Z_HFA, ["C"])
+
+a.setImplementations("K", A_tensor[0])
+b.setImplementations("N", B_tensor[0])
+b.setImplementations("K", B_tensor[1])
+z.setImplementations("N", Z_tensor[0])
+"""
+my_a_k = BasicFiberImplementation([1, 2, 3])
+my_b_n = BasicIntermediateRankImplementation(N, K)
+my_b_k = [BasicFiberImplementation([4, 5, 6]), 
+          BasicFiberImplementation([5, 6, 7]), 
+          BasicFiberImplementation([6, 7, 8])]
+my_z_n = BasicFiberImplementation([0, 0, 0])
+
+
+a.setImplementations("K", [my_a_k])
+b.setImplementations("N", [my_b_n])
+b.setImplementations("K", my_b_k)
+z.setImplementations("N", [my_z_n])
+"""
+
+z_fiber = Z_tensor[0][0]
+# print(z_fiber.printFiber())
+evaluate(z_n_update_acks)
+
+# dump stats
+stats_dict = dict()
+dumpAllStatsFromTensor(A_tensor, stats_dict)
+dumpAllStatsFromTensor(B_tensor, stats_dict)
+dumpAllStatsFromTensor(Z_tensor, stats_dict)
+
+print("\nZ-stationary vector-matrix: A = <C>, B = <C, C>, Z = <C>")
+print(yaml.dump(stats_dict))
+print()
+print("==========================")
+print(f"Final Z-Stationary result: {z_fiber.payloads}")
+print("==========================")
+assert(z_fiber.payloads == [32, 38, 44])
 
 ## Test program: Z-Stationary vector-matrix multiplication
 #for n, (z, b_k) in z_n << b_n:
@@ -1008,21 +1107,6 @@ a.setImplementations("K", A_tensor[0])
 b.setImplementations("N", B_tensor[0])
 b.setImplementations("K", B_tensor[1])
 z.setImplementations("N", Z_tensor[0])
-"""
-my_a_k = BasicFiberImplementation([1, 2, 3])
-my_b_n = BasicIntermediateRankImplementation(N, K)
-my_b_k = [BasicFiberImplementation([4, 5, 6]), 
-          BasicFiberImplementation([5, 6, 7]), 
-          BasicFiberImplementation([6, 7, 8])]
-my_z_n = BasicFiberImplementation([0, 0, 0])
-
-
-a.setImplementations("K", [my_a_k])
-b.setImplementations("N", [my_b_n])
-b.setImplementations("K", my_b_k)
-z.setImplementations("N", [my_z_n])
-"""
-
 
 z_fiber = Z_tensor[0][0]
 # print(z_fiber.printFiber())
@@ -1033,7 +1117,8 @@ stats_dict = dict()
 dumpAllStatsFromTensor(A_tensor, stats_dict)
 dumpAllStatsFromTensor(B_tensor, stats_dict)
 dumpAllStatsFromTensor(Z_tensor, stats_dict)
-print(stats_dict)
+print("\nZ-stationary vector-matrix: A = <C>, B = <U, C>, Z = <U>")
+print(yaml.dump(stats_dict))
 print()
 print("==========================")
 print(f"Final Z-Stationary result: {z_fiber.payloads}")
