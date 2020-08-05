@@ -21,7 +21,7 @@ class CompressionFormat:
         self.stats[self.coords_read_key] = 0
         self.payloads_read_key = "num_payloads_reads"
         self.stats[self.payloads_read_key] = 0
-
+        self.count_payload_reads = True
         # cached coord
         self.prevCoordSearched = None
         self.prevHandleAtCoordSearched = None
@@ -30,6 +30,14 @@ class CompressionFormat:
         self.prevPayloadHandle = None
         self.prevPayloadAtHandle = None
 
+    # return a handle to this payload
+    def payloadToFiberHandle(self, payload):
+        for i in range(0, len(self.payloads)):
+            if payload == self.payloads[i]:
+                return i
+
+    def payloadToValue(self, payload):
+        return payload
     # API Methods
     # helpers
     # have to overwrite this in subclasses, depends on the format
@@ -57,11 +65,13 @@ class CompressionFormat:
 
     # given a handle, return payload there if in range, otherwise None
     def handleToPayload(self, handle):
+        # print("handleToPayload: handle {}, prevPayloadHandle {}, payloads {}".format(handle, self.prevPayloadHandle, self.payloads))
         if handle is None or  handle >= len(self.payloads):
             return None
         elif handle == self.prevPayloadHandle:
             return self.prevPayloadAtHandle
-        self.stats[self.payloads_read_key] += 1
+        if self.count_payload_reads:
+            self.stats[self.payloads_read_key] += 1
         # print("\thandleToPayload: num accesses {}".format(self.num_accesses))
         self.prevPayloadHandle = handle
         self.prevPayloadAtHandle = self.payloads[handle]
@@ -73,12 +83,12 @@ class CompressionFormat:
         self.num_to_ret = max_num
         self.base = base
         self.bound = bound
-        print("setupSlice for {}, base = {}, bound = {}, max_num = {}".format(self.name, base, bound, max_num))
+        # print("setupSlice for {}, base = {}, bound = {}, max_num = {}".format(self.name, base, bound, max_num))
         self.start_handle = self.coordToHandle(base)
 
     # get next handle during iteration through slice
     def nextInSlice(self):
-        print("\tin next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.start_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
+        # print("\tin next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.start_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
         if self.start_handle >= self.getSliceMaxLength():
             return None
         if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far + 1:

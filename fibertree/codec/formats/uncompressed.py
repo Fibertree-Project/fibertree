@@ -4,7 +4,8 @@ class Uncompressed(CompressionFormat):
     def __init__(self):
         self.name = "U"
         CompressionFormat.__init__(self)
-
+        self.occupancies = list()
+        self.count_payloads_reads = True
     # instantiate this fiber in the format
     def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
         # import codec
@@ -15,26 +16,37 @@ class Uncompressed(CompressionFormat):
         fiber_occupancy = 0
         
         cumulative_occupancy = codec.get_start_occ(depth)
+        # print("cumulative start {} at depth {}".format(cumulative_occupancy, depth))
 
         occ_list = list()
 
         # keep track of shape during encoding
         self.shape = dim_len
-
+        
+        if depth < len(ranks) - 1:
+            # print("next encode upper payload {}".format(codec.fmts[depth + 1].encodeUpperPayload()))
+            if not codec.fmts[depth + 1].encodeUpperPayload():
+                self.count_payload_reads = False
+                # print("set {} count payload reads to false".format(self.name))
         # iterate through all coords (nz or not)
         for i in range(0, dim_len):
             # internal levels
             if depth < len(ranks) - 1:
-                child_occupancy = codec.encode(depth + 1, a.getPayload(i), ranks, output, output_tensor)
-
+                fiber, child_occupancy = codec.encode(depth + 1, a.getPayload(i), ranks, output, output_tensor)
+                self.payloads.append(fiber)
+                print(fiber)
+                print(child_occupancy)
                 # keep track of occupancy (cumulative requires ordering)
-                # cumulative_occupancy = cumulative_occupancy + child_occupancy
                 if isinstance(cumulative_occupancy, int):
                     cumulative_occupancy = cumulative_occupancy + child_occupancy
                 else:
                     cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
                 codec.add_payload(depth, occ_list, cumulative_occupancy, child_occupancy)
 
+                # store occupancy
+                if codec.fmts[depth+1].encodeUpperPayload():
+                    output[payloads_key].append(cumulative_occupancy)
+                    self.occupancies.append(cumulative_occupancy)
             else: # leaf level
                 if a.getPayload(i) == 0:
                     output[payloads_key].append(0)
@@ -43,18 +55,11 @@ class Uncompressed(CompressionFormat):
                     output[payloads_key].append(a.getPayload(i).value)
                     self.payloads.append(a.getPayload(i).value)
         
-        # store payload if necessary
-        if depth < len(ranks) - 1 and codec.fmts[depth+1].encodeUpperPayload():
-            output[payloads_key].extend(occ_list)
-            self.payloads.extend(occ_list)
-
-        # return 1 so if upper levels encode payloads, 
-        return 1, occ_list
+        # TODO: is 1 correct? maybe this should be occupancy?
+        return 1
 
     ## SWOOP API functions 
     def handleToCoord(self, handle):
-        assert(handle is not None)
-        assert(handle < self.shape)
         return handle
     
     # max number of elements in a slice is proportional to the shape
@@ -62,7 +67,7 @@ class Uncompressed(CompressionFormat):
         return self.shape
 
     def coordToHandle(self, coord):
-        print("{} coordToHandle {}, shape {}".format(self.name, coord, self.shape))
+        # print("{} coordToHandle {}, shape {}".format(self.name, coord, self.shape))
         if coord < 0 or coord >= self.shape:
             return None
         return coord
@@ -82,8 +87,8 @@ class Uncompressed(CompressionFormat):
         return self.payloads
 
     def printFiber(self):
-        print("{}: {}".format(self.name, self.payloads))
-
+        print("{}: occupancies {}, payloads {}".format(self.name, self.occupancies, self.payloads))
+        
     ### static methods
     @staticmethod
     def encodeCoord(prev_ind, ind):

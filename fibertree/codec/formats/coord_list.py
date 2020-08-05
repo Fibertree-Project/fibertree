@@ -7,6 +7,7 @@ class CoordinateList(CompressionFormat):
     def __init__(self):
         self.name = "C"
         CompressionFormat.__init__(self)
+        self.occupancies = list()
         # cached coord 
 
     def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
@@ -22,22 +23,9 @@ class CoordinateList(CompressionFormat):
         if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] is "Hf":
     	    cumulative_occupancy = [0, 0] 
 
-        occ_list = list()
-        # occ_list.append(cumulative_occupancy)
         prev_nz = 0
-        
+        occ_list = list()
         for ind, (val) in a:
-            child_occupancy = codec.encode(depth + 1, val, ranks, output, output_tensor)
-            # keep track of actual occupancy (nnz in this fiber)
-            
-            # print("ind {}, depth{}, child {}, cumulative {}".format(ind, depth, child_occupancy, cumulative_occupancy))
-            if isinstance(cumulative_occupancy, int):
-                cumulative_occupancy = cumulative_occupancy + child_occupancy
-            else:
-                cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
-            # add cumulative or non-cumulative depending on settings
-            codec.add_payload(depth, occ_list, cumulative_occupancy, child_occupancy)
-            
             # store coordinate explicitly
             coords = CoordinateList.encodeCoord(prev_nz, ind)
 
@@ -48,18 +36,35 @@ class CoordinateList(CompressionFormat):
             # keep track of nnz in this fiber
             fiber_occupancy = fiber_occupancy + 1
 
+
             # if at leaves, store payloads directly
             if depth == len(ranks) - 1:
                 output[payloads_key].append(val.value)
                 self.payloads.append(val.value)
+            else:
+                fiber, child_occupancy = codec.encode(depth + 1, val, ranks, output, output_tensor)
+                # keep track of actual occupancy (nnz in this fiber)
+                
+                # print("ind {}, depth{}, child {}, cumulative {}".format(ind, depth, child_occupancy, cumulative_occupancy))
+                if isinstance(cumulative_occupancy, int):
+                    cumulative_occupancy = cumulative_occupancy + child_occupancy
+                else:
+                    cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
+                # add cumulative or non-cumulative depending on settings
+                codec.add_payload(depth, occ_list, cumulative_occupancy, child_occupancy)
+                
+                assert depth < len(ranks) - 1
+                if codec.fmts[depth+1].encodeUpperPayload():
+                    # TODO: make the choice for this to be cumulative
+                    output[payloads_key].append(cumulative_occupancy)
+                    self.occupancies.append(cumulative_occupancy)
+                    self.payloads.append(fiber)
 
             prev_nz = ind + 1
-        
-        # explicit payloads for next level
-        if depth < len(ranks) - 1 and codec.fmts[depth+1].encodeUpperPayload():
-            output[payloads_key].extend(occ_list)
-            self.payloads.extend(occ_list)
-        return fiber_occupancy, occ_list
+        assert len(self.coords) == len(self.payloads)
+        #  self.printFiber()
+        return fiber_occupancy
+        # return fiber_occupancy, occ_list
     
     #### fiber functions for AST
 
@@ -69,7 +74,7 @@ class CoordinateList(CompressionFormat):
 
     # return handle to existing coord that is at least coord
     def coordToHandle(self, coord):
-        print("\t{} coordToHandle for coord {}".format(self.name, coord))
+        # print("\t{} coordToHandle for coord {}".format(self.name, coord))
         # if out of range, return None
         if len(self.coords) is 0:
             return None
@@ -117,7 +122,7 @@ class CoordinateList(CompressionFormat):
         # if went off the end 
         if handle_to_add is None:
             self.coords = self.coords + [coord]
-            self.payloads = self.payloads + [None]
+            self.payloads = self.payloads + [0]
             self.stats[self.coords_write_key] += 1
             # NOTE: maybe charge for shifting payloads?
             return len(self.coords) - 1
@@ -128,7 +133,7 @@ class CoordinateList(CompressionFormat):
             self.coords = self.coords[:handle_to_add] + [coord] + self.coords[handle_to_add:]
 
             # move payloads to make space
-            self.payloads = self.payloads[:handle_to_add] + [None] + self.payloads[handle_to_add:]
+            self.payloads = self.payloads[:handle_to_add] + [0] + self.payloads[handle_to_add:]
 
             # count number of accesses (number of elts shifted)
             self.stats[self.coords_write_key] += len(self.coords) - handle_to_add
