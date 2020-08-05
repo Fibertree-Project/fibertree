@@ -154,10 +154,16 @@ class CoordinateList(CompressionFormat):
 
     # print this fiber representation in C
     def printFiber(self):
-        print("coords: {}, payloads: {}".format(self.coords, self.payloads))
+        print("{} :: coords: {}, occupancies: {}, payloads: {}".format(self.name, self.coords, self.occupancies, self.payloads))
     
+    # get size of representation
     def getSize(self): 
-        return len(self.coords) + len(self.payloads)
+        assert(len(self.payloads) > 0)
+
+        size = len(self.coords) + len(self.occupancies)
+        if not isinstance(self.payloads[0], CompressionFormat):
+            size += len(self.payloads) 
+        return size
     
     #### static methods
 

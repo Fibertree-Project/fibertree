@@ -1,11 +1,12 @@
 from .compression_format import CompressionFormat
-import operator
+
 class Uncompressed(CompressionFormat):
+    # constructor
     def __init__(self):
         self.name = "U"
         CompressionFormat.__init__(self)
         self.occupancies = list()
-        self.count_payloads_reads = True
+    
     # instantiate this fiber in the format
     def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
         # import codec
@@ -34,8 +35,8 @@ class Uncompressed(CompressionFormat):
             if depth < len(ranks) - 1:
                 fiber, child_occupancy = codec.encode(depth + 1, a.getPayload(i), ranks, output, output_tensor)
                 self.payloads.append(fiber)
-                print(fiber)
-                print(child_occupancy)
+                # print(fiber)
+                # print(child_occupancy)
                 # keep track of occupancy (cumulative requires ordering)
                 if isinstance(cumulative_occupancy, int):
                     cumulative_occupancy = cumulative_occupancy + child_occupancy
@@ -82,13 +83,22 @@ class Uncompressed(CompressionFormat):
         self.payloads[handle] = payload
         return handle
 
-    # helper functions for stats
     def getPayloads(self):
         return self.payloads
 
     def printFiber(self):
-        print("{}: occupancies {}, payloads {}".format(self.name, self.occupancies, self.payloads))
+        print("{} :: occupancies {}, payloads {}".format(self.name, self.occupancies, self.payloads))
+    
+    def getSize(self):
+        assert(len(self.payloads) > 0)
+        assert(len(self.coords) == 0)
+        size = len(self.occupancies)
+        if not isinstance(self.payloads[0], CompressionFormat):
+            size += len(self.payloads)
         
+        # print("size of {} = {}. coords {}, occupancies {}, payloads {}".format(self.name, size, self.coords, self.occupancies, self.payloads))
+        return size
+
     ### static methods
     @staticmethod
     def encodeCoord(prev_ind, ind):

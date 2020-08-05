@@ -22,6 +22,7 @@ class CompressionFormat:
         self.payloads_read_key = "num_payloads_reads"
         self.stats[self.payloads_read_key] = 0
         self.count_payload_reads = True
+          
         # cached coord
         self.prevCoordSearched = None
         self.prevHandleAtCoordSearched = None
@@ -59,7 +60,6 @@ class CompressionFormat:
         elif handle is self.prevHandleSearched:
             return self.prevCoordAtHandleSearched
         self.stats[self.coords_read_key] += 1
-        # print("\thandleToCoord: num accesses {}".format(self.num_accesses))
         
         return self.coords[handle]
 
@@ -117,8 +117,12 @@ class CompressionFormat:
     # at the end of execution, dump stats in YAML
     # add to the stats dict
     def dumpStats(self, stats_dict):
+        self.stats["size"] = self.getSize() 
+        # print("dump stats {}".format(self.name))
         stats_dict[self.name] = self.stats
-    
+
+    def getSize(self):
+        assert(False)
     #### class methods
     # e.g. U, C
     @staticmethod 
