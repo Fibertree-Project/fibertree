@@ -125,6 +125,8 @@ class CoordinateList(CompressionFormat):
             self.payloads = self.payloads + [0]
             self.stats[self.coords_write_key] += 1
             # NOTE: maybe charge for shifting payloads?
+            # do we need to charge for allocating payload space at the end here? 
+            # it will already be charged for the upate
             return len(self.coords) - 1
 
         # if adding a new coord, make room for it
@@ -161,6 +163,7 @@ class CoordinateList(CompressionFormat):
         assert(len(self.payloads) > 0)
 
         size = len(self.coords) + len(self.occupancies)
+        # Don't need to store occupancies if lower level is U
         if not isinstance(self.payloads[0], CompressionFormat):
             size += len(self.payloads) 
         return size

@@ -84,18 +84,18 @@ class CompressionFormat:
         self.base = base
         self.bound = bound
         # print("setupSlice for {}, base = {}, bound = {}, max_num = {}".format(self.name, base, bound, max_num))
-        self.start_handle = self.coordToHandle(base)
+        self.coords_handle = self.coordToHandle(base)
 
     # get next handle during iteration through slice
     def nextInSlice(self):
-        # print("\tin next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.start_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
-        if self.start_handle >= self.getSliceMaxLength():
+        # print("\tin next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.coords_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
+        if self.coords_handle >= self.getSliceMaxLength():
             return None
-        if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far + 1:
+        if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far:
             return None
-        to_ret = self.start_handle
+        to_ret = self.coords_handle
         self.num_ret_so_far += 1
-        self.start_handle += 1
+        self.coords_handle += 1
         # don't need to increment accesses for moving the handle forward
         return to_ret
 
