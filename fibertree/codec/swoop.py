@@ -1,4 +1,9 @@
 
+DEFAULT_TRACE_LEVEL = 3
+class NoChange:
+  pass
+
+
 #
 # Tensor
 #
@@ -10,11 +15,14 @@
 class Tensor:
   def __init__(self, name, rank_ids):
     assert(len(rank_ids) > 0)
+    # All tensors have a root rank.
+    my_rank_ids = rank_ids[:]
+    my_rank_ids.insert(0, "root")
     self.ranks = {}
-    for r in rank_ids:
+    for r in my_rank_ids:
       self.ranks[r] = Rank(name + "_" + r)
     self.name = name
-    self.rank_ids = rank_ids
+    self.rank_ids = my_rank_ids
   
   def __getitem__(self, rank_id):
     return self.ranks[rank_id]
@@ -38,7 +46,7 @@ class Rank:
     self.name = name
     self.current_fiber = None
   
-  def getRootFiberHandle(self):
+  def getStartingFiberHandle(self):
     return 0
   
   def setImplementations(self, imps):
@@ -46,6 +54,7 @@ class Rank:
     self.current_fiber = 0
 
   def setCurrent(self, fiber_idx):
+    assert isinstance(fiber_idx, int)
     self.current_fiber = fiber_idx
   
   def nextFiber(self):
@@ -78,10 +87,20 @@ class Rank:
   
   def updatePayload(self, handle, payload):
     return self.implementations[self.current_fiber].updatePayload(handle, payload)
+  
+  def getUpdatedFiberHandle(self):
+    return self.implementations[self.current_fiber].getUpdatedFiberHandle()
+
+  def fiberHandleToPayload(self):
+    return self.implementations[self.current_fiber].fiberHandleToPayload()
+
+  def valueToPayload(self):
+    return self.implementations[self.current_fiber].valueToPayload()
 
   def dumpStats(self, stats_dict):
     for impl in self.implementations:
       impl.dumpStats(stats_dict)
+
 
 #
 # AST
@@ -93,7 +112,8 @@ class Rank:
 #
 class AST:
 
-  def __init__(self, rank = None, num_fields = 1):
+  def __init__(self, class_name, rank = None, num_fields = 1):
+    self.class_name = class_name
     self.rank = rank
     self.num_fields = num_fields
     self.num_fanout = 0
@@ -102,6 +122,7 @@ class AST:
     self.producers = []
     self.initialized = False
     self.finalized = False
+    self.trace_level = DEFAULT_TRACE_LEVEL
   
   def _addProducer(self, other):
     self.producers.append(other)
@@ -145,6 +166,8 @@ class AST:
     # Call evaluate, but only once and fan out the result to later callers.
     if self.needEvaluation(other):
       self.cur_result = self.evaluate()
+    else:
+      self.trace(3, f"MEMOIZE: {self.cur_result}")
     self.fanout_mask[other] = True
     # If everyone got the value, reset the mask.
     if all(self.fanout_mask.values()):
@@ -152,11 +175,16 @@ class AST:
         self.fanout_mask[receiver] = False
     return self.cur_result
   
-  def trace(self, args):
+  def trace(self, level, args):
+    if (level > self.trace_level):
+      return
     if (hasattr(self, "rank") and self.rank != None):
-      print(self.rank.name + ":", args)
+      print(self.class_name + ":", self.rank.name + ":", args)
     else:
-      print(args)
+      print(self.class_name + ":", args)
+      
+  def setTraceLevel(self, level):
+    self.trace_level = level
 
   # These are for Nodes that want to return a tuple from evaluate.
   def __iter__(self):
@@ -179,19 +207,20 @@ class AST:
 
 class Slice (AST):
   def __init__(self, rank, base = 0, bound  = None, max_num = None):
-    super().__init__(rank)
+    super().__init__("Slice", rank)
     self.base = base
     self.bound = bound
     self.max_num = max_num
   
   
   def initialize(self):
+    self.trace(3, f"SetupSlice: {self.base}, {self.bound}, {self.max_num}")
     self.rank.setupSlice(self.base, self.bound, self.max_num)
     super().initialize()
   
   def evaluate(self):
     res = self.rank.nextInSlice()
-    self.trace(f"NextInSlice: {res}")
+    self.trace(2, f"NextInSlice: {res}")
     return res
   
 #
@@ -203,7 +232,7 @@ class Slice (AST):
 
 class Scan (AST):
   def __init__(self, rank, fiber_handles):
-    super().__init__(rank)
+    super().__init__("Scan", rank)
     self.fiber_handles = fiber_handles
     fiber_handles.connect(self)
     self.active = False
@@ -212,9 +241,9 @@ class Scan (AST):
     if not self.active:
       fiber_handle = self.fiber_handles.nextValue(self)
       if fiber_handle is None:
-        self.trace(f"Scan: Done.")
+        self.trace(3, "Done.")
         return None
-      self.trace(f"Scan: Start {fiber_handle}")
+      self.trace(2, f"Start {fiber_handle}")
       self.rank.setCurrent(fiber_handle)
       self.rank.setupSlice() # TODO use base/bound/max_num here somehow
       self.active = True
@@ -222,10 +251,51 @@ class Scan (AST):
     res = self.rank.nextInSlice()
     if res is None:
       self.active = False
-      self.trace(f"Scan: Inner Done.")
+      self.trace(3, "Inner Done.")
       return None
-    self.trace(f"ScanNext: {res}")
+    self.trace(2, f"Next: {res}")
     return res
+
+
+#
+# InsertionScan
+#
+# Given a Rank, and a 1-stream of fiber_handles, and a 2-stream of 
+# coords, returns a 2-stream of handles to elements of those coords in 
+# those fibers. Also returns a 1-stream up updated fiber handles.
+# 
+
+class InsertionScan (AST):
+  def __init__(self, rank, fiber_handles, coords):
+    super().__init__("InsertionScan", rank, num_fields=2)
+    self.fiber_handles = fiber_handles
+    fiber_handles.connect(self)
+    self.coords = coords
+    coords.connect(self)
+    self.active = False
+  
+  def evaluate(self):
+    if not self.active:
+      fiber_handle = self.fiber_handles.nextValue(self)
+      if fiber_handle is None:
+        self.trace(3, "Done.")
+        return (None, None)
+      self.trace(2, f"Start {fiber_handle}")
+      self.rank.setCurrent(fiber_handle)
+      self.active = True
+
+    coord = self.coords.nextValue(self)
+    if coord is None:
+      self.active = False
+      new_handle = self.rank.getUpdatedFiberHandle()
+      self.trace(3, f"Inner Done. New Handle: {new_handle}")
+      return (None, new_handle)
+    self.trace(2, f"Inserting: {coord}")
+    handle = self.rank.insertElement(coord)
+    return (handle, NoChange)
+
+
+
 #
 # Iterate
 #
@@ -244,17 +314,17 @@ def Iterate(rank):
 class HandlesToCoords (AST):
 
   def __init__(self, rank, handles):
-    super().__init__(rank)
+    super().__init__("HandlesToCoords", rank)
     self.handles = handles
     handles.connect(self)
 
   def evaluate(self):
     handle = self.handles.nextValue(self)
     if handle is None:
-      self.trace(f"HandleToCoord: None")
+      self.trace(3, "None")
       return None
     coord = self.rank.handleToCoord(handle)
-    self.trace(f"HandleToCoord: {handle}, {coord}")
+    self.trace(2, f"{handle} => {coord}")
     return coord
     
 #
@@ -266,17 +336,17 @@ class HandlesToCoords (AST):
 class HandlesToPayloads (AST):
 
   def __init__(self, rank, handles):
-    super().__init__(rank)
+    super().__init__("HandlesToPayloads", rank)
     self.handles = handles
     handles.connect(self)
 
   def evaluate(self):
     handle = self.handles.nextValue(self)
     if handle is None:
-      self.trace(f"HandleToPayload: None")
+      self.trace(3, "None")
       return None
     payload = self.rank.handleToPayload(handle)
-    self.trace(f"HandleToPayload: {handle}, {payload}")
+    self.trace(2, f"{handle} => {payload}")
     return payload
 
 
@@ -298,17 +368,17 @@ class HandlesToPayloads (AST):
 class PayloadsToFiberHandles (AST):
 
   def __init__(self, rank, payloads):
-    super().__init__(rank)
+    super().__init__("PayloadsToFiberHandles", rank)
     self.payloads = payloads
     payloads.connect(self)
 
   def evaluate(self):
     payload = self.payloads.nextValue(self)
     if payload is None:
-      self.trace(f"PayloadToFiberHandle: None")
+      self.trace(3, "None")
       return None
     fiber_handle = self.rank.payloadToFiberHandle(payload)
-    self.trace(f"PayloadToFiberHandle: {payload}, {fiber_handle}")
+    self.trace(2, f"{payload} => {fiber_handle}")
     return fiber_handle
 
 #
@@ -320,17 +390,17 @@ class PayloadsToFiberHandles (AST):
 class PayloadsToValues (AST):
 
   def __init__(self, rank, payloads):
-    super().__init__(rank)
+    super().__init__("PayloadsToValues", rank)
     self.payloads = payloads
     payloads.connect(self)
 
   def evaluate(self):
     payload = self.payloads.nextValue(self)
     if payload is None:
-      self.trace(f"PayloadToValue: None")
+      self.trace(3, "None")
       return None
     value = self.rank.payloadToValue(payload)
-    self.trace(f"PayloadToValue: {payload}, {value}")
+    self.trace(2, f"{payload} => {value}")
     return value
 
 
@@ -346,21 +416,21 @@ class PayloadsToValues (AST):
 class CoordsToHandles (AST):
 
   def __init__(self, rank, coords):
-    super().__init__(rank)
+    super().__init__("CoordsToHandles", rank)
     self.coords = coords
     coords.connect(self)
 
   def evaluate(self):
     coord = self.coords.nextValue(self)
     if coord is None:
-      self.trace(f"CoordToHandle: None")
+      self.trace(3, "None")
       return None
     handle = self.rank.coordToHandle(coord)
-    self.trace(f"CoordToHandle: {coord}, {handle}")
+    self.trace(2, f"{coord} => {handle}")
     return handle
 
 #
-# InsertElement
+# InsertElements
 #
 # Given a reference to an AST Rank, and an AST Node that 
 # that produces a N-stream of coords, produces a N-stream of handles
@@ -369,21 +439,22 @@ class CoordsToHandles (AST):
 # TODO: Add starting position.
 #
 
-class InsertElement (AST):
+class InsertElements (AST):
 
   def __init__(self, rank, coords):
-    super().__init__(rank)
+    super().__init__("InsertElements", rank, num_fields=2)
     self.coords = coords
     coords.connect(self)
 
   def evaluate(self):
     coord = self.coords.nextValue(self)
     if coord is None:
-      self.trace(f"InsertElement: None")
-      return None
+      new_handle = self.rank.getUpdatedFiberHandle()
+      self.trace(3, f"None. New Handle: {new_handle}")
+      return (None, new_handle)
     handle = self.rank.insertElement(coord)
-    self.trace(f"InsertElement: {coord}, {handle}")
-    return handle
+    self.trace(2, f"{coord} => {handle}")
+    return (handle, NoChange)
 
 #
 # UpdatePayloads
@@ -396,7 +467,7 @@ class InsertElement (AST):
 class UpdatePayloads (AST):
 
   def __init__(self, rank, handles, payloads):
-    super().__init__(rank)
+    super().__init__("UpdatePayloads", rank)
     self.handles = handles
     handles.connect(self)
     self.payloads = payloads
@@ -407,9 +478,9 @@ class UpdatePayloads (AST):
     payload = self.payloads.nextValue(self)
     if handle is None or payload is None:
       assert (handle is None and payload is None)
-      self.trace(f"UpdatePayloads: None")
+      self.trace(3, "None")
       return None
-    self.trace(f"UpdatePayloads: {handle}, {payload}")
+    self.trace(2, f"{handle} => {payload}")
     return self.rank.updatePayload(handle, payload)
 
 
@@ -421,7 +492,7 @@ class UpdatePayloads (AST):
 class Intersect (AST):
   def __init__(self, a_coords, a_handles, b_coords, b_handles):
     # Note: we return a 3-tuple, so tell the super-class that.
-    super().__init__(num_fields = 3)
+    super().__init__("Intersect", num_fields = 3)
     self.a_coords = a_coords
     a_coords.connect(self)
     self.a_handles = a_handles
@@ -442,31 +513,31 @@ class Intersect (AST):
     b_handle = None
     while a_coord != None and b_coord != None:
       if a_coord == b_coord:
-        self.trace(f"Intersection found at: {a_coord}: ({a_handle}, {b_handle})")
+        self.trace(2, f"Intersection found at: {a_coord}: ({a_handle}, {b_handle})")
         return (a_coord, a_handle, b_handle)
       while a_coord != None and b_coord != None and a_coord < b_coord:
         a_coord = self.a_coords.nextValue(self)
         a_handle = self.a_handles.nextValue(self)
-        self.trace(f"Intersection advancing A: {a_coord}, {b_coord} ({a_handle}, {b_handle})")        
+        self.trace(3, f"Advancing A: {a_coord}, {b_coord} ({a_handle}, {b_handle})")        
       while b_coord != None and a_coord != None and b_coord < a_coord:
         b_coord = self.b_coords.nextValue(self)
         b_handle = self.b_handles.nextValue(self)
-        self.trace(f"Intersection advancing B: {a_coord}, {b_coord} ({a_handle}, {b_handle})")
+        self.trace(3, f"Advancing B: {a_coord}, {b_coord} ({a_handle}, {b_handle})")
       # If one ended, drain the other
       if a_coord is None:
         while b_coord is not None:
           b_coord = self.b_coords.nextValue(self)
           b_handle = self.b_handles.nextValue(self)
-          self.trace(f"Intersection draining B: {b_coord} ({b_handle})")
+          self.trace(3, f"Draining B: {b_coord} ({b_handle})")
         return (None, None, None)
       elif b_coord is None:
         while a_coord is not None:
           a_coord = self.a_coords.nextValue(self)
           a_handle = self.a_handles.nextValue(self)
-          self.trace(f"Intersection draining A: {a_coord} ({a_handle})")
+          self.trace(3, f"Draining A: {a_coord} ({a_handle})")
         return (None, None, None)
 
-    self.trace("Intersection done.")
+    self.trace(3, "Done.")
     return (None, None, None)
   
 
@@ -479,18 +550,17 @@ class Intersect (AST):
 
 class Splitter (AST):
   def __init__(self, stream, num):
-    super().__init__()
+    super().__init__("Splitter")
     self.stream = stream
     stream.connect(self)
     self.num = num
 
   def evaluate(self):
-    return self.stream.nextValue(self)
-
-  def nextValue(self, other):
-    cur_result = super().nextValue(other)
-    self.trace(f"Splitter[{self.num}]: {self.cur_result[self.num]}")
-    return self.cur_result[self.num]
+    res = self.stream.nextValue(self)[self.num]
+    if res is NoChange:
+      return self.cur_result
+    else:
+      return res
 
 #
 # Compute
@@ -502,7 +572,7 @@ class Splitter (AST):
 
 class Compute (AST):
   def __init__(self, function, *streams):
-    super().__init__()
+    super().__init__("Compute")
     self.streams = streams
     for stream in streams:
       stream.connect(self)
@@ -523,11 +593,11 @@ class Compute (AST):
     assert(not any_is_none or all_are_none)
     
     if all_are_none:
-      self.trace(f"Compute: None")
+      self.trace(3, "None")
       return None
       
     result = self.function(*args)
-    self.trace(f"Compute({args}) => {result}")
+    self.trace(1, f"({args}) => {result}")
     return result
 
 #
@@ -540,7 +610,7 @@ class Compute (AST):
 
 class Amplify (AST):
   def __init__(self, smaller, bigger):
-    super().__init__()
+    super().__init__("Amplify")
     self.smaller = smaller
     smaller.connect(self)
     self.bigger = bigger
@@ -550,14 +620,14 @@ class Amplify (AST):
   def evaluate(self):
     if self.current_value is None: # Is this initialization condition correct?  
       self.current_value = self.smaller.nextValue(self)
-      self.trace(f"Amplify Init: {self.current_value}")
+      self.trace(3, f"{self.smaller.class_name}: Init: {self.current_value}")
       
     next = self.bigger.nextValue(self)
     if next is None:
       self.current_value = None
-      self.trace(f"Amplify: Shrink")
+      self.trace(3, f"{self.smaller.class_name}: Shrink")
 
-    self.trace(f"Amplify: {next} => {self.current_value}")
+    self.trace(2, f"{self.smaller.class_name}: {next} => {self.current_value}")
     return self.current_value
 
 #
@@ -570,7 +640,7 @@ class Amplify (AST):
 
 class Reduce (AST):
   def __init__(self, smaller, bigger):
-    super().__init__()
+    super().__init__("Reduce")
     self.smaller = smaller
     smaller.connect(self)
     self.bigger = bigger
@@ -582,17 +652,17 @@ class Reduce (AST):
     if current_value is None:
       next = self.bigger.nextValue(self)
       assert(next is None)
-      self.trace(f"Reduce Init: None")
+      self.trace(3, "Init: None")
       return None
-    self.trace(f"Reduce Init: {current_value}")
+    self.trace(3, f"Init: {current_value}")
     
     next = 0
     while next is not None:
       next = self.bigger.nextValue(self)
       if next is not None:
+        self.trace(2, f"{current_value} + {next} => {current_value + next}")
         current_value += next
-        self.trace(f"Reduce: {current_value}")
-    self.trace(f"Reduce: Done")
+    self.trace(3, "Done")
     return current_value
 
 #
@@ -604,7 +674,7 @@ class Reduce (AST):
 
 class Stream0 (AST):
   def __init__(self, val):
-    super().__init__()
+    super().__init__("Stream0")
     self.val = val
     self.done = False
   
@@ -612,6 +682,7 @@ class Stream0 (AST):
   def evaluate(self):
     assert(not self.done)
     self.done = True
+    self.trace(3, f"{self.val}")
     return self.val
 
 
@@ -657,6 +728,16 @@ class BasicIntermediateRankImplementation:
   
   def updatePayload(self, handle, payload):
     return handle
+  
+  def getUpdatedFiberHandle(self):
+    return self.shape
+
+  def fiberHandleToPayload(self, fiber_handle):
+    return fiber_handle
+
+  def valueToPayload(self, value):
+    assert(False)
+
 
   def dumpStats(self, stats_dict):
     pass
@@ -704,6 +785,16 @@ class BasicFiberImplementation:
     assert(handle is not None)
     self.vals[handle] = payload
     return handle
+  
+  def getUpdatedFiberHandle(self):
+    return len(self.vals)
+
+  def fiberHandleToPayload(self, fiber_handle):
+    assert(False)
+
+  def valueToPayload(self, value):
+    return value
+
 
   def dumpStats(self, stats_dict):
     pass
@@ -732,195 +823,223 @@ def evaluate(node, n = 1, stats_dict = {}):
   node.finalize(stats_dict)
 
 
-
-## Test program: Element-wise multiplication
-# a_k = A.getRoot()
-# b_k = B.getRoot()
-# for k, (z, (a, b)) in z_k << (a_k & b_k):
-#   z_ref <<= a_k * b_k
-
-# Define the tensors
-a = Tensor(name = "A", rank_ids = ["K"])
-b = Tensor(name = "B", rank_ids = ["K"])
-z = Tensor(name = "Z", rank_ids = ["K"])
-
-# Convenience shortcuts
-a_k = a["K"]
-b_k = b["K"]
-z_k = z["K"]
-
-# Iterate the root ranks and get handles to their contents
-a_handles = Iterate(a_k)
-b_handles = Iterate(b_k)
-# Convert handles to coordinates
-a_coords = HandlesToCoords(a_k, a_handles)
-b_coords = HandlesToCoords(b_k, b_handles)
-# Intersect the K rank
-(ab_coords, ab_a_handles, ab_b_handles) = Intersect(a_coords, a_handles, b_coords, b_handles)
-# Only insert elements that survive intersection
-z_handles = InsertElement(z_k, ab_coords)
-# Only retrieve the values that survive intersection
-a_payloads = HandlesToPayloads(a_k, ab_a_handles)
-b_payloads = HandlesToPayloads(b_k, ab_b_handles)
-a_values = PayloadsToValues(a_k, a_payloads)
-b_values = PayloadsToValues(b_k, b_payloads)
-# Calculate the loop body
-results = Compute(lambda a, b: a*b, a_values, b_values)
-# Final writeback
-z_k_update_acks = UpdatePayloads(z_k, z_handles, results)
-
-# Create some example implmentations
-myA_K = BasicFiberImplementation([1, 2, 3])
-myB_K = BasicFiberImplementation([4, 5, 6])
-myZ_K = BasicFiberImplementation([None, None, None])
-
-# Use those implementations in practice
-a.setImplementations("K", [myA_K])
-b.setImplementations("K", [myB_K])
-z.setImplementations("K", [myZ_K])
-
-# Run the program and check and print the result
-evaluate(z_k_update_acks)
-print("===========================")
-print(f"Final element-wise result: {myZ_K.vals}")
-print("===========================")
-assert(myZ_K.vals == [4, 10, 18])
+if __name__ == "__main__":
 
 
+  ## Test program: Element-wise multiplication
+  #
+  #
+  # Z_k = A_k * B_k
+  #
+  #
+  # a_k = A.getRoot()
+  # b_k = B.getRoot()
+  # z_k = Z.getRoot()
+  #
+  # for k, (z, (a, b)) in z_k << (a_k & b_k):
+  #   z <<= a * b
 
-## Test program: A-Stationary vector-matrix multiplication
-#for k, (a, b_n) in a_k & b_k:
-#  for n, (z, b) in z_n << b_n:
-#    z += a * b
+  # Define the tensors
+  a = Tensor(name = "A", rank_ids = ["K"])
+  b = Tensor(name = "B", rank_ids = ["K"])
+  z = Tensor(name = "Z", rank_ids = ["K"])
 
-a = Tensor(name="A", rank_ids=["K"])
-b = Tensor(name="B", rank_ids=["K", "N"])
-z = Tensor(name="Z", rank_ids=["N"])
+  # Convenience shortcuts
+  a_k = a["K"]
+  b_k = b["K"]
+  z_root = z["root"]
+  z_k = z["K"]
 
-a_k = a["K"]
-b_k = b["K"]
-b_n = b["N"]
-z_n = z["N"]
+  # Iterate the root ranks and get handles to their contents
+  a_handles = Iterate(a_k)
+  b_handles = Iterate(b_k)
+  # Convert handles to coordinates
+  a_coords = HandlesToCoords(a_k, a_handles)
+  b_coords = HandlesToCoords(b_k, b_handles)
+  # Intersect the K rank
+  (ab_coords, ab_a_handles, ab_b_handles) = Intersect(a_coords, a_handles, b_coords, b_handles)
+  # Only insert elements that survive intersection
+  (z_handles, z_k_new_fiber_handle) = InsertElements(z_k, ab_coords)
+  # Only retrieve the values that survive intersection
+  a_payloads = HandlesToPayloads(a_k, ab_a_handles)
+  b_payloads = HandlesToPayloads(b_k, ab_b_handles)
+  a_values = PayloadsToValues(a_k, a_payloads)
+  b_values = PayloadsToValues(b_k, b_payloads)
+  # Calculate the loop body
+  results = Compute(lambda a, b: a*b, a_values, b_values)
+  # Final writeback
+  z_k_update_acks = UpdatePayloads(z_k, z_handles, results)
+  
+  # Update final occupancies.
+  z_root_handle = Iterate(z_root)
+  z_root_update_acks = UpdatePayloads(z_root, z_root_handle, z_k_new_fiber_handle)
 
-# a_k & b_k
-a_k_handles = Iterate(a_k)
-b_k_handles = Iterate(b_k)
-a_k_coords = HandlesToCoords(a_k, a_k_handles)
-b_k_coords = HandlesToCoords(b_k, b_k_handles)
-(ab_k_coords, ab_a_k_handles, ab_b_k_handles) = Intersect(a_k_coords, a_k_handles, b_k_coords, b_k_handles)
-ab_a_k_payloads = HandlesToPayloads(a_k, ab_a_k_handles)
-ab_b_k_payloads = HandlesToPayloads(b_k, ab_b_k_handles)
+  # Create some example implmentations
+  myA_K = BasicFiberImplementation([1, 2, 3])
+  myB_K = BasicFiberImplementation([4, 5, 6])
+  myZ_root = BasicIntermediateRankImplementation(1, 3)
+  myZ_K = BasicFiberImplementation([None, None, None])
 
-# z_n << b_n
-ab_b_n_fiber_handles = PayloadsToFiberHandles(b_k, ab_b_k_payloads)
-b_n_handles = Scan(b_n, ab_b_n_fiber_handles)
-b_n_coords = HandlesToCoords(b_n, b_n_handles)
-b_n_payloads = HandlesToPayloads(b_n, b_n_handles)
-z_n_coords = b_n_coords
-z_n_handles = InsertElement(z_n, z_n_coords)
-z_n_payloads = HandlesToPayloads(z_n, z_n_handles)
+  # Use those implementations in practice
+  a.setImplementations("K", [myA_K])
+  b.setImplementations("K", [myB_K])
+  z.setImplementations("root", [myZ_root])
+  z.setImplementations("K", [myZ_K])
 
-# z_ref += a_val * b_val
-a_values = PayloadsToValues(a_k, ab_a_k_payloads)
-b_values = PayloadsToValues(b_n, b_n_payloads)
-z_values = PayloadsToValues(z_n, z_n_payloads)
-# We need to repeat A value across every Z
-a_values_amplified = Amplify(a_values, z_n_coords)
-# Actual computation
-body_func = lambda a_val, b_val, z_ref: z_ref + a_val * b_val
-z_new_values = Compute(body_func, a_values_amplified, b_values, z_values)
-# Final write-back
-z_n_update_acks = UpdatePayloads(z_n, z_n_handles, z_new_values)
-
-K=3
-N=3
-my_a_k = BasicFiberImplementation([1, 2, 3])
-my_b_k = BasicIntermediateRankImplementation(K, N)
-my_b_n = [
-           BasicFiberImplementation([4, 5, 6]), 
-           BasicFiberImplementation([5, 6, 7]), 
-           BasicFiberImplementation([6, 7, 8])
-         ]
-my_z_n = BasicFiberImplementation([0, 0, 0])
-
-a.setImplementations("K", [my_a_k])
-b.setImplementations("K", [my_b_k])
-b.setImplementations("N", my_b_n)
-z.setImplementations("N", [my_z_n])
-
-evaluate(z_n_update_acks, 2)
-print("==========================")
-print(f"Final A-Stationary result: {my_z_n.vals}")
-print("==========================")
-assert(my_z_n.vals == [32, 38, 44])
+  # Run the program and check and print the result
+  evaluate(z_k_update_acks)
+  print("===========================")
+  print(f"Final element-wise result: {myZ_K.vals}")
+  print("===========================")
+  assert(myZ_K.vals == [4, 10, 18])
 
 
 
-## Test program: Z-Stationary vector-matrix multiplication
-#for n, (z, b_k) in z_n << b_n:
-#  for k, (a, b) in a_k & b_k:
-#    z += a * b
+  ## Test program: A-Stationary vector-matrix multiplication
+  #for k, (a, b_n) in a_k & b_k:
+  #  for n, (z, b) in z_n << b_n:
+  #    z += a * b
 
-a = Tensor(name="A", rank_ids=["K"])
-b = Tensor(name="B", rank_ids=["N", "K"])
-z = Tensor(name="Z", rank_ids=["N"])
+  a = Tensor(name="A", rank_ids=["K"])
+  b = Tensor(name="B", rank_ids=["K", "N"])
+  z = Tensor(name="Z", rank_ids=["N"])
 
-a_k = a["K"]
-b_n = b["N"]
-b_k = b["K"]
-z_n = z["N"]
+  a_k = a["K"]
+  b_k = b["K"]
+  b_n = b["N"]
+  z_root = z["root"]
+  z_n = z["N"]
 
-# z_n << b_n
-b_n_handles = Iterate(b_n)
-b_n_coords = HandlesToCoords(b_n, b_n_handles)
-b_n_payloads = HandlesToPayloads(b_n, b_n_handles)
-z_n_coords = b_n_coords
-z_n_handles = InsertElement(z_n, z_n_coords)
-z_n_payloads = HandlesToPayloads(z_n, z_n_handles)
-b_k_n_fiber_handles = PayloadsToFiberHandles(b_n, b_n_payloads)
+  # a_k & b_k
+  a_k_handles = Iterate(a_k)
+  b_k_handles = Iterate(b_k)
+  a_k_coords = HandlesToCoords(a_k, a_k_handles)
+  b_k_coords = HandlesToCoords(b_k, b_k_handles)
+  (ab_k_coords, ab_a_k_handles, ab_b_k_handles) = Intersect(a_k_coords, a_k_handles, b_k_coords, b_k_handles)
+  ab_a_k_payloads = HandlesToPayloads(a_k, ab_a_k_handles)
+  ab_b_k_payloads = HandlesToPayloads(b_k, ab_b_k_handles)
+  ab_b_n_fiber_handles = PayloadsToFiberHandles(b_k, ab_b_k_payloads)
+
+  # z_n << b_n
+  b_n_handles = Scan(b_n, ab_b_n_fiber_handles)
+  b_n_coords = HandlesToCoords(b_n, b_n_handles)
+  b_n_payloads = HandlesToPayloads(b_n, b_n_handles)
+  z_n_fiber_handle = Stream0(z_n.getStartingFiberHandle())
+  z_n_fiber_handles = Amplify(z_n_fiber_handle, ab_k_coords)
+  (z_n_handles, z_n_updated_fiber_handles) = InsertionScan(z_n, z_n_fiber_handles, b_n_coords)
+  z_n_payloads = HandlesToPayloads(z_n, z_n_handles)
+
+  # z_ref += a_val * b_val
+  a_values = PayloadsToValues(a_k, ab_a_k_payloads)
+  b_values = PayloadsToValues(b_n, b_n_payloads)
+  z_values = PayloadsToValues(z_n, z_n_payloads)
+  # We need to repeat A value across every Z
+  a_values_amplified = Amplify(a_values, b_n_coords)
+  # Actual computation
+  body_func = lambda a_val, b_val, z_ref: z_ref + a_val * b_val
+  z_new_values = Compute(body_func, a_values_amplified, b_values, z_values)
+  # Final write-back
+  z_n_update_acks = UpdatePayloads(z_n, z_n_handles, z_new_values)
+
+  # Record occupancy
+  z_root_handles = Scan(z_root, ab_k_coords)
+  z_root_acks = UpdatePayloads(z_root, z_root_handles, z_n_updated_fiber_handles)
+
+  K=3
+  N=3
+  my_a_k = BasicFiberImplementation([1, 2, 3])
+  my_b_k = BasicIntermediateRankImplementation(K, N)
+  my_b_n = [
+             BasicFiberImplementation([4, 5, 6]), 
+             BasicFiberImplementation([5, 6, 7]), 
+             BasicFiberImplementation([6, 7, 8])
+           ]
+  my_z_root = BasicIntermediateRankImplementation(1, N)
+  my_z_n = BasicFiberImplementation([0, 0, 0])
+
+  a.setImplementations("K", [my_a_k])
+  b.setImplementations("K", [my_b_k])
+  b.setImplementations("N", my_b_n)
+  z.setImplementations("root", [my_z_root])
+  z.setImplementations("N", [my_z_n])
+
+  evaluate(z_n_update_acks, 2)
+  print("==========================")
+  print(f"Final A-Stationary result: {my_z_n.vals}")
+  print("==========================")
+  assert(my_z_n.vals == [32, 38, 44])
 
 
-# a_k & b_k
-b_k_handles = Scan(b_k, b_k_n_fiber_handles)
-# Repeat a_k iteration for each b_k
-a_k_fiber_handle = Stream0(a_k.getRootFiberHandle())
-a_k_fiber_handles = Amplify(a_k_fiber_handle, b_k_n_fiber_handles)
-a_k_handles = Scan(a_k, a_k_fiber_handles) 
-a_k_coords = HandlesToCoords(a_k, a_k_handles)
-b_k_coords = HandlesToCoords(b_k, b_k_handles)
-(ab_k_coords, ab_a_k_handles, ab_b_k_handles) = Intersect(a_k_coords, a_k_handles, b_k_coords, b_k_handles)
-ab_a_k_payloads = HandlesToPayloads(a_k, ab_a_k_handles)
-ab_b_k_payloads = HandlesToPayloads(b_k, ab_b_k_handles)
+
+  ## Test program: Z-Stationary vector-matrix multiplication
+  #for n, (z, b_k) in z_n << b_n:
+  #  for k, (a, b) in a_k & b_k:
+  #    z += a * b
+
+  a = Tensor(name="A", rank_ids=["K"])
+  b = Tensor(name="B", rank_ids=["N", "K"])
+  z = Tensor(name="Z", rank_ids=["N"])
+
+  a_k = a["K"]
+  b_n = b["N"]
+  b_k = b["K"]
+  z_root = z["root"]
+  z_n = z["N"]
+
+  # z_n << b_n
+  b_n_handles = Iterate(b_n)
+  b_n_coords = HandlesToCoords(b_n, b_n_handles)
+  b_n_payloads = HandlesToPayloads(b_n, b_n_handles)
+  z_n_coords = b_n_coords
+  (z_n_handles, z_n_new_fiber_handle) = InsertElements(z_n, z_n_coords)
+  z_n_payloads = HandlesToPayloads(z_n, z_n_handles)
+  b_k_n_fiber_handles = PayloadsToFiberHandles(b_n, b_n_payloads)
 
 
-# z_ref += a_val * b_val
-a_values = PayloadsToValues(a_k, ab_a_k_payloads)
-b_values = PayloadsToValues(a_k, ab_b_k_payloads)
-# NOTE: MUL and ADD broken out for efficiency
-body_func = lambda a_val, b_val: a_val * b_val
-partial_products = Compute(body_func, a_values, b_values)
-z_values = z_n_payloads
-# Reduce into the same value until end of rank
-z_new_values = Reduce(z_values, partial_products)
-z_n_update_acks = UpdatePayloads(z_n, z_n_handles, z_new_values)
+  # a_k & b_k
+  b_k_handles = Scan(b_k, b_k_n_fiber_handles)
+  # Repeat a_k iteration for each b_k
+  a_k_fiber_handle = Stream0(a_k.getStartingFiberHandle())
+  a_k_fiber_handles = Amplify(a_k_fiber_handle, b_k_n_fiber_handles)
+  a_k_handles = Scan(a_k, a_k_fiber_handles) 
+  a_k_coords = HandlesToCoords(a_k, a_k_handles)
+  b_k_coords = HandlesToCoords(b_k, b_k_handles)
+  (ab_k_coords, ab_a_k_handles, ab_b_k_handles) = Intersect(a_k_coords, a_k_handles, b_k_coords, b_k_handles)
+  ab_a_k_payloads = HandlesToPayloads(a_k, ab_a_k_handles)
+  ab_b_k_payloads = HandlesToPayloads(b_k, ab_b_k_handles)
 
 
-my_a_k = BasicFiberImplementation([1, 2, 3])
-my_b_n = BasicIntermediateRankImplementation(N, K)
-my_b_k = [BasicFiberImplementation([4, 5, 6]), 
-          BasicFiberImplementation([5, 6, 7]), 
-          BasicFiberImplementation([6, 7, 8])]
-my_z_n = BasicFiberImplementation([0, 0, 0])
+  # z_ref += a_val * b_val
+  a_values = PayloadsToValues(a_k, ab_a_k_payloads)
+  b_values = PayloadsToValues(b_k, ab_b_k_payloads)
+  # NOTE: MUL and ADD broken out for efficiency
+  body_func = lambda a_val, b_val: a_val * b_val
+  partial_products = Compute(body_func, a_values, b_values)
+  z_values = z_n_payloads
+  # Reduce into the same value until end of rank
+  z_new_values = Reduce(z_values, partial_products)
+  z_n_update_acks = UpdatePayloads(z_n, z_n_handles, z_new_values)
+  
+  # Update occupancy
+  z_root_handle = Iterate(z_root)
+  z_root_update_acks = UpdatePayloads(z_root, z_root_handle, z_n_new_fiber_handle)
 
 
-a.setImplementations("K", [my_a_k])
-b.setImplementations("N", [my_b_n])
-b.setImplementations("K", my_b_k)
-z.setImplementations("N", [my_z_n])
+  my_a_k = BasicFiberImplementation([1, 2, 3])
+  my_b_n = BasicIntermediateRankImplementation(N, K)
+  my_b_k = [BasicFiberImplementation([4, 5, 6]), 
+            BasicFiberImplementation([5, 6, 7]), 
+            BasicFiberImplementation([6, 7, 8])]
+  my_z_n = BasicFiberImplementation([0, 0, 0])
 
-evaluate(z_n_update_acks)
-print("==========================")
-print(f"Final Z-Stationary result: {my_z_n.vals}")
-print("==========================")
-assert(my_z_n.vals == [32, 38, 44])
 
+  a.setImplementations("K", [my_a_k])
+  b.setImplementations("N", [my_b_n])
+  b.setImplementations("K", my_b_k)
+  z.setImplementations("N", [my_z_n])
+
+  evaluate(z_n_update_acks)
+  print("==========================")
+  print(f"Final Z-Stationary result: {my_z_n.vals}")
+  print("==========================")
+  assert(my_z_n.vals == [32, 38, 44])
