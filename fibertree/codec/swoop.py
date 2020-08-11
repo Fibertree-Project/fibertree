@@ -45,10 +45,7 @@ class Rank:
     self.implementations = []
     self.name = name
     self.current_fiber = None
-  
-  def getStartingFiberHandle(self):
-    return 0
-  
+
   def setImplementations(self, imps):
     self.implementations = imps
     self.current_fiber = 0
@@ -503,10 +500,6 @@ class Intersect (AST):
     b_handles.connect(self)
 
   def evaluate(self):
-    #a_coord = self.a_coords.nextValue()
-    #a_handle = self.a_handles.nextValue()
-    #b_coord = self.b_coords.nextValue()
-    #b_handle = self.b_handles.nextValue()
     a_coord = -2
     b_coord = -1
     a_handle = None
@@ -687,6 +680,21 @@ class Stream0 (AST):
 
 
 #
+# GetStartingFiber
+#
+# Convenience that retrieves the fiber_handle of the single Fiber of Rank 1,
+# using the root fiber's payloads.
+#
+
+def GetStartingFiber(tensor):
+  rank = tensor["root"]
+  root_handle = Iterate(rank)
+  root_payload = HandlesToPayloads(rank, root_handle)
+  fiber_handle = PayloadsToFiberHandles(rank, root_payload)
+  return fiber_handle
+  
+
+#
 # BasicIntermediateRankImplementation
 #
 # Rank implementation JUST to test out the program below.
@@ -715,6 +723,8 @@ class BasicIntermediateRankImplementation:
     return (handle * self.shape_of_next_rank, (handle+1) * self.shape_of_next_rank)
   
   def payloadToFiberHandle(self, payload):
+    if self.shape_of_next_rank == 0:
+      return payload[0]
     return payload[0] // self.shape_of_next_rank
   
   def payloadToValue(self, payload):
@@ -779,6 +789,8 @@ class BasicFiberImplementation:
     return coord
   
   def insertElement(self, coord):
+    if coord >= len(self.vals):
+      self.vals.append(0)
     return coord
   
   def updatePayload(self, handle, payload):
@@ -850,16 +862,20 @@ if __name__ == "__main__":
   z_root = z["root"]
   z_k = z["K"]
 
-  # Iterate the root ranks and get handles to their contents
-  a_handles = Iterate(a_k)
-  b_handles = Iterate(b_k)
+  # Get handles to the tree start.
+  a_k_fiber_handle = GetStartingFiber(a)
+  b_k_fiber_handle = GetStartingFiber(b)
+  z_k_fiber_handle = GetStartingFiber(z)
+  # Iterate the K rank and get handles to contents
+  a_handles = Scan(a_k, a_k_fiber_handle)
+  b_handles = Scan(b_k, b_k_fiber_handle)
   # Convert handles to coordinates
   a_coords = HandlesToCoords(a_k, a_handles)
   b_coords = HandlesToCoords(b_k, b_handles)
   # Intersect the K rank
   (ab_coords, ab_a_handles, ab_b_handles) = Intersect(a_coords, a_handles, b_coords, b_handles)
   # Only insert elements that survive intersection
-  (z_handles, z_k_new_fiber_handle) = InsertElements(z_k, ab_coords)
+  (z_handles, z_k_new_fiber_handle) = InsertionScan(z_k, z_k_fiber_handle, ab_coords)
   # Only retrieve the values that survive intersection
   a_payloads = HandlesToPayloads(a_k, ab_a_handles)
   b_payloads = HandlesToPayloads(b_k, ab_b_handles)
@@ -875,30 +891,38 @@ if __name__ == "__main__":
   z_root_update_acks = UpdatePayloads(z_root, z_root_handle, z_k_new_fiber_handle)
 
   # Create some example implmentations
-  myA_K = BasicFiberImplementation([1, 2, 3])
-  myB_K = BasicFiberImplementation([4, 5, 6])
-  myZ_root = BasicIntermediateRankImplementation(1, 3)
-  myZ_K = BasicFiberImplementation([None, None, None])
+  my_a_root = BasicIntermediateRankImplementation(1, 1)
+  my_a_K = BasicFiberImplementation([1, 2, 3])
+  my_b_root = BasicIntermediateRankImplementation(1, 1)
+  my_b_K = BasicFiberImplementation([4, 5, 6])
+  my_z_root = BasicIntermediateRankImplementation(1, 1)
+  my_z_K = BasicFiberImplementation([])
 
   # Use those implementations in practice
-  a.setImplementations("K", [myA_K])
-  b.setImplementations("K", [myB_K])
-  z.setImplementations("root", [myZ_root])
-  z.setImplementations("K", [myZ_K])
+  a.setImplementations("root", [my_a_root])
+  a.setImplementations("K", [my_a_K])
+  b.setImplementations("root", [my_b_root])
+  b.setImplementations("K", [my_b_K])
+  z.setImplementations("root", [my_z_root])
+  z.setImplementations("K", [my_z_K])
 
   # Run the program and check and print the result
   evaluate(z_k_update_acks)
   print("===========================")
-  print(f"Final element-wise result: {myZ_K.vals}")
+  print(f"Final element-wise result: {my_z_K.vals}")
   print("===========================")
-  assert(myZ_K.vals == [4, 10, 18])
+  assert(my_z_K.vals == [4, 10, 18])
 
 
 
   ## Test program: A-Stationary vector-matrix multiplication
-  #for k, (a, b_n) in a_k & b_k:
-  #  for n, (z, b) in z_n << b_n:
-  #    z += a * b
+  #
+  # Z_n = A_k * B_kn
+  #
+  #
+  # for k, (a, b_n) in a_k & b_k:
+  #   for n, (z, b) in z_n << b_n:
+  #     z += a * b
 
   a = Tensor(name="A", rank_ids=["K"])
   b = Tensor(name="B", rank_ids=["K", "N"])
@@ -910,9 +934,14 @@ if __name__ == "__main__":
   z_root = z["root"]
   z_n = z["N"]
 
+  # Get handles to the tree start.
+  a_k_fiber_handle = GetStartingFiber(a)
+  b_k_fiber_handle = GetStartingFiber(b)
+  z_n_fiber_handle = GetStartingFiber(z)
+
   # a_k & b_k
-  a_k_handles = Iterate(a_k)
-  b_k_handles = Iterate(b_k)
+  a_k_handles = Scan(a_k, a_k_fiber_handle)
+  b_k_handles = Scan(b_k, b_k_fiber_handle)
   a_k_coords = HandlesToCoords(a_k, a_k_handles)
   b_k_coords = HandlesToCoords(b_k, b_k_handles)
   (ab_k_coords, ab_a_k_handles, ab_b_k_handles) = Intersect(a_k_coords, a_k_handles, b_k_coords, b_k_handles)
@@ -924,7 +953,6 @@ if __name__ == "__main__":
   b_n_handles = Scan(b_n, ab_b_n_fiber_handles)
   b_n_coords = HandlesToCoords(b_n, b_n_handles)
   b_n_payloads = HandlesToPayloads(b_n, b_n_handles)
-  z_n_fiber_handle = Stream0(z_n.getStartingFiberHandle())
   z_n_fiber_handles = Amplify(z_n_fiber_handle, ab_k_coords)
   (z_n_handles, z_n_updated_fiber_handles) = InsertionScan(z_n, z_n_fiber_handles, b_n_coords)
   z_n_payloads = HandlesToPayloads(z_n, z_n_handles)
@@ -947,17 +975,21 @@ if __name__ == "__main__":
 
   K=3
   N=3
+  my_a_root = BasicIntermediateRankImplementation(1, 1)
   my_a_k = BasicFiberImplementation([1, 2, 3])
+  my_b_root = BasicIntermediateRankImplementation(1, 1)
   my_b_k = BasicIntermediateRankImplementation(K, N)
   my_b_n = [
              BasicFiberImplementation([4, 5, 6]), 
              BasicFiberImplementation([5, 6, 7]), 
              BasicFiberImplementation([6, 7, 8])
            ]
-  my_z_root = BasicIntermediateRankImplementation(1, N)
-  my_z_n = BasicFiberImplementation([0, 0, 0])
+  my_z_root = BasicIntermediateRankImplementation(1, 1)
+  my_z_n = BasicFiberImplementation([])
 
+  a.setImplementations("root", [my_a_root])
   a.setImplementations("K", [my_a_k])
+  b.setImplementations("root", [my_b_root])
   b.setImplementations("K", [my_b_k])
   b.setImplementations("N", my_b_n)
   z.setImplementations("root", [my_z_root])
@@ -972,6 +1004,9 @@ if __name__ == "__main__":
 
 
   ## Test program: Z-Stationary vector-matrix multiplication
+  #
+  # Z_n = A_k * B_kn
+  #
   #for n, (z, b_k) in z_n << b_n:
   #  for k, (a, b) in a_k & b_k:
   #    z += a * b
@@ -985,13 +1020,17 @@ if __name__ == "__main__":
   b_k = b["K"]
   z_root = z["root"]
   z_n = z["N"]
+  
+  a_k_fiber_handle = GetStartingFiber(a)
+  b_n_fiber_handle = GetStartingFiber(b)
+  z_n_fiber_handle = GetStartingFiber(z)
 
   # z_n << b_n
-  b_n_handles = Iterate(b_n)
+  b_n_handles = Scan(b_n, b_n_fiber_handle)
   b_n_coords = HandlesToCoords(b_n, b_n_handles)
   b_n_payloads = HandlesToPayloads(b_n, b_n_handles)
   z_n_coords = b_n_coords
-  (z_n_handles, z_n_new_fiber_handle) = InsertElements(z_n, z_n_coords)
+  (z_n_handles, z_n_new_fiber_handle) = InsertionScan(z_n, z_n_fiber_handle, z_n_coords)
   z_n_payloads = HandlesToPayloads(z_n, z_n_handles)
   b_k_n_fiber_handles = PayloadsToFiberHandles(b_n, b_n_payloads)
 
@@ -999,7 +1038,6 @@ if __name__ == "__main__":
   # a_k & b_k
   b_k_handles = Scan(b_k, b_k_n_fiber_handles)
   # Repeat a_k iteration for each b_k
-  a_k_fiber_handle = Stream0(a_k.getStartingFiberHandle())
   a_k_fiber_handles = Amplify(a_k_fiber_handle, b_k_n_fiber_handles)
   a_k_handles = Scan(a_k, a_k_fiber_handles) 
   a_k_coords = HandlesToCoords(a_k, a_k_handles)
@@ -1024,18 +1062,23 @@ if __name__ == "__main__":
   z_root_handle = Iterate(z_root)
   z_root_update_acks = UpdatePayloads(z_root, z_root_handle, z_n_new_fiber_handle)
 
-
+  my_a_root = BasicIntermediateRankImplementation(1, 1)
   my_a_k = BasicFiberImplementation([1, 2, 3])
+  my_b_root = BasicIntermediateRankImplementation(1, 1)
   my_b_n = BasicIntermediateRankImplementation(N, K)
   my_b_k = [BasicFiberImplementation([4, 5, 6]), 
             BasicFiberImplementation([5, 6, 7]), 
             BasicFiberImplementation([6, 7, 8])]
-  my_z_n = BasicFiberImplementation([0, 0, 0])
+  my_z_root = BasicIntermediateRankImplementation(1, 1)
+  my_z_n = BasicFiberImplementation([])
 
 
+  a.setImplementations("root", [my_a_root])
   a.setImplementations("K", [my_a_k])
+  b.setImplementations("root", [my_b_root])
   b.setImplementations("N", [my_b_n])
   b.setImplementations("K", my_b_k)
+  z.setImplementations("root", [my_z_root])
   z.setImplementations("N", [my_z_n])
 
   evaluate(z_n_update_acks)
