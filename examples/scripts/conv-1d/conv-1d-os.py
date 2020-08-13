@@ -10,8 +10,8 @@ print("")
 
 data_dir = "../../data"
 
-w = Tensor(os.path.join(data_dir, "conv-weights-a.yaml"))
-i = Tensor(os.path.join(data_dir, "conv-activations-a.yaml"))
+w = Tensor.fromYAMLfile(os.path.join(data_dir, "conv-weights-a.yaml"))
+i = Tensor.fromYAMLfile(os.path.join(data_dir, "conv-activations-a.yaml"))
 o = Tensor(rank_ids=["Q"])
 
 w.print("W Tensor")

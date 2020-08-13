@@ -41,47 +41,19 @@ class MovieCanvas():
             self.tensors.append(Payload.get(tensor))
             self.image_list_per_tensor.append([])
 
-        self.saved_tensors = None
+        #
+        # Font to use for text
+        #
+        self.font = ImageFont.truetype('Pillow/Tests/fonts/DejaVuSans.ttf', 16)
+
         #
         # Add an initial frame with nothing highlighted (it looks good)
         #
         self.addFrame()
 
 
-    def createSnapshot(self):
-        """createSnapshot
-
-        Hold a copy of the current state of the tracked tensors for display
-        at a later time.
-
-        """
-
-        self.saved_tensors = []
-
-        for tensor in self.tensors:
-            #
-            # Make copy conditional on whether it is a mutable tensor
-            #
-            if isinstance(tensor, Tensor) and tensor.isMutable():
-                self.saved_tensors.append(copy.deepcopy(tensor))
-            else:
-                self.saved_tensors.append(tensor)
-
-
-    def deleteSnapshot(self):
-        """deleteSnapshot"""
-
-        self.saved_tensors = None
-
-
     def addFrame(self, *highlighted_coords_per_tensor):
         """addFrame"""
-
-        #
-        # Create snapshot if necessary
-        #
-        if self.saved_tensors is None:
-            self.createSnapshot()
 
         #
         # Handle the case where nothing should be highlighted anywhere.
@@ -94,12 +66,13 @@ class MovieCanvas():
         assert len(final_coords) == len(self.tensors)
 
         for n in range(len(self.tensors)):
-            tensor = self.saved_tensors[n]
+            tensor = self.tensors[n]
             highlighted_coords = final_coords[n]
-            im = TensorImage(tensor, style=self.style, highlights=highlighted_coords).im
-            self.image_list_per_tensor[n].append(im)
+            im = TensorImage(tensor,
+                             style=self.style,
+                             highlights=highlighted_coords).im
 
-        self.deleteSnapshot()
+            self.image_list_per_tensor[n].append(im)
 
 
     def getLastFrame(self, message=None):
@@ -114,8 +87,16 @@ class MovieCanvas():
         if message is None:
             return final_images[-1]
 
+        #
+        # Add message to final image
+        #
         im = final_images[-1].copy()
-        ImageDraw.Draw(im).text((15, final_height-65), message, font=ImageFont.truetype('Pillow/Tests/fonts/DejaVuSans.ttf', 16), fill="black")
+
+        ImageDraw.Draw(im).text((15, final_height-65),
+                                message,
+                                font=self.font,
+                                fill="black")
+
         return im
 
 
@@ -126,7 +107,7 @@ class MovieCanvas():
         (final_images, final_width, final_height) = self._combineFrames(0, end)
 
         fourcc = cv2.VideoWriter_fourcc(*"vp09")
-        out = cv2.VideoWriter(filename,fourcc, 1, (final_width, final_height))
+        out = cv2.VideoWriter(filename, fourcc, 1, (final_width, final_height))
 
         for image in final_images:
             for duplication_cnt in range(1):
@@ -144,7 +125,9 @@ class MovieCanvas():
         #
         final_images = []
         for n in range(start, end):
-            final_images.append(Image.new("RGB", (final_width, final_height), "wheat"))
+            final_images.append(Image.new("RGB",
+                                          (final_width, final_height),
+                                          "wheat"))
 
         #
         # Dump individual frames into the same image so they stay in sync.
@@ -152,10 +135,24 @@ class MovieCanvas():
         for n in range(start, end):
             for t in range(len(self.tensors)):
                 image = self.image_list_per_tensor[t][n]
+
                 x_center = final_width // 2 - (image.width // 2)
                 # Start where the last image finished.
                 y_final = 0 if t == 0 else flattened_height[t-1]
+
                 final_images[n-start].paste(image, (x_center, y_final))
+
+        #
+        # Add cycle information to the images
+        # (skipping extra frames at beginning and end)
+        #
+        for n, im in enumerate(final_images[1:]):
+            message = f"Cycle: {n}"
+
+            ImageDraw.Draw(im).text((15, final_height-80),
+                                    message,
+                                    font=self.font,
+                                    fill="black")
 
         return (final_images, final_width, final_height)
 
@@ -175,7 +172,6 @@ class MovieCanvas():
                 max_height = image.height if (image.height > max_height) else max_height
                 max_width  = image.width  if (image.width  > max_width)  else max_width
             final_dims.append((max_width, max_height))
-
 
         #
         # Take max of width, but concatenate height
@@ -197,15 +193,15 @@ class MovieCanvas():
         return (final_width, final_height, flattened_height)
 
 
-
 if __name__ == "__main__":
 
-    a = Tensor("../examples/data/draw-a.yaml")
-    b = Tensor("../examples/data/draw-b.yaml")
+    a = Tensor.fromYAMLfile("../../examples/data/draw-a.yaml")
+    b = Tensor.fromYAMLfile("../../examples/data/draw-b.yaml")
     canvas = MovieCanvas(a, b)
     canvas.addFrame()
     canvas.addFrame([10], [4])
-    canvas.addFrame([10,40], [4,1])
-    canvas.addFrame([10,40,1], [4,1,0])
+    canvas.addFrame([10, 40], [4, 1])
+    canvas.addFrame([10, 40, 1], [4, 1, 0])
     canvas.addFrame()
-    canvas.saveMovie("tmp.mp4")
+    canvas.saveMovie("/tmp/tmp.mp4")
+    print("Try playing /tmp/tmp.mp4")

@@ -11,8 +11,8 @@ class TestTensor(unittest.TestCase):
     def test_splitUniform_0(self):
         """ Test splitUniform - depth=0 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitUniform_0.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUniform_0.yaml")
 
         a_out = a.splitUniform(25, depth=0)
 
@@ -24,8 +24,8 @@ class TestTensor(unittest.TestCase):
     def test_splitUniform_1(self):
         """ Test splitUniform - depth=1 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitUniform_1.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUniform_1.yaml")
 
         a_out = a.splitUniform(15, depth=1)
 
@@ -37,8 +37,8 @@ class TestTensor(unittest.TestCase):
     def test_splitUniform_2(self):
         """ Test splitUniform - depth=2 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitUniform_2.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUniform_2.yaml")
 
         a_out = a.splitUniform(4, depth=2)
 
@@ -51,8 +51,8 @@ class TestTensor(unittest.TestCase):
     def test_splitNonUniform_0(self):
         """ Test splitNonUniform - depth=0 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitNonUniform_0.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitNonUniform_0.yaml")
 
         a_out = a.splitNonUniform([0, 15, 35], depth=0)
 
@@ -64,8 +64,8 @@ class TestTensor(unittest.TestCase):
     def test_splitNonUniform_1(self):
         """ Test splitNonUniform - depth=1 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitNonUniform_1.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitNonUniform_1.yaml")
 
         a_out = a.splitNonUniform([0, 15, 25], depth=1)
 
@@ -77,8 +77,8 @@ class TestTensor(unittest.TestCase):
     def test_splitNonUniform_2(self):
         """ Test splitNonUniform - depth=2 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitNonUniform_2.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitNonUniform_2.yaml")
 
         a_out = a.splitNonUniform([0, 4, 19], depth=2)
 
@@ -90,8 +90,8 @@ class TestTensor(unittest.TestCase):
     def test_splitEqual_0(self):
         """ Test splitEqual - depth=0 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitEqual_0.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitEqual_0.yaml")
 
         a_out = a.splitEqual(2, depth=0)
 
@@ -103,8 +103,8 @@ class TestTensor(unittest.TestCase):
     def test_splitEqual_1(self):
         """ Test splitEqual - depth=1 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitEqual_1.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitEqual_1.yaml")
 
         a_out = a.splitEqual(2, depth=1)
 
@@ -116,8 +116,8 @@ class TestTensor(unittest.TestCase):
     def test_splitEqual_2(self):
         """ Test splitEqual - depth=2 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitEqual_2.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitEqual_2.yaml")
 
         a_out = a.splitEqual(2, depth=2)
 
@@ -130,8 +130,8 @@ class TestTensor(unittest.TestCase):
     def test_splitUnEqual_0(self):
         """ Test splitUnEqual - depth=0 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitUnEqual_0.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUnEqual_0.yaml")
 
         a_out = a.splitUnEqual([2, 1], depth=0)
 
@@ -144,8 +144,8 @@ class TestTensor(unittest.TestCase):
     def test_splitUnEqual_1(self):
         """ Test splitUnEqual - depth=1 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitUnEqual_1.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUnEqual_1.yaml")
 
         a_out = a.splitUnEqual([2, 1], depth=1)
 
@@ -157,8 +157,8 @@ class TestTensor(unittest.TestCase):
     def test_splitUnEqual_2(self):
         """ Test splitUnEqual - depth=2 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-splitUnEqual_2.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUnEqual_2.yaml")
 
         a_out = a.splitUnEqual([2, 1], depth=2)
 
@@ -170,8 +170,8 @@ class TestTensor(unittest.TestCase):
     def test_swapRanks_0(self):
         """ Test swapRanks - depth=0 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-swapRanks_0.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-swapRanks_0.yaml")
 
         a_out = a.swapRanks(depth=0)
 
@@ -183,8 +183,8 @@ class TestTensor(unittest.TestCase):
     def test_swapRanks_1(self):
         """ Test swapRanks - depth=1 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
-        a_verify = Tensor("./data/tensor_transform-a-swapRanks_1.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-swapRanks_1.yaml")
 
         a_out = a.swapRanks(depth=1)
 
@@ -193,10 +193,50 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(a_out.getShape(), [41, 10, 42])
 
 
+    def test_swizzleRanks(self):
+        """ Test swizzleRanks """
+
+        a_MK = Tensor.fromUncompressed(["M", "K"], 
+                               [[0, 0, 4, 0, 0, 5],
+                                [3, 2, 0, 3, 0, 2],
+                                [0, 2, 0, 0, 1, 2],
+                                [0, 0, 0, 0, 0, 0],
+                                [2, 5, 0, 0, 0, 5],
+                                [4, 1, 0, 0, 0, 0],
+                                [5, 0, 0, 1, 0, 0],
+                                [4, 0, 0, 5, 1, 3]])
+
+        a_KM = a_MK.swapRanks()
+
+        M = 8
+        M1 = 2
+        M0 = (M+1)//M1
+
+        K = 6
+        K1 = 2
+        K0 = (K+1)//K1
+
+        a_MMKK = a_MK.splitUniform(M0).splitUniform(K0, depth=2)
+        a_MKMK = a_MMKK.swapRanks(depth=1)
+        a_KMMK = a_KM.splitUniform(K0).swapRanks(depth=1).splitUniform(M0, depth=1)
+
+        a_KM_2 = a_MK.swizzleRanks(["K", "M"])
+        self.assertEqual(a_KM_2, a_KM)
+
+        a_MK_2 = a_KM_2.swizzleRanks(["M", "K"])
+        self.assertEqual(a_MK_2, a_MK)
+
+        a_MKMK_2 = a_MMKK.swizzleRanks(["M.1","K.1", "M.0", "K.0"])
+        self.assertEqual(a_MKMK_2, a_MKMK)
+
+        a_MMKK_2 = a_MKMK.swizzleRanks(["M.1", "M.0", "K.1", "K.0"])
+        self.assertEqual(a_MMKK_2, a_MMKK)
+
+
     def test_flattenRanks_0(self):
         """ Test flattenRanks - depth=0 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_out = a.flattenRanks(depth=0)
         a_again = a_out.unflattenRanks(depth=0)
 
@@ -210,7 +250,7 @@ class TestTensor(unittest.TestCase):
     def test_flattenRanks_1(self):
         """ Test flattenRanks - depth=1 """
 
-        a = Tensor("./data/tensor_transform-a.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_out = a.flattenRanks(depth=1)
         a_again = a_out.unflattenRanks(depth=1)
 

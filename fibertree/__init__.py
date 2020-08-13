@@ -2,7 +2,14 @@
 from .core.tensor import *
 from .core.rank import *
 from .core.fiber import *
+from .core.coord_payload import *
 from .core.payload import *
+
+from .codec.tensor_codec import *
+from .codec.compression_types import *
+
+from .graphics.image_utils import *
+from .graphics.highlights import *
 
 from .graphics.tensor_image import *
 from .graphics.tree_image import *
@@ -14,4 +21,3 @@ from .graphics.spacetime_canvas import *
 
 from collections import namedtuple
 
-CoordPayload = namedtuple('CoordPayload', 'coord payload')

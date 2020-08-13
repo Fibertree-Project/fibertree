@@ -1,8 +1,11 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 from fibertree import Tensor
 from fibertree import Fiber
 from fibertree import Payload
+
+from fibertree import ImageUtils
+from fibertree import HighlightManager
 
 class UncompressedImage():
     """UncompressedImage"""
@@ -30,26 +33,20 @@ class UncompressedImage():
         # Note: We conditionally unwrap Payload objects
         #
         self.object = Payload.get(object)
-        self.highlights = highlights
         self.row_extent = extent[0]
         self.col_extent = extent[1]
         self.row_map = row_map
 
-        #
-        # Map worker names to colors (copied from tree_image)
-        #
-        hl_colors = [0xdaa520,   # worker 0 d (goldenrod)
-                     0x977316,   # worker 1 a
-                     0xe4b849,   # worker 2 f
-                     0xc4941d,   # worker 3 c
-                     0xea1f33,   # worker 4 e
-                     0xae8319,   # worker 5 b
-                     0xe8c15f]   # worker 6 g
+        level = len(self.object.getShape())-1
+        self.highlight_manager = HighlightManager(highlights, level=level)
 
+        #
+        # Cache worker colors
+        #
         worker_color = {}
 
         for n, worker in enumerate(highlights.keys()):
-            worker_color[worker] = hl_colors[n % len(hl_colors)]
+            worker_color[worker] = ImageUtils.getColor(worker)
 
         self.worker_color = worker_color
 
@@ -72,7 +69,6 @@ class UncompressedImage():
         """
 
         object = self.object
-        highlights = self.highlights
 
         #
         # Create the objects for the image
@@ -162,18 +158,18 @@ class UncompressedImage():
 
 
             if len(shape) == 3:
-                region_size = self.traverse_cube(shape, fiber, highlights=self.highlights)
+                region_size = self.traverse_cube(shape, fiber, highlight_manager=self.highlight_manager)
             elif len(shape) == 2:
-                region_size = self.traverse_matrix(shape, fiber, highlights=self.highlights)
+                region_size = self.traverse_matrix(shape, fiber, highlight_manager=self.highlight_manager)
             elif len(shape) == 1:
-                region_size = self.traverse_vector(shape, fiber, highlights=self.highlights)
+                region_size = self.traverse_vector(shape, fiber, highlight_manager=self.highlight_manager)
             else:
                 region_size = [1, 1]
 
         return region_size
 
 
-    def traverse_cube(self, shape, fiber, row_origin=1, col_origin=0, highlights={}, highlight_subtensor={}):
+    def traverse_cube(self, shape, fiber, row_origin=1, col_origin=0, highlight_manager=None):
         """ traverse_cube - unimplemented """
 
         #
@@ -192,14 +188,13 @@ class UncompressedImage():
 
             self.draw_label(row_origin, col_cur+5, f"{matrix_c}")
 
-            highlight_next, highlight_subtensor_next =  self._compute_next_highlights(matrix_c, highlights, highlight_subtensor)
+            highlight_manager_next = highlight_manager.addFiber(matrix_c)
 
             rc_range = self.traverse_matrix(shape[1:],
                                             matrix_p,
                                             row_origin=row_cur,
                                             col_origin=col_cur,
-                                            highlights=highlight_next,
-                                            highlight_subtensor=highlight_subtensor_next)
+                                            highlight_manager=highlight_manager_next)
 
             # row_cur does not change
             row_max = max(row_max, rc_range[0])
@@ -214,7 +209,7 @@ class UncompressedImage():
 
 
 
-    def traverse_matrix(self, shape, fiber, row_origin=1, col_origin=0, highlights={}, highlight_subtensor={}):
+    def traverse_matrix(self, shape, fiber, row_origin=1, col_origin=0, highlight_manager=None):
         """ traverse_matrix """
 
         #
@@ -238,7 +233,18 @@ class UncompressedImage():
         row_p = Fiber([], [])
         row_first = True
 
-        for row_c in range(shape[0]):
+        #
+        # For integer coordinates traverse all the coordinates in the shape
+        # otherwise traverse all the non-empty coordinates
+        #
+        coords = range(shape[0])
+
+        if isinstance(fiber, Fiber):
+            if len(fiber) > 0 and not isinstance(fiber.coords[0], int):
+                coords = fiber.coords
+
+
+        for row_c in coords:
 
             if self.row_map:
                 coord_label = str(self.row_map[row_c])
@@ -248,14 +254,13 @@ class UncompressedImage():
             if fiber is not None:
                 row_p = fiber.getPayload(row_c)
 
-            highlight_next, highlight_subtensor_next = self._compute_next_highlights(row_c, highlights, highlight_subtensor)
+            highlight_manager_next = highlight_manager.addFiber(row_c)
 
             rc_range = self.traverse_vector(shape[1:],
                                              row_p,
                                              row_origin=row_cur,
                                              col_origin=col_cur,
-                                             highlights=highlight_next,
-                                             highlight_subtensor=highlight_subtensor_next,
+                                             highlight_manager=highlight_manager_next,
                                              rank_label=row_first,
                                              coord_label=coord_label)
 
@@ -277,8 +282,7 @@ class UncompressedImage():
                         fiber,
                         row_origin=1,
                         col_origin=0,
-                        highlights={},
-                        highlight_subtensor={},
+                        highlight_manager=None,
                         rank_label=True,
                         coord_label=None):
 
@@ -305,10 +309,36 @@ class UncompressedImage():
             rank_label_offset = 0
 
         #
+        # Handle spans of empty rows
+        #
+        if len(fiber) != 0 or rank_label:
+            #
+            # On non-empty (or first) row reset empty row counter
+            #
+            self._empty_count = 0
+        else:
+            #
+            # After first row, check for empty rows
+            #
+            self._empty_count += 1
+
+            if self._empty_count == 2:
+                self.draw_label(row_origin, col_origin+col_hack, "...")
+                return [ row_origin+1, col_origin]
+
+            if self._empty_count > 2:
+                return [ row_origin, col_origin]
+
+        #
         # Print out coordinate information (if available)
         #
         if coord_label is not None:
-            self.draw_label(row_origin+rank_label_offset, col_origin, f"{coord_label:>9}")
+            try:
+                label = f"{coord_label:>9}"
+            except Exception:
+                label = f"{str(coord_label):>9}"
+
+            self.draw_label(row_origin+rank_label_offset, col_origin, label)
             coord_label_offset = col_hack
         else:
             coord_label_offset = 0
@@ -327,17 +357,16 @@ class UncompressedImage():
 
         payload = 0
 
-        #
-        # Set up the highlighting for this level
-        #
-        highlight_coords = {}
 
-        for worker, points in highlights.items():
-            highlight_coords[worker] = [c[0] for c in points]
-
+        #
+        # Process each coordinate in the shape
+        #
         for coord in range(shape[0]):
-            color_coord = set([worker for worker, coords in highlight_coords.items() if coord in coords])
-            color_subtensor = set([worker for worker in highlight_subtensor.keys()])
+            #
+            # Get highlighting information from highlight manager
+            #
+            color_coord = highlight_manager.getColorCoord(coord)
+            color_subtensor = highlight_manager.getColorSubtensor()
             color_coord_or_subtensor = color_coord | color_subtensor
 
             if isinstance(fiber, Fiber):
@@ -359,64 +388,6 @@ class UncompressedImage():
 #
 # Utility methods
 #
-    def _compute_next_highlights(self, c, highlights, highlight_subtensor):
-        """_compute_next_highlights
-
-        Given the current hightlights and the subtensor bulk highlight information
-        compute the "next" highlight information
-
-        Parameters:
-
-        c: coordinate
-        Current coordinate
-
-        highlights: dictionary
-        Dictionary of workers with list of points to highlight
-
-        highlight_subtensor: list
-        List of workers to highlight in all subtensors
-
-        """
-
-        #
-        # Compute highlighting for this level
-        #
-        highlight_coords = {}
-
-        for worker, points in highlights.items():
-            highlight_coords[worker] = [c[0] for c in points]
-
-        #
-        # These variables hold the highlight information with one
-        # less coordinate, and a list of workers that are
-        # highlighting the remaining subtensor
-        #
-        # TBD: Code copied from tree_image...
-        #
-        highlight_next = {}
-        highlight_subtensor_next = {}
-
-        for worker, points in highlights.items():
-            #
-            # Calculate relevant points after this level
-            #
-            highlight_next[worker] = [ p[1:] for p in points if len(p) > 1 and p[0] == c ]
-
-            #
-            # Once we start highlighting a fiber, highlight the entire subtensor.
-            # TBD: Maybe we should have just copied highlight_subtensor
-            #
-            if worker in highlight_subtensor:
-                highlight_subtensor_next[worker] = True
-
-            #
-            # If there are no more coordinates, maybe start highlighting a subtensor 
-            #
-            if len(highlight_next[worker]) == 0 and c in highlight_coords[worker]:
-                highlight_subtensor_next[worker] = True
-
-        return (highlight_next, highlight_subtensor_next)
-
 
     def _getId(self, fiber):
         """ _getId - get fiber's rank id """
@@ -442,7 +413,7 @@ class UncompressedImage():
 
         # Do image related setup
         self.im = Image.new("RGB", (x_pixels, y_pixels), "wheat")
-        self.fnt = ImageFont.truetype('Pillow/Tests/fonts/FreeMono.ttf', 20)
+        self.fnt = ImageUtils.getFont()
         self.draw = ImageDraw.Draw(self.im)
 
 #
@@ -531,6 +502,8 @@ class UncompressedImage():
                     x_text = x_text - 7
                 if v >= 1000:
                     x_text = x_text - 7
+            elif (isinstance(v, float)):
+                v = round(v, 2)
 
 
             # Hack: drawing text twice looks better in PIL
@@ -558,20 +531,20 @@ class UncompressedImage():
 if __name__ == "__main__":
                          
     print("a - multiple highlights")
-    a = Tensor("examples/data/sparse-matrix-a.yaml")
+    a = Tensor.fromYAMLfile("../../examples/data/sparse-matrix-a.yaml")
     a.setColor("blue")
-    i = UncompressedImage(a, highlights=[(0,1), (1,2), (3,)])
+    i = UncompressedImage(a, highlights={"PE": [(0, 1), (1, 2), (3,)]})
     i.show()
 
     #
     print("a - single highlights")
-    i = UncompressedImage(a, (1,2))
+    i = UncompressedImage(a, {"PE": [(1, 2)]})
     i.show()
 
     #
     print("b")
     b = Tensor.fromUncompressed(["X"], [1, 2, 0, 0, 4])
-    i = UncompressedImage(b, [(1,), (4,)])
+    i = UncompressedImage(b, {"PE": [(1,), (4,)]})
     i.show()
 
     #

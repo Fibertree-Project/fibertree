@@ -14,8 +14,8 @@ print("")
 
 data_dir = "../../data"
 
-a = Tensor(os.path.join(data_dir, "spMspV-a-t.yaml"))
-b = Tensor(os.path.join(data_dir, "spMspV-b.yaml"))
+a = Tensor.fromYAMLfile(os.path.join(data_dir, "spMspV-a-t.yaml"))
+b = Tensor.fromYAMLfile(os.path.join(data_dir, "spMspV-b.yaml"))
 
 z = Tensor(rank_ids=["M"])
 

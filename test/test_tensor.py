@@ -15,6 +15,7 @@ class TestTensor(unittest.TestCase):
 
         t = Tensor(rank_ids=ranks)
         self.assertEqual(t.getRankIds(), ranks)
+        self.assertEqual(t.getRoot().getRankIds(), ranks)
 
     def test_constructor_shape(self):
         """Test construction of shape of tensor"""
@@ -25,7 +26,10 @@ class TestTensor(unittest.TestCase):
         t = Tensor(rank_ids=ranks, shape=shape)
 
         self.assertEqual(t.getRankIds(), ranks)
+        self.assertEqual(t.getRoot().getRankIds(), ranks)
+
         self.assertEqual(t.getShape(), shape)
+        self.assertEqual(t.getRoot().getShape(), shape)
 
         
     def test_constructor_shape(self):
@@ -57,9 +61,11 @@ class TestTensor(unittest.TestCase):
     def test_new(self):
         """Test construction of a tensor from a file"""
 
-        t = Tensor("./data/test_tensor-1.yaml")
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
-        self.assertEqual(t.getName(), "test_tensor-1")
+        # Filename no longer becomes tensor name
+        # self.assertEqual(t.getName(), "test_tensor-1")
+
         self.assertEqual(t.getRankIds(),[ "M", "K" ])
         self.assertEqual(t.getShape(), [7, 4])
 
@@ -67,15 +73,15 @@ class TestTensor(unittest.TestCase):
     def test_equal(self):
         """Test equality comparison"""
 
-        tensor1 = Tensor("./data/test_tensor-1.yaml")
-        tensor2 = Tensor("./data/test_tensor-1.yaml")
+        tensor1 = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        tensor2 = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
         self.assertTrue(tensor1 == tensor2)
 
     def test_fromYAML(self):
         """Test construction from a YAML file"""
 
-        tensor_ref  = Tensor("./data/test_tensor-1.yaml")
+        tensor_ref  = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
         tensor = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
@@ -111,7 +117,7 @@ class TestTensor(unittest.TestCase):
     def test_fromUncompressed_1D(self):
         """Test construction of a tensor from nested lists"""
 
-        tensor_ref = Tensor("./data/test_tensor-1.yaml")
+        tensor_ref = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
         # Manual copy of test_tensor-1.yaml
 
@@ -128,7 +134,7 @@ class TestTensor(unittest.TestCase):
     def test_fromUncompressed_2D(self):
         """Test construction of a tensor from nested lists"""
 
-        tensor_ref = Tensor("./data/test_tensor-1.yaml")
+        tensor_ref = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
         # Manual copy of test_tensor-1.yaml
 
@@ -143,6 +149,30 @@ class TestTensor(unittest.TestCase):
               [   0, 601,   0, 603 ] ] # 6
 
         tensor = Tensor.fromUncompressed(["M", "K"], t)
+
+        self.assertEqual(tensor, tensor_ref)
+
+    def test_fromUncompressed_2D_wo_ids(self):
+        """Test construction of a tensor from nested lists without ids"""
+
+        tensor_in = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+
+        root = tensor_in.getRoot()
+        tensor_ref = Tensor.fromFiber(["R1", "R0"], root)
+
+        # Manual copy of test_tensor-1.yaml
+
+        #         0    1    2    3
+        #
+        t = [ [   0,   0,   0,   0 ],  # 0
+              [ 100, 101, 102,   0 ],  # 1
+              [   0, 201,   0, 203 ],  # 2
+              [   0,   0,   0,   0 ],  # 3
+              [ 400,   0, 402,   0 ],  # 4
+              [   0,   0,   0,   0 ],  # 5
+              [   0, 601,   0, 603 ] ] # 6
+
+        tensor = Tensor.fromUncompressed(["R1", "R0"], t)
 
         self.assertEqual(tensor, tensor_ref)
 
@@ -169,11 +199,23 @@ class TestTensor(unittest.TestCase):
     def test_fromFiber(self):
         """Test construction of a tensor from a fiber"""
 
-        tensor_ref = Tensor("./data/test_tensor-1.yaml")
+        tensor_ref = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
         root = tensor_ref.getRoot()
 
         tensor = Tensor.fromFiber(["M", "K"], root)
+
+        self.assertEqual(tensor, tensor_ref)
+
+    def test_fromFiber_wo_ids(self):
+        """Test construction of a tensor from a fiber without rank ids"""
+
+        tensor_in = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+
+        root = tensor_in.getRoot()
+        tensor_ref = Tensor.fromFiber(["R1", "R0"], root)
+
+        tensor = Tensor.fromFiber(fiber=root)
 
         self.assertEqual(tensor, tensor_ref)
 
@@ -196,6 +238,29 @@ class TestTensor(unittest.TestCase):
                                               [6, 3, 0, 8, 0, 10, 0, 9, 4, 0]])
         
         tensor = Tensor.fromRandom(rank_ids, shape, [0.5, 0.5], 10, seed=3)
+
+        self.assertEqual(tensor, tensor_ref)
+        self.assertEqual(tensor.getRankIds(), rank_ids)
+
+
+    def test_fromRandom_wo_ids(self):
+        """Test construction of a random tensor without rankids"""
+
+        rank_ids = ["R1", "R0"]
+        shape = [10, 10]
+        tensor_ref = Tensor.fromUncompressed(rank_ids,
+                                             [[0, 10, 10, 1, 0, 9, 8, 0, 0, 3],
+                                              [9, 1, 0, 10, 1, 0, 10, 0, 0, 0],
+                                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                              [0, 3, 0, 3, 5, 0, 5, 7, 0, 0],
+                                              [6, 0, 0, 0, 0, 0, 6, 0, 0, 0],
+                                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                              [0, 0, 2, 8, 2, 3, 7, 0, 0, 10],
+                                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                              [0, 0, 0, 4, 0, 2, 9, 4, 0, 5],
+                                              [6, 3, 0, 8, 0, 10, 0, 9, 4, 0]])
+
+        tensor = Tensor.fromRandom(None, shape, [0.5, 0.5], 10, seed=3)
 
         self.assertEqual(tensor, tensor_ref)
         self.assertEqual(tensor.getRankIds(), rank_ids)
@@ -262,7 +327,7 @@ class TestTensor(unittest.TestCase):
     def test_setRoot(self):
         """Test adding a new root"""
 
-        tensor_ref = Tensor("./data/test_tensor-1.yaml")
+        tensor_ref = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
         root = tensor_ref.getRoot()
 
@@ -344,7 +409,7 @@ class TestTensor(unittest.TestCase):
     def test_values(self):
         """Test counting values in a tensor"""
 
-        tensor = Tensor("./data/test_tensor-1.yaml")
+        tensor = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
 
         count = tensor.countValues()
 
@@ -353,10 +418,10 @@ class TestTensor(unittest.TestCase):
     def test_dump(self):
         """Test dumping a tensor"""
 
-        tensor = Tensor("./data/test_tensor-1.yaml")
+        tensor = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
         tensor.dump("/tmp/test_tensor-1.yaml")
 
-        tensor_tmp = Tensor("/tmp/test_tensor-1.yaml")
+        tensor_tmp = Tensor.fromYAMLfile("/tmp/test_tensor-1.yaml")
 
         self.assertTrue(tensor == tensor_tmp)
 

@@ -51,6 +51,29 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
         
 
+    def test_split_uniform_then_flatten(self):
+        """Test that flattenRanks() can undo splitUniform"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        
+        f = Fiber(c,p)
+
+        #
+        # Do the split
+        #
+        coords = 10
+        split = f.splitUniform(coords)
+
+        #
+        # Check that flattening after splitting gives us the same answer
+        #
+        self.assertEqual(split.flattenRanks(style="absolute"), f)
+        
+
     def test_split_uniform_relative(self):
         """Test splitUniform"""
 
@@ -96,6 +119,28 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
 
 
+    def test_split_uniform_relative_then_flatten(self):
+        """Test that flattenRanks can undo splitUniform (relative)"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+
+        #
+        # Do the split
+        #
+        coords = 10
+        split = f.splitUniform(coords, relativeCoords=True)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(split.flattenRanks(style="relative"), f)
+
     def test_split_nonuniform1(self):
         """Test splitNonUniform - starting at coordinate 0"""
 
@@ -135,7 +180,7 @@ class TestFiberSplit(unittest.TestCase):
         for i, (sc, sp)  in enumerate(split):
             self.assertEqual(sc, splits[i])
             self.assertEqual(sp, split_ref[i])
-        
+
     def test_split_nonuniform2(self):
         """Test splitNonUniform - not starting at coordinate 0"""
 
@@ -176,8 +221,30 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sc, splits[i])
             self.assertEqual(sp, split_ref[i])
 
+    def test_split_nonuniform_then_flatten(self):
+        """Test that flattenRanks can undo splitNonUniform"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        
+        f = Fiber(c,p)
+
+        #
+        # Do the split
+        #
+        splits = [0, 12, 31]
+        split = f.splitNonUniform(splits)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(split.flattenRanks(style="absolute"), f)
+        
     def test_split_equal(self):
-        """Test splitUniform"""
+        """Test splitEqual"""
 
         #
         # Create the fiber to be split
@@ -218,8 +285,30 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sc, css[i][0])
             self.assertEqual(sp, split_ref[i])
         
+    def test_split_equal_then_flatten(self):
+        """Test that flattenRanks can undo splitEqual"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        
+        f = Fiber(c,p)
+
+        #
+        # Do the split
+        #
+        size = 2 
+        split = f.splitEqual(size)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(split.flattenRanks(style="absolute"), f)
+        
     def test_split_unequal(self):
-        """Test splitNonUniform"""
+        """Test splitUnequal"""
 
         #
         # Create the fiber to be split
@@ -259,6 +348,29 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref[i])
         
 
+    def test_split_unequal_then_flatten(self):
+        """Test that flattenRanks can undo splitUnequal"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        
+        f = Fiber(c,p)
+
+        #
+        # Do the split
+        #
+        sizes = [1, 2, 4]
+        split = f.splitUnEqual(sizes)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(split.flattenRanks(style="absolute"), f)
+        
+        
     def test_split_equal_partioned(self):
         """Test splitEqual(2, partitions=2)"""
 
@@ -295,7 +407,6 @@ class TestFiberSplit(unittest.TestCase):
         # Check the split
         #
         self.assertEqual(split, split_ref)
-        
 
     @staticmethod
     def _make_fiber_a():

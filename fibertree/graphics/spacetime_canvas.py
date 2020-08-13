@@ -24,12 +24,10 @@ class SpacetimeCanvas():
         # Structures to hold infomation about each tracked tensor
         #
         self.tensors = []
-        self.saved_tensors = None
         self.spacetime = []
         self.highlights = []
 
         for tensor in tensors:
-
             #
             # Append each tensor being tracked, conditionally
             # unwraping it if it is a Payload object
@@ -65,40 +63,8 @@ class SpacetimeCanvas():
         self.frame_num = 0
 
 
-    def createSnapshot(self):
-        """createSnapshot
-
-        Hold a copy of the current state of the tracked tensors for display
-        at a later time.
-
-        """
-
-        self.saved_tensors = []
-
-        for tensor in self.tensors:
-            #
-            # Make copy conditional on whether it is a mutable tensor
-            #
-            if isinstance(tensor, Tensor) and tensor.isMutable():
-                self.saved_tensors.append(copy.deepcopy(tensor))
-            else:
-                self.saved_tensors.append(tensor)
-
-
-    def deleteSnapshot(self):
-        """deleteSnapshot"""
-
-        self.saved_tensors = None
-
-
     def addFrame(self, *highlighted_coords_per_tensor):
         """addFrame"""
-
-        #
-        # Create snapshot if necessary
-        #
-        if self.saved_tensors is None:
-            self.createSnapshot()
 
         #
         # Handle the case where nothing should be highlighted anywhere.
@@ -111,12 +77,16 @@ class SpacetimeCanvas():
         #
         # For each tracked tensor collect the information for the new frame
         #
-        for tensor, spacetime, highlights, hl_info in zip(self.saved_tensors, self.spacetime, self.highlights, final_coords):
+        for tensor, spacetime, highlights, hl_info in zip(self.tensors,
+                                                          self.spacetime,
+                                                          self.highlights,
+                                                          final_coords):
 
             #
             # Get fiber holding current state
             #
-            # TBD: Should fiber append get the root if you try to append a tensor
+            # TBD: Should fiber append get the root,
+            #      if you try to append a tensor
             #
             if isinstance(tensor, Tensor):
                 timestep = tensor.getRoot()
@@ -130,21 +100,22 @@ class SpacetimeCanvas():
             spacetime.getRoot().append(self.frame_num, copy.deepcopy(timestep))
 
             #
-            # Delicate sequence to add highlight into spacetime tensor's highlight object
+            # Delicate sequence to add highlight into
+            # spacetime tensor's highlight object
             #
             for worker, hl_list in hl_info.items():
                 hl_list_new = []
                 for point in hl_list:
-                    point_list = list(point)
-                    point_list.append(self.frame_num)
-                    hl_list_new.append(tuple(point_list))
+                    if len(point) == 1:
+                        point = point[0]
+
+                    hl_list_new.append((point, self.frame_num))
 
                 if worker not in highlights:
                     highlights[worker] = hl_list_new
                 else:
                     highlights[worker] = highlights[worker] + hl_list_new
 
-        self.deleteSnapshot()
         self.frame_num += 1
 
 
@@ -161,13 +132,7 @@ class SpacetimeCanvas():
             spacetime_name = spacetime.getName()
             spacetime_ranks = len(spacetime.getShape())
 
-            if spacetime_ranks == 2:
-                #
-                # Original tensor was a vector
-                #
-                highlights_mapped = highlights
-                pos2point = None
-            else:
+            if spacetime_ranks > 2:
                 #
                 # Original tensor was a matrix or bigger, so flatten it
                 #
@@ -175,57 +140,8 @@ class SpacetimeCanvas():
                 #       coord1, ..)  so we need to skip over the first
                 #       rank before flattening
                 #
-                spacetime = spacetime.flattenRanks(depth=1, levels=spacetime_ranks-2)
-                spacetime_root = spacetime.getRoot()
-                #
-                #
-                # Build a map of original tensor points to a scalar
-                # number space, i.e., 0, 1, 2...
-                #
-                # Note: We rely on the fact that the last time step
-                #       has all the possible points, so the scalar
-                #       number space is actually the position in the
-                #       final timestep.
-                #
-                point2pos = {}
-                pos2point = {}
-
-                for position, (point, value)  in enumerate(spacetime_root[-1].payload):
-                    if isinstance(point, tuple):
-                        point2pos[point] = position
-                        pos2point[position] = point
-                    else:
-                        point2pos[(point,)] = position
-                        pos2point[postion] = point
-
-                #
-                # Let user know the point mapping
-                #
-                #print(f"Point to position mapping:  {point2pos}")
-
-                #
-                # Remap the highlights into the new flattened space
-                #
-                # Note: highlights look like: (coord0, coord1, ..., time)
-                #       and need to look like: (position, time)
-                #
-                highlights_mapped = {worker: [] for worker in highlights.keys()}
-
-                for worker, points in highlights.items():
-                    for point in points:
-                        h1 = tuple(point[0:-1])
-                        h2 = point[-1]
-                        try:
-                            h12 = (point2pos[h1], h2)
-                            highlights_mapped[worker].append(h12)
-                        except:
-                            print(f"Could not map point ({h1},{h2}) in point2pos array")
-
-                #
-                # Remap the names of the coordinates in the spacetime tensor from
-                # (coord0, coord1, ....) to a scalar.
-                #
-                spacetime_root.updateCoords(lambda i, c, p: point2pos[c], depth=1)
+                spacetime = spacetime.flattenRanks(depth=1,
+                                                   levels=spacetime_ranks-2)
 
             #
             # Swap the space and time ranks
@@ -234,15 +150,14 @@ class SpacetimeCanvas():
             spacetime_swapped.setName(spacetime_name)
 
             #
-            # Create spacetime image for this tensor and append to full image
+            # Create spacetime image for this tensor and append to
+            # full image
             #
             image = TensorImage(spacetime_swapped,
                                 style='uncompressed',
-                                highlights=highlights_mapped,
-                                row_map=pos2point).im
+                                highlights=highlights).im
 
             images.append(image)
-
 
         return images
 
@@ -259,12 +174,12 @@ if __name__ == "__main__":
     #
     # This is broken...
     #
-    a = Tensor("../examples/data/draw-a.yaml")
-    b = Tensor("../examples/data/draw-b.yaml")
+    a = Tensor.fromYAMLfile("../examples/data/draw-a.yaml")
+    b = Tensor.fromYAMLfile("../examples/data/draw-b.yaml")
     canvas = TensorCanvas(a, b)
     canvas.addFrame()
     canvas.addFrame([10], [4])
-    canvas.addFrame([10,40], [4,1])
-    canvas.addFrame([10,40,1], [4,1,0])
+    canvas.addFrame([10, 40], [4, 1])
+    canvas.addFrame([10, 40, 1], [4, 1, 0])
     canvas.addFrame()
     canvas.saveMovie("tmp.mp4")
