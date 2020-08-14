@@ -6,11 +6,11 @@ import sys
 
 class CompressionFormat:
     def __init__(self, name = None):
-        # self.name = ""
-        self.coords = []
-        self.payloads = []
+        self.coords = list()
+        self.payloads = list()
+        self.occupancies = list()
         self.cur_handle = -1
-        
+
         # stats 
         self.stats = dict()
         self.coords_write_key = "num_coords_writes"
@@ -24,22 +24,25 @@ class CompressionFormat:
         self.count_payload_reads = True
           
         # cached coord
+        # TODO: make these lowercase
         self.prevCoordSearched = None
         self.prevHandleAtCoordSearched = None
-        self.prevHandleSearched = None
-        self.prevCoordAtHandleSearched = None
+        self.prevHandleAccessed = None
+        self.prevCoordAtHandleAccessed = None
         self.prevPayloadHandle = None
         self.prevPayloadAtHandle = None
 
-    # return a handle to this payload
+    # API Methods
+    # return a handle to this payload, maybe could make this a binary search
     def payloadToFiberHandle(self, payload):
         for i in range(0, len(self.payloads)):
             if payload == self.payloads[i]:
                 return i
 
+    # default payload to value
     def payloadToValue(self, payload):
         return payload
-    # API Methods
+
     # helpers
     # have to overwrite this in subclasses, depends on the format
     def getSliceMaxLength(self):
@@ -57,16 +60,22 @@ class CompressionFormat:
             return None
         elif handle is self.prevHandleAtCoordSearched:
             return self.prevCoordSearched
-        elif handle is self.prevHandleSearched:
-            return self.prevCoordAtHandleSearched
+        elif handle is self.prevHandleAccessed:
+            return self.prevCoordAtHandleAccessed
+
+        # cache this access
+        self.prevHandleAccessed = handle
+        self.prevCoordAtHandleAccessed = self.coords[handle]
+        # coords read charge
         self.stats[self.coords_read_key] += 1
         
+        # print("handleToCoord, handle {}, reads {}, num coords {}".format(handle, self.stats[self.coords_read_key], len(self.coords)))
         return self.coords[handle]
 
     # given a handle, return payload there if in range, otherwise None
     def handleToPayload(self, handle):
         # print("handleToPayload: handle {}, prevPayloadHandle {}, payloads {}".format(handle, self.prevPayloadHandle, self.payloads))
-        if handle is None or  handle >= len(self.payloads):
+        if handle is None or handle >= len(self.payloads):
             return None
         elif handle == self.prevPayloadHandle:
             return self.prevPayloadAtHandle

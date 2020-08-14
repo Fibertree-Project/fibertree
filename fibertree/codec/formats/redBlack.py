@@ -8,7 +8,7 @@ class NilNode(object):
     def __init__(self):
         self.red = False
         self.size = 0
-
+        self.data = None
 
 NIL = NilNode() # Nil is the sentinel value for nodes
 
@@ -29,60 +29,77 @@ class RBNode(object):
         self.right = NIL
         self.size = 1
 
+    # TODO: current leaving out the bit that says whether you are red or black
+    def getSize(self):
+        base = 3 # parent, left, right
+        data_size = len(self.data) - 1 
+        return base + data_size
 class RedBlackTree(object):
     """
-    Class for implementing a standard red-black trees
+    Class for implementing a standard red-black tree
     """
     def __init__(self):
         self.root = None
         self.size = 0
+        self.lastNodeAccessed = None
+
+    # add a new node with data 
+    # also return number of reads, writes
     def add(self,data,curr = None):
         """
         :param data: an int, float, or any other comparable value
         :param curr:
-        :return: None but midifies tree to have an additional node
         """
-        # print("\nadd {}".format(data))
+        print("\t add to RB, {}".format(data))
         self.size += 1
         new_node = RBNode(data)
         # Base Case - Nothing in the tree
         if self.root == None:
             new_node.red = True
             self.root = new_node
-            return
+            return 1, 1, new_node
         # Search to find the node's correct place
         currentNode = self.root
+        num_reads = 0
+        num_writes = 0
         while currentNode != NIL:
             # increment size along root-to-leaf path
             currentNode.size += 1
             # print("current node data {}, size {}".format(currentNode.data, currentNode.size))
             potentialParent = currentNode
-
+            num_reads += 1
             # if found in the tree, return (TODO: update node)
-            if new_node.data == currentNode.data:
+            if new_node.data[0] == currentNode.data[0]:
                 # go back up the tree and fix sizes
                 temp = currentNode
                 while temp is not None and temp != NIL:
                     temp.size -= 1
                     temp = temp.parent
-                return
-            if new_node.data < currentNode.data:
+                print("\t\tfound {}".format(new_node.data[0]))
+                return num_reads, 0, currentNode
+            if new_node.data[0] < currentNode.data[0]:
                 currentNode = currentNode.left
             else:
                 currentNode = currentNode.right
         # Assign parents and siblings to the new node
         new_node.parent = potentialParent
         # print("add parent {}".format(new_node.parent.data))
-        if new_node.data < new_node.parent.data:
-            # new_node.left = new_node.parent.left
+        if new_node.data[0] < new_node.parent.data[0]:
             new_node.parent.left = new_node
+            print("\t\tassign left")
         else:
-            # new_node.right = new_node.parent.right
             new_node.parent.right = new_node
+            print("\t\tassign right")
 
-        self.fix_tree_after_add(new_node)
+        # TODO: get num writes from fix tree after add
+        num_writes = self.fix_tree_after_add(new_node)
+        num_writes += 1
+        print("\tinsert {}, reads {}, writes {}".format(data, num_reads, num_writes))
         assert(self.root.red is False)
+        return num_reads, num_writes, new_node # return handle to this node that was just added
 
+    # search on coord and return the node that contains the elt
+    # TODO: make sure that this is ok if coord is not present
     def contains(self,data, curr=None):
         """
 
@@ -90,23 +107,27 @@ class RedBlackTree(object):
         """
         if curr == None:
             curr = self.root
-        while curr != NIL and data != curr.data:
-            if data < curr.data:
+        # print(curr)
+        while curr != NIL and data != curr.data[0]:
+            # print("searching for {}, curr {}".format(data, curr.data[0]))
+            if data < curr.data[0]:
                 curr = curr.left
             else:
                 curr = curr.right
         return curr
 
+
     def fix_tree_after_add(self,new_node):
         """
         This method is meant to check and rebalnce a tree back to satisfying all of the red-black properties
-        :return:
-        None, but modifiex tree
+        :return: num additional reads / writes (assume we have new_node and new_node.parent)
+        modifies tree
         """
         # print("new_node parent {}".format(new_node.parent.red))
         # print("new node data {}, parent {}, root data {}".format(new_node.data, new_node.parent.data, self.root.data))
+        print("\tin fix tree after add")
+        num_writes = 0
         while new_node is not self.root and new_node.parent.red == True and new_node.parent.parent is not None:
-            # print("\t{}".format(new_node.data))
             # if you are in the left subtree
             if new_node.parent == new_node.parent.parent.left:
                 uncle = new_node.parent.parent.right
@@ -116,15 +137,18 @@ class RedBlackTree(object):
                     uncle.red = False
                     new_node.parent.parent.red = True
                     new_node = new_node.parent.parent
+                    print("\t\tcase 1")
                 else:
                     if new_node == new_node.parent.right:
                         # This is Case 2
                         new_node = new_node.parent
                         self.left_rotate(new_node)
+                        print("\t\tcase 2")
                     # This is Case 3
                     new_node.parent.red = False
                     new_node.parent.parent.red = True
                     self.right_rotate(new_node.parent.parent)
+                    print("\t\tcase 3")
             else:
                 uncle = new_node.parent.parent.left
                 if uncle.red:
@@ -133,18 +157,25 @@ class RedBlackTree(object):
                     uncle.red = False
                     new_node.parent.parent.red = True
                     new_node = new_node.parent.parent
+                    print("\t\tcase 1b")
                 else:
                     if new_node == new_node.parent.left:
                         # Case 2
                         new_node = new_node.parent
                         # print("second right rotate")
                         self.right_rotate(new_node)
+                        print("\t\tcase 2b")
                     # Case 3
                     new_node.parent.red = False
                     new_node.parent.parent.red = True
+                    # left rotate writes to input and one other node
                     self.left_rotate(new_node.parent.parent)
+                    num_writes += 3
+                    
+                    print("\t\tcase 3b")
             # print("new node {}".format(new_node.data))
         self.root.red = False
+        return num_writes
 
     def delete(self):
         """
@@ -244,19 +275,43 @@ class RedBlackTree(object):
         """
         return self.root != None and self.root.black == 1;
 
+    # min-val is down the left spine if it exists
+    def min_val(self, root):
+        p = root
+        if p is NIL:
+            return p
+        node = root.left
+        num_reads = 0
+
+        while node is not NIL:
+            p = node
+            node = node.left
+            num_reads += 1
+            print("\tnum reads in min_val {}, current node {}".format(num_reads, node.left))
+        return num_reads, p
+
+    # given a 
     def get_successor(self, root):
         # if successor is in the right subtree
-        if root.right is not NIL:
-            return min_val(root.right)
-
+        if root is None or root is NIL:
+            return 0, None
+        # print("\t get successor {}".format(root.data))
+        if root.right is not None and root.right is not NIL:
+            # print("\t\t going right")
+            return self.min_val(root.right)
+        # print("\t\t going up")
         # else successor is higher up in the tree
         p = root.parent
-        while p is not NIL:
+        num_reads = 0
+        while p is not None and p is not NIL:
             if root is not p.right:
                 break
             root = p
             p = p.parent
-        return p
+            num_reads += 1
+            print("\tget_successor: num reads going up tree {}, node {}".format(num_reads, p))
+        return num_reads, p
+
 if __name__ == "__main__":
     tree = RedBlackTree()
     tree.add(1)
