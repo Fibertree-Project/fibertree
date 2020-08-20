@@ -1,6 +1,12 @@
 
 DEFAULT_TRACE_LEVEL = 3
-class NoChange:
+
+# 
+# NoTransmit
+#
+# An alternative to None that indicates no transmission on a field in a struct.
+
+class NoTransmit:
   pass
 
 
@@ -14,7 +20,7 @@ class NoChange:
 
 class Tensor:
   def __init__(self, name, rank_ids):
-    assert(len(rank_ids) > 0)
+    assert(len(rank_ids) >= 0)
     # All tensors have a root rank.
     my_rank_ids = rank_ids[:]
     my_rank_ids.insert(0, "root")
@@ -114,8 +120,7 @@ class AST:
     self.rank = rank
     self.num_fields = num_fields
     self.num_fanout = 0
-    self.fanout_mask = {}
-    self.cur_result = None
+    self.cur_results = {} # dictionary of FIFOs, only used if num_fanout > 1
     self.producers = []
     self.initialized = False
     self.finalized = False
@@ -126,7 +131,7 @@ class AST:
   
   def connect(self, other):
     other._addProducer(self)
-    self.fanout_mask[other] = False
+    self.cur_results[other] = []
     self.num_fanout += 1
 
   def initialize(self):
@@ -146,32 +151,50 @@ class AST:
     for prod in self.producers:
       if not prod.finalized:
         prod.finalize(stats_dict)
-    
-  def needEvaluation(self, other):
-    # If no one has asked yet, advance.
-    if not any(self.fanout_mask.values()):
-      return True
-    # If the same receiver asks twice, advance.
-    if self.fanout_mask[other]:
-      # Reset the mask.
-      for receiver in self.fanout_mask.keys():
-        self.fanout_mask[receiver] = False
-      return True
-    return False
+    #
+#  def needEvaluation(self, other):
+#    # If no one has asked yet, advance.
+#    if not any(self.fanout_mask.values()):
+#      return True
+#    # If the same receiver asks twice, advance.
+#    if self.fanout_mask[other]:
+#      # Reset the mask.
+#      for receiver in self.fanout_mask.keys():
+#        self.fanout_mask[receiver] = False
+#      return True
+#    return False
   
   def nextValue(self, other):
-    # Call evaluate, but only once and fan out the result to later callers.
-    if self.needEvaluation(other):
-      self.cur_result = self.evaluate()
+    res_q = self.cur_results[other]
+    if len(res_q) > 0:
+      self.trace(4, f"Fanout: {other} => {res_q[0]}")
+      return res_q.pop(0) # Important: We need 0 here, otherwise it will skip None
     else:
-      self.trace(3, f"MEMOIZE: {self.cur_result}")
-    self.fanout_mask[other] = True
-    # If everyone got the value, reset the mask.
-    if all(self.fanout_mask.values()):
-      for receiver in self.fanout_mask.keys():
-        self.fanout_mask[receiver] = False
-    return self.cur_result
-  
+      # Call evaluate, but only once and fan out the result to later callers.
+      self.trace(4, f"Eval {other}")
+      res = self.evaluate()
+      for (caller, q) in self.cur_results.items():
+        if caller != other:
+            q.append(res)
+      self.trace(4, f"Eval: {other} => {res}")
+      return res
+      #
+#    # Call evaluate, but only once and fan out the result to later callers.
+#    if self.needEvaluation(other):
+#      self.trace(3, "eval")
+#      res = self.evaluate()
+#      if res is not NoTransmit:
+#      
+#        self.cur_result = res
+#    else:
+#      self.trace(3, f"no eval: {self.cur_result}")
+#    self.fanout_mask[other] = True
+#    # If everyone got the value, reset the mask.
+#    if all(self.fanout_mask.values()):
+#      for receiver in self.fanout_mask.keys():
+#        self.fanout_mask[receiver] = False
+#    return self.cur_result
+#  
   def trace(self, level, args):
     if (level > self.trace_level):
       return
@@ -193,6 +216,12 @@ class AST:
        raise StopIteration
     sp = Splitter(self, self.cur_field)
     self.cur_field += 1
+    return sp
+    
+  def __getitem__(self, n):
+    assert(self.num_fields != 0)
+    assert(n < self.num_fields)
+    sp = Splitter(self, n)
     return sp
 
 #
@@ -274,7 +303,9 @@ class InsertionScan (AST):
   def evaluate(self):
     if not self.active:
       fiber_handle = self.fiber_handles.nextValue(self)
-      if fiber_handle is None:
+      if fiber_handle is None:     
+        coord = self.coords.nextValue(self)
+        assert(coord is None)
         self.trace(3, "Done.")
         return (None, None)
       self.trace(2, f"Start {fiber_handle}")
@@ -289,7 +320,7 @@ class InsertionScan (AST):
       return (None, new_handle)
     self.trace(2, f"Inserting: {coord}")
     handle = self.rank.insertElement(coord)
-    return (handle, NoChange)
+    return (handle, NoTransmit)
 
 
 
@@ -446,12 +477,13 @@ class InsertElements (AST):
   def evaluate(self):
     coord = self.coords.nextValue(self)
     if coord is None:
+      # XXX MORE NONES HERE
       new_handle = self.rank.getUpdatedFiberHandle()
       self.trace(3, f"None. New Handle: {new_handle}")
       return (None, new_handle)
     handle = self.rank.insertElement(coord)
     self.trace(2, f"{coord} => {handle}")
-    return (handle, NoChange)
+    return (handle, NoTransmit)
 
 #
 # UpdatePayloads
@@ -474,6 +506,7 @@ class UpdatePayloads (AST):
     handle = self.handles.nextValue(self)
     payload = self.payloads.nextValue(self)
     if handle is None or payload is None:
+      self.trace(2, f"{handle} => {payload}")
       assert (handle is None and payload is None)
       self.trace(3, "None")
       return None
@@ -487,9 +520,12 @@ class UpdatePayloads (AST):
 #
 
 class Intersect (AST):
-  def __init__(self, a_coords, a_handles, b_coords, b_handles):
+  def __init__(self, a_coords, a_handles, b_coords, b_handles, instance_name=None):
     # Note: we return a 3-tuple, so tell the super-class that.
-    super().__init__("Intersect", num_fields = 3)
+    name = "Intersect"
+    if instance_name is not None:
+      name = name + "_" + instance_name
+    super().__init__(name, num_fields=3)
     self.a_coords = a_coords
     a_coords.connect(self)
     self.a_handles = a_handles
@@ -522,12 +558,14 @@ class Intersect (AST):
           b_coord = self.b_coords.nextValue(self)
           b_handle = self.b_handles.nextValue(self)
           self.trace(3, f"Draining B: {b_coord} ({b_handle})")
+        self.trace(3, "Done.")
         return (None, None, None)
       elif b_coord is None:
         while a_coord is not None:
           a_coord = self.a_coords.nextValue(self)
           a_handle = self.a_handles.nextValue(self)
           self.trace(3, f"Draining A: {a_coord} ({a_handle})")
+        self.trace(3, "Done.")
         return (None, None, None)
 
     self.trace(3, "Done.")
@@ -543,17 +581,31 @@ class Intersect (AST):
 
 class Splitter (AST):
   def __init__(self, stream, num):
-    super().__init__("Splitter")
+    super().__init__("Splitter(" + stream.class_name + ")[" + str(num) + "]")
     self.stream = stream
     stream.connect(self)
     self.num = num
 
   def evaluate(self):
-    res = self.stream.nextValue(self)[self.num]
-    if res is NoChange:
-      return self.cur_result
-    else:
-      return res
+    my_field = NoTransmit
+    while my_field is NoTransmit:
+      res = NoTransmit
+      while res is NoTransmit:
+        res = self.stream.nextValue(self)
+      if res is None:
+        my_field = None
+      else:
+        my_field = res[self.num]
+    self.trace(3, f"{self.num} => {my_field}")
+    return my_field
+
+    #while res[self.num] is NoTransmit:
+    #  res = self.stream.nextValue(self)
+    #  self.trace(3, f"NoTransmit: {res[self.num]}")
+    #self.trace(3, f"{res[self.num]}")#
+#    if res is None:
+#      return None
+#    return res[self.num]
 
 #
 # Compute
@@ -564,8 +616,11 @@ class Splitter (AST):
 #
 
 class Compute (AST):
-  def __init__(self, function, *streams):
-    super().__init__("Compute")
+  def __init__(self, function, *streams, instance_name=None):
+    name = "Compute"
+    if instance_name is not None:
+      name += "_" + instance_name
+    super().__init__(name)
     self.streams = streams
     for stream in streams:
       stream.connect(self)
@@ -579,10 +634,14 @@ class Compute (AST):
     any_is_none = False
     all_are_none = True
     for arg in args:
+      assert(arg is not NoTransmit)
       is_none = arg is None
       any_is_none |= is_none
       all_are_none &= is_none
-    
+
+    if (any_is_none and not all_are_none):
+      for arg in args:
+        self.trace(0, f"{arg}")
     assert(not any_is_none or all_are_none)
     
     if all_are_none:
@@ -602,8 +661,11 @@ class Compute (AST):
 #
 
 class Amplify (AST):
-  def __init__(self, smaller, bigger):
-    super().__init__("Amplify")
+  def __init__(self, smaller, bigger, instance_name = None):
+    name = "Amplify"
+    if instance_name is not None:
+      name += "_" + instance_name
+    super().__init__(name)
     self.smaller = smaller
     smaller.connect(self)
     self.bigger = bigger
@@ -632,30 +694,39 @@ class Amplify (AST):
 #
 
 class Reduce (AST):
-  def __init__(self, smaller, bigger):
-    super().__init__("Reduce")
+  def __init__(self, bigger, smaller = None, instance_name = None):
+    name = "Reduce"
+    if instance_name is not None:
+      name += "_" + instance_name
+    super().__init__(name)
     self.smaller = smaller
-    smaller.connect(self)
+    if smaller is not None:
+      smaller.connect(self)
     self.bigger = bigger
     bigger.connect(self)
   
   def evaluate(self):
-
-    current_value = self.smaller.nextValue(self)
-    if current_value is None:
-      next = self.bigger.nextValue(self)
-      assert(next is None)
-      self.trace(3, "Init: None")
-      return None
-    self.trace(3, f"Init: {current_value}")
+    if self.smaller is not None:
+      current_value = self.smaller.nextValue(self)
+      if current_value is None:
+        #next = self.bigger.nextValue(self)
+        #assert(next is None)
+        self.trace(3, "Init: None")
+        return None
+      self.trace(3, f"Init: {current_value}")
+    else:
+      current_value = None
     
     next = 0
     while next is not None:
       next = self.bigger.nextValue(self)
       if next is not None:
+        if current_value is None:
+          current_value = 0
+          self.trace(3, f"Init: 0")
         self.trace(2, f"{current_value} + {next} => {current_value + next}")
         current_value += next
-    self.trace(3, "Done")
+    self.trace(3, f"Output: {current_value}")
     return current_value
 
 #
@@ -673,11 +744,69 @@ class Stream0 (AST):
   
   
   def evaluate(self):
-    assert(not self.done)
+    #assert(not self.done)
+    if self.done:
+      self.trace(3, "None")
+      return None
     self.done = True
     self.trace(3, f"{self.val}")
     return self.val
 
+#
+# Distribute
+#
+# Route a N-stream down one of M routes based on a distribution choice N-stream.
+#
+
+class Distribute (AST):
+  def __init__(self, N, distribution_choices, stream):
+    super().__init__("Distribute", num_fields=N)
+    self.N = N
+    self.distribution_choices = distribution_choices
+    distribution_choices.connect(self)
+    self.stream = stream
+    stream.connect(self)
+  
+  def evaluate(self):
+    choice = self.distribution_choices.nextValue(self)
+    val = self.stream.nextValue(self)
+    if choice is None:
+      assert(val is None)
+      self.trace(3, "None.")
+      return [None] * self.N
+    assert(choice < self.N)
+    res = [NoTransmit] * self.N
+    res[choice] = val
+    self.trace(3, f"{val} => {choice}")
+    return res
+
+#
+# Collect
+#
+# Route one of M N-streams together into an N-Stream based on a 
+# distribution choice N-stream. Usually used to undo a Distribute by
+# passing the same distribution_choice stream to both.
+#
+
+class Collect (AST):
+  def __init__(self, N, distribution_choices, stream_array):
+    super().__init__("Collect")
+    self.N = N
+    self.distribution_choices = distribution_choices
+    distribution_choices.connect(self)
+    self.stream_array = stream_array
+    for n in range(self.N):
+      stream_array[n].connect(self)
+  
+  def evaluate(self):
+    choice = self.distribution_choices.nextValue(self)
+    if choice is None:
+      self.trace(3, "None")
+      return None
+    assert(choice < self.N)
+    val = self.stream_array[choice].nextValue(self)
+    self.trace(3, f"{choice} => {val}")
+    return val
 
 #
 # GetStartingFiber
@@ -820,9 +949,9 @@ class BasicFiberImplementation:
 
 
 def evaluate(node, n = 1, stats_dict = {}):
-  assert(n > 0)
+  assert(n >= 0)
   node.initialize()
-  consecutive_dones = 0
+  consecutive_dones = -1
   while (consecutive_dones != n):
     res = node.evaluate()
     print(f"+++++++++")
@@ -908,6 +1037,7 @@ if __name__ == "__main__":
 
   # Run the program and check and print the result
   evaluate(z_k_update_acks)
+  evaluate(z_root_update_acks, 0)
   print("===========================")
   print(f"Final element-wise result: {my_z_K.vals}")
   print("===========================")
@@ -970,8 +1100,8 @@ if __name__ == "__main__":
   z_n_update_acks = UpdatePayloads(z_n, z_n_handles, z_new_values)
 
   # Record occupancy
-  z_root_handles = Scan(z_root, ab_k_coords)
-  z_root_acks = UpdatePayloads(z_root, z_root_handles, z_n_updated_fiber_handles)
+  z_root_handles_amplified = Amplify(Stream0(0), ab_k_coords)
+  z_root_acks = UpdatePayloads(z_root, z_root_handles_amplified, z_n_updated_fiber_handles)
 
   K=3
   N=3
@@ -1055,12 +1185,12 @@ if __name__ == "__main__":
   partial_products = Compute(body_func, a_values, b_values)
   z_values = z_n_payloads
   # Reduce into the same value until end of rank
-  z_new_values = Reduce(z_values, partial_products)
+  z_new_values = Reduce(partial_products, z_values)
   z_n_update_acks = UpdatePayloads(z_n, z_n_handles, z_new_values)
   
   # Update occupancy
   z_root_handle = Iterate(z_root)
-  z_root_update_acks = UpdatePayloads(z_root, z_root_handle, z_n_new_fiber_handle)
+  z_root_update_ack = UpdatePayloads(z_root, z_root_handle, z_n_new_fiber_handle)
 
   my_a_root = BasicIntermediateRankImplementation(1, 1)
   my_a_k = BasicFiberImplementation([1, 2, 3])
@@ -1082,6 +1212,7 @@ if __name__ == "__main__":
   z.setImplementations("N", [my_z_n])
 
   evaluate(z_n_update_acks)
+  evaluate(z_root_update_ack, 0)
   print("==========================")
   print(f"Final Z-Stationary result: {my_z_n.vals}")
   print("==========================")
