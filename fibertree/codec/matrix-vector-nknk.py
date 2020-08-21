@@ -123,7 +123,7 @@ my_b_k0 = [BasicFiberImplementation([4, 5,  6]),
           BasicFiberImplementation([15, 18, 21]), 
           BasicFiberImplementation([18, 21, 24]),
           BasicFiberImplementation([16, 20, 24]), 
-          BasicFiberImplementation([20, 24, 26]), 
+          BasicFiberImplementation([20, 24, 28]), 
           BasicFiberImplementation([24, 28, 32])]
 
 my_z_root = BasicIntermediateRankImplementation(1, 1)
@@ -149,9 +149,11 @@ evaluate(z_n0_update_acksss, 3)
 evaluate(z_n1_update_acks, 1)
 evaluate(z_root_update_ack, 0)
 
+expected_vals = [[160, 190, 220], [352, 418, 484]]
+
 print(f"Final Z-Stationary result:")
 for n1 in range(N1):
   print(my_z_n0[n1].vals)
-#for n1 in range(N1):
-#  assert(my_z_n0[n1].vals == expected_vals[n1])
+for n1 in range(N1):
+  assert(my_z_n0[n1].vals == expected_vals[n1])
 print("==========================")

@@ -829,9 +829,10 @@ def GetStartingFiber(tensor):
 # Rank implementation JUST to test out the program below.
 
 class BasicIntermediateRankImplementation:
-  def __init__(self, shape, shape_of_next_rank):
+  def __init__(self, shape, shape_of_next_rank, pos=0):
     self.shape = shape
     self.shape_of_next_rank = shape_of_next_rank
+    self.pos = pos
   
   def setupSlice(self, base, bound, max_num):
     # ignore base/bound/max num because this class is BASIC.
@@ -849,12 +850,11 @@ class BasicIntermediateRankImplementation:
     return handle
   
   def handleToPayload(self, handle):
-    return (handle * self.shape_of_next_rank, (handle+1) * self.shape_of_next_rank)
+    assert(handle < self.shape_of_next_rank)
+    return self.pos * self.shape + handle
   
   def payloadToFiberHandle(self, payload):
-    if self.shape_of_next_rank == 0:
-      return payload[0]
-    return payload[0] // self.shape_of_next_rank
+    return payload
   
   def payloadToValue(self, payload):
     assert(False)
