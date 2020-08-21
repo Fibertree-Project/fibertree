@@ -199,7 +199,7 @@ class AST:
     if (level > self.trace_level):
       return
     if (hasattr(self, "rank") and self.rank != None):
-      print(self.class_name + ":", self.rank.name + ":", args)
+      print(self.class_name + ":", self.rank.name + "[" + str(self.rank.current_fiber) + "]:", args)
     else:
       print(self.class_name + ":", args)
       
@@ -851,7 +851,7 @@ class BasicIntermediateRankImplementation:
   
   def handleToPayload(self, handle):
     assert(handle < self.shape_of_next_rank)
-    return self.pos * self.shape + handle
+    return (self.pos * self.shape) + handle
   
   def payloadToFiberHandle(self, payload):
     return payload

@@ -87,8 +87,8 @@ b_valuessss = PayloadsToValues(b_k0, ab_b_k0_payloadssss)
 body_func = lambda a_val, b_val: a_val * b_val
 partial_productssss = Compute(body_func, a_valuessss, b_valuessss)
 # Reduce into the same value until end of rank
-#z_new_valuesss = Reduce(partial_productssss, z_valuesss, instance_name="K0")
-z_new_valuesss = Reduce(partial_productssss, instance_name="K0")
+z_new_valuesss = Reduce(partial_productssss, z_valuesss, instance_name="K0")
+#z_new_valuesss = Reduce(partial_productssss, instance_name="K0")
 z_n0_update_acksss = UpdatePayloads(z_n0, z_n0_handlesss, z_new_valuesss)
 
 # Update N0 occupancy by summing all fiber occupancy.
@@ -111,8 +111,8 @@ my_a_k1 = BasicIntermediateRankImplementation(K1, K0)
 my_a_k0 = [BasicFiberImplementation([1, 2, 3]), BasicFiberImplementation([2, 4, 6])]
 my_b_root = BasicIntermediateRankImplementation(1, 1)
 my_b_n1 = BasicIntermediateRankImplementation(N1, K1)
-my_b_k1 = [BasicIntermediateRankImplementation(K1, N0), BasicIntermediateRankImplementation(K1, N0)]
-my_b_n0 = [BasicIntermediateRankImplementation(N0, K0), BasicIntermediateRankImplementation(N0, K0), BasicIntermediateRankImplementation(N0, K0), BasicIntermediateRankImplementation(N0, K0)]
+my_b_k1 = [BasicIntermediateRankImplementation(K1, N0), BasicIntermediateRankImplementation(K1, N0, 1)]
+my_b_n0 = [BasicIntermediateRankImplementation(N0, K0), BasicIntermediateRankImplementation(N0, K0, 1), BasicIntermediateRankImplementation(N0, K0, 2), BasicIntermediateRankImplementation(N0, K0, 3)]
 my_b_k0 = [BasicFiberImplementation([4, 5,  6]), 
           BasicFiberImplementation([5,  6,  7]), 
           BasicFiberImplementation([6,  7,  8]),
