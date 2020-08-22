@@ -26,49 +26,41 @@ a = Tensor(name="A", rank_ids=["M"])
 b = Tensor(name="B", rank_ids=["N1", "N0"])
 z = Tensor(name="Z", rank_ids=["N1", "M", "N0"])
 
-a_m = a["M"]
-b_n1 = b["N1"]
-b_n0 = b["N0"]
-z_root = z["root"]
-z_n1 = z["N1"]
-z_m = z["M"]
-z_n0 = z["N0"]
-
-a_m_fiber_handle = GetStartingFiber(a)
-b_n1_fiber_handle = GetStartingFiber(b)
-z_n1_fiber_handle = GetStartingFiber(z)
+a_m = a.getStartHandle()
+b_n1 = b.getStartHandle()
+z_root = z.getRootHandle()
+z_n1 = z.getStartHandle()
 
 # n1 << operator, RHS:
-b_n1_handles = Scan(b_n1, b_n1_fiber_handle)
+b_n1_handles = Scan(b_n1)
 b_n1_coords = HandlesToCoords(b_n1, b_n1_handles)
 b_n1_payloads = HandlesToPayloads(b_n1, b_n1_handles)
-b_n0_fiber_handles = PayloadsToFiberHandles(b_n1, b_n1_payloads)
+b_n0s = PayloadsToFiberHandles(b_n1, b_n1_payloads)
 # n1 << operator:
-(z_n1_handles, z_n1_updated_fiber_handle) = InsertionScan(z_n1, z_n1_fiber_handle, b_n1_coords)
-z_n1_coords = b_n1_coords
+(z_n1_handles, z_n1_updated_fiber_handle) = InsertionScan(z_n1, b_n1_coords)
 z_n1_payloads = HandlesToPayloads(z_n1, z_n1_handles)
-z_m_fiber_handles = PayloadsToFiberHandles(z_n1, z_n1_payloads)
+z_ms = PayloadsToFiberHandles(z_n1, z_n1_payloads)
 
 # m << operator, RHS, repeated b_n1 more times:
-a_m_fiber_handles = Amplify(a_m_fiber_handle, b_n1_handles)
-a_m_handless = Scan(a_m, a_m_fiber_handles)
-a_m_coordss = HandlesToCoords(a_m, a_m_handless)
-a_m_payloadss = HandlesToPayloads(a_m, a_m_handless)
-a_valuess = PayloadsToValues(a_m, a_m_payloadss)
+a_ms = Amplify(a_m, b_n1_handles)
+a_m_handless = Scan(a_ms)
+a_m_coordss = HandlesToCoords(a_ms, a_m_handless)
+a_m_payloadss = HandlesToPayloads(a_ms, a_m_handless)
+a_valuess = PayloadsToValues(a_ms, a_m_payloadss)
 # m << operator:
-(z_m_handless, z_m_updated_fiber_handles) = InsertionScan(z_m, z_m_fiber_handles, a_m_coordss)
-z_m_payloadss = HandlesToPayloads(z_m, z_m_handless)
-z_n0_fiber_handless = PayloadsToFiberHandles(z_m, z_m_payloadss)
+(z_m_handless, z_m_updated_fiber_handles) = InsertionScan(z_ms, a_m_coordss)
+z_m_payloadss = HandlesToPayloads(z_ms, z_m_handless)
+z_n0ss = PayloadsToFiberHandles(z_ms, z_m_payloadss)
 
 # n0 << operator, RHS, repeated a_m more times:
-b_n0_fiber_handless = Amplify(b_n0_fiber_handles, a_m_handless, instance_name="B_N0")
-b_n0_handlesss = Scan(b_n0, b_n0_fiber_handless)
-b_n0_coordsss = HandlesToCoords(b_n0, b_n0_handlesss)
-b_n0_payloadsss = HandlesToPayloads(b_n0, b_n0_handlesss)
+b_n0ss = Amplify(b_n0s, a_m_handless, instance_name="B_N0")
+b_n0_handlesss = Scan(b_n0ss)
+b_n0_coordsss = HandlesToCoords(b_n0ss, b_n0_handlesss)
+b_n0_payloadsss = HandlesToPayloads(b_n0ss, b_n0_handlesss)
 a_valuesss = Amplify(a_valuess, b_n0_handlesss, instance_name="A_N0")
-b_valuesss = PayloadsToValues(b_n0, b_n0_payloadsss)
+b_valuesss = PayloadsToValues(b_n0ss, b_n0_payloadsss)
 # n0 << operator:
-(z_n0_handlesss, z_n0_updated_fiber_handless) = InsertionScan(z_n0, z_n0_fiber_handless, b_n0_coordsss)
+(z_n0_handlesss, z_n0_updated_fiber_handless) = InsertionScan(z_n0ss, b_n0_coordsss)
 # z_values not referenced in loop body, so don't retrieve it
 
 # z_ref <<= a_val * b_val
@@ -89,15 +81,14 @@ resultsss = Compute(lambda a, b: a * b, a_valuesss, b_valuesss)
 # END PARALLEL FOR
 
 # n0 << operator, LHS:
-z_n0_acksss = UpdatePayloads(z_n0, z_n0_handlesss, resultsss)
+z_n0_acksss = UpdatePayloads(z_n0ss, z_n0_handlesss, resultsss)
 
 # m << operator, LHS:
-z_m_ackss = UpdatePayloads(z_m, z_m_handless, z_n0_updated_fiber_handless)
+z_m_ackss = UpdatePayloads(z_ms, z_m_handless, z_n0_updated_fiber_handless)
 
 # n1 << operator, LHS:
 z_n1_acks = UpdatePayloads(z_n1, z_n1_handles, z_m_updated_fiber_handles)
-z_root_handle = Iterate(z_root)
-z_root_ack = UpdatePayloads(z_root, z_root_handle, z_n1_updated_fiber_handle)
+z_root_ack = UpdatePayloads(z_root, Stream0(0), z_n1_updated_fiber_handle)
 
 M = 3
 N1 = 1

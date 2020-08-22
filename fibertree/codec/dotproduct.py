@@ -25,18 +25,14 @@ a = Tensor(name="A", rank_ids=["K1", "K0"])
 b = Tensor(name="B", rank_ids=["K1", "K0"])
 z = Tensor(name="Z", rank_ids=[])
 
-a_k1 = a["K1"]
-a_k0 = a["K0"]
-b_k1 = b["K1"]
-b_k0 = b["K0"]
-z_root = z["root"]
+a_k1 = a.getStartHandle()
+b_k1 = b.getStartHandle()
+z_root = z.getRootHandle()
 
-a_k1_fiber_handle = GetStartingFiber(a)
-b_k1_fiber_handle = GetStartingFiber(b)
 
 # k1 & operator:
-a_k1_handles = Scan(a_k1, a_k1_fiber_handle)
-b_k1_handles = Scan(b_k1, b_k1_fiber_handle)
+a_k1_handles = Scan(a_k1)
+b_k1_handles = Scan(b_k1)
 a_k1_coords = HandlesToCoords(a_k1, a_k1_handles)
 b_k1_coords = HandlesToCoords(b_k1, b_k1_handles)
 # Intersect the K1 rank
@@ -44,22 +40,22 @@ b_k1_coords = HandlesToCoords(b_k1, b_k1_handles)
 # Only retrieve the fibers that survive intersection
 a_k1_payloads = HandlesToPayloads(a_k1, ab_k1_a_handles)
 b_k1_payloads = HandlesToPayloads(b_k1, ab_k1_b_handles)
-a_k0_fiber_handles = PayloadsToFiberHandles(a_k1, a_k1_payloads)
-b_k0_fiber_handles = PayloadsToFiberHandles(b_k1, b_k1_payloads)
+a_k0s = PayloadsToFiberHandles(a_k1, a_k1_payloads)
+b_k0s = PayloadsToFiberHandles(b_k1, b_k1_payloads)
 
 
 # k0 & operator:
-a_k0_handless = Scan(a_k0, a_k0_fiber_handles)
-b_k0_handless = Scan(b_k0, b_k0_fiber_handles)
-a_k0_coordss = HandlesToCoords(a_k0, a_k0_handless)
-b_k0_coordss = HandlesToCoords(b_k0, b_k0_handless)
+a_k0_handless = Scan(a_k0s)
+b_k0_handless = Scan(b_k0s)
+a_k0_coordss = HandlesToCoords(a_k0s, a_k0_handless)
+b_k0_coordss = HandlesToCoords(b_k0s, b_k0_handless)
 # Intersect the K0 rank
 (ab_k0_coordss, ab_k0_a_handless, ab_k0_b_handless) = Intersect(a_k0_coordss, a_k0_handless, b_k0_coordss, b_k0_handless)
 # Only retrieve the values that survive intersection
-a_k0_payloadss = HandlesToPayloads(a_k0, ab_k0_a_handless)
-b_k0_payloadss = HandlesToPayloads(b_k0, ab_k0_b_handless)
-a_valuess = PayloadsToValues(a_k0, a_k0_payloadss)
-b_valuess = PayloadsToValues(b_k0, b_k0_payloadss)
+a_k0_payloadss = HandlesToPayloads(a_k0s, ab_k0_a_handless)
+b_k0_payloadss = HandlesToPayloads(b_k0s, ab_k0_b_handless)
+a_valuess = PayloadsToValues(a_k0s, a_k0_payloadss)
+b_valuess = PayloadsToValues(b_k0s, b_k0_payloadss)
 
 # Compute result and reduce
 
