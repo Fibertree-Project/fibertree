@@ -2,7 +2,7 @@ import yaml
 from fibertree import Payload
 from fibertree import Fiber
 from fibertree import Tensor
-
+from .formats.uncompressed import Uncompressed
 #import compression groupings
 from .compression_types import descriptor_to_fmt
 
@@ -70,11 +70,18 @@ class Codec:
         if depth == -1:           
             # recurse one level down without adding to output yet
             root, size = self.encode(depth + 1, a, ranks, output, output_tensor)
-
-            if self.fmts[depth + 1].encodeUpperPayload():
+            HFA_root = Uncompressed()
+            HFA_root.shape = 1
+            # print("HFA root, next fmt {}".format(self.fmts[0]))
+            if self.fmts[0].encodeUpperPayload():
                 # store at most one payload at the root (size of first rank)
                 payloads_key = "payloads_root"
                 output[payloads_key].append(size)
+                HFA_root.occupancies = [0]
+                HFA_root.count_payload_reads = True
+
+            HFA_root.payloads = [root]
+            output_tensor[0] = [HFA_root]
             return root, size
 
         # otherwise, we are in the fibertree
@@ -84,7 +91,9 @@ class Codec:
         stats_key = ranks[depth] + "_" + str(len(output_tensor[depth]))
         fiber.setName(stats_key)
         fiber_occupancy = fiber.encodeFiber(a, dim_len, self, depth, ranks, output, output_tensor)
-        output_tensor[depth].append(fiber)
+        fiber.idx_in_rank = len(output_tensor[depth + 1])
+        output_tensor[depth+1].append(fiber)
+        
         return fiber, fiber_occupancy
  
     # encode
@@ -102,7 +111,7 @@ class Codec:
 
                     output[coords_key] = []
                     output[payloads_key] = []  
-                    if self.format_descriptor[i] == "Hf":
+                    if self.format_descriptor[i] == "H":
                         ptrs_key = "ptrs_{}".format(rank_names[i].lower())
                         ht_key = "ht_{}".format(rank_names[i].lower())
 
@@ -147,11 +156,11 @@ class Codec:
                     if len(tensor_in_format[payloads_key]) > 0:
                         if descriptor[i] == "U" and i < len(rank_names) - 1:
                             rank_dict["offsets"] = tensor_in_format[payloads_key]
-                        elif descriptor[i] == "Hf" and i < len(rank_names) - 1:
+                        elif descriptor[i] == "H" and i < len(rank_names) - 1:
                             rank_dict["offsets"] = tensor_in_format[payloads_key]
                         else:
                             rank_dict["payloads"] = tensor_in_format[payloads_key]
-                    if descriptor[i] == "Hf":
+                    if descriptor[i] == "H":
                         rank_dict["ptrs"] = tensor_in_format[ptrs_key]
                         rank_dict["bin_heads"] = tensor_in_format[ht_key]
                     if len(rank_dict) > 0:
