@@ -10,7 +10,8 @@ class CompressionFormat:
         self.payloads = list()
         self.occupancies = list()
         self.cur_handle = -1
-
+        self.idx_in_rank = None
+        self.shape = None
         # stats 
         self.stats = dict()
         self.coords_write_key = "num_coords_writes"
@@ -22,7 +23,7 @@ class CompressionFormat:
         self.payloads_read_key = "num_payloads_reads"
         self.stats[self.payloads_read_key] = 0
         self.count_payload_reads = True
-          
+        self.count_payload_writes = True 
         # cached coord
         # TODO: make these lowercase
         self.prevCoordSearched = None
@@ -33,11 +34,13 @@ class CompressionFormat:
         self.prevPayloadAtHandle = None
 
     # API Methods
-    # return a handle to this payload, maybe could make this a binary search
     def payloadToFiberHandle(self, payload):
         for i in range(0, len(self.payloads)):
             if payload == self.payloads[i]:
+                print("{}:: payload to fiber handle: payload {}, handle {}".format(self.name, payload, i))
+                print("\tidx in rank {}, shape {}".format(self.idx_in_rank, self.shape))
                 return i
+                # return self.idx_in_rank * self.shape + i
 
     # default payload to value
     def payloadToValue(self, payload):
@@ -75,6 +78,9 @@ class CompressionFormat:
     # given a handle, return payload there if in range, otherwise None
     def handleToPayload(self, handle):
         # print("handleToPayload: handle {}, prevPayloadHandle {}, payloads {}".format(handle, self.prevPayloadHandle, self.payloads))
+        
+        # if handle is not None:
+            # print("handleToPayload {}, count payload reads {}".format(self.name, self.count_payload_reads))
         if handle is None or handle >= len(self.payloads):
             return None
         elif handle == self.prevPayloadHandle:
@@ -98,7 +104,9 @@ class CompressionFormat:
     # get next handle during iteration through slice
     def nextInSlice(self):
         # print("\tin next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.coords_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
-        if self.coords_handle >= self.getSliceMaxLength():
+        # self.printFiber()
+
+        if self.coords_handle is None or self.coords_handle >= self.getSliceMaxLength():
             return None
         if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far:
             return None
@@ -118,11 +126,18 @@ class CompressionFormat:
 
     def updatePayload(self, handle, payload):
         return handle
-    
+
+    def getUpdatedFiberHandle(self):
+        return self
+
+    def getPayloads(self):
+        return self.payloads
+
     # get size of the representation in words
     # needs to be implemented by subclasses
     def getSize(self):
         assert(False)
+
     # at the end of execution, dump stats in YAML
     # add to the stats dict
     def dumpStats(self, stats_dict):

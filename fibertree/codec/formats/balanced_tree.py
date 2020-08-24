@@ -163,7 +163,7 @@ class RBTree(CompressionFormat):
 
     # iterator
     def nextInSlice(self):
-        self.printFiber()
+        # self.printFiber()
         if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far:
             return None
         print(self.coords_handle)
@@ -249,6 +249,10 @@ class RBTree(CompressionFormat):
             handle.data[1] = payload
         self.stats[self.payloads_write_key] += 1
         return handle
+
+    # updated fiber handle returns (size of tree, internal fiber object)
+    def getUpdatedFiberHandle(self):
+        return (self.getSize(), self)
 
     # TODO: print the fiber (linearized?)
     def printFiber(self):

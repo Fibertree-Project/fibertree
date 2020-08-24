@@ -6,7 +6,8 @@ class Uncompressed(CompressionFormat):
         self.name = "U"
         CompressionFormat.__init__(self)
         self.occupancies = list()
-    
+        self.count_payload_reads = False
+
     # instantiate this fiber in the format
     def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
         # import codec
@@ -16,9 +17,6 @@ class Uncompressed(CompressionFormat):
         # init vars
         fiber_occupancy = 0
         
-        cumulative_occupancy = codec.get_start_occ(depth)
-        # print("cumulative start {} at depth {}".format(cumulative_occupancy, depth))
-
         occ_list = list()
 
         # keep track of shape during encoding
@@ -26,10 +24,13 @@ class Uncompressed(CompressionFormat):
         
         if depth < len(ranks) - 1:
             # print("next encode upper payload {}".format(codec.fmts[depth + 1].encodeUpperPayload()))
-            if not codec.fmts[depth + 1].encodeUpperPayload():
-                self.count_payload_reads = False
-                # print("set {} count payload reads to false".format(self.name))
-        # iterate through all coords (nz or not)
+            cumulative_occupancy = codec.get_start_occ(depth + 1)
+            # print("\tdepth {}, fmts {}".format(depth, codec.fmts))
+
+            if codec.fmts[depth + 1].encodeUpperPayload():
+                self.count_payload_reads = True
+        else: # leaf level is always read payloads
+            self.count_payload_reads = True
         for i in range(0, dim_len):
             # internal levels
             if depth < len(ranks) - 1:
@@ -39,6 +40,7 @@ class Uncompressed(CompressionFormat):
                 # print(child_occupancy)
                 # keep track of occupancy (cumulative requires ordering)
                 if isinstance(cumulative_occupancy, int):
+                    # print("\tcumulative {}, child {}".format(cumulative_occupancy, child_occupancy))
                     cumulative_occupancy = cumulative_occupancy + child_occupancy
                 else:
                     cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
@@ -62,7 +64,13 @@ class Uncompressed(CompressionFormat):
     ## SWOOP API functions 
     def handleToCoord(self, handle):
         return handle
-    
+
+    # TODO: stop passing around the ptr? maybe payload could just be the offset   
+    def payloadToFiberHandle(self, payload):
+        for i in range(0, len(self.payloads)):
+            if payload == self.payloads[i]:
+                return self.idx_in_rank * self.shape + i
+
     # max number of elements in a slice is proportional to the shape
     def getSliceMaxLength(self):
         return self.shape
@@ -79,8 +87,15 @@ class Uncompressed(CompressionFormat):
 
     def updatePayload(self, handle, payload):
         assert handle < self.shape
-        self.stats[self.payloads_write_key] += 1
-        self.payloads[handle] = payload
+        # you don't have to update 
+        if self.count_payload_reads:
+            self.stats[self.payloads_write_key] += 1
+        # print("\tupdate {}, handle {}, payload {}".format(self.name, handle, payload))
+        if isinstance(payload, tuple):
+            self.occupancies[handle] = payload[0]
+            self.payloads[handle] = payload[1]
+        else:
+            self.payloads[handle] = payload
         return handle
 
     def getPayloads(self):

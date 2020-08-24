@@ -113,10 +113,16 @@ class Bitvector(CompressionFormat):
         # save the previous coord that we looked up for cost measure
         self.prev_coord_at_payload = iter_handle.coords_handle
         return super().handleToPayload(iter_handle.payloads_handle)
+
     # does this need to return a payload handle?
     # NOTE: in bitvector, handles to coords and payloads are different
     def coordToHandle(self, coord):
         return coord
+
+    # size of fiber is actually like (shape / wordsize) + num_payloads
+    # but can analytically find out shape / wordsize, so just return num_payloads
+    def getUpdatedFiberHandle(self):
+        return (len(self.payloads), self)
 
     def getSize(self):
         size = math.ceil(len(self.coords) / self.bits_per_word) + len(self.occupancies)

@@ -7,14 +7,16 @@ class CoordinateList(CompressionFormat):
     def __init__(self):
         self.name = "C"
         CompressionFormat.__init__(self)
-        self.occupancies = list()
-        # cached coord 
-
+        # self.depth = None
+        self.is_leaf = False
+        self.next_fmt = None
+    # encode fiber into C format
     def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
         # import codec
         from ..tensor_codec import Codec
         coords_key, payloads_key = codec.get_keys(ranks, depth)
-        
+        self.depth = depth
+
         # init vars
         fiber_occupancy = 0
 
@@ -25,23 +27,27 @@ class CoordinateList(CompressionFormat):
 
         prev_nz = 0
         occ_list = list()
+        if depth < len(ranks) - 1:
+            self.next_fmt = codec.fmts[depth + 1]
+        else:
+            self.is_leaf = True
         for ind, (val) in a:
             # store coordinate explicitly
             coords = CoordinateList.encodeCoord(prev_nz, ind)
 
-            # TODO: make the fiber rep an intermdiate to YAML
+            # TODO: make the fiber rep an intermediate to YAML
             output[coords_key].extend(coords)
             self.coords.extend(coords)
 
             # keep track of nnz in this fiber
             fiber_occupancy = fiber_occupancy + 1
 
-
             # if at leaves, store payloads directly
             if depth == len(ranks) - 1:
                 output[payloads_key].append(val.value)
                 self.payloads.append(val.value)
             else:
+                # print("{}::set next fmt to {}".format(self.name, self.next_fmt))
                 fiber, child_occupancy = codec.encode(depth + 1, val, ranks, output, output_tensor)
                 # keep track of actual occupancy (nnz in this fiber)
                 
@@ -61,10 +67,9 @@ class CoordinateList(CompressionFormat):
                     self.payloads.append(fiber)
 
             prev_nz = ind + 1
-        assert len(self.coords) == len(self.payloads)
-        #  self.printFiber()
+        # print("{}:: coords {}, payloads {}".format(self.name, self.coords, self.payloads))
+        
         return fiber_occupancy
-        # return fiber_occupancy, occ_list
     
     #### fiber functions for AST
 
@@ -93,6 +98,8 @@ class CoordinateList(CompressionFormat):
         mid = 0
         # print("\t{} access before binary search {}".format(self.name, self.num_accesses))
         while lo <= hi:
+            
+            # print("\t coordToHandle: target {}, lo {}, mid {}, hi {}, reads {}".format(coord, lo, mid, hi, self.stats[self.coords_read_key]))
             self.stats[self.coords_read_key] += 1; # add to num accesses in binary search
             mid = math.ceil((hi + lo) / 2)
             # print("target {}, lo: {}, hi: {}, mid {}, coord {}".format(coord, lo, hi, mid, self.coords[mid]))
@@ -119,10 +126,15 @@ class CoordinateList(CompressionFormat):
             return None
 
         handle_to_add = self.coordToHandle(coord)
+        
         # if went off the end 
         if handle_to_add is None:
             self.coords = self.coords + [coord]
-            self.payloads = self.payloads + [0]
+            if self.is_leaf:
+                self.payloads = self.payloads + [0]
+            else:
+                # assert(self.next_fmt is not None)
+                self.payloads = self.payloads + [self.next_fmt()]
             self.stats[self.coords_write_key] += 1
             # NOTE: maybe charge for shifting payloads?
             # do we need to charge for allocating payload space at the end here? 
@@ -135,10 +147,15 @@ class CoordinateList(CompressionFormat):
             self.coords = self.coords[:handle_to_add] + [coord] + self.coords[handle_to_add:]
 
             # move payloads to make space
-            self.payloads = self.payloads[:handle_to_add] + [0] + self.payloads[handle_to_add:]
+            if self.is_leaf:
+                self.payloads = self.payloads[:handle_to_add] + [0] + self.payloads[handle_to_add:]
+            else:
+                self.payloads = self.payloads[:handle_to_add] + [self.next_fmt()] + self.payloads[handle_to_add:]
 
             # count number of accesses (number of elts shifted)
             self.stats[self.coords_write_key] += len(self.coords) - handle_to_add
+            print("\t{} inserted coord {}".format(self.name, coord))
+            self.printFiber()
         return handle_to_add
 
     # return handle for termination
@@ -151,8 +168,11 @@ class CoordinateList(CompressionFormat):
             # print("setting payload at {} to {}".format(handle, payload))
             self.stats[self.payloads_write_key] += 1
             self.payloads[handle] = payload
-            # print(self.payloads)
         return handle
+
+    def getUpdatedFiberHandle(self):
+        # return update to occupancy and handle to internal python object
+        return (len(self.coords), self)
 
     # print this fiber representation in C
     def printFiber(self):
@@ -160,6 +180,7 @@ class CoordinateList(CompressionFormat):
     
     # get size of representation
     def getSize(self): 
+        # self.printFiber()
         assert(len(self.payloads) > 0)
 
         size = len(self.coords) + len(self.occupancies)
@@ -167,7 +188,8 @@ class CoordinateList(CompressionFormat):
         if not isinstance(self.payloads[0], CompressionFormat):
             size += len(self.payloads) 
         return size
-    
+   
+
     #### static methods
 
     # encode coord explicitly
