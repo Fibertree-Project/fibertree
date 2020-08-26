@@ -107,14 +107,40 @@ class RedBlackTree(object):
         """
         if curr == None:
             curr = self.root
-        # print(curr)
+        prev_parent = None
         while curr != NIL and data != curr.data[0]:
             # print("searching for {}, curr {}".format(data, curr.data[0]))
+            prev_parent = curr
             if data < curr.data[0]:
+
                 curr = curr.left
             else:
                 curr = curr.right
+        if isinstance(curr, NilNode):
+            curr = prev_parent
         return curr
+
+    def getRank(self,data):
+        """
+
+        :return:
+        """
+        curr = self.root
+        result = 0
+        prev_added = 0
+        print("\tin getRank of {}, curr {}".format(data,curr.data))
+        while curr != NIL and data != curr.data[0]:
+            printf("find rank of {}, curr {}, curr size {}".format(data, curr.data[0], curr.size))
+            if data < curr.data[0]:
+                result -= curr.size
+                curr = curr.left
+            else:
+                result += curr.size
+                prev_added = curr.size
+                curr = curr.right
+
+            print("\trank {}".format(result))
+        return result
 
 
     def fix_tree_after_add(self,new_node):
@@ -287,7 +313,7 @@ class RedBlackTree(object):
             p = node
             node = node.left
             num_reads += 1
-            print("\tnum reads in min_val {}, current node {}".format(num_reads, node.left))
+            # print("\tnum reads in min_val {}, current node {}".format(num_reads, node.left))
         return num_reads, p
 
     # given a 

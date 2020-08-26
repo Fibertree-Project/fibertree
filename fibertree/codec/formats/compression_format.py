@@ -35,16 +35,18 @@ class CompressionFormat:
 
     # API Methods
     def payloadToFiberHandle(self, payload):
-        for i in range(0, len(self.payloads)):
-            if payload == self.payloads[i]:
-                print("{}:: payload to fiber handle: payload {}, handle {}".format(self.name, payload, i))
-                print("\tidx in rank {}, shape {}".format(self.idx_in_rank, self.shape))
-                return i
-                # return self.idx_in_rank * self.shape + i
+        print("\t{} payloadToFiberHandle:: ret {}".format(self.name, payload))
+        
+        return payload
 
     # default payload to value
     def payloadToValue(self, payload):
-        return payload
+        print("\t{}: payloadToValue, payload {}, len payloads {}".format(self.name, payload, len(self.payloads)))
+        self.printFiber()
+        if payload >= len(self.payloads):
+            return None
+        return self.payloads[payload]
+        # return payload
 
     # helpers
     # have to overwrite this in subclasses, depends on the format
@@ -59,38 +61,42 @@ class CompressionFormat:
     # if handle is out of range, return None
     def handleToCoord(self, handle):
         # TODO: make these assertions that it's the correct type and in range
+        print("\t{} handleToCoord: handle {}, coords {}".format(self.name, handle, self.coords))
+        self.printFiber()
         if handle is None or handle >= len(self.coords):
             return None
+        """
         elif handle is self.prevHandleAtCoordSearched:
             return self.prevCoordSearched
         elif handle is self.prevHandleAccessed:
             return self.prevCoordAtHandleAccessed
-
+        """
         # cache this access
         self.prevHandleAccessed = handle
         self.prevCoordAtHandleAccessed = self.coords[handle]
         # coords read charge
         self.stats[self.coords_read_key] += 1
         
-        # print("handleToCoord, handle {}, reads {}, num coords {}".format(handle, self.stats[self.coords_read_key], len(self.coords)))
+        print("{}: handleToCoord, handle {}, reads {}, num coords {}".format(self.name, handle, self.stats[self.coords_read_key], len(self.coords)))
         return self.coords[handle]
 
     # given a handle, return payload there if in range, otherwise None
     def handleToPayload(self, handle):
-        # print("handleToPayload: handle {}, prevPayloadHandle {}, payloads {}".format(handle, self.prevPayloadHandle, self.payloads))
+        # print("\t{} handleToPayload: handle {}, prevPayloadHandle {}, payloads {}".format(self.name, handle, self.prevPayloadHandle, self.payloads))
         
         # if handle is not None:
             # print("handleToPayload {}, count payload reads {}".format(self.name, self.count_payload_reads))
         if handle is None or handle >= len(self.payloads):
             return None
         elif handle == self.prevPayloadHandle:
-            return self.prevPayloadAtHandle
+            return handle
+            # return self.prevPayloadAtHandle
         if self.count_payload_reads:
             self.stats[self.payloads_read_key] += 1
         # print("\thandleToPayload: num accesses {}".format(self.num_accesses))
         self.prevPayloadHandle = handle
-        self.prevPayloadAtHandle = self.payloads[handle]
-        return self.payloads[handle]
+        # self.prevPayloadAtHandle = self.payloads[handle]
+        return handle # switch to just passing around the ptr
 
     # slice on coordinates
     def setupSlice(self, base = 0, bound = None, max_num = None):
@@ -103,8 +109,7 @@ class CompressionFormat:
 
     # get next handle during iteration through slice
     def nextInSlice(self):
-        # print("\tin next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.coords_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
-        # self.printFiber()
+        print("\t{} in next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.name, self.coords_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
 
         if self.coords_handle is None or self.coords_handle >= self.getSliceMaxLength():
             return None
@@ -113,6 +118,7 @@ class CompressionFormat:
         to_ret = self.coords_handle
         self.num_ret_so_far += 1
         self.coords_handle += 1
+        print("\t\thandle to ret: {}".format(to_ret))
         # don't need to increment accesses for moving the handle forward
         return to_ret
 

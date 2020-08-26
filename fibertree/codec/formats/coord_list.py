@@ -75,6 +75,7 @@ class CoordinateList(CompressionFormat):
 
     # max length of slice
     def getSliceMaxLength(self):
+        print("\t{} getMaxSliceLen: {}".format(self.name, len(self.coords)))
         return len(self.coords)
 
     # return handle to existing coord that is at least coord
@@ -158,8 +159,26 @@ class CoordinateList(CompressionFormat):
             self.printFiber()
         return handle_to_add
 
+    # API Methods
+    def handleToPayload(self, handle):
+        print("\t{} handleToPayload:: ret {}".format(self.name, handle))
+        if self.next_fmt is not None and not self.next_fmt.encodeUpperPayload():
+            print("\t\tnext level not encoded, ret {}".format(self.idx_in_rank))
+            return self.idx_in_rank
+        return handle
+
+    # API Methods
+    def payloadToFiberHandle(self, payload):
+        print("\t{} payloadToFiberHandle:: ret {}".format(self.name, payload))
+        if not self.next_fmt.encodeUpperPayload():
+            print("\t\tnext level not encoded, ret {}".format(self.idx_in_rank))
+            return self.idx_in_rank
+        return payload
+
+
     # return handle for termination
     def updatePayload(self, handle, payload):
+        print("\t{} updatePayload, handle = {}, payload = {}".format(self.name, handle, payload))
         if handle is None:
             return None
         

@@ -79,7 +79,7 @@ class HashTable(CompressionFormat):
                     # update payload or return because found
                     self.payloads[bin_head] = (val)
                     return True
-                bin_head = ptrs[bin_head]
+                bin_head = self.ptrs[bin_head]
 
             self.ptrs.append(self.ht[hash_key])
             self.ht[hash_key] = len(self.ptrs) - 1 

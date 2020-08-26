@@ -67,10 +67,11 @@ class Uncompressed(CompressionFormat):
 
     # TODO: stop passing around the ptr? maybe payload could just be the offset   
     def payloadToFiberHandle(self, payload):
-        for i in range(0, len(self.payloads)):
-            if payload == self.payloads[i]:
-                return self.idx_in_rank * self.shape + i
-
+        print("\t{}::payloadToFiberHandle (U): payload {}, fiber_handle {}".format(self.name, payload, self.idx_in_rank * self.shape + payload))
+        assert payload < self.shape
+        
+        return self.idx_in_rank * self.shape + payload
+    
     # max number of elements in a slice is proportional to the shape
     def getSliceMaxLength(self):
         return self.shape
@@ -86,7 +87,9 @@ class Uncompressed(CompressionFormat):
         return coord
 
     def updatePayload(self, handle, payload):
-        assert handle < self.shape
+        print("\t{} updatePayload: handle {}, payload {}".format(self.name, handle, payload))
+        assert handle is not None and handle < self.shape
+        
         # you don't have to update 
         if self.count_payload_reads:
             self.stats[self.payloads_write_key] += 1
@@ -96,6 +99,7 @@ class Uncompressed(CompressionFormat):
             self.payloads[handle] = payload[1]
         else:
             self.payloads[handle] = payload
+        print("\tupdatePayload {}: handle {}, ret {}".format(self.name, handle, handle))
         return handle
 
     def getPayloads(self):
