@@ -1,5 +1,5 @@
 from .compression_format import CompressionFormat
-import operator
+import sys 
 # hash table per fiber
 
 class HashTable(CompressionFormat):
@@ -122,7 +122,7 @@ class HashTable(CompressionFormat):
         self.stats[self.ht_read_key] += 1
         print("{} coordToHandle: coord {}, hash_key {}".format(self.name, coord, hash_key))
         while bin_head is not None:
-            print("\tbin head {}".format(bin_head))
+            # print("\tbin head {}".format(bin_head))
             if self.coords[bin_head] is coord:
                 self.stats[self.coords_read_key] += 1 
                 # update payload or return because found
@@ -130,11 +130,34 @@ class HashTable(CompressionFormat):
             bin_head = self.ptrs[bin_head]
             self.stats[self.ptrs_read_key] += 1
 
+    
     # must return elts in sorted order on coord
     def setupSlice(self, base = 0, bound = None, max_num = None):
         super().setupSlice(base, bound, max_num)
         self.cur_handle = self.coordToHandle(base)
-    
+        
+        if self.cur_handle is None: # not found
+            val_at_min_handle = sys.maxsize
+            min_handle = None
+
+            # do a search through the coords to find the min greater than base
+            for i in range(0, len(self.coords)):
+                self.stats[self.coords_read_key] += 1
+                print("\tsearching coords: ind {}, coord {}, min_val {}".format(i, self.coords[i], val_at_min_handle))
+                if min_handle is None:
+                    if self.coords[i] > base:
+                        min_handle = i
+                        val_at_min_handle = self.coords[min_handle]
+                else: 
+                    assert min_handle is not None
+                    if self.coords[i] > base and self.coords[i] < val_at_min_handle:
+                        min_handle = i
+                        val_at_min_handle = self.coords[min_handle]
+
+            self.cur_handle = min_handle        
+
+        # print("\t{} setupSlice: curHandle = {}".format(self.name, self.cur_handle))
+            
     # get next in iteration
     def nextInSlice(self):
         if self.cur_handle is None:
@@ -145,7 +168,7 @@ class HashTable(CompressionFormat):
             return None
         cur_coord = self.coords[self.cur_handle]
         self.stats[self.coords_read_key] += 1
-        to_ret = cur_coord
+        to_ret = self.cur_handle # cur_coord
         next_handle = None
         # need to do a linear pass to find the next coord in sorted order
         for i in range(0, len(self.coords)):
@@ -154,8 +177,9 @@ class HashTable(CompressionFormat):
                 if next_handle is None or (self.coords[next_handle] > self.coords[i] and self.coords[i] > cur_coord):
                     next_handle = i
         if next_handle is not None:
-            print("\tnext handle {}, coord at handle {}".format(next_handle, self.coords[next_handle]))
+            # print("\tnext handle {}, coord at handle {}".format(next_handle, self.coords[next_handle]))
         self.cur_handle = next_handle
+        # print("\treturning {}".format(to_ret))
         return to_ret
 
     # modify coords, need to append 1 to payloads
