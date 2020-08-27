@@ -64,10 +64,11 @@ def mm_to_hfa_yaml(infilename, tensor_name, rank_ids, outfilename):
             outfile.write(fourteenspace + "payloads: {}\n".format(csr[m_coords[i]][1]))
     print("finished writing out YAML")
 
-def preproc_mtx():
+def preproc_mtx_dsds():
     tensor_name = sys.argv[1]
     infilename = sys.argv[2]
     outfilename = sys.argv[3]
+    splits = sys.argv[4].split(',') # get tilings
 
     # matrix market to the YAML that HFA reads
     mm_to_hfa_yaml(infilename, tensor_name, ['S', 'D'], outfilename)
@@ -78,27 +79,23 @@ def preproc_mtx():
     print("time to read into HFA: {}".format(t1)) # cpu seconds
     a_sd.dump("sd_" + outfilename)
     
-    print("occupancy of S rank {}".format(len(a_sd.getRoot().coords)))
     # swap (S, D) to (D, S)
     t0 = time.clock()
     a_ds = a_sd.swapRanks()
-    # a_ds.shape = [a_sd.shape[1], a_sd.shape[0]]
-    print("occupancy of D rank {}".format(len(a_ds.getRoot().coords)))
     t1 = time.clock() - t0
     print("time to swap S, D in HFA: {}".format(t1)) # cpu seconds
     a_ds.dump("ds_" + outfilename)
 
     # split D
     t0 = time.clock()
-    a_ds_split_uniform = a_ds.splitUniform(256, relativeCoords=False) # split D
+    a_dds = a_ds.splitUniform(int(splits[0]), relativeCoords=True) # split D
     t1 = time.clock() - t0
     print("time to splitUniform DS on D {}".format(t1)) # cpu seconds
-    a_ds_split_uniform.dump("dds_" + outfilename)
-
+    a_dds.dump("dds_" + outfilename)
 
     # split S
     t0 = time.clock()
-    a_ddss = a_ds_split_uniform.splitUniform(32, depth=2, relativeCoords=False)
+    a_ddss = a_dds.splitUniform(int(splits[1]), depth=2, relativeCoords=True)
     t1 = time.clock() - t0
     print("time to splitUniform DS on S: {}".format(t1)) # cpu seconds 
     a_ddss.dump("ddss_" + outfilename)
@@ -110,12 +107,17 @@ def preproc_mtx():
     print("time to swap intermediate D, S in HFA: {}".format(t1)) # cpu seconds
     a_dsds.dump("dsds_" + outfilename)
 
-
 def preproc_mtx_sdsd():
     tensor_name = sys.argv[1]
+    
+    # input in matrix market
     infilename = sys.argv[2]
+    
+    # output file suffix (.yaml)
     outfilename = sys.argv[3]
 
+    splits = sys.argv[4].split(',') # get tilings
+    
     # matrix market to the YAML that HFA reads
     mm_to_hfa_yaml(infilename, tensor_name, ['S', 'D'], outfilename)
     t0 = time.clock()
@@ -127,14 +129,14 @@ def preproc_mtx_sdsd():
  
     # split S
     t0 = time.clock()
-    a_ssd = a_sd.splitUniform(256, relativeCoords=False)
+    a_ssd = a_sd.splitUniform(int(splits[0]), relativeCoords=False)
     t1 = time.clock() - t0
     print("time to splitUniform SD on S: {}".format(t1)) # cpu seconds 
     a_ssd.dump("ssd_" + outfilename)
     
     # split D
     t0 = time.clock()
-    a_ssdd = a_ssd.splitUniform(32, depth=2, relativeCoords=False) # split D
+    a_ssdd = a_ssd.splitUniform(int(splits[1]), depth=2, relativeCoords=False) # split D
     t1 = time.clock() - t0
     print("time to splitUniform SSD on D {}".format(t1)) # cpu seconds
     a_ssdd.dump("ssdd_" + outfilename)
@@ -146,46 +148,6 @@ def preproc_mtx_sdsd():
     print("time to swap intermediate D, S in HFA: {}".format(t1)) # cpu seconds
     a_sdsd.dump("sdsd_" + outfilename)
 
-def encodeTensorInFormat(tensor, descriptor):
-    codec = Codec(tuple(descriptor), [True]*len(descriptor))
-
-    # get output dict based on rank names
-    rank_names = tensor.getRankIds()
-    # print("encode tensor: rank names {}, descriptor {}".format(rank_names, descriptor))
-    # TODO: move output dict generation into codec
-    output = codec.get_output_dict(rank_names)
-    # print("output dict {}".format(output))
-    output_tensor = []
-    for i in range(0, len(descriptor)+1):
-            output_tensor.append(list())
-
-    # print("encode, output {}".format(output_tensor))
-    codec.encode(-1, tensor.getRoot(), tensor.getRankIds(), output, output_tensor)
-
-    # name the fibers in order from left to right per-rank
-    rank_idx = 0
-    rank_names = ["root"] + tensor.getRankIds()
-
-    for rank in output_tensor:
-        fiber_idx = 0
-        for fiber in rank:
-            fiber_name = "_".join([tensor.getName(), rank_names[rank_idx], str(fiber_idx)])
-            fiber.setName(fiber_name)
-            # fiber.printFiber()
-            fiber_idx += 1
-        rank_idx += 1
-    return output_tensor
-
 if __name__ == "__main__":
     preproc_mtx_sdsd()
-    """
-    t0 = time.clock()
-    a_dsds = Tensor.fromYAMLfile(sys.argv[1])
-    t1 = time.clock() - t0
-    print("time to read DSDS from YAML into HFA: {}".format(t1)) # cpu seconds
- 
-    t0 = time.clock()
-    tensor = encodeTensorInFormat(a_dsds, ["C", "C", "C", "C"])
-    t1 = time.clock() - t0
-    print("time encode HFA with codec: {}".format(t1)) # cpu seconds 
-    """
+    preproc_mtx_dsds()
