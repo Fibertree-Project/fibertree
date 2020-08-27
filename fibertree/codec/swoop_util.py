@@ -1,7 +1,7 @@
 from fibertree import Codec
-
+from boltons.cacheutils import LRU
 # take an HFA tensor, convert it to compressed representation in python
-def encodeSwoopTensorInFormat(tensor, descriptor):
+def encodeSwoopTensorInFormat(tensor, descriptor, cache_size=32):
     codec = Codec(tuple(descriptor), [True]*len(descriptor))
 
     # get output dict based on rank names
@@ -20,13 +20,16 @@ def encodeSwoopTensorInFormat(tensor, descriptor):
     # name the fibers in order from left to right per-rank
     rank_idx = 0
     rank_names = ["root"] + tensor.getRankIds()
+    # tensor_cache = dict()
 
+    tensor_cache = LRU(max_size = cache_size)
     for rank in output_tensor:
         fiber_idx = 0
         for fiber in rank:
             fiber_name = "_".join([tensor.getName(), rank_names[rank_idx], str(fiber_idx)])
             fiber.setName(fiber_name)
             # fiber.printFiber()
+            fiber.cache = tensor_cache
             fiber_idx += 1
         rank_idx += 1
     return output_tensor
@@ -36,5 +39,8 @@ def encodeSwoopTensorInFormat(tensor, descriptor):
 def dumpAllStatsFromTensor(tensor, output):
     for rank in tensor:
         for fiber in rank:
-            # fiber.printFiber()
+            # 
             fiber.dumpStats(output)
+            # print("{} cache {}".format(fiber.name, fiber.cache))
+            fiber.printFiber()
+            print("\thit count {}, miss count {}, soft miss count {}".format(fiber.cache.hit_count, fiber.cache.miss_count, fiber.cache.soft_miss_count))

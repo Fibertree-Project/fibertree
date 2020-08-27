@@ -11,14 +11,14 @@ class NoTransmit:
 
 
 #
-# Tensor
+# SwoopTensor
 #
-# This is a format-independent abstraction for a Tensor that contains abstract
+# This is a format-independent abstraction for a SwoopTensor that contains abstract
 # "Rank"s that can be later set to have a concrete format and/or data.
 #
 
 
-class Tensor:
+class SwoopTensor:
   def __init__(self, name, rank_ids):
     assert(len(rank_ids) >= 0)
     # All tensors have a root rank.
@@ -67,6 +67,7 @@ class Rank:
     self.implementations = imps
 
   def setupSlice(self, fiber_idx, base_coord = 0, bound_coord = None, max_num = None):
+    # print("{}_{}:: implementations {}, fiber idx {}".format(self.tensor.name, self.name, self.implementations, fiber_idx))
     self.implementations[fiber_idx].setupSlice(base_coord, bound_coord, max_num)
     return fiber_idx
 
@@ -90,6 +91,7 @@ class Rank:
     return self.implementations[fiber_idx].coordToHandle(coord)
   
   def insertElement(self, fiber_idx, coord):
+    print(self.implementations)
     return self.implementations[fiber_idx].insertElement(coord)
   
   def updatePayload(self, fiber_idx, handle, payload):
@@ -220,7 +222,7 @@ class AST:
   def nextFiber(self):
     assert(hasattr(self, "fiber_handles") and self.fiber_handles is not None)
     self.current_fiber = self.fiber_handles.nextValue(self)
-    self.trace(3, "New fiber handle:{self.current_fiber}")
+    self.trace(3, "New fiber handle:{}".format(self.current_fiber))
 
   
   def nextValue(self, other):
@@ -241,6 +243,7 @@ class AST:
           res = prod.nextValue(self)
           if (res is not None):
             self.trace(0, f"Expected None from producer: {prod.getName()} => {res}")
+          # print("\tcurrent fiber {}, res: {}".format(self.current_fiber, res))
           assert(res is None)
       # Return none and try again next time.
       for (caller, q) in self.cur_results.items():
@@ -334,7 +337,7 @@ class Scan (AST):
   def evaluate(self):
     
     if not self.active:
-      self.trace(3, "Fiber Slice Setup.")
+      self.trace(3, "Fiber Slice Setup {}".format(self.current_fiber))
       self.current_fiber.setupSlice()
     
     res = self.current_fiber.nextInSlice()
@@ -345,6 +348,13 @@ class Scan (AST):
       return None
     self.active = True
     self.trace(2, f"Next: {res}")
+    # if res is None:
+    if res is None:
+      self.trace(3, "after next, Fiber Done.")
+      self.nextFiber()
+      self.active = False
+      return None
+
     return res
 
 
@@ -375,6 +385,7 @@ class InsertionScan (AST):
 #      self.active = True
 
     coord = self.coords.nextValue(self)
+    print("\tInsertionScan: coord {}, active {}, current fiber {}".format(coord, self.active, self.current_fiber))
     if coord is None:
       if self.active:
         new_handle = self.current_fiber.getUpdatedFiberHandle()
@@ -383,6 +394,9 @@ class InsertionScan (AST):
         new_handle = None
       self.active = False
       self.nextFiber()
+      assert (not new_handle is None or coord is None)
+      
+      print("\t\tcoord {}, newHandle: {}".format(coord, new_handle))
       return (None, new_handle)
     self.active = True
     self.trace(2, f"Inserting: {coord}")
@@ -471,6 +485,7 @@ class PayloadsToFiberHandles (AST):
 
   def evaluate(self):
     payload = self.payloads.nextValue(self)
+    print("current fiber in PayloadToFiberHandle {}".format(self.current_fiber))
     if payload is None:
       self.trace(3, "None")
       self.nextFiber()
@@ -1043,9 +1058,9 @@ if __name__ == "__main__":
   #   z <<= a * b
 
   # Define the tensors
-  a = Tensor(name = "A", rank_ids = ["K"])
-  b = Tensor(name = "B", rank_ids = ["K"])
-  z = Tensor(name = "Z", rank_ids = ["K"])
+  a = SwoopTensor(name = "A", rank_ids = ["K"])
+  b = SwoopTensor(name = "B", rank_ids = ["K"])
+  z = SwoopTensor(name = "Z", rank_ids = ["K"])
 
   # Get handles to the tree start.
   a_k = a.getStartHandle() # GetStartingFiber(a)
@@ -1111,9 +1126,9 @@ if __name__ == "__main__":
   #   for n, (z, b) in z_n << b_n:
   #     z += a * b
 
-  a = Tensor(name="A", rank_ids=["K"])
-  b = Tensor(name="B", rank_ids=["K", "N"])
-  z = Tensor(name="Z", rank_ids=["N"])
+  a = SwoopTensor(name="A", rank_ids=["K"])
+  b = SwoopTensor(name="B", rank_ids=["K", "N"])
+  z = SwoopTensor(name="Z", rank_ids=["N"])
 
   # Get handles to the tree start.
   a_k = a.getStartHandle()
@@ -1195,9 +1210,9 @@ if __name__ == "__main__":
   #  for k, (a, b) in a_k & b_k:
   #    z += a * b
 
-  a = Tensor(name="A", rank_ids=["K"])
-  b = Tensor(name="B", rank_ids=["N", "K"])
-  z = Tensor(name="Z", rank_ids=["N"])
+  a = SwoopTensor(name="A", rank_ids=["K"])
+  b = SwoopTensor(name="B", rank_ids=["N", "K"])
+  z = SwoopTensor(name="Z", rank_ids=["N"])
 
   a_k = a.getStartHandle()
   b_n = b.getStartHandle()
