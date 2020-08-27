@@ -1,0 +1,53 @@
+*** Adding formats ***
+to add a new compression format, go to formats and make a new file called
+your_format.py
+
+header should be
+from .compression_format import CompressionFormat
+
+class NewFormat(CompressionFormat):
+	
+examples are in formats/
+
+implement the functions in formats/compression_format.py for your specific format
+
+register your new format in compression_types.py
+
+
+*** Kernels with FATE_IR ***
+
+Note: currently supported input/output formats require U at the top rank
+TODO: fix compression at upper rank
+
+-- to run the formats on a tiny reference example, you can do
+python3 codec-knkn-ref.py UU
+python3 codec-nknk-ref.py UU
+where UU is any two-rank format descriptor (for the input and output)
+
+to run all the reference formats:
+python3 run-all-ref.py
+
+-- to run simulations:
+requires boltons for cache util: https://github.com/mahmoud/boltons
+do 
+
+pip install boltons
+
+a small example: to generate a small sparse matrix of 100 nodes and frontier, do
+python3 gen_small.py small.mtx small_dense.fr small_sparse.fr
+
+will generate a sparse graph in matrixmarket format into small.mtx, a dense frontier (list of nodes) in small_dense.fr, and a small sparse frontier in small_sparse.fr
+
+to pretile the graph, you can do
+python3 tiling_preproc.py small small.mtx small.yaml 32,32
+the arguments are tensor_name matrixmarket_input suffix_for_output tiling_params
+where tiling_params are in the format splitUniform for top_rank,bottom_rank
+
+then to run, do
+python3 <dataflow> <format> <frontier> <pretiled_graph>
+for example,
+python3 codec-knkn.py UU small.fr sdsd_small.yaml
+
+this example is also in run-small.sh
+
+in general, you can do this process with any graph in matrixmarket format (e.g. graph.mtx)
