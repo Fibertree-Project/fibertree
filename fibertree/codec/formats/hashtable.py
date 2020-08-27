@@ -176,7 +176,7 @@ class HashTable(CompressionFormat):
             if self.coords[i] > cur_coord:
                 if next_handle is None or (self.coords[next_handle] > self.coords[i] and self.coords[i] > cur_coord):
                     next_handle = i
-        if next_handle is not None:
+        # if next_handle is not None:
             # print("\tnext handle {}, coord at handle {}".format(next_handle, self.coords[next_handle]))
         self.cur_handle = next_handle
         # print("\treturning {}".format(to_ret))
