@@ -228,8 +228,6 @@ class RBTree(CompressionFormat):
        
         self.stats[self.coords_read_key] += 1
         return handle
-        
-        # return handle.data[0]
 
     # given a handle (tree node ptr), update the payload there
     def handleToPayload(self, handle):
@@ -247,6 +245,7 @@ class RBTree(CompressionFormat):
             return self.nodeAtPrevHandle.data[-1]
         else:
             assert(False) # TODO: fix this later (search for coord if necessary)
+    
     def payloadToValue(self, payload):
         print("\t{}: payloadToValue in T, payloads {}, payload {}".format(self.name, self.getPayloads(), payload))
         return payload
@@ -262,9 +261,9 @@ class RBTree(CompressionFormat):
             return None
 
         # if cached, just write to the node at that handle
-        if coord is self.prevCoordSearched:
-            assert self.handleAtPrevCoordSearched.data[0] is coord
-            return self.handleAtPrevCoordSearched
+        # if coord is self.prevCoordSearched:
+        #     assert self.handleAtPrevCoordSearched.data[0] is coord
+        #     return self.handleAtPrevCoordSearched
         
         # might have to do some reads and writes
         num_reads, num_writes, handle = self.tree.add([coord, 0])
@@ -295,7 +294,8 @@ class RBTree(CompressionFormat):
 
     # updated fiber handle returns (size of tree, internal fiber object)
     def getUpdatedFiberHandle(self):
-        return (self.getSize(), self)
+        return self.getSize()
+        # return (self.getSize(), self)
 
     # TODO: print the fiber (linearized?)
     def printFiber(self):

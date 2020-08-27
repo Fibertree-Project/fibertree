@@ -24,29 +24,21 @@ class CompressionFormat:
         self.stats[self.payloads_read_key] = 0
         self.count_payload_reads = True
         self.count_payload_writes = True 
-        # cached coord
-        # TODO: make these lowercase
-        self.prevCoordSearched = None
-        self.prevHandleAtCoordSearched = None
-        self.prevHandleAccessed = None
-        self.prevCoordAtHandleAccessed = None
-        self.prevPayloadHandle = None
-        self.prevPayloadAtHandle = None
 
+        self.cache = None
+        self.next_fmt = None 
     # API Methods
     def payloadToFiberHandle(self, payload):
         print("\t{} payloadToFiberHandle:: ret {}".format(self.name, payload))
-        
         return payload
 
     # default payload to value
     def payloadToValue(self, payload):
         print("\t{}: payloadToValue, payload {}, len payloads {}".format(self.name, payload, len(self.payloads)))
-        self.printFiber()
+        # self.printFiber()
         if payload >= len(self.payloads):
             return None
         return self.payloads[payload]
-        # return payload
 
     # helpers
     # have to overwrite this in subclasses, depends on the format
@@ -60,42 +52,32 @@ class CompressionFormat:
     # given a handle, return a coord at that handle
     # if handle is out of range, return None
     def handleToCoord(self, handle):
-        # TODO: make these assertions that it's the correct type and in range
-        print("\t{} handleToCoord: handle {}, coords {}".format(self.name, handle, self.coords))
-        self.printFiber()
+        # print("\t{} handleToCoord: handle {}, coords {}".format(self.name, handle, self.coords))
         if handle is None or handle >= len(self.coords):
             return None
-        """
-        elif handle is self.prevHandleAtCoordSearched:
-            return self.prevCoordSearched
-        elif handle is self.prevHandleAccessed:
-            return self.prevCoordAtHandleAccessed
-        """
-        # cache this access
-        self.prevHandleAccessed = handle
-        self.prevCoordAtHandleAccessed = self.coords[handle]
+	
+        key = self.name + "_handleToCoord_" + str(handle)
+        cached_val = self.cache.get(key)
+        self.cache[key] = self.coords[handle]
+
         # coords read charge
         self.stats[self.coords_read_key] += 1
         
-        print("{}: handleToCoord, handle {}, reads {}, num coords {}".format(self.name, handle, self.stats[self.coords_read_key], len(self.coords)))
         return self.coords[handle]
 
     # given a handle, return payload there if in range, otherwise None
     def handleToPayload(self, handle):
-        # print("\t{} handleToPayload: handle {}, prevPayloadHandle {}, payloads {}".format(self.name, handle, self.prevPayloadHandle, self.payloads))
-        
-        # if handle is not None:
-            # print("handleToPayload {}, count payload reads {}".format(self.name, self.count_payload_reads))
         if handle is None or handle >= len(self.payloads):
             return None
-        elif handle == self.prevPayloadHandle:
-            return handle
-            # return self.prevPayloadAtHandle
+        # do stats counting in handleToPayload because it later can go to
+        # -> payloadToValue
+        # -> payloadToFiberHandle
         if self.count_payload_reads:
             self.stats[self.payloads_read_key] += 1
-        # print("\thandleToPayload: num accesses {}".format(self.num_accesses))
-        self.prevPayloadHandle = handle
-        # self.prevPayloadAtHandle = self.payloads[handle]
+        key = self.name + "_handleToPayload_" + str(handle)
+        cached_val = self.cache.get(key)
+        self.cache[key] = handle
+
         return handle # switch to just passing around the ptr
 
     # slice on coordinates
@@ -134,7 +116,8 @@ class CompressionFormat:
         return handle
 
     def getUpdatedFiberHandle(self):
-        return self
+        return 0 # TODO: make this an actual indexable fiber handle to you
+        # return self
 
     def getPayloads(self):
         return self.payloads

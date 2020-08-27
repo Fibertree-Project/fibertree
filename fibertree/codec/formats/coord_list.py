@@ -9,7 +9,7 @@ class CoordinateList(CompressionFormat):
         CompressionFormat.__init__(self)
         # self.depth = None
         self.is_leaf = False
-        self.next_fmt = None
+        # self.next_fmt = None
     # encode fiber into C format
     def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
         # import codec
@@ -75,7 +75,6 @@ class CoordinateList(CompressionFormat):
 
     # max length of slice
     def getSliceMaxLength(self):
-        print("\t{} getMaxSliceLen: {}".format(self.name, len(self.coords)))
         return len(self.coords)
 
     # return handle to existing coord that is at least coord
@@ -84,39 +83,55 @@ class CoordinateList(CompressionFormat):
         # if out of range, return None
         if len(self.coords) is 0:
             return None
-        elif coord > self.coords[-1]:  
-            # TODO: how to count cost out of range?add an access to append space to the end and look at the end
+        elif coord > self.coords[-1]: # short path to end
+            #  print("\tcoord searched off the end")
+            key = self.name + "_handleToCoord_" + str(len(self.coords) - 1)
+            cached_val = self.cache.get(key)
+            self.cache[key] = self.coords[-1]
+            self.stats[self.coords_read_key] += 1; # add to num accesses in binary search
             return None
-        elif coord <= self.coords[0]:
+        elif coord <= self.coords[0]: # short path to beginning
+            # print("\tcoord searched off the beginning")
+            key = self.name + "_handleToCoord_0"
+            cached_val = self.cache.get(key)
+            self.cache[key] = self.coords[0]
+            self.stats[self.coords_read_key] += 1; # add to num accesses in binary search
             return 0
 
+        key = self.name + "_coordToHandle_" + str(coord)
+        cached_val = self.cache.get(key)
+        if cached_val is not None:
+            print("cached {}, ret {}".format(key, cached_val))
+            return cached_val
         # if cached, incur no cost
-        if self.prevCoordSearched is not None and self.prevCoordSearched == coord:
-            return self.prevHandleAtCoordSearched
+        # if self.prevCoordSearched is not None and self.prevCoordSearched == coord:
+        #     return self.prevHandleAtCoordSearched
+        
         # do a binary search if in range
         lo = 0
         hi = len(self.coords) - 1
         mid = 0
         # print("\t{} access before binary search {}".format(self.name, self.num_accesses))
         while lo <= hi:
-            
-            # print("\t coordToHandle: target {}, lo {}, mid {}, hi {}, reads {}".format(coord, lo, mid, hi, self.stats[self.coords_read_key]))
+            # cache along the way in the binary search
             self.stats[self.coords_read_key] += 1; # add to num accesses in binary search
+
+            # print("\t coordToHandle: target {}, lo {}, mid {}, hi {}, reads {}".format(coord, lo, mid, hi, self.stats[self.coords_read_key]))
             mid = math.ceil((hi + lo) / 2)
+            coord_key = self.name + "_handleToCoord_" + str(mid)
+            coord_at_mid = self.cache.get(coord_key)
+            self.cache[coord_key] = self.coords[mid]
             # print("target {}, lo: {}, hi: {}, mid {}, coord {}".format(coord, lo, hi, mid, self.coords[mid]))
             if self.coords[mid] == coord:
-                self.prevCoordSearched = coord
-                self.prevHandleAtCoordSearched = mid
                 return mid
             elif self.coords[mid] < coord:
                 lo = mid + 1
             else: # self.coords[mid] > coord:
                 hi = mid - 1
-        # print()
         if (coord > self.coords[mid]):
             mid += 1
-        self.prevCoordSearched = coord
-        self.prevHandleAtCoordSearched = mid
+        # self.prevCoordSearched = coord
+        # self.prevHandleAtCoordSearched = mid
         # print("\taccess after binary search {}".format(self.num_accesses))
         return mid
 
@@ -155,30 +170,30 @@ class CoordinateList(CompressionFormat):
 
             # count number of accesses (number of elts shifted)
             self.stats[self.coords_write_key] += len(self.coords) - handle_to_add
-            print("\t{} inserted coord {}".format(self.name, coord))
-            self.printFiber()
+            # print("\t{} inserted coord {}".format(self.name, coord))
         return handle_to_add
 
     # API Methods
     def handleToPayload(self, handle):
-        print("\t{} handleToPayload:: ret {}".format(self.name, handle))
+        # if next level has implicit payloads above (e.g. U), payload is implicit
         if self.next_fmt is not None and not self.next_fmt.encodeUpperPayload():
-            print("\t\tnext level not encoded, ret {}".format(self.idx_in_rank))
+            # print("\t\tnext level not encoded, ret {}".format(self.idx_in_rank))
             return self.idx_in_rank
         return handle
 
     # API Methods
     def payloadToFiberHandle(self, payload):
-        print("\t{} payloadToFiberHandle:: ret {}".format(self.name, payload))
+        # if next level has implicit payloads above (e.g. U), payload is implicit
+        # print("\t{} payloadToFiberHandle:: ret {}".format(self.name, payload))
         if not self.next_fmt.encodeUpperPayload():
-            print("\t\tnext level not encoded, ret {}".format(self.idx_in_rank))
+            # print("\t\tnext level not encoded, ret {}".format(self.idx_in_rank))
             return self.idx_in_rank
         return payload
 
 
     # return handle for termination
     def updatePayload(self, handle, payload):
-        print("\t{} updatePayload, handle = {}, payload = {}".format(self.name, handle, payload))
+        # print("\t{} updatePayload, handle = {}, payload = {}".format(self.name, handle, payload))
         if handle is None:
             return None
         
@@ -191,8 +206,8 @@ class CoordinateList(CompressionFormat):
 
     def getUpdatedFiberHandle(self):
         # return update to occupancy and handle to internal python object
-        return (len(self.coords), self)
-
+        # return (len(self.coords), self)
+        return len(self.coords)
     # print this fiber representation in C
     def printFiber(self):
         print("{} :: coords: {}, occupancies: {}, payloads: {}".format(self.name, self.coords, self.occupancies, self.payloads))
@@ -200,14 +215,14 @@ class CoordinateList(CompressionFormat):
     # get size of representation
     def getSize(self): 
         # self.printFiber()
-        assert(len(self.payloads) > 0)
+        if self.next_fmt is not None and self.next_fmt.encodeUpperPayload():
+            assert(len(self.payloads) > 0)
 
         size = len(self.coords) + len(self.occupancies)
         # Don't need to store occupancies if lower level is U
-        if not isinstance(self.payloads[0], CompressionFormat):
-            size += len(self.payloads) 
+        # if not isinstance(self.payloads[0], CompressionFormat):
+        size += len(self.payloads) 
         return size
-   
 
     #### static methods
 

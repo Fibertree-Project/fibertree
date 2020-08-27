@@ -225,8 +225,10 @@ class HashTable(CompressionFormat):
 
         return handle
 
+    # fiber handles must be reducible with int
     def getUpdatedFiberHandle(self):
-        return ((len(self.ht), len(self.payloads)), self)
+        return len(self.payloads) + len(self.ht) 
+        # return ((len(self.ht), len(self.payloads)), self)
 
     # default implementation is like in C
     # overwrite if this is changed

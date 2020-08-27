@@ -23,9 +23,7 @@ class Uncompressed(CompressionFormat):
         self.shape = dim_len
         
         if depth < len(ranks) - 1:
-            # print("next encode upper payload {}".format(codec.fmts[depth + 1].encodeUpperPayload()))
             cumulative_occupancy = codec.get_start_occ(depth + 1)
-            # print("\tdepth {}, fmts {}".format(depth, codec.fmts))
 
             if codec.fmts[depth + 1].encodeUpperPayload():
                 self.count_payload_reads = True
@@ -91,9 +89,15 @@ class Uncompressed(CompressionFormat):
         # print("\t{} updatePayload: handle {}, payload {}".format(self.name, handle, payload))
         assert handle is not None and handle < self.shape
         
-        # you don't have to update 
+        # testing adding to the cache
+        key = self.name + "_payloads_" + str(handle)
+        self.cache.get(key) # try to access it
+        self.cache[key] = payload # put it in the cache
+
+        # if the payloads from lower level are explicit 
         if self.count_payload_reads:
             self.stats[self.payloads_write_key] += 1
+
         # print("\tupdate {}, handle {}, payload {}".format(self.name, handle, payload))
         if isinstance(payload, tuple):
             self.occupancies[handle] = payload[0]

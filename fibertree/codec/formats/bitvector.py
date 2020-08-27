@@ -15,8 +15,8 @@ class Bitvector(CompressionFormat):
         self.bits_per_word = 32
         self.iter_handle = TwoHandle()
 
-        self.prev_coord_at_payload = None
-        self.prev_coord_word_write = None
+        # self.prev_coord_at_payload = None
+        # self.prev_coord_word_write = None
     # instantiate current fiber in B format
     def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
         # import codec
@@ -26,6 +26,10 @@ class Bitvector(CompressionFormat):
         # init vars
         fiber_occupancy = 0
         cumulative_occupancy = 0
+        
+        if depth < len(ranks) - 1:
+            self.next_fmt = codec.fmts[depth + 1]        
+        
         if depth < len(ranks) - 1:
             if codec.format_descriptor[depth + 1] is "Hf" or codec.format_descriptor[depth + 1] is "T":
                 cumulative_occupancy = [0, 0]
@@ -33,6 +37,9 @@ class Bitvector(CompressionFormat):
         occ_list.append(cumulative_occupancy)
         prev_nz = 0
         self.coords = [0]*dim_len
+        
+        
+        
         for ind, (val) in a:
             if depth < len(ranks) - 1:
                 fiber, child_occupancy = codec.encode(depth + 1, val, ranks, output, output_tensor)
@@ -85,16 +92,26 @@ class Bitvector(CompressionFormat):
 
     # handle = coord_handle
     def countCoordsRead(self, handle):
-        lower, upper = self.prevWordSearched()
-        #print("\t{} :: countCoordsRead handle {}, lower {}, upper {}".format(self.name, handle, lower, upper))
-        if lower is None or handle < lower or handle >= upper:
+        # lower, upper = self.prevWordSearched()
+        handle_start = self.getWordStart(handle)
+        cache_key = self.name + "_handleToCoordsRead_" + str(handle_start)
+        found = self.cache.get(cache_key) # look for it if there
+        range_end = min(handle_start + self.bits_per_word, len(self.coords))
+        self.cache[cache_key] = self.coords[handle_start:range_end]
+        
+        if found is None:
             self.stats[self.coords_read_key] += 1
-            self.prevHandleAtCoordSearched = self.getWordStart(handle)
 
     # handle = coord_handle
     def countCoordsWrite(self, handle):
-        if self.prev_coord_word_write is None or handle < self.prev_coord_word_write or handle >= self.prev_coord_word_write + self.bits_per_word:
-            self.prev_coord_word_write = self.getWordStart(handle)
+        # TODO; update with caching
+        
+        handle_start = self.getWordStart(handle)
+        cache_key = self.name + "_handleToCoordsWrite_" + str(handle_start)
+        found = self.cache.get(cache_key) # look for it if there
+        range_end = min(handle_start + self.bits_per_word, len(self.coords))
+        self.cache[cache_key] = self.coords[handle_start:range_end]
+        if found is None:
             self.stats[self.coords_write_key] += 1
 
     # given a handle (index into bit vector) return the coord 
@@ -111,7 +128,7 @@ class Bitvector(CompressionFormat):
 
     def handleToPayload(self, iter_handle):
         # save the previous coord that we looked up for cost measure
-        self.prev_coord_at_payload = iter_handle.coords_handle
+        # self.prev_coord_at_payload = iter_handle.coords_handle
         return super().handleToPayload(iter_handle.payloads_handle)
 
     # does this need to return a payload handle?
@@ -122,11 +139,14 @@ class Bitvector(CompressionFormat):
     # size of fiber is actually like (shape / wordsize) + num_payloads
     # but can analytically find out shape / wordsize, so just return num_payloads
     def getUpdatedFiberHandle(self):
-        return (len(self.payloads), self)
+        return len(self.payloads)
+        # return (len(self.payloads), self)
 
     def getSize(self):
         size = math.ceil(len(self.coords) / self.bits_per_word) + len(self.occupancies)
-        if not isinstance(self.payloads[0], CompressionFormat):
+        
+        # count payloads only if next level is encoded
+        if self.next_fmt is None or self.next_fmt.encodeUpperPayload():
             size += len(self.payloads)
         return size
 
@@ -135,11 +155,11 @@ class Bitvector(CompressionFormat):
          if coord is None:
              return TwoHandle(None, None)
          coord_handle_to_add = self.handleToCoord(TwoHandle(coord))
-         # cached
-         if coord == self.prev_coord_at_payload:
-            return TwoHandle(coord_handle_to_add, self.prevPayloadHandle)
+         
+         # stats counting
          self.countCoordsRead(coord_handle_to_add)
          self.countCoordsWrite(coord_handle_to_add)
+         
          # either way, need to count left
          payload_to_add_handle = self.countLeft(coord_handle_to_add)        
          # if unset, make space for it
@@ -150,6 +170,7 @@ class Bitvector(CompressionFormat):
          return TwoHandle(coord_handle_to_add, payload_to_add_handle)
              
     def updatePayload(self, handle, payload):
+        print("\t{} updatePayload: handle {}, payload {}".format(self.name, handle, payload))
         payload_handle = handle.payloads_handle
         if payload_handle is None:
             return None
@@ -163,12 +184,8 @@ class Bitvector(CompressionFormat):
         # count_left has cost = number of words to the left
         # print("count left from {}, cur {}, to add {}".format(coords_handle, self.stats[self.coords_read_key], 
 # coords_handle / self.bits_per_word))
+        # get cost of count left 
         self.countCoordsRead(coords_handle)
-        lower, upper = self.prevWordSearched()
-        # count left is already in the previously readd word, so it does not
-        # countributing to the cost
-        if not (lower <= coords_handle and coords_handle < upper):
-            self.stats[self.coords_read_key] += math.ceil(coords_handle / self.bits_per_word)
         result = 0 # count left 1s 
         for i in range(0, coords_handle):
             result += self.coords[i]
@@ -191,6 +208,7 @@ class Bitvector(CompressionFormat):
             return None
         if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far:
             return None
+        # move to the next nonzero
         while self.iter_handle.coords_handle < len(self.coords) and self.coords[self.iter_handle.coords_handle] is not 1:
             # print("iter coords handle: {}".format(self.iter_handle.coords_handle))
             self.iter_handle.coords_handle += 1
