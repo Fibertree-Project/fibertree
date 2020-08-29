@@ -6,8 +6,8 @@ class RBTree(CompressionFormat):
         CompressionFormat.__init__(self)
 
         self.curHandle = None
-        self.nodeAtCurHandle = None
-        self.nodeAtPrevHandle = None
+    
+    # given a node as input, compute the height of that node
     @staticmethod 
     def getHeight(root):
         if root == None or root == NIL: return 0
@@ -30,9 +30,8 @@ class RBTree(CompressionFormat):
             RBTree.serializeTree(NIL, output, depth + 1, ind, empty, height)
             RBTree.serializeTree(NIL, output, depth + 1, ind, empty, height)
             return
-        # return
-        # write data at node into a string
         
+        # write data at node into a string
         strout = ''
         if isinstance(root.data, int):
             # strout = str(root.data)
@@ -74,6 +73,7 @@ class RBTree(CompressionFormat):
         self.getPayloadsHelper(node.right, depth + 1, height, output)
         return
 
+    # inorder traversal of the tree to serialize payloads
     def getPayloads(self):
         output = list()
 
@@ -112,16 +112,15 @@ class RBTree(CompressionFormat):
                 # encode (coord, payload)
                 if codec.fmts[depth + 1].encodeUpperPayload():
                     if codec.cumulative_payloads[depth]:
-                        self.tree.add((ind, cumulative_occupancy, ind)) # fiber))
+                        self.tree.add((ind, cumulative_occupancy, ind))
                     else:
-                        self.tree.add((ind, child_occupancy, ind)) # fiber))
-                else:
-                    self.tree.add(ind, ind) # fiber)
-                            # if a leaf, encode (coord, value)
+                        self.tree.add((ind, child_occupancy, ind)) 
+                else: # if a leaf, encode (coord, value)
+                    self.tree.add(ind, ind)
             else:
                 self.tree.add((ind, val.value))
             
-            # print("searching in tree for verification for coord {}, found {}".format(ind, self.tree.contains(ind).data))
+            # search for it in the tree for verification
             assert ind == self.tree.contains(ind).data[0]
 
             fiber_occupancy = fiber_occupancy + 1
@@ -170,11 +169,12 @@ class RBTree(CompressionFormat):
         self.num_to_ret = max_num
         self.base = base
         self.bound = bound
-        self.nodeAtCurHandle = self.coordToHandle(base)
-        self.nodeAtPrevHandle = self.nodeAtCurHandle # special case in the beginning
-        if not isinstance(self.nodeAtCurHandle, NilNode):
-            self.curHandle = self.nodeAtCurHandle.data[0]
-        print("{} setupSlice: base {}, bound {}, handle {}, handle coord {}".format(self.name, base, bound, self.nodeAtCurHandle, self.curHandle))
+        res = self.coordToHandle(base)
+        if not isinstance(res, NilNode):
+            key = self.name + "_coordToHandle_" + str(res.data[0])
+            # map coord to node
+            self.cache[key] = res
+            self.curHandle = res.data[0]
     
     # iterator
     def nextInSlice(self):
@@ -183,49 +183,39 @@ class RBTree(CompressionFormat):
             return None
         
         to_ret = self.curHandle  # keep track of current handle
-        self.nodeAtPrevHandle = self.nodeAtCurHandle
         self.num_ret_so_far += 1
         
-        if isinstance(to_ret, NilNode):
+        if to_ret is None or isinstance(to_ret, NilNode):
             return None
 
+        key = self.name + "_coordToHandle_" + str(self.curHandle)
+        print(key)
+        node_at_cur_handle = self.cache.get(key)
+        assert(node_at_cur_handle is not None)
         # if you know where you are in the tree, you know where the successor is 
         # without having to read if you have to look right
-        num_reads, self.nodeAtCurHandle = self.tree.get_successor(self.nodeAtCurHandle) # advance handle
-        if self.nodeAtCurHandle is None:
+        num_reads, node_at_next_handle = self.tree.get_successor(node_at_cur_handle, self.cache, self.name)
+
+        if node_at_next_handle is None:
             self.curHandle = None
-        elif not isinstance(self.nodeAtCurHandle, NilNode):
-            self.curHandle = self.nodeAtCurHandle.data[0]
         
+        elif not isinstance(node_at_next_handle, NilNode):
+            self.curHandle = node_at_next_handle.data[0]
+            key = self.name + "_coordToHandle_" + str(self.curHandle)
+            self.cache[key] = node_at_next_handle
         print("\t{} nextInSlice, current handle {}, to ret {}".format(self.name, self.curHandle, to_ret))
         if self.curHandle is not None and to_ret is not None:
             assert self.curHandle is not to_ret # make sure you advance
-        self.printFiber()
+        # self.printFiber()
 
-        # TODO: count number of accesses required to get successor
         return to_ret
     
     # handle to coord takes in a handle which is a node
     def handleToCoord(self, handle):
         if handle is None:
             return None
-        """
-        # print("{} :: handleToCoord, handle {}".format(self.name, handle))
-        if isinstance(handle, NilNode):
-            return None
-        
-        assert isinstance(handle, RBNode)
-        
-        # count stats
-        if handle is self.prevHandleAccessed:
-            return self.prevCoordAtHandleAccessed
-        # print("\t coords_read before increment {}".format(self.stats[self.coords_read_key]))
-        """
         print("\t\tin tree {} handleToCoord: handle {}, curHandle {}".format(self.name, handle, self.curHandle))
-        # TODO: currently we only do this by forward iteration
-        # if you want to do random lookup, you either need to pass around the ptr or something else
-        assert handle is self.nodeAtPrevHandle.data[0]
-       
+
         self.stats[self.coords_read_key] += 1
         return handle
 
@@ -238,13 +228,12 @@ class RBTree(CompressionFormat):
         if self.count_payload_reads:
             # print("counting payloads read: handle {}, reads so far {}".format(handle, self.stats[self.payloads_read_key]))
             self.stats[self.payloads_read_key] += 1
-        
-        if self.nodeAtCurHandle is not None and handle is self.nodeAtCurHandle.data[0]:
-            return self.nodeAtCurHandle.data[-1]
-        elif handle is self.nodeAtPrevHandle.data[0]:
-            return self.nodeAtPrevHandle.data[-1]
-        else:
-            assert(False) # TODO: fix this later (search for coord if necessary)
+        # print(self.cache)
+        key = self.name + "_coordToHandle_" + str(handle)
+        node = self.cache[key]
+        assert(node is not None)
+        print("{} handleToPayload: node {}, handle {}".format(self.name, node, handle))
+        return node.data[-1]
     
     def payloadToValue(self, payload):
         print("\t{}: payloadToValue in T, payloads {}, payload {}".format(self.name, self.getPayloads(), payload))
@@ -260,14 +249,7 @@ class RBTree(CompressionFormat):
         if coord is None:
             return None
 
-        # if cached, just write to the node at that handle
-        # if coord is self.prevCoordSearched:
-        #     assert self.handleAtPrevCoordSearched.data[0] is coord
-        #     return self.handleAtPrevCoordSearched
-        
-        # might have to do some reads and writes
-        num_reads, num_writes, handle = self.tree.add([coord, 0])
-        # print("\t\t{} insertElement added {}, node {}, rank {}".format(self.name, coord, handle, self.tree.getRank(coord)))
+        num_reads, num_writes, handle = self.tree.add([coord, 0], cache=self.cache, name=self.name)
         
         # handle must be something that can index into a list, we want the i-th
         assert isinstance(handle, RBNode)
@@ -275,20 +257,22 @@ class RBTree(CompressionFormat):
         self.stats[self.coords_write_key] += num_writes
 
         # handle needs to be indexable
-        self.curHandle = coord # self.tree.getRank(coord)
-        self.nodeAtCurHandle = handle
-        
-        return self.curHandle
+        key = self.name + "_coordToHandle_" + str(coord)
+        self.cache[key] = handle
+        return coord # self.curHandle
+    
     # return a handle to the updated payload
     def updatePayload(self, handle, payload):
+        print("{} updatePayload: handle {}, payload {}".format(self.name, handle, payload))
         if handle is None or handle is NIL:
             return None
         # print("update payload:: handle {}, payload {}".format(handle, payload))
-        assert handle is self.curHandle
-        # assert isinstance(handle, RBNode)
-        if isinstance(payload, int):
-            # handle.data[1] = payload
-            self.nodeAtCurHandle.data[1] = payload
+        # assert handle is self.curHandle
+        key = self.name + "_coordToHandle_" + str(handle)
+        node_at_handle = self.cache.get(key)
+        assert node_at_handle.data[0] == handle
+        node_at_handle.data[1] = payload
+        
         self.stats[self.payloads_write_key] += 1
         return handle
 
