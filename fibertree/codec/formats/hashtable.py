@@ -7,7 +7,13 @@ class HashTable(CompressionFormat):
         self.name = "Hf"
         # if the hashtable length is fixed, don't need to write it as a payload
         CompressionFormat.__init__(self)
-        self.hashtable_len = 6
+        self.hashtable_len = 8
+        self.max_density = .8
+        self.ht = [None] * self.hashtable_len
+        self.ptrs = list()
+        self.coords = list()
+        self.payloads = list()
+        
         self.ht_read_key = "num_ht_reads"
         self.ht_write_key = "num_ht_writes"
         self.ptrs_read_key = "num_ptrs_reads"
@@ -40,21 +46,13 @@ class HashTable(CompressionFormat):
 
         # init scratchpads
         # TODO: doubling
-        self.ht = [None] * self.hashtable_len
-        self.ptrs = list()
-        self.coords = list()
-        self.payloads = list()
-
         # encode nonzeroes
         for ind, (val) in a:
-            # TODO: make this a function
-            # cumulative_occupancy = cumulative_occupancy + child_occupancy
-
-
+            payload_to_add = None
             # add to payloads
             # if at the leaves, add the actual payloads
             if depth == len(ranks) - 1:
-                self.payloads.append(val.value)
+                payload_to_add = val.value
             # if in internal levels, also get the fiber
             else: 
                 fiber, child_occupancy = codec.encode(depth + 1, val, ranks, output, output_tensor)
@@ -65,37 +63,19 @@ class HashTable(CompressionFormat):
                     cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
                     
                 if codec.fmts[depth + 1].encodeUpperPayload():
-                    self.payloads.append(cumulative_occupancy)
+                    payload_to_add = cumulative_occupancy
                 else:
-                    self.payloads.append(fiber_occupancy)
-            
-            # encode coord
-            hash_key = ind % self.hashtable_len
-            # print("ind: {}, hash key {}".format(ind, hash_key))
-            bin_head = self.ht[hash_key]
-            while bin_head is not None:
-                # print("\tbin head {}".format(bin_head))
-                if self.coords[bin_head] is ind:
-                    # update payload or return because found
-                    self.payloads[bin_head] = (val)
-                    return True
-                bin_head = self.ptrs[bin_head]
+                    payload_to_add = fiber_occupancy
 
-            self.ptrs.append(self.ht[hash_key])
-            self.ht[hash_key] = len(self.ptrs) - 1 
-            self.coords.append(ind)
-            assert(len(self.ptrs) == len(self.coords))
-            
+            # add to HT
+            self.insertElement(ind, payload=payload_to_add, count_stats=False)
+
             fiber_occupancy = fiber_occupancy + 1
 
         coords_key, payloads_key = codec.get_keys(ranks, depth)
-        # ptrs_key = "ptrs_{}".format(ranks[depth].lower())
-        # ht_key = "ht_{}".format(ranks[depth].lower())
 
         output[coords_key].extend(self.coords)
         output[payloads_key].extend(self.payloads)
-        # output[ptrs_key].extend(self.ptrs)
-        # output[ht_key].extend(self.ht)
 
         # linearize output dict
         # coords in the format of two lists: 
@@ -117,20 +97,56 @@ class HashTable(CompressionFormat):
     # TODO: if coord doesn't exist, return None? return next?
     def coordToHandle(self, coord):
         # encode coord
-        hash_key = coord % self.hashtable_len
+        hash_key = self.get_hash_key(coord)
         bin_head = self.ht[hash_key]
+
+        # assert bin_head is not None
+        # look for cached
+        key = self.name + '_HT_' + str(hash_key)
+        cached_val = self.cache.get(key)
+        self.cache[key] = bin_head
         self.stats[self.ht_read_key] += 1
-        print("{} coordToHandle: coord {}, hash_key {}".format(self.name, coord, hash_key))
+        print("\t{} coordToHandle: coord {}, hash_key {}".format(self.name, coord, hash_key))
+        # search this bucket
         while bin_head is not None:
+            self.stats[self.coords_read_key] += 1 
             # print("\tbin head {}".format(bin_head))
+            key = self.name + '_IdxToCoords_' + str(bin_head)
+            cached_val = self.cache.get(key)
+            self.cache[key] = self.coords[bin_head]
+
+            # if found coord, return the pointer to it
             if self.coords[bin_head] is coord:
-                self.stats[self.coords_read_key] += 1 
-                # update payload or return because found
                 return bin_head
-            bin_head = self.ptrs[bin_head]
+            # advance pointer in bucket
+
+            key = self.name + '_IdxToPtrs_' + str(bin_head)
+            cached_val = self.cache.get(key)
+            self.cache[key] = self.ptrs[bin_head]
             self.stats[self.ptrs_read_key] += 1
 
-    
+            bin_head = self.ptrs[bin_head]
+        return None # not found
+ 
+    # swoop API functions
+    # given a coord, give a handle (same for coords, payloads) to it
+    # TODO: if coord doesn't exist, return None? return next?
+    def coordToHandleNoStats(self, coord):
+        # encode coord
+        hash_key = self.get_hash_key(coord)
+        bin_head = self.ht[hash_key]
+
+        assert bin_head is not None
+        # look for cached
+        print("\t{} coordToHandle: coord {}, hash_key {}".format(self.name, coord, hash_key))
+        # search this bucket
+        while bin_head is not None:
+            if self.coords[bin_head] is coord:
+                return bin_head
+            # advance pointer in bucket
+            bin_head = self.ptrs[bin_head]
+        return None # not found
+   
     # must return elts in sorted order on coord
     def setupSlice(self, base = 0, bound = None, max_num = None):
         super().setupSlice(base, bound, max_num)
@@ -142,6 +158,11 @@ class HashTable(CompressionFormat):
 
             # do a search through the coords to find the min greater than base
             for i in range(0, len(self.coords)):
+                # look in the cache for it
+                key = self.name + '_IdxToCoords_' + str(i)
+                cached_val = self.cache.get(i)
+                self.cache[key] = self.coords[i]
+
                 self.stats[self.coords_read_key] += 1
                 print("\tsearching coords: ind {}, coord {}, min_val {}".format(i, self.coords[i], val_at_min_handle))
                 if min_handle is None:
@@ -157,7 +178,11 @@ class HashTable(CompressionFormat):
             self.cur_handle = min_handle        
 
         # print("\t{} setupSlice: curHandle = {}".format(self.name, self.cur_handle))
-            
+
+    # get hashtable key mod by table length
+    def get_hash_key(self, val):
+        return hash(str(val)) % self.hashtable_len
+    
     # get next in iteration
     def nextInSlice(self):
         if self.cur_handle is None:
@@ -167,62 +192,105 @@ class HashTable(CompressionFormat):
         if self.num_ret_so_far >= len(self.coords):
             return None
         cur_coord = self.coords[self.cur_handle]
+        to_ret = self.cur_handle
+
+        # look in the cache for it
+        key = self.name + '_IdxToCoords_' + str(self.cur_handle)
+        cached_val = self.cache.get(self.cur_handle)
+        self.cache[key] = self.coords[self.cur_handle]
         self.stats[self.coords_read_key] += 1
-        to_ret = self.cur_handle # cur_coord
+        
         next_handle = None
         # need to do a linear pass to find the next coord in sorted order
         for i in range(0, len(self.coords)):
+            key = self.name + '_IdxToCoords_' + str(i)
+            cached_val = self.cache.get(i)
+            self.cache[key] = self.coords[i]
+     
             self.stats[self.coords_read_key] += 1
             if self.coords[i] > cur_coord:
                 if next_handle is None or (self.coords[next_handle] > self.coords[i] and self.coords[i] > cur_coord):
                     next_handle = i
-        # if next_handle is not None:
-            # print("\tnext handle {}, coord at handle {}".format(next_handle, self.coords[next_handle]))
         self.cur_handle = next_handle
-        # print("\treturning {}".format(to_ret))
         return to_ret
+    
+    def double_table(self, count_stats):
+        print("\t table doubling")
+        # reset HT and ptrs
+        self.hashtable_len = self.hashtable_len * 2
+        self.ptrs = list()
+        self.ht = [None] * self.hashtable_len
+        for i in range(0, len(self.coords)):
+            self.insertElement(self.coords[i], add_coord=False, count_stats=count_stats)
+        assert(len(self.ptrs) == len(self.coords))
+        # search for them all
+        for i in range(0, len(self.coords)):
+            assert self.coordToHandleNoStats(self.coords[i]) is not None
 
     # modify coords, need to append 1 to payloads
-    def insertElement(self, coord):
+    def insertElement(self, coord, payload=0, count_stats=True, add_coord=True):
         if coord is None:
             return None
             
         # encode coord
-        hash_key = coord % self.hashtable_len
-        # print("ind: {}, hash key {}".format(ind, hash_key))
+        hash_key = self.get_hash_key(coord)
+        print("\tcoord: {}, hash key {}".format(coord, hash_key))
         bin_head = self.ht[hash_key]
-        # TODO: if insertElt goes into building the fiber, we only want to count this
-        # later update
-        self.stats[self.ht_read_key] += 1
+        if count_stats:
+            self.stats[self.ht_read_key] += 1
+            key = self.name + '_HT_' + str(hash_key)
+            cached_val = self.cache.get(key)
+            self.cache[key] = bin_head
+
+        # traverse this bucket
         while bin_head is not None:
             # print("\tbin head {}".format(bin_head))
+            if count_stats:
+                key = self.name + '_IdxToCoords_' + str(bin_head)
+                cached_val = self.cache.get(key)
+                self.cache[key] = self.coords[bin_head]
+
             if self.coords[bin_head] is coord:
                 # update payload or return because found
                 return bin_head 
-            bin_head = ptrs[bin_head]
+            bin_head = self.ptrs[bin_head]
+        assert bin_head is None
 
+        # make room for elt
         self.ptrs.append(self.ht[hash_key])
         self.ht[hash_key] = len(self.ptrs) - 1 
-        self.coords.append(coord)
-        
-        # add to stats
-        self.stats[self.ht_write_key] += 1
-        self.stats[self.ptrs_write_key] += 1
-        self.stats[self.coords_write_key] += 1
+        # don't need to readd during doubling
+        if add_coord:
+            self.coords.append(coord)
+            self.payloads.append(payload)
+            self.stats[self.coords_write_key] += 1
 
-        assert(len(self.ptrs) == len(self.coords))
+        if count_stats:
+            # add to stats
+            self.stats[self.ht_write_key] += 1
+            self.stats[self.ptrs_write_key] += 1
 
-        self.payloads.append(0)
+            # add payloads access to cache
+            key = self.name + '_IdxToPayloads_' + str(len(self.coords) - 1)
+            cached_val = self.cache.get(key)
+            self.cache[key] = payload
+
+        density = float(len(self.coords)) / self.hashtable_len
+        if density >= self.max_density:
+            self.double_table(count_stats)
         assert(len(self.coords) == len(self.payloads))
         return len(self.coords) - 1 # handle to coord is at the end
 
     def updatePayload(self, handle, payload):
         if handle is None:
             return None
+        key = self.name + '_IdxToPayloads_' + str(handle)
+        cached_val = self.cache.get(key)
+        self.cache[key] = payload
+
         # update payload
         self.stats[self.payloads_write_key] += 1
         self.payloads[handle] = payload
-
         return handle
 
     # fiber handles must be reducible with int
