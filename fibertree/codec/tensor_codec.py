@@ -92,6 +92,16 @@ class Codec:
         fiber.setName(stats_key)
         fiber_occupancy = fiber.encodeFiber(a, dim_len, self, depth, ranks, output, output_tensor)
         fiber.idx_in_rank = len(output_tensor[depth + 1])
+        if len(output_tensor[depth + 1]) == 0:
+            fiber.occupancy_so_far = 0
+        else:
+            if isinstance(fiber_occupancy, int):
+                fiber.occupancy_so_far = fiber_occupancy + output_tensor[depth + 1][-1].occupancy_so_far
+            else:
+                print(fiber_occupancy)
+                assert isinstance(fiber_occupancy, list)
+                fiber.occupancy_so_far = fiber_occupancy[0] + output_tensor[depth + 1][-1].occupancy_so_far
+
         output_tensor[depth+1].append(fiber)
         
         return fiber, fiber_occupancy

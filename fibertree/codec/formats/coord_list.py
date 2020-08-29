@@ -10,6 +10,8 @@ class CoordinateList(CompressionFormat):
         # self.depth = None
         self.is_leaf = False
         # self.next_fmt = None
+        # list of sizes of fibers so far in this rank
+        self.occupancy_so_far = None
     # encode fiber into C format
     def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
         # import codec
@@ -68,7 +70,7 @@ class CoordinateList(CompressionFormat):
 
             prev_nz = ind + 1
         # print("{}:: coords {}, payloads {}".format(self.name, self.coords, self.payloads))
-        
+        self.fiber_occupancy = fiber_occupancy 
         return fiber_occupancy
     
     #### fiber functions for AST
@@ -178,16 +180,17 @@ class CoordinateList(CompressionFormat):
         # if next level has implicit payloads above (e.g. U), payload is implicit
         if self.next_fmt is not None and not self.next_fmt.encodeUpperPayload():
             # print("\t\tnext level not encoded, ret {}".format(self.idx_in_rank))
-            return self.idx_in_rank
+            return self.occupancy_so_far # self.idx_in_rank + handle
         return handle
 
     # API Methods
     def payloadToFiberHandle(self, payload):
         # if next level has implicit payloads above (e.g. U), payload is implicit
-        # print("\t{} payloadToFiberHandle:: ret {}".format(self.name, payload))
         if not self.next_fmt.encodeUpperPayload():
-            # print("\t\tnext level not encoded, ret {}".format(self.idx_in_rank))
-            return self.idx_in_rank
+            print("\t{} next level not encoded, payload {} ret {}".format(self.name, payload, self.idx_in_rank))
+            return payload # self.idx_in_rank # + payload
+        
+        print("\t{} payloadToFiberHandle:: ret {}".format(self.name, payload))
         return payload
 
 

@@ -88,7 +88,8 @@ class CompressionFormat:
         self.bound = bound
         # print("setupSlice for {}, base = {}, bound = {}, max_num = {}".format(self.name, base, bound, max_num))
         self.coords_handle = self.coordToHandle(base)
-
+        # self.printFiber()
+    
     # get next handle during iteration through slice
     def nextInSlice(self):
         print("\t{} in next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.name, self.coords_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))

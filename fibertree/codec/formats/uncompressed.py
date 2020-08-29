@@ -34,11 +34,8 @@ class Uncompressed(CompressionFormat):
             if depth < len(ranks) - 1:
                 fiber, child_occupancy = codec.encode(depth + 1, a.getPayload(i), ranks, output, output_tensor)
                 self.payloads.append(fiber)
-                # print(fiber)
-                # print(child_occupancy)
                 # keep track of occupancy (cumulative requires ordering)
                 if isinstance(cumulative_occupancy, int):
-                    # print("\tcumulative {}, child {}".format(cumulative_occupancy, child_occupancy))
                     cumulative_occupancy = cumulative_occupancy + child_occupancy
                 else:
                     cumulative_occupancy = [a + b for a, b in zip(cumulative_occupancy, child_occupancy)]
@@ -57,7 +54,7 @@ class Uncompressed(CompressionFormat):
                     self.payloads.append(a.getPayload(i).value)
         
         # TODO: is 1 correct? maybe this should be occupancy?
-        return 1
+        return len(output_tensor[depth]) # 1
 
     ## SWOOP API functions 
     def handleToCoord(self, handle):
@@ -65,11 +62,10 @@ class Uncompressed(CompressionFormat):
 
     # TODO: stop passing around the ptr? maybe payload could just be the offset   
     def payloadToFiberHandle(self, payload):
-        # print("\t{}::payloadToFiberHandle (U): payload {}, fiber_handle {}".format(self.name, payload, self.idx_in_rank * self.shape + payload))
-        # print("\tshould print fiber")
-        # self.printFiber()
         assert payload < self.shape
-        return self.idx_in_rank * self.shape + payload
+        to_ret =  self.idx_in_rank * self.shape + payload
+        print("{} payloadToFiberHandle: idx in rank {}, shape {}, payload {}, ret {}".format(self.name, self.idx_in_rank, self.shape, payload, to_ret))
+        return to_ret
     
     # max number of elements in a slice is proportional to the shape
     def getSliceMaxLength(self):
@@ -104,7 +100,6 @@ class Uncompressed(CompressionFormat):
             self.payloads[handle] = payload[1]
         else:
             self.payloads[handle] = payload
-        # print("\tupdatePayload {}: handle {}, ret {}".format(self.name, handle, handle))
         return handle
 
     def getPayloads(self):
