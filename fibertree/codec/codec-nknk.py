@@ -4,6 +4,7 @@ from fibertree import Tensor
 import sys
 import yaml
 import time
+import os 
 ## Test program: Tiled Z-Stationary vector-matrix multiplication
 #
 #   Z_n = A_k * B_kn
@@ -91,32 +92,41 @@ z_n1_update_acks = UpdatePayloads(z_n1s, z_n1_handless, z_n0_new_fiber_handless)
 z_root_update_ack = UpdatePayloads(z_root, Stream0(0), z_n1_new_fiber_handle)
 
 # read in inputs
-jhu_len = 5157
-
+# jhu_len = 5157
+shape = 500 # TODO: take this as input
 # generate input frontier and tile it
-A_data = [0] * jhu_len
+A_data = [0] * shape
 
 # read in frontier
 count = 1
-with open(sys.argv[2], 'r') as f:
-    for line in f:
-        elt = int(line)
-        A_data[elt] = count
-        count += 1
+a_file = sys.argv[2]
+A_HFA = None
+if not a_file.endswith('.yaml'):
+    with open(a_file, 'r') as f:
+        for line in f:
+            elt = int(line)
+            A_data[elt] = count
+            count += 1
 
-A_untiled = Tensor.fromUncompressed(["S"], A_data, name ="A")
-A_HFA = A_untiled.splitUniform(32, relativeCoords=False) # split S
-print("A untiled shape {}, tiled shape {}".format(A_untiled.getShape(), A_HFA.getShape()))
-A_HFA.dump("tiled_frontier.yaml")
+    A_untiled = Tensor.fromUncompressed(["S"], A_data, name ="A")
+    A_HFA = A_untiled.splitUniform(32, relativeCoords=False) # split S
+    print("A untiled shape {}, tiled shape {}".format(A_untiled.getShape(), A_HFA.getShape()))
+    A_HFA.print()
+    # A_HFA.dump("tiled_frontier.yaml")
+else: # already in pretiled yaml
+    A_HFA = Tensor.fromYAMLfile(a_file)
+    A_HFA.setName("A")
 
 print("reading tiled mtx from yaml")
 t0 = time.clock()
-B_HFA = Tensor.fromYAMLfile(sys.argv[3])
+b_file = sys.argv[3]
+B_HFA = Tensor.fromYAMLfile(b_file)
 t1 = time.clock() - t0
 print("read B from yaml in {} s".format(t1))
 
 # output
 Z_data = [[0], [0]]
+print(B_HFA.getShape())
 Z_HFA = Tensor.fromUncompressed(["D1", "D0"], Z_data, shape=[B_HFA.getShape()[0],
 B_HFA.getShape()[2]], name = "Z")
 print("A shape {}, B shape {}, Z shape {}".format(A_HFA.getShape(), B_HFA.getShape
@@ -127,13 +137,15 @@ str_desc = sys.argv[1]
 frontier_descriptor = [str_desc[0], str_desc[1]]
 output_descriptor = frontier_descriptor
 
-myA = encodeSwoopTensorInFormat(A_HFA, frontier_descriptor, 32)
+A_shape = [len(A_data), 32]
+myA = encodeSwoopTensorInFormat(A_HFA, frontier_descriptor, tensor_shape=A_shape, cache_size=4*32)
+print()
 t0 = time.clock()
-myB = encodeSwoopTensorInFormat(B_HFA, ["U", "U", "C", "U"], 32 * 32)
+myB = encodeSwoopTensorInFormat(B_HFA, ["U", "U", "C", "U"], cache_size=256 * 32)
 t1 = time.clock() - t0
-
+print()
 print("encoded B in {} s".format(t1))
-myZ = encodeSwoopTensorInFormat(Z_HFA, output_descriptor, 32)
+myZ = encodeSwoopTensorInFormat(Z_HFA, output_descriptor, cache_size=4 * 256)
 
 a.setImplementations("root", myA[0])
 a.setImplementations("K1", myA[1])
@@ -146,6 +158,14 @@ b.setImplementations("K0", myB[4])
 z.setImplementations("root", myZ[0])
 z.setImplementations("N1", myZ[1])
 z.setImplementations("N0", myZ[2])
+
+"""
+for i in range(0, len(myB[3])):
+    myB[3][i].printFiber()
+
+for i in range(0, len(myB[4])):
+    myB[4][i].printFiber()
+"""
 #evaluate(b_n0ss, 2)          # 0,          1,          x, 2,          3,          x, x
 #evaluate(b_n0_handlesss, 3)  # 0, 1, 2, x, 0, 1, 2, x, x, 0, 1, 2, x, 0, 1, 2, x, x, x
 #evaluate(b_n0_payloadsss, 3) # 0, 1, 2, x, 0, 1, 2, x, x, 
@@ -157,22 +177,25 @@ z.setImplementations("N0", myZ[2])
 #evaluate(b_valuessss, 4)
 #exit(0)
 
-evaluate(z_n0_update_acksss, 3)
-evaluate(z_n1_update_acks, 1)
-evaluate(z_root_update_ack, 0)
+stats_dict = dict()
+cache_dict = dict()
+evaluate(z_n0_update_acksss, 3, stats_dict=cache_dict)
+evaluate(z_n1_update_acks, 1, stats_dict=cache_dict)
+evaluate(z_root_update_ack, 0, stats_dict=cache_dict)
+
 """
-for i in range(0, len(myB[4])):
+for i in range(0, len(myB[3])):
     myB[3][i].printFiber()
 
 for i in range(0, len(myB[4])):
     myB[4][i].printFiber()
 """
-
 print("Z: {}".format(myZ))
+output_lin = []
 myZ[1][0].printFiber()
 for i in range(0, len(myZ[2])):
     myZ[2][i].printFiber()
-
+    output_lin.append(myZ[2][i].getPayloads())
 #
 b_n1 = B_HFA.getRoot()
 a_k1 = A_HFA.getRoot()
@@ -182,12 +205,33 @@ for n1, (z_n0, b_k1) in z_n1 << b_n1:
     for n0, (z, b_k0) in z_n0 << b_n0:
       for k0, (a, b) in a_k0 & b_k0:
         z += a * b
+Z_HFA.dump('tiled_next_frontier.yaml')
 
+dumpAllStatsFromTensor(myA, stats_dict, cache_dict, 'A')
+dumpAllStatsFromTensor(myB, stats_dict, cache_dict, 'B')
+dumpAllStatsFromTensor(myZ, stats_dict, cache_dict, 'Z')
+b_file = b_file.split('/')[-1]
+b_file = b_file.split('.')[-2]
+a_file = a_file.split('/')[-1]
+a_file = a_file.split('.')[-2]
+outpath = 'stats/'+a_file+'_'+b_file+'/'
+if not os.path.exists(outpath):
+    os.makedirs(outpath)
+
+with open(outpath + 'stats_' + str_desc, 'w') as statsfile:
+    yaml.dump(stats_dict, statsfile)
+
+with open(outpath + 'cache_'+ str_desc, 'w') as cachefile:
+    yaml.dump(cache_dict, cachefile)
+
+#A_HFA.print()
+# B_HFA.print()
 Z_HFA.print()
-Z_HFA.dump('nknk_hfa.yaml')
+z_n1 = Z_HFA.getRoot()
+output_ref = []
+for (z, z_n0) in z_n1:
+    output_ref.append(z_n0.getPayloads())
 
-stats_dict = dict()
-dumpAllStatsFromTensor(myA, stats_dict)
-dumpAllStatsFromTensor(myB, stats_dict)
-dumpAllStatsFromTensor(myZ, stats_dict)
-print(yaml.dump(stats_dict))
+assert(output_lin == output_ref)
+
+

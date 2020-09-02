@@ -98,10 +98,10 @@ z_root_handles = Amplify(Stream0(0), z_n1_new_fiber_handles)
 z_root_update_acks = UpdatePayloads(z_root, z_root_handles, z_n1_new_fiber_handles)
 
 # read in inputs
-jhu_len = 5157
-
+# jhu_len = 5157
+shape = 500 # TODO: take this as input or get it from yaml somehow
 # generate input frontier and tile it
-A_data = [0] * jhu_len
+A_data = [0] * shape
 
 # read in frontier
 with open(sys.argv[2], 'r') as f:
@@ -135,13 +135,13 @@ frontier_descriptor = [str_desc[0], str_desc[1]]
 output_descriptor = frontier_descriptor
 # output_descriptor = [output_desc[0], output_desc[1]]
 
-myA = encodeSwoopTensorInFormat(A_HFA, frontier_descriptor, 32)
+myA = encodeSwoopTensorInFormat(A_HFA, frontier_descriptor)
 t0 = time.clock()
-myB = encodeSwoopTensorInFormat(B_HFA, ["U", "U", "U", "C"], 32)
+myB = encodeSwoopTensorInFormat(B_HFA, ["U", "U", "U", "C"])
 t1 = time.clock() - t0
-
 print("encoded B in {} s".format(t1))
-myZ = encodeSwoopTensorInFormat(Z_HFA, output_descriptor, 32)
+
+myZ = encodeSwoopTensorInFormat(Z_HFA, output_descriptor)
 
 a.setImplementations("root", myA[0])
 a.setImplementations("K1", myA[1])
@@ -155,10 +155,10 @@ z.setImplementations("root", myZ[0])
 z.setImplementations("N1", myZ[1])
 z.setImplementations("N0", myZ[2])
 
-print("Z[1]: {}".format(myZ[1]))
-print("Z[2]: {}".format(myZ[2]))
+# print("Z[1]: {}".format(myZ[1]))
+# print("Z[2]: {}".format(myZ[2]))
 
-print("len B[0] {}, B[1] {}, B[2] {}, B[3] {}, B[4] {}".format(len(myB[0]), len(myB[1]), len(myB[2]), len(myB[3]), len(myB[4])))
+# print("len B[0] {}, B[1] {}, B[2] {}, B[3] {}, B[4] {}".format(len(myB[0]), len(myB[1]), len(myB[2]), len(myB[3]), len(myB[4])))
 #for i in range(0, len(myB[3])):
 #    myB[3][i].printFiber()
 
@@ -168,6 +168,7 @@ evaluate(z_n0_update_ackssss, 4)
 evaluate(z_n1_update_ackss, 2)
 evaluate(z_root_update_acks, 1)
 
+# do verification
 a_k1 = A_HFA.getRoot()
 z_n1 = Z_HFA.getRoot()
 b_k1 = B_HFA.getRoot()
@@ -177,9 +178,16 @@ for k1, (a_k0, b_n1) in a_k1 & b_k1:
       for n0, (z, b) in z_n0 << b_n0:
         z += a * b
 Z_HFA.print()
-Z_HFA.dump("out_hfa.yaml")
 
-print("Z: {}".format(myZ))
+output_lin = []
 myZ[1][0].printFiber()
-myZ[2][0].printFiber()
-myZ[2][1].printFiber()
+for i in range(0, len(myZ[2])):
+    myZ[2][i].printFiber()
+    output_lin.append(myZ[2][i].getPayloads())
+
+z_n1 = Z_HFA.getRoot()
+output_ref = []
+for (z, z_n0) in z_n1:
+    output_ref.append(z_n0.getPayloads())
+
+assert(output_lin == output_ref)
