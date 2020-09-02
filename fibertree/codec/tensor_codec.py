@@ -60,7 +60,7 @@ class Codec:
         return "coords_{}".format(ranks[depth].lower()), "payloads_{}".format(ranks[depth].lower()),
 
     # encode
-    def encode(self, depth, a, ranks, output, output_tensor):
+    def encode(self, depth, a, ranks, output, output_tensor, shape=None):
         if depth >= len(ranks):
             return -1
         # keys are in the form payloads_{rank name}, coords_{rank name}
@@ -69,7 +69,7 @@ class Codec:
 
         if depth == -1:           
             # recurse one level down without adding to output yet
-            root, size = self.encode(depth + 1, a, ranks, output, output_tensor)
+            root, size = self.encode(depth + 1, a, ranks, output, output_tensor, shape=shape)
             HFA_root = Uncompressed()
             HFA_root.shape = 1
             # print("HFA root, next fmt {}".format(self.fmts[0]))
@@ -88,15 +88,24 @@ class Codec:
         fmt = self.fmts[depth]
         fiber = fmt()
         dim_len = a.getShape()[0]
-        stats_key = ranks[depth] + "_" + str(len(output_tensor[depth]))
+        # print("shape arg {}".format(shape))
+        if shape is not None:
+            dim_len = shape[depth]
+            # print("depth {}, HFA shape {}, real shape {}".format(depth, a.getShape()[0], dim_len))
+            assert dim_len >= a.getShape()[0]
+        stats_key = ranks[depth] + "_" + str(len(output_tensor[depth+1]))
         fiber.setName(stats_key)
-        fiber_occupancy = fiber.encodeFiber(a, dim_len, self, depth, ranks, output, output_tensor)
+        fiber_occupancy = fiber.encodeFiber(a, dim_len, self, depth, ranks, output, output_tensor, shape=shape)
+        fiber.nnz = fiber_occupancy
         fiber.idx_in_rank = len(output_tensor[depth + 1])
         if len(output_tensor[depth + 1]) == 0:
             fiber.occupancy_so_far = 0
         else:
+            # exclusive prefix for indexing
             if isinstance(fiber_occupancy, int):
-                fiber.occupancy_so_far = fiber_occupancy + output_tensor[depth + 1][-1].occupancy_so_far
+                # fiber.occupancy_so_far = fiber_occupancy + output_tensor[depth + 1][-1].occupancy_so_far
+                fiber.occupancy_so_far = output_tensor[depth + 1][-1].occupancy_so_far + output_tensor[depth + 1][-1].nnz
+                # print("in encode, name {}, occupancy so far {}".format(fiber.name, fiber.occupancy_so_far))
             else:
                 print(fiber_occupancy)
                 assert isinstance(fiber_occupancy, list)
@@ -104,6 +113,7 @@ class Codec:
 
         output_tensor[depth+1].append(fiber)
         
+        # print("\tencode at depth {}: {}".format(depth+1, output_tensor[depth+1]))
         return fiber, fiber_occupancy
  
     # encode

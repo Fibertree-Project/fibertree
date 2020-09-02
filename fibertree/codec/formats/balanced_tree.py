@@ -121,7 +121,7 @@ class RBTree(CompressionFormat):
                 self.tree.add((ind, val.value))
             
             # search for it in the tree for verification
-            assert ind == self.tree.contains(ind).data[0]
+            # assert ind == self.tree.contains(ind).data[0]
 
             fiber_occupancy = fiber_occupancy + 1
             
@@ -170,9 +170,10 @@ class RBTree(CompressionFormat):
         self.base = base
         self.bound = bound
         res = self.coordToHandle(base)
-        if not isinstance(res, NilNode):
+        if res is not None and not isinstance(res, NilNode):
             key = self.name + "_coordToHandle_" + str(res.data[0])
             # map coord to node
+            self.cache.get(key)
             self.cache[key] = res
             self.curHandle = res.data[0]
     
@@ -202,6 +203,7 @@ class RBTree(CompressionFormat):
         elif not isinstance(node_at_next_handle, NilNode):
             self.curHandle = node_at_next_handle.data[0]
             key = self.name + "_coordToHandle_" + str(self.curHandle)
+            self.cache.get(key)
             self.cache[key] = node_at_next_handle
         print("\t{} nextInSlice, current handle {}, to ret {}".format(self.name, self.curHandle, to_ret))
         if self.curHandle is not None and to_ret is not None:
@@ -223,24 +225,22 @@ class RBTree(CompressionFormat):
     def handleToPayload(self, handle):
         if handle is None:
             return None
-        # elif handle == self.prevPayloadHandle:
-        #     return handle.data[-1]
         if self.count_payload_reads:
-            # print("counting payloads read: handle {}, reads so far {}".format(handle, self.stats[self.payloads_read_key]))
             self.stats[self.payloads_read_key] += 1
-        # print(self.cache)
         key = self.name + "_coordToHandle_" + str(handle)
+        self.cache.get(key)
+        
         node = self.cache[key]
         assert(node is not None)
-        print("{} handleToPayload: node {}, handle {}".format(self.name, node, handle))
+        # print("{} handleToPayload: node {}, handle {}".format(self.name, node, handle))
         return node.data[-1]
     
     def payloadToValue(self, payload):
-        print("\t{}: payloadToValue in T, payloads {}, payload {}".format(self.name, self.getPayloads(), payload))
+        # print("\t{}: payloadToValue in T, payloads {}, payload {}".format(self.name, self.getPayloads(), payload))
         return payload
 
     def payloadToFiberHandle(self, handle):
-        print("\tpayload to fiber handle in T, ret {}".format(handle))
+        # print("\tpayload to fiber handle in T, ret {}".format(handle))
         return handle
 
     # return handle to inserted elt
@@ -248,7 +248,8 @@ class RBTree(CompressionFormat):
     def insertElement(self, coord):
         if coord is None:
             return None
-
+        # print("{} insertElement {}".format(self.name, coord))
+        assert self.cache is not None
         num_reads, num_writes, handle = self.tree.add([coord, 0], cache=self.cache, name=self.name)
         
         # handle must be something that can index into a list, we want the i-th
@@ -258,6 +259,7 @@ class RBTree(CompressionFormat):
 
         # handle needs to be indexable
         key = self.name + "_coordToHandle_" + str(coord)
+        self.cache.get(key)
         self.cache[key] = handle
         return coord # self.curHandle
     
@@ -270,8 +272,9 @@ class RBTree(CompressionFormat):
         # assert handle is self.curHandle
         key = self.name + "_coordToHandle_" + str(handle)
         node_at_handle = self.cache.get(key)
-        assert node_at_handle.data[0] == handle
-        node_at_handle.data[1] = payload
+        if node_at_handle is not None:
+            assert node_at_handle.data[0] == handle
+            node_at_handle.data[1] = payload
         
         self.stats[self.payloads_write_key] += 1
         return handle
@@ -279,9 +282,7 @@ class RBTree(CompressionFormat):
     # updated fiber handle returns (size of tree, internal fiber object)
     def getUpdatedFiberHandle(self):
         return self.getSize()
-        # return (self.getSize(), self)
 
-    # TODO: print the fiber (linearized?)
     def printFiber(self):
         output = list()
         RBTree.treeToString(self.tree.root, 0, RBTree.getHeight(self.tree.root), output)
@@ -291,7 +292,10 @@ class RBTree(CompressionFormat):
     def getSize(self):
         height = RBTree.getHeight(self.tree.root)
         num_nodes = 2**height -1 
-        node_size = self.tree.root.getSize()
+        node_size = 0
+        if self.tree.root is not None:
+            self.tree.root.getSize()
+        
         # print("tree get size, height {}, num nodes {}, node size {}".format(height, num_nodes, node_size))
         return num_nodes * node_size
     # encode coord explicitly

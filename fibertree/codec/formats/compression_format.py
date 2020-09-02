@@ -38,6 +38,12 @@ class CompressionFormat:
         # self.printFiber()
         if payload >= len(self.payloads):
             return None
+        self.stats[self.payloads_read_key] += 1
+        key = self.name + "_payloadToValue_" + str(payload)
+        cached_val = self.cache.get(key) # try to access it
+        if cached_val is None:
+            print("DRAM {} payloadToValue {}, miss count {}".format(self.name, payload, self.cache.miss_count))
+        self.cache[key] = self.payloads[payload] # put it in the cache 
         return self.payloads[payload]
 
     # helpers
@@ -58,6 +64,9 @@ class CompressionFormat:
 	
         key = self.name + "_handleToCoord_" + str(handle)
         cached_val = self.cache.get(key)
+        # if cached_val is None:
+        # print("DRAM {} handleToCoord {}, miss count {}".format(self.name, handle, self.cache.miss_count))
+        # print(self.cache)
         self.cache[key] = self.coords[handle]
 
         # coords read charge
@@ -74,10 +83,6 @@ class CompressionFormat:
         # -> payloadToFiberHandle
         if self.count_payload_reads:
             self.stats[self.payloads_read_key] += 1
-        key = self.name + "_handleToPayload_" + str(handle)
-        cached_val = self.cache.get(key)
-        self.cache[key] = handle
-
         return handle # switch to just passing around the ptr
 
     # slice on coordinates
@@ -93,11 +98,11 @@ class CompressionFormat:
     # get next handle during iteration through slice
     def nextInSlice(self):
         print("\t{} in next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.name, self.coords_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
-
         if self.coords_handle is None or self.coords_handle >= self.getSliceMaxLength():
             return None
         if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far:
             return None
+        # for formats that don't need to touch memory to get next
         to_ret = self.coords_handle
         self.num_ret_so_far += 1
         self.coords_handle += 1

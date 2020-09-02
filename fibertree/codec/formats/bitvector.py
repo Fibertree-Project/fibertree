@@ -211,6 +211,8 @@ class Bitvector(CompressionFormat):
         # move to the next nonzero
         while self.iter_handle.coords_handle < len(self.coords) and self.coords[self.iter_handle.coords_handle] is not 1:
             # print("iter coords handle: {}".format(self.iter_handle.coords_handle))
+            key = self.name + '_handleToCoordsRead_' + str(self.iter_handle.coords_handle)
+            self.cache.get(key)
             self.iter_handle.coords_handle += 1
         
         # if in range, return 

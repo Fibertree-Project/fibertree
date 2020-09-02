@@ -13,7 +13,7 @@ class CoordinateList(CompressionFormat):
         # list of sizes of fibers so far in this rank
         self.occupancy_so_far = None
     # encode fiber into C format
-    def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
+    def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor, shape=None):
         # import codec
         from ..tensor_codec import Codec
         coords_key, payloads_key = codec.get_keys(ranks, depth)
@@ -50,7 +50,7 @@ class CoordinateList(CompressionFormat):
                 self.payloads.append(val.value)
             else:
                 # print("{}::set next fmt to {}".format(self.name, self.next_fmt))
-                fiber, child_occupancy = codec.encode(depth + 1, val, ranks, output, output_tensor)
+                fiber, child_occupancy = codec.encode(depth + 1, val, ranks, output, output_tensor,shape=shape)
                 # keep track of actual occupancy (nnz in this fiber)
                 
                 # print("ind {}, depth{}, child {}, cumulative {}".format(ind, depth, child_occupancy, cumulative_occupancy))
@@ -85,11 +85,15 @@ class CoordinateList(CompressionFormat):
         # if out of range, return None
         if len(self.coords) is 0:
             return None
+        
         elif coord > self.coords[-1]: # short path to end
             #  print("\tcoord searched off the end")
             key = self.name + "_handleToCoord_" + str(len(self.coords) - 1)
             cached_val = self.cache.get(key)
             self.cache[key] = self.coords[-1]
+            if self.name.startswith("Z"):
+                print("{} coordToHandle coord {}, misses {}".format(self.name, coord, self.cache.miss_count))
+
             self.stats[self.coords_read_key] += 1; # add to num accesses in binary search
             return None
         elif coord <= self.coords[0]: # short path to beginning
@@ -97,6 +101,8 @@ class CoordinateList(CompressionFormat):
             key = self.name + "_handleToCoord_0"
             cached_val = self.cache.get(key)
             self.cache[key] = self.coords[0]
+            if self.name.startswith("Z"):
+                print("{} coordToHandle coord {}, misses {}".format(self.name, coord, self.cache.miss_count))
             self.stats[self.coords_read_key] += 1; # add to num accesses in binary search
             return 0
 
@@ -105,10 +111,7 @@ class CoordinateList(CompressionFormat):
         if cached_val is not None:
             print("cached {}, ret {}".format(key, cached_val))
             return cached_val
-        # if cached, incur no cost
-        # if self.prevCoordSearched is not None and self.prevCoordSearched == coord:
-        #     return self.prevHandleAtCoordSearched
-        
+       
         # do a binary search if in range
         lo = 0
         hi = len(self.coords) - 1
@@ -154,6 +157,11 @@ class CoordinateList(CompressionFormat):
                 # assert(self.next_fmt is not None)
                 self.payloads = self.payloads + [self.next_fmt()]
             self.stats[self.coords_write_key] += 1
+            key = self.name + "_handleToCoord_" + str(len(self.coords) - 1)
+            cached_val = self.cache.get(key)
+            self.cache[key] = coord
+            print("{} insertElt: coord {}, misses {}".format(self.name, coord, self.cache.miss_count))
+
             # NOTE: maybe charge for shifting payloads?
             # do we need to charge for allocating payload space at the end here? 
             # it will already be charged for the upate
@@ -171,6 +179,12 @@ class CoordinateList(CompressionFormat):
                 self.payloads = self.payloads[:handle_to_add] + [self.next_fmt()] + self.payloads[handle_to_add:]
 
             # count number of accesses (number of elts shifted)
+            for i in range(handle_to_add, len(coords)):
+                key = self.name + "_handleToCoord_" + str(i)
+                cached_val = self.cache.get(key)
+                self.cache[key] = self.coords[i]
+                print("in insert elt in C, key {}, num misses {}".format(key, self.cache.miss_count))
+     
             self.stats[self.coords_write_key] += len(self.coords) - handle_to_add
             # print("\t{} inserted coord {}".format(self.name, coord))
         return handle_to_add
@@ -179,7 +193,8 @@ class CoordinateList(CompressionFormat):
     def handleToPayload(self, handle):
         # if next level has implicit payloads above (e.g. U), payload is implicit
         if self.next_fmt is not None and not self.next_fmt.encodeUpperPayload():
-            # print("\t\tnext level not encoded, ret {}".format(self.idx_in_rank))
+            print("\t\tnext level not encoded, ret {}".format(self.occupancy_so_far))
+            
             return self.occupancy_so_far # self.idx_in_rank + handle
         return handle
 
@@ -187,7 +202,7 @@ class CoordinateList(CompressionFormat):
     def payloadToFiberHandle(self, payload):
         # if next level has implicit payloads above (e.g. U), payload is implicit
         if not self.next_fmt.encodeUpperPayload():
-            print("\t{} next level not encoded, payload {} ret {}".format(self.name, payload, self.idx_in_rank))
+            print("\t{} next level not encoded, payload {} ret {}".format(self.name, payload, payload))
             return payload # self.idx_in_rank # + payload
         
         print("\t{} payloadToFiberHandle:: ret {}".format(self.name, payload))
@@ -205,6 +220,18 @@ class CoordinateList(CompressionFormat):
             # print("setting payload at {} to {}".format(handle, payload))
             self.stats[self.payloads_write_key] += 1
             self.payloads[handle] = payload
+        
+        key = self.name + "_handleToPayload_" + str(handle)
+        prev_misses = self.cache.miss_count
+        # print("{} handleToPayload key: {}, miss count before {}".format(self.name, key, self.cache.miss_count))
+        print(self.cache)
+        cached_val = self.cache.get(key)
+        # print("\tcached val {}".format(cached_val))
+        self.cache[key] = payload
+        if prev_misses < self.cache.miss_count:
+            print(self.cache)
+            print("{} handleToPayload key: {}, miss count after {}".format(self.name, key, self.cache.miss_count))
+
         return handle
 
     def getUpdatedFiberHandle(self):

@@ -9,7 +9,7 @@ class Uncompressed(CompressionFormat):
         self.count_payload_reads = False
 
     # instantiate this fiber in the format
-    def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
+    def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor, shape=None):
         # import codec
         from ..tensor_codec import Codec
         coords_key, payloads_key = codec.get_keys(ranks, depth)
@@ -32,7 +32,7 @@ class Uncompressed(CompressionFormat):
         for i in range(0, dim_len):
             # internal levels
             if depth < len(ranks) - 1:
-                fiber, child_occupancy = codec.encode(depth + 1, a.getPayload(i), ranks, output, output_tensor)
+                fiber, child_occupancy = codec.encode(depth + 1, a.getPayload(i), ranks, output, output_tensor, shape=shape)
                 self.payloads.append(fiber)
                 # keep track of occupancy (cumulative requires ordering)
                 if isinstance(cumulative_occupancy, int):
@@ -89,11 +89,10 @@ class Uncompressed(CompressionFormat):
         key = self.name + "_payloads_" + str(handle)
         self.cache.get(key) # try to access it
         self.cache[key] = payload # put it in the cache
-
+        print("{} updatePayload: handle {}, payload {}, misses so far {}".format(self.name, handle, payload, self.cache.miss_count))
         # if the payloads from lower level are explicit 
         if self.count_payload_reads:
             self.stats[self.payloads_write_key] += 1
-
         # print("\tupdate {}, handle {}, payload {}".format(self.name, handle, payload))
         if isinstance(payload, tuple):
             self.occupancies[handle] = payload[0]
