@@ -68,44 +68,45 @@ def preproc_mtx_dsds():
     tensor_name = sys.argv[1]
     infilename = sys.argv[2]
     outfilename = sys.argv[3]
-    splits = sys.argv[4].split(',') # get tilings
+    outdir = sys.argv[4]
+    splits = sys.argv[5].split(',') # get tilings
 
     # matrix market to the YAML that HFA reads
-    mm_to_hfa_yaml(infilename, tensor_name, ['S', 'D'], outfilename)
+    mm_to_hfa_yaml(infilename, tensor_name, ['S', 'D'], outdir + outfilename)
     t0 = time.clock()
     # test reading the yaml into HFA
-    a_sd = Tensor.fromYAMLfile(outfilename)
+    a_sd = Tensor.fromYAMLfile(outdir + outfilename)
     t1 = time.clock() - t0
     print("time to read into HFA: {}".format(t1)) # cpu seconds
-    a_sd.dump("sd_" + outfilename)
+    a_sd.dump(outdir +"sd_" + outfilename)
     
     # swap (S, D) to (D, S)
     t0 = time.clock()
     a_ds = a_sd.swapRanks()
     t1 = time.clock() - t0
     print("time to swap S, D in HFA: {}".format(t1)) # cpu seconds
-    a_ds.dump("ds_" + outfilename)
+    a_ds.dump(outdir +"ds_" + outfilename)
 
     # split D
     t0 = time.clock()
     a_dds = a_ds.splitUniform(int(splits[0]), relativeCoords=True) # split D
     t1 = time.clock() - t0
     print("time to splitUniform DS on D {}".format(t1)) # cpu seconds
-    a_dds.dump("dds_" + outfilename)
+    a_dds.dump(outdir +"dds_" + outfilename)
 
     # split S
     t0 = time.clock()
     a_ddss = a_dds.splitUniform(int(splits[1]), depth=2, relativeCoords=True)
     t1 = time.clock() - t0
     print("time to splitUniform DS on S: {}".format(t1)) # cpu seconds 
-    a_ddss.dump("ddss_" + outfilename)
+    a_ddss.dump(outdir +"ddss_" + outfilename)
 
     # DDSS -> DSDS
     t0 = time.clock()
     a_dsds = a_ddss.swapRanks(depth=1)
     t1 = time.clock() - t0
     print("time to swap intermediate D, S in HFA: {}".format(t1)) # cpu seconds
-    a_dsds.dump("dsds_" + outfilename)
+    a_dsds.dump(outdir +"dsds_" + outfilename)
 
 def preproc_mtx_sdsd():
     tensor_name = sys.argv[1]
@@ -115,38 +116,39 @@ def preproc_mtx_sdsd():
     
     # output file suffix (.yaml)
     outfilename = sys.argv[3]
+    outdir = sys.argv[4]
 
-    splits = sys.argv[4].split(',') # get tilings
+    splits = sys.argv[5].split(',') # get tilings
     
     # matrix market to the YAML that HFA reads
-    mm_to_hfa_yaml(infilename, tensor_name, ['S', 'D'], outfilename)
+    mm_to_hfa_yaml(infilename, tensor_name, ['S', 'D'], outdir + outfilename)
     t0 = time.clock()
     # test reading the yaml into HFA
-    a_sd = Tensor.fromYAMLfile(outfilename)
+    a_sd = Tensor.fromYAMLfile(outdir + outfilename)
     t1 = time.clock() - t0
     print("time to read into HFA: {}".format(t1)) # cpu seconds
-    a_sd.dump("sd_" + outfilename)
+    a_sd.dump(outdir +"sd_" + outfilename)
  
     # split S
     t0 = time.clock()
     a_ssd = a_sd.splitUniform(int(splits[0]), relativeCoords=False)
     t1 = time.clock() - t0
     print("time to splitUniform SD on S: {}".format(t1)) # cpu seconds 
-    a_ssd.dump("ssd_" + outfilename)
+    a_ssd.dump(outdir +"ssd_" + outfilename)
     
     # split D
     t0 = time.clock()
     a_ssdd = a_ssd.splitUniform(int(splits[1]), depth=2, relativeCoords=False) # split D
     t1 = time.clock() - t0
     print("time to splitUniform SSD on D {}".format(t1)) # cpu seconds
-    a_ssdd.dump("ssdd_" + outfilename)
+    a_ssdd.dump(outdir +"ssdd_" + outfilename)
 
     # SSDD -> SDSD
     t0 = time.clock()
     a_sdsd = a_ssdd.swapRanks(depth=1)
     t1 = time.clock() - t0
     print("time to swap intermediate D, S in HFA: {}".format(t1)) # cpu seconds
-    a_sdsd.dump("sdsd_" + outfilename)
+    a_sdsd.dump(outdir +"sdsd_" + outfilename)
 
 if __name__ == "__main__":
     preproc_mtx_sdsd()
