@@ -89,14 +89,14 @@ def preproc_mtx_dsds():
 
     # split D
     t0 = time.clock()
-    a_dds = a_ds.splitUniform(int(splits[0]), relativeCoords=True) # split D
+    a_dds = a_ds.splitUniform(int(splits[0])) # split D
     t1 = time.clock() - t0
     print("time to splitUniform DS on D {}".format(t1)) # cpu seconds
     a_dds.dump(outdir +"dds_" + outfilename)
 
     # split S
     t0 = time.clock()
-    a_ddss = a_dds.splitUniform(int(splits[1]), depth=2, relativeCoords=True)
+    a_ddss = a_dds.splitUniform(int(splits[1]), depth=2)
     t1 = time.clock() - t0
     print("time to splitUniform DS on S: {}".format(t1)) # cpu seconds 
     a_ddss.dump(outdir +"ddss_" + outfilename)
