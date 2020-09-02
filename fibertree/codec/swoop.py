@@ -1,6 +1,5 @@
 
-DEFAULT_TRACE_LEVEL = 3
-
+DEFAULT_TRACE_LEVEL = 0 # 3
 # 
 # NoTransmit
 #
@@ -216,13 +215,16 @@ class AST:
     self.dumpStats(stats_dict)
     self.finalized = True
     for prod in self.producers:
-      if not prod.finalized:
-        prod.finalize(stats_dict)
+      # print("producer {}, finalized {}".format(prod, prod.finalized))
+      # if not prod.finalized:
+      prod.finalize(stats_dict)
   
   def nextFiber(self):
     assert(hasattr(self, "fiber_handles") and self.fiber_handles is not None)
+    prev_fiber = self.current_fiber
     self.current_fiber = self.fiber_handles.nextValue(self)
-    self.trace(3, "New fiber handle:{}".format(self.current_fiber))
+    
+    self.trace(3, "Prev fiber handle {}, New fiber handle:{}".format(prev_fiber, self.current_fiber))
 
   
   def nextValue(self, other):
@@ -294,7 +296,10 @@ class AST:
     return sp
   
   def dumpStats(self, stats_dict):
-    pass
+    # print("dumpStats2 {}".format(self.class_name))
+    if (hasattr(self, "accesses")): # and self.current_fiber is None):
+      stats_dict[self.class_name] = self.accesses
+    # pass
 
 #
 # Slice
@@ -485,7 +490,7 @@ class PayloadsToFiberHandles (AST):
 
   def evaluate(self):
     payload = self.payloads.nextValue(self)
-    print("current fiber in PayloadToFiberHandle {}".format(self.current_fiber))
+    print("\tcurrent fiber in PayloadToFiberHandle {}".format(self.current_fiber))
     if payload is None:
       self.trace(3, "None")
       self.nextFiber()
@@ -592,6 +597,7 @@ class UpdatePayloads (AST):
   def evaluate(self):
     handle = self.handles.nextValue(self)
     payload = self.payloads.nextValue(self)
+    # if handle is None and payload is None:
     if handle is None or payload is None:
       self.trace(2, f"{handle} => {payload}")
       assert (handle is None and payload is None)
@@ -751,7 +757,8 @@ class Amplify (AST):
     self.bigger = bigger
     bigger.connect(self)
     self.current_value = None
-  
+    self.accesses = 0
+
   def evaluate(self):
     if self.current_value is None: # Is this initialization condition correct?  
       self.current_value = self.smaller.nextValue(self)
@@ -768,9 +775,16 @@ class Amplify (AST):
     if next is None:
       self.current_value = None
       self.trace(3, f"{self.smaller.class_name}: Done")
-
+    else:
+        # increment stat for buffer access to smaller
+        self.accesses += 1
     self.trace(2, f"{self.smaller.class_name}: {next} => {self.current_value}")
     return self.current_value
+
+    @override
+    def dumpStats(self, stats_dict):
+      print("dumpStats {}".format(self.class_name))
+      stats_dict[self.class_name] = self.accesses
 
 #
 # Reduce
@@ -791,14 +805,14 @@ class Reduce (AST):
       smaller.connect(self)
     self.bigger = bigger
     bigger.connect(self)
-  
+    self.accesses = 0
   def evaluate(self):
     if self.smaller is not None:
       current_value = self.smaller.nextValue(self)
       if current_value is None:
         next = self.bigger.nextValue(self)
         if next is not None:
-          self.trace(0, f"Inconsitent None: {next}")
+          self.trace(0, f"Inconsitent None: {current_value} => {next}")
         assert(next is None)
         self.trace(3, "Init: None")
         return None
@@ -815,8 +829,15 @@ class Reduce (AST):
           self.trace(3, f"Init: 0")
         self.trace(2, f"{current_value} + {next} => {current_value + next}")
         current_value += next
+        self.accesses += 1
+        # increment a stat for smaller (thing being reduced into)
     self.trace(3, f"Output: {current_value}")
     return current_value
+
+  def dumpStats(self, stats_dict):
+    print("dumpStats {}".format(self.class_name))
+    stats_dict[self.class_name] = self.accesses
+
 
 #
 # Stream0
