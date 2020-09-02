@@ -112,7 +112,7 @@ with open(sys.argv[2], 'r') as f:
 A_untiled = Tensor.fromUncompressed(["S"], A_data, name = "A")
 A_HFA = A_untiled.splitUniform(32, relativeCoords=False) # split S
 print("A untiled shape {}, tiled shape {}".format(A_untiled.getShape(), A_HFA.getShape()))
-A_HFA.dump("tiled_frontier.yaml")
+# A_HFA.dump("tiled_frontier.yaml")
 
 
 print("reading tiled mtx from yaml")
