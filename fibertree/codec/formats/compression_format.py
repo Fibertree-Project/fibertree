@@ -3,7 +3,6 @@ CompressionFormat class - can be instantiated to represent a fiber
 mostly just here to be inherited
 """
 import sys
-
 class CompressionFormat:
     def __init__(self, name = None):
         self.coords = list()
@@ -12,6 +11,8 @@ class CompressionFormat:
         self.cur_handle = -1
         self.idx_in_rank = None
         self.shape = None
+        self.words_in_line = 4
+
         # stats 
         self.stats = dict()
         self.coords_write_key = "num_coords_writes"
@@ -27,6 +28,7 @@ class CompressionFormat:
 
         self.cache = None
         self.next_fmt = None 
+    
     # API Methods
     def payloadToFiberHandle(self, payload):
         print("\t{} payloadToFiberHandle:: ret {}".format(self.name, payload))
@@ -39,13 +41,26 @@ class CompressionFormat:
         if payload >= len(self.payloads):
             return None
         self.stats[self.payloads_read_key] += 1
-        key = self.name + "_payloadToValue_" + str(payload)
+        
+        print("DRAM {} payloadToValue {}, miss count before {}".format(self.name, payload, self.cache.miss_count))
+        # TODO: cache line here
+        # key = self.name + "_payloadToValue_" + str(payload)
+        key = self.name + "_handleToPayload_" + str(payload)
         cached_val = self.cache.get(key) # try to access it
-        if cached_val is None:
-            print("DRAM {} payloadToValue {}, miss count {}".format(self.name, payload, self.cache.miss_count))
         self.cache[key] = self.payloads[payload] # put it in the cache 
-        return self.payloads[payload]
+        print("DRAM {} payloadToValue {}, miss count after {}".format(self.name, payload, self.cache.miss_count))
+        print(self.cache)
 
+        # read in the cache line
+        end_of_range = self.round_up(max(1, payload), self.words_in_line)
+        # end_of_range = min(end_of_line, len(self.payloads)) 
+        for i in range(payload, end_of_range):
+            key = self.name + "_handleToPayload_" + str(i)
+            if i < len(self.payloads):
+                self.cache[key] = self.payloads[i]
+            else:
+                self.cache[key] = 0 # end of cache line, so read it as empty
+        return self.payloads[payload]
     # helpers
     # have to overwrite this in subclasses, depends on the format
     def getSliceMaxLength(self):
@@ -54,6 +69,10 @@ class CompressionFormat:
     def setName(self, name):
         self.name = name
 
+    def round_up(self, n, multiple):
+        if n % multiple is 0:
+            n += 1
+        return ((n + multiple - 1) // multiple) * multiple
     # main functions
     # given a handle, return a coord at that handle
     # if handle is out of range, return None
@@ -64,11 +83,16 @@ class CompressionFormat:
 	
         key = self.name + "_handleToCoord_" + str(handle)
         cached_val = self.cache.get(key)
-        # if cached_val is None:
-        # print("DRAM {} handleToCoord {}, miss count {}".format(self.name, handle, self.cache.miss_count))
-        # print(self.cache)
         self.cache[key] = self.coords[handle]
-
+        # read in a line
+        end_of_line = self.round_up(handle, self.words_in_line)
+        print("\thandle {}, end of line {}".format(handle, end_of_line))
+        end_of_range = min(end_of_line, len(self.coords))
+        for i in range(handle, end_of_range):
+            key = self.name + "_handleToCoord_" + str(i)
+            self.cache[key] = self.coords[i]
+            print("\t\t{}, misses {}".format(key, self.cache.miss_count)) 
+        print(self.cache)
         # coords read charge
         self.stats[self.coords_read_key] += 1
         
@@ -83,6 +107,7 @@ class CompressionFormat:
         # -> payloadToFiberHandle
         if self.count_payload_reads:
             self.stats[self.payloads_read_key] += 1
+        print("\t{} handleToPayload {}".format(self.name, handle))
         return handle # switch to just passing around the ptr
 
     # slice on coordinates
@@ -97,7 +122,7 @@ class CompressionFormat:
     
     # get next handle during iteration through slice
     def nextInSlice(self):
-        print("\t{} in next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.name, self.coords_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
+        # print("\t{} in next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.name, self.coords_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
         if self.coords_handle is None or self.coords_handle >= self.getSliceMaxLength():
             return None
         if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far:
@@ -106,7 +131,7 @@ class CompressionFormat:
         to_ret = self.coords_handle
         self.num_ret_so_far += 1
         self.coords_handle += 1
-        print("\t\thandle to ret: {}".format(to_ret))
+        # print("\t\thandle to ret: {}".format(to_ret))
         # don't need to increment accesses for moving the handle forward
         return to_ret
 

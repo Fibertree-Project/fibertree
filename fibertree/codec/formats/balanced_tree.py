@@ -82,7 +82,7 @@ class RBTree(CompressionFormat):
         return output
 
     # encode fiber into T format
-    def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
+    def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor, shape=None):
         # print("encode fiber for T")
         # import codec
         from ..tensor_codec import Codec
@@ -103,7 +103,7 @@ class RBTree(CompressionFormat):
             # internal levels encode explicit coords and corresponding offset / fiber ptr
             if depth < len(ranks) - 1:
                 # keep track of actual occupancy (nnz in this fiber)
-                fiber, child_occupancy = codec.encode(depth + 1, val, ranks, output, output_tensor)
+                fiber, child_occupancy = codec.encode(depth + 1, val, ranks, output, output_tensor, shape)
                 
                 if isinstance(cumulative_occupancy, int):
                     cumulative_occupancy = cumulative_occupancy + child_occupancy
@@ -261,6 +261,8 @@ class RBTree(CompressionFormat):
         key = self.name + "_coordToHandle_" + str(coord)
         self.cache.get(key)
         self.cache[key] = handle
+        print("{} tree insertElt {}, misses {}".format(self.name, coord, self.cache.miss_count))
+        print(self.cache)
         return coord # self.curHandle
     
     # return a handle to the updated payload

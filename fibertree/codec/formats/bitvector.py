@@ -18,7 +18,7 @@ class Bitvector(CompressionFormat):
         # self.prev_coord_at_payload = None
         # self.prev_coord_word_write = None
     # instantiate current fiber in B format
-    def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor):
+    def encodeFiber(self, a, dim_len, codec, depth, ranks, output, output_tensor, shape=None):
         # import codec
         from ..tensor_codec import Codec
         coords_key, payloads_key = codec.get_keys(ranks, depth)

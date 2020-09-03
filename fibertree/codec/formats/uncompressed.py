@@ -24,7 +24,7 @@ class Uncompressed(CompressionFormat):
         
         if depth < len(ranks) - 1:
             cumulative_occupancy = codec.get_start_occ(depth + 1)
-
+            self.next_fmt = codec.fmts[depth + 1]
             if codec.fmts[depth + 1].encodeUpperPayload():
                 self.count_payload_reads = True
         else: # leaf level is always read payloads
@@ -53,8 +53,7 @@ class Uncompressed(CompressionFormat):
                     output[payloads_key].append(a.getPayload(i).value)
                     self.payloads.append(a.getPayload(i).value)
         
-        # TODO: is 1 correct? maybe this should be occupancy?
-        return len(output_tensor[depth]) # 1
+        return len(output_tensor[depth])
 
     ## SWOOP API functions 
     def handleToCoord(self, handle):
@@ -64,7 +63,21 @@ class Uncompressed(CompressionFormat):
     def payloadToFiberHandle(self, payload):
         assert payload < self.shape
         to_ret =  self.idx_in_rank * self.shape + payload
-        print("{} payloadToFiberHandle: idx in rank {}, shape {}, payload {}, ret {}".format(self.name, self.idx_in_rank, self.shape, payload, to_ret))
+        # print("{} payloadToFiberHandle: idx in rank {}, shape {}, payload {}, ret {}".format(self.name, self.idx_in_rank, self.shape, payload, to_ret))
+        if self.next_fmt is not None and self.next_fmt.encodeUpperPayload():
+            key = self.name + "_fiberHandle_" + str(payload)
+            if self.name.startswith("Z"):
+                print("{} payloadToFiberHandle, payload {}, to ret {}, misses before {}".format(self.name, payload, to_ret, self.cache.miss_count))
+            self.cache.get(key)
+            self.cache[key] = to_ret
+
+            # fill in cache line
+            end_of_line = self.round_up(payload, self.words_in_line)
+            for i in range(payload, end_of_line):
+                key = self.name + "_fiberHandle_" + str(i)
+                self.cache[key] = self.idx_in_rank * self.shape + i
+            if self.name.startswith("Z"):
+                print("{} payloadToFiberHandle, payload {}, to ret {}, misses after {}".format(self.name, payload, to_ret, self.cache.miss_count))
         return to_ret
     
     # max number of elements in a slice is proportional to the shape
@@ -82,18 +95,23 @@ class Uncompressed(CompressionFormat):
         return coord
 
     def updatePayload(self, handle, payload):
-        # print("\t{} updatePayload: handle {}, payload {}".format(self.name, handle, payload))
         assert handle is not None and handle < self.shape
-        
+        # print(self.cache)
         # testing adding to the cache
-        key = self.name + "_payloads_" + str(handle)
-        self.cache.get(key) # try to access it
-        self.cache[key] = payload # put it in the cache
-        print("{} updatePayload: handle {}, payload {}, misses so far {}".format(self.name, handle, payload, self.cache.miss_count))
-        # if the payloads from lower level are explicit 
-        if self.count_payload_reads:
-            self.stats[self.payloads_write_key] += 1
-        # print("\tupdate {}, handle {}, payload {}".format(self.name, handle, payload))
+        
+        key = self.name + "_handleToPayload_" + str(handle)
+        if self.next_fmt is not None:
+            key = self.name + "_fiberHandle_" + str(handle)
+            if self.next_fmt.encodeUpperPayload():
+                self.cache.get(key) # try to access it
+                self.cache[key] = payload # put it in the cache
+            
+            # print("{} updatePayload: handle {}, payload {}, misses so far {}".format(self.name, handle, payload, self.cache.miss_count))
+            # if the payloads from lower level are explicit 
+            if self.count_payload_reads:
+                self.stats[self.payloads_write_key] += 1
+            # print("\tupdate {}, handle {}, payload {}".format(self.name, handle, payload))
+        
         if isinstance(payload, tuple):
             self.occupancies[handle] = payload[0]
             self.payloads[handle] = payload[1]
