@@ -490,7 +490,7 @@ class PayloadsToFiberHandles (AST):
 
   def evaluate(self):
     payload = self.payloads.nextValue(self)
-    print("\tcurrent fiber in PayloadToFiberHandle {}".format(self.current_fiber))
+    # print("\tcurrent fiber in PayloadToFiberHandle {}".format(self.current_fiber))
     if payload is None:
       self.trace(3, "None")
       self.nextFiber()
