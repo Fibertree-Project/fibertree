@@ -111,7 +111,8 @@ if not a_file.endswith('.yaml'):
     A_untiled = Tensor.fromUncompressed(["S"], A_data, name ="A")
     A_HFA = A_untiled.splitUniform(32, relativeCoords=False) # split S
     print("A untiled shape {}, tiled shape {}".format(A_untiled.getShape(), A_HFA.getShape()))
-    A_HFA.print()
+    
+    # A_HFA.print()
     # A_HFA.dump("tiled_frontier.yaml")
 else: # already in pretiled yaml
     A_HFA = Tensor.fromYAMLfile(a_file)
@@ -123,6 +124,7 @@ b_file = sys.argv[3]
 B_HFA = Tensor.fromYAMLfile(b_file)
 t1 = time.clock() - t0
 print("read B from yaml in {} s".format(t1))
+B_HFA.print()
 
 # output
 Z_data = [[0], [0]]
@@ -137,11 +139,11 @@ str_desc = sys.argv[1]
 frontier_descriptor = [str_desc[0], str_desc[1]]
 output_descriptor = frontier_descriptor
 
-A_shape = [len(A_data), 32]
+A_shape = [A_HFA.getShape()[0], 32]
 myA = encodeSwoopTensorInFormat(A_HFA, frontier_descriptor, tensor_shape=A_shape, cache_size=4*32)
 print()
 t0 = time.clock()
-myB = encodeSwoopTensorInFormat(B_HFA, ["U", "U", "C", "U"], cache_size=256 * 32)
+myB = encodeSwoopTensorInFormat(B_HFA, ["U", "U", "C", "U"], cache_size=256 * 32 * 4)
 t1 = time.clock() - t0
 print()
 print("encoded B in {} s".format(t1))
@@ -196,7 +198,8 @@ myZ[1][0].printFiber()
 for i in range(0, len(myZ[2])):
     myZ[2][i].printFiber()
     output_lin.append(myZ[2][i].getPayloads())
-#
+
+# HFA for verification
 b_n1 = B_HFA.getRoot()
 a_k1 = A_HFA.getRoot()
 z_n1 = Z_HFA.getRoot()
@@ -205,11 +208,12 @@ for n1, (z_n0, b_k1) in z_n1 << b_n1:
     for n0, (z, b_k0) in z_n0 << b_n0:
       for k0, (a, b) in a_k0 & b_k0:
         z += a * b
-Z_HFA.dump('tiled_next_frontier.yaml')
-
+# Z_HFA.dump('tiled_next_frontier.yaml')
 dumpAllStatsFromTensor(myA, stats_dict, cache_dict, 'A')
 dumpAllStatsFromTensor(myB, stats_dict, cache_dict, 'B')
 dumpAllStatsFromTensor(myZ, stats_dict, cache_dict, 'Z')
+
+# experiment in dir stats/<frontier>_<graph>
 b_file = b_file.split('/')[-1]
 b_file = b_file.split('.')[-2]
 a_file = a_file.split('/')[-1]
@@ -217,21 +221,45 @@ a_file = a_file.split('.')[-2]
 outpath = 'stats/'+a_file+'_'+b_file+'/'
 if not os.path.exists(outpath):
     os.makedirs(outpath)
+# correctness testing
+# Z_HFA.print()
+z_n1 = Z_HFA.getRoot()
+output_ref = []
+# compress payloads in Z HFA
+for (z, z_n0) in z_n1:
+    temp = []
+    for (z_coord, z_val) in z_n0:
+        # print(type(z_val))
+        if z_val.value is not 0:
+            temp.append(z_val)
+            # print("HFA coord ({}, {}), append {}".format(z, z_coord, z_val))
+    # print(temp)
+    output_ref.append(temp)
 
+# compressing payloads in codec
+output_lin_2 = []
+for i in range(0, len(output_lin)):
+    temp = []
+    # add only nonzero payloads
+    for j in range(0, len(output_lin[i])):
+        if output_lin[i][j] is not 0:
+            temp.append(output_lin[i][j])
+    output_lin_2.append(temp)
+    
+output_lin = output_lin_2
+
+if output_lin is not output_ref:
+    print(str_desc)
+    print("codec: {}".format(output_lin))
+    print("ref: {}".format(output_ref))
+
+assert(output_lin == output_ref)
+
+# dump stats
 with open(outpath + 'stats_' + str_desc, 'w') as statsfile:
     yaml.dump(stats_dict, statsfile)
 
 with open(outpath + 'cache_'+ str_desc, 'w') as cachefile:
     yaml.dump(cache_dict, cachefile)
-
-#A_HFA.print()
-# B_HFA.print()
-Z_HFA.print()
-z_n1 = Z_HFA.getRoot()
-output_ref = []
-for (z, z_n0) in z_n1:
-    output_ref.append(z_n0.getPayloads())
-
-assert(output_lin == output_ref)
 
 
