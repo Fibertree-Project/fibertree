@@ -14,9 +14,9 @@ from swoop import *
 #      for n0, (z, b) in z_n0 << b_n0:
 #        z += a * b
 
-a = Tensor(name="A", rank_ids=["K1", "K0"])
-b = Tensor(name="B", rank_ids=["K1", "N1", "K0", "N0"])
-z = Tensor(name="Z", rank_ids=["N1", "N0"])
+a = SwoopTensor(name="A", rank_ids=["K1", "K0"])
+b = SwoopTensor(name="B", rank_ids=["K1", "N1", "K0", "N0"])
+z = SwoopTensor(name="Z", rank_ids=["N1", "N0"])
 
 
 a_k1 = a.getStartHandle()
