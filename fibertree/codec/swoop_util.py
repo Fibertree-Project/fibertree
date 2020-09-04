@@ -1,9 +1,8 @@
 from fibertree import Codec
 from boltons.cacheutils import LRU
-import sys
 from fibertree import Tensor
 import time
-
+import os
 # take an HFA tensor, convert it to compressed representation in python
 def encodeSwoopTensorInFormat(tensor, descriptor, tensor_shape=None, cache_size=32):
     codec = Codec(tuple(descriptor), [True]*len(descriptor))
@@ -88,3 +87,44 @@ def get_Z_HFA(B_shape):
     Z_HFA = Tensor.fromUncompressed(["D1", "D0"], Z_data, shape=[B_shape[0], B_shape[2]],
             name="Z")
     return Z_HFA
+
+def get_stats_dir(a_file, b_file):
+    # experiment in dir stats/<frontier>_<graph>
+    b_file = b_file.split('/')[-1]
+    b_file = b_file.split('.')[-2]
+    a_file = a_file.split('/')[-1]
+    a_file = a_file.split('.')[-2]
+    outpath = 'stats/'+a_file+'_'+b_file+'/'
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
+    return outpath
+
+# linearize payloads in Z and get rid of zeroes
+def compress_HFA_payloads(Z_HFA):
+    z_n1 = Z_HFA.getRoot()
+    output_ref = []
+
+    # compress payloads in Z HFA
+    for (z, z_n0) in z_n1:
+        temp = []
+        for (z_coord, z_val) in z_n0:
+            if z_val.value is not 0:
+                    temp.append(z_val)
+        output_ref.append(temp)
+    return output_ref
+
+def get_lin_codec(myZ):
+    output_lin = []
+    for i in range(0, len(myZ[2])):
+        output_lin.append(myZ[2][i].getPayloads())
+
+    # compressing payloads in codec
+    output_lin_2 = []
+    for i in range(0, len(output_lin)):
+        temp = []
+        # add only nonzero payloads
+        for j in range(0, len(output_lin[i])):
+            if output_lin[i][j] is not 0:
+                temp.append(output_lin[i][j])
+        output_lin_2.append(temp)
+    return output_lin_2

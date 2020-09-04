@@ -4,7 +4,6 @@ from fibertree import Tensor
 import sys
 import yaml
 import time
-import os 
 
 def verifyInHFA(A_HFA, B_HFA, Z_HFA):
     # HFA for verification
@@ -212,48 +211,12 @@ dumpAllStatsFromTensor(myA, stats_dict, cache_dict, 'A')
 dumpAllStatsFromTensor(myB, stats_dict, cache_dict, 'B')
 dumpAllStatsFromTensor(myZ, stats_dict, cache_dict, 'Z')
 
-# experiment in dir stats/<frontier>_<graph>
-b_file = b_file.split('/')[-1]
-b_file = b_file.split('.')[-2]
-a_file = a_file.split('/')[-1]
-a_file = a_file.split('.')[-2]
-outpath = 'stats/'+a_file+'_'+b_file+'/'
-if not os.path.exists(outpath):
-    os.makedirs(outpath)
-
+outpath = get_stats_dir(a_file, b_file)
 # correctness testing
 verifyInHFA(A_HFA, B_HFA, Z_HFA)
 
-z_n1 = Z_HFA.getRoot()
-output_ref = []
-
-# compress payloads in Z HFA
-for (z, z_n0) in z_n1:
-    temp = []
-    for (z_coord, z_val) in z_n0:
-        if z_val.value is not 0:
-            temp.append(z_val)
-    output_ref.append(temp)
-
-print("Z: {}".format(myZ))
-output_lin = []
-# myZ[1][0].printFiber()
-for i in range(0, len(myZ[2])):
-    # myZ[2][i].printFiber()
-    output_lin.append(myZ[2][i].getPayloads())
-
-
-# compressing payloads in codec
-output_lin_2 = []
-for i in range(0, len(output_lin)):
-    temp = []
-    # add only nonzero payloads
-    for j in range(0, len(output_lin[i])):
-        if output_lin[i][j] is not 0:
-            temp.append(output_lin[i][j])
-    output_lin_2.append(temp)
-    
-output_lin = output_lin_2
+output_ref = compress_HFA_payloads(Z_HFA)
+output_lin = get_lin_codec(myZ)
 
 if output_lin is not output_ref:
     print(str_desc)
