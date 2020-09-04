@@ -82,3 +82,5 @@ data from each workflow run can be found in the stats/ directory under <frontier
 
 to plot cache behavior, use plot-cache.py as follows:
 python3 plot-cache.py stats/<experiment/ [optional: upper y-axis limit]
+
+which will output a stacked bar plot in your current directory in the form <frontier>_<graph>.png

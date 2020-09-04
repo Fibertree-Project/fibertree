@@ -5,6 +5,19 @@ import sys
 import yaml
 import time
 import os 
+
+def verifyInHFA(A_HFA, B_HFA, Z_HFA):
+    # HFA for verification
+    b_n1 = B_HFA.getRoot()
+    a_k1 = A_HFA.getRoot()
+    z_n1 = Z_HFA.getRoot()
+    for n1, (z_n0, b_k1) in z_n1 << b_n1:
+      for k1, (a_k0, b_n0) in a_k1 & b_k1:
+        for n0, (z, b_k0) in z_n0 << b_n0:
+          for k0, (a, b) in a_k0 & b_k0:
+            z += a * b
+
+
 ## Test program: Tiled Z-Stationary vector-matrix multiplication
 #
 #   Z_n = A_k * B_kn
@@ -91,6 +104,11 @@ z_n1_update_acks = UpdatePayloads(z_n1s, z_n1_handless, z_n0_new_fiber_handless)
 # Update root occupancy
 z_root_update_ack = UpdatePayloads(z_root, Stream0(0), z_n1_new_fiber_handle)
 
+# get the descriptor
+str_desc = sys.argv[1]
+frontier_descriptor = [str_desc[0], str_desc[1]]
+
+"""
 # read in inputs
 # jhu_len = 5157
 shape = 500 # TODO: take this as input
@@ -117,7 +135,6 @@ if not a_file.endswith('.yaml'):
 else: # already in pretiled yaml
     A_HFA = Tensor.fromYAMLfile(a_file)
     A_HFA.setName("A")
-
 print("reading tiled mtx from yaml")
 t0 = time.clock()
 b_file = sys.argv[3]
@@ -125,18 +142,24 @@ B_HFA = Tensor.fromYAMLfile(b_file)
 t1 = time.clock() - t0
 print("read B from yaml in {} s".format(t1))
 B_HFA.print()
-
 # output
 Z_data = [[0], [0]]
 print(B_HFA.getShape())
 Z_HFA = Tensor.fromUncompressed(["D1", "D0"], Z_data, shape=[B_HFA.getShape()[0],
 B_HFA.getShape()[2]], name = "Z")
+
+"""
+a_file = sys.argv[2]
+b_file = sys.argv[3]
+A_HFA = get_A_HFA(a_file)
+B_HFA = get_B_HFA(b_file)
+Z_HFA = get_Z_HFA(B_HFA.getShape())
 print("A shape {}, B shape {}, Z shape {}".format(A_HFA.getShape(), B_HFA.getShape
 (), Z_HFA.getShape()))
+A_HFA.print()
+B_HFA.print()
+Z_HFA.print()
 
-# exit(0)
-str_desc = sys.argv[1]
-frontier_descriptor = [str_desc[0], str_desc[1]]
 output_descriptor = frontier_descriptor
 
 A_shape = [A_HFA.getShape()[0], 32]
@@ -185,30 +208,6 @@ evaluate(z_n0_update_acksss, 3, stats_dict=cache_dict)
 evaluate(z_n1_update_acks, 1, stats_dict=cache_dict)
 evaluate(z_root_update_ack, 0, stats_dict=cache_dict)
 
-"""
-for i in range(0, len(myB[3])):
-    myB[3][i].printFiber()
-
-for i in range(0, len(myB[4])):
-    myB[4][i].printFiber()
-"""
-print("Z: {}".format(myZ))
-output_lin = []
-myZ[1][0].printFiber()
-for i in range(0, len(myZ[2])):
-    myZ[2][i].printFiber()
-    output_lin.append(myZ[2][i].getPayloads())
-
-# HFA for verification
-b_n1 = B_HFA.getRoot()
-a_k1 = A_HFA.getRoot()
-z_n1 = Z_HFA.getRoot()
-for n1, (z_n0, b_k1) in z_n1 << b_n1:
-  for k1, (a_k0, b_n0) in a_k1 & b_k1:
-    for n0, (z, b_k0) in z_n0 << b_n0:
-      for k0, (a, b) in a_k0 & b_k0:
-        z += a * b
-# Z_HFA.dump('tiled_next_frontier.yaml')
 dumpAllStatsFromTensor(myA, stats_dict, cache_dict, 'A')
 dumpAllStatsFromTensor(myB, stats_dict, cache_dict, 'B')
 dumpAllStatsFromTensor(myZ, stats_dict, cache_dict, 'Z')
@@ -221,20 +220,28 @@ a_file = a_file.split('.')[-2]
 outpath = 'stats/'+a_file+'_'+b_file+'/'
 if not os.path.exists(outpath):
     os.makedirs(outpath)
+
 # correctness testing
-# Z_HFA.print()
+verifyInHFA(A_HFA, B_HFA, Z_HFA)
+
 z_n1 = Z_HFA.getRoot()
 output_ref = []
+
 # compress payloads in Z HFA
 for (z, z_n0) in z_n1:
     temp = []
     for (z_coord, z_val) in z_n0:
-        # print(type(z_val))
         if z_val.value is not 0:
             temp.append(z_val)
-            # print("HFA coord ({}, {}), append {}".format(z, z_coord, z_val))
-    # print(temp)
     output_ref.append(temp)
+
+print("Z: {}".format(myZ))
+output_lin = []
+# myZ[1][0].printFiber()
+for i in range(0, len(myZ[2])):
+    # myZ[2][i].printFiber()
+    output_lin.append(myZ[2][i].getPayloads())
+
 
 # compressing payloads in codec
 output_lin_2 = []
