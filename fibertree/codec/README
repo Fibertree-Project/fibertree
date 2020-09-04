@@ -1,3 +1,9 @@
+*** Dependencies ***
+requires boltons for cache util: https://github.com/mahmoud/boltons
+do 
+
+pip install boltons
+
 *** Adding formats ***
 to add a new compression format, go to formats and make a new file called
 your_format.py
@@ -17,7 +23,7 @@ register your new format in compression_types.py
 *** Kernels with FATE_IR ***
 
 Note: currently supported input/output formats require U at the top rank
-TODO: fix compression at upper rank
+	TODO: fix compression at upper rank
 
 -- to run the formats on a tiny reference example, you can do
 python3 codec-knkn-ref.py UU
@@ -27,27 +33,52 @@ where UU is any two-rank format descriptor (for the input and output)
 to run all the reference formats:
 python3 run-all-ref.py
 
--- to run simulations:
-requires boltons for cache util: https://github.com/mahmoud/boltons
-do 
+-- to generate synthetic graphs
+for uniform graphs, use the util gen_unif.py as follows to generate a graph in MatrixMarket format:
+python3 gen_unif.py <num_nodes> <distance_between_nz> <destfile>
 
-pip install boltons
+for example, to generate a graph with 100 nodes with one nz at (50, 50), you can do
+python3 gen_unif.py 100 50 inps/unif_100_50.mtx
 
-a small example: to generate a small sparse matrix of 100 nodes and frontier, do
-python3 gen_small.py small.mtx small_dense.fr small_sparse.fr
+-- to generate frontiers
+use the util gen_frontier.py as follows to generate a random list of nodes in the frontier:
+python3 gen_frontier.py <num_nodes> <sparsity> <destfile>
 
-will generate a sparse graph in matrixmarket format into small.mtx, a dense frontier (list of nodes) in small_dense.fr, and a small sparse frontier in small_sparse.fr
+where num_nodes = number of possible nodes. num_nodes / sparsity is the number of nodes in the frontier, and destfile is the output file
 
-to pretile the graph, you can do
-python3 tiling_preproc.py small small.mtx small.yaml 32,32
-the arguments are tensor_name matrixmarket_input suffix_for_output tiling_params
-where tiling_params are in the format splitUniform for top_rank,bottom_rank
+e.g. 
+python3 gen_frontier.py 100 1 inps/full_100.fr
+will generate a frontier of 100 nodes from nodes in the range [1..100]
 
+python3 gen_frontier.py 100 5 inps/100_20.fr
+will generate a frontier of 20 nodes from nodes in the range [1..100]
+
+-- tiling preproc
+to pretile the graph, use the tiling_preproc.py util
+python3 tiling_preproc.py <tensor name> <input file in mtx> <suffix for output> <directory for outputs> <tiling params>
+tiling params is a comma-separated list of 2 split definitions for the upper and lower rank, respectively
+
+for example,
+python3 tiling_preproc.py a inps/graph.mtx graph.yaml inps/ 32,32
+takes in a graph with (S, D) from inps/graph.mtx
+and processes it into (S1, D1, S0, D0) and (D1, S1, D0, S0) splitting uniformly @ 32 on both ranks
+in the inps/ directory, there will be the pretiled graphs named sdsd_graph.yaml and dsds_graph.yaml (where graph.yaml is the given suffix from args)
+
+-- to run the simulations
 then to run, do
 python3 <dataflow> <format> <frontier> <pretiled_graph>
 for example,
-python3 codec-knkn.py UU small.fr sdsd_small.yaml
+python3 codec-knkn.py UU frontier.fr sdsd_graph.yaml
 
-this example is also in run-small.sh
+-- running tests
+to run all formats on a frontier/graph configuration for nknk, use
+python3 meta-python.py <frontier> <graph>
 
-in general, you can do this process with any graph in matrixmarket format (e.g. graph.mtx)
+examples can be found in run_all.sh
+
+-- plotting stats output
+data from each workflow run can be found in the stats/ directory under <frontier>_<graph>
+(all formats for that configuration will be found there)
+
+to plot cache behavior, use plot-cache.py as follows:
+python3 plot-cache.py stats/<experiment/ [optional: upper y-axis limit]
