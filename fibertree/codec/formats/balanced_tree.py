@@ -66,7 +66,7 @@ class RBTree(CompressionFormat):
 
     # populate output with payloads
     def getPayloadsHelper(self, node, depth, height, output):
-        if node == NIL:
+        if node == None or node == NIL:
             return
         self.getPayloadsHelper(node.left, depth +1, height, output)
         output.append(node.data[1])
@@ -249,7 +249,7 @@ class RBTree(CompressionFormat):
         if coord == None:
             return None
         # print("{} insertElement {}".format(self.name, coord))
-        assert self.cache != None
+        assert self.cache is not None
         num_reads, num_writes, handle = self.tree.add([coord, 0], cache=self.cache, name=self.name)
         
         # handle must be something that can index into a list, we want the i-th

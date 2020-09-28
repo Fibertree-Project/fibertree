@@ -1,5 +1,5 @@
 
-DEFAULT_TRACE_LEVEL = 0 # 3
+DEFAULT_TRACE_LEVEL = 3
 # 
 # NoTransmit
 #
@@ -597,8 +597,8 @@ class UpdatePayloads (AST):
   def evaluate(self):
     handle = self.handles.nextValue(self)
     payload = self.payloads.nextValue(self)
-    # if handle is None and payload is None:
-    if handle is None or payload is None:
+    if handle is None and payload is None:
+    # if handle is None or payload is None:
       self.trace(2, f"{handle} => {payload}")
       assert (handle is None and payload is None)
       self.trace(3, "Done.")

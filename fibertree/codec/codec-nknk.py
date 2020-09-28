@@ -222,8 +222,11 @@ if output_lin is not output_ref:
     print(str_desc)
     print("codec: {}".format(output_lin))
     print("ref: {}".format(output_ref))
-
-assert(output_lin == output_ref)
+if len(output_ref[0]) == 0:
+    for a in output_lin:
+        assert(len(a) == 0)
+else:
+    assert(output_lin == output_ref)
 
 # dump stats
 with open(outpath + 'stats_' + str_desc, 'w') as statsfile:
