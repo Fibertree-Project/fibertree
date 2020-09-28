@@ -64,7 +64,7 @@ class RedBlackTree(object):
         num_reads = 0
         num_writes = 0
         current_dram = None
-        if cache is not None:
+        if cache != None:
             current_dram = cache.miss_count
         while currentNode != NIL:
             # increment size along root-to-leaf path
@@ -72,14 +72,14 @@ class RedBlackTree(object):
             # print("current node data {}, size {}".format(currentNode.data, currentNode.size))
             potentialParent = currentNode
             num_reads += 1
-            if cache is not None:
+            if cache != None:
                 key = name + '_coordToHandle_' + str(currentNode.data[0])
                 res = cache.get(key) # check if its in the cache during the search
                 print("\tin add, key {}, res {}".format(key, res))
             if new_node.data[0] == currentNode.data[0]:
                 # go back up the tree and fix sizes
                 temp = currentNode
-                while temp is not None and temp != NIL:
+                while temp != None and temp != NIL:
                     temp.size -= 1
                     temp = temp.parent
                 print("\t\tfound {}".format(new_node.data[0]))
@@ -91,7 +91,7 @@ class RedBlackTree(object):
 
         # Assign parents and siblings to the new node
         new_node.parent = potentialParent
-        if cache is not None:
+        if cache != None:
             key = name + '_coordToHandle_' + str(new_node.parent.data[0])    
             res = cache.get(key) # check if its in the cache during the search
             print("\tin add, key {}, res {}".format(key, res))
@@ -100,18 +100,18 @@ class RedBlackTree(object):
             new_node.parent.left = new_node
         else:
             new_node.parent.right = new_node
-        if cache is not None:
+        if cache != None:
             key = name + '_coordToHandle_' + str(data)
             res = cache.get(key)
             cache[key] = new_node
-            assert(res is None)
+            assert(res == None)
         
         # TODO: get num writes from fix tree after add
         num_writes = self.fix_tree_after_add(new_node,cache,name)
         num_writes += 1
         # print("\tinsert {}, reads {}, writes {}".format(data, num_reads, num_writes))
-        assert(self.root.red is False)
-        if cache is not None:
+        assert(self.root.red == False)
+        if cache != None:
             assert cache.miss_count != current_dram
         return num_reads, num_writes, new_node # return handle to this node that was just added
 
@@ -169,8 +169,8 @@ class RedBlackTree(object):
         # print("new node data {}, parent {}, root data {}".format(new_node.data, new_node.parent.data, self.root.data))
         # print("\tin fix tree after add")
         num_writes = 0
-        while new_node is not self.root and new_node.parent.red == True and new_node.parent.parent is not None:
-            if cache is not None:
+        while new_node != self.root and new_node.parent.red == True and new_node.parent.parent != None:
+            if cache != None:
                 key1 = name + "_coordToHandle_" + str(new_node.parent.data[0])
                 cache.get(key1)
                 key2 = name + "_coordToHandle_" + str(new_node.parent.parent.data[0])
@@ -179,7 +179,7 @@ class RedBlackTree(object):
             # if you are in the left subtree
             if new_node.parent == new_node.parent.parent.left:
                 uncle = new_node.parent.parent.right
-                if cache is not None:
+                if cache != None:
                     key = name + "_coordToHandle_" + str(uncle.data[0])
                     cache.get(key)
                 if uncle.red:
@@ -204,7 +204,7 @@ class RedBlackTree(object):
                     # print("\t\tcase 3")
             else:
                 uncle = new_node.parent.parent.left
-                if cache is not None and uncle.data is not None:
+                if cache != None and uncle.data != None:
                     key = name + "_coordToHandle_" + str(uncle.data[0])
                     cache.get(key)
                 if uncle.red:
@@ -335,7 +335,7 @@ class RedBlackTree(object):
     # min-val is down the left spine if it exists
     def min_val(self, root, cache, name):
         p = root
-        if p is NIL:
+        if p == NIL:
             return p
         node = root.left
         num_reads = 0
@@ -343,7 +343,7 @@ class RedBlackTree(object):
         key = name + "_coordToHandle_" + str(p.data[0])
         res = cache.get(key)
         cache[key] = p
-        while node is not NIL:
+        while node != NIL:
             key = name + "_coordToHandle_" + str(node.data[0])
             res = cache.get(key)
             cache[key] = node
@@ -357,22 +357,22 @@ class RedBlackTree(object):
     # given a node, find its successor 
     def get_successor(self, root, cache, name):
         # if successor is in the right subtree
-        if root is None or root is NIL:
+        if root == None or root == NIL:
             return 0, None
         # if there is a right subtree, find the min value in it
-        if root.right is not None and root.right is not NIL:
+        if root.right != None and root.right != NIL:
             # print("\t\t going right")
             return self.min_val(root.right, cache, name)
         
         # else successor is higher up in the tree
         p = root.parent
         num_reads = 0
-        while p is not None and p is not NIL:
-            if root is not p.right:
+        while p != None and p != NIL:
+            if root != p.right:
                 break
             root = p
             p = p.parent
-            if p is not None and p is not NIL:
+            if p != None and p != NIL:
                 # look for the node in the cache
                 key = name + "_coordToHandle_" + str(p.data[0])
                 res = cache.get(key)

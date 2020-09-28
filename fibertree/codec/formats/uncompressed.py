@@ -64,7 +64,7 @@ class Uncompressed(CompressionFormat):
         assert payload < self.shape
         to_ret =  self.idx_in_rank * self.shape + payload
         # print("{} payloadToFiberHandle: idx in rank {}, shape {}, payload {}, ret {}".format(self.name, self.idx_in_rank, self.shape, payload, to_ret))
-        if self.next_fmt is not None and self.next_fmt.encodeUpperPayload():
+        if self.next_fmt != None and self.next_fmt.encodeUpperPayload():
             key = self.name + "_fiberHandle_" + str(payload)
             if self.name.startswith("Z"):
                 print("{} payloadToFiberHandle, payload {}, to ret {}, misses before {}".format(self.name, payload, to_ret, self.cache.miss_count))
@@ -95,12 +95,12 @@ class Uncompressed(CompressionFormat):
         return coord
 
     def updatePayload(self, handle, payload):
-        assert handle is not None and handle < self.shape
+        assert handle != None and handle < self.shape
         # print(self.cache)
         # testing adding to the cache
         
         key = self.name + "_handleToPayload_" + str(handle)
-        if self.next_fmt is not None:
+        if self.next_fmt != None:
             key = self.name + "_fiberHandle_" + str(handle)
             if self.next_fmt.encodeUpperPayload():
                 self.cache.get(key) # try to access it

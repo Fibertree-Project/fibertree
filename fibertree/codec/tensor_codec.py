@@ -89,7 +89,7 @@ class Codec:
         fiber = fmt()
         dim_len = a.getShape()[0]
         # print("shape arg {}".format(shape))
-        if shape is not None:
+        if shape != None:
             dim_len = shape[depth]
             # print("depth {}, HFA shape {}, real shape {}".format(depth, a.getShape()[0], dim_len))
             assert dim_len >= a.getShape()[0]

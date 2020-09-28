@@ -75,9 +75,9 @@ def get_A_HFA(a_file):
 
 def get_B_HFA(b_file):
     print("reading tiled mtx from yaml")
-    t0 = time.clock()
+    t0 = time.time()
     B_HFA = Tensor.fromYAMLfile(b_file)
-    t1 = time.clock() - t0
+    t1 = time.time() - t0
     print("read B from yaml in {} s".format(t1))
     # B_HFA.print()
     return B_HFA
@@ -108,7 +108,7 @@ def compress_HFA_payloads(Z_HFA):
     for (z, z_n0) in z_n1:
         temp = []
         for (z_coord, z_val) in z_n0:
-            if z_val.value is not 0:
+            if z_val.value != 0:
                     temp.append(z_val)
         output_ref.append(temp)
     return output_ref
@@ -124,7 +124,7 @@ def get_lin_codec(myZ):
         temp = []
         # add only nonzero payloads
         for j in range(0, len(output_lin[i])):
-            if output_lin[i][j] is not 0:
+            if output_lin[i][j] != 0:
                 temp.append(output_lin[i][j])
         output_lin_2.append(temp)
     return output_lin_2

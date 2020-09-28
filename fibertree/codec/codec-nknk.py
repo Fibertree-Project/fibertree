@@ -135,10 +135,10 @@ else: # already in pretiled yaml
     A_HFA = Tensor.fromYAMLfile(a_file)
     A_HFA.setName("A")
 print("reading tiled mtx from yaml")
-t0 = time.clock()
+t0 = time.time()
 b_file = sys.argv[3]
 B_HFA = Tensor.fromYAMLfile(b_file)
-t1 = time.clock() - t0
+t1 = time.time() - t0
 print("read B from yaml in {} s".format(t1))
 B_HFA.print()
 # output
@@ -164,9 +164,9 @@ output_descriptor = frontier_descriptor
 A_shape = [A_HFA.getShape()[0], 32]
 myA = encodeSwoopTensorInFormat(A_HFA, frontier_descriptor, tensor_shape=A_shape, cache_size=4*32)
 print()
-t0 = time.clock()
+t0 = time.time()
 myB = encodeSwoopTensorInFormat(B_HFA, ["U", "U", "C", "U"], cache_size=256 * 32 * 4)
-t1 = time.clock() - t0
+t1 = time.time() - t0
 print()
 print("encoded B in {} s".format(t1))
 myZ = encodeSwoopTensorInFormat(Z_HFA, output_descriptor, cache_size=4 * 256)

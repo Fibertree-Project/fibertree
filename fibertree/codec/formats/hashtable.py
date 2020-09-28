@@ -39,7 +39,7 @@ class HashTable(CompressionFormat):
         # init vars
         fiber_occupancy = 0
         cumulative_occupancy = 0
-        if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] is "Hf":
+        if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] == "Hf":
             cumulative_occupancy = (0, 0)
         occ_list = list()
         num_coords = len(a.getCoords())
@@ -100,7 +100,7 @@ class HashTable(CompressionFormat):
         hash_key = self.get_hash_key(coord)
         bin_head = self.ht[hash_key]
 
-        # assert bin_head is not None
+        # assert bin_head != None
         # look for cached
         key = self.name + '_HT_' + str(hash_key)
         cached_val = self.cache.get(key)
@@ -108,7 +108,7 @@ class HashTable(CompressionFormat):
         self.stats[self.ht_read_key] += 1
         print("\t{} coordToHandle: coord {}, hash_key {}".format(self.name, coord, hash_key))
         # search this bucket
-        while bin_head is not None:
+        while bin_head != None:
             self.stats[self.coords_read_key] += 1 
             # print("\tbin head {}".format(bin_head))
             key = self.name + '_IdxToCoords_' + str(bin_head)
@@ -116,7 +116,7 @@ class HashTable(CompressionFormat):
             self.cache[key] = self.coords[bin_head]
 
             # if found coord, return the pointer to it
-            if self.coords[bin_head] is coord:
+            if self.coords[bin_head] == coord:
                 return bin_head
             # advance pointer in bucket
 
@@ -136,12 +136,12 @@ class HashTable(CompressionFormat):
         hash_key = self.get_hash_key(coord)
         bin_head = self.ht[hash_key]
 
-        assert bin_head is not None
+        assert bin_head != None
         # look for cached
         print("\t{} coordToHandle: coord {}, hash_key {}".format(self.name, coord, hash_key))
         # search this bucket
-        while bin_head is not None:
-            if self.coords[bin_head] is coord:
+        while bin_head != None:
+            if self.coords[bin_head] == coord:
                 return bin_head
             # advance pointer in bucket
             bin_head = self.ptrs[bin_head]
@@ -152,7 +152,7 @@ class HashTable(CompressionFormat):
         super().setupSlice(base, bound, max_num)
         self.cur_handle = self.coordToHandle(base)
         
-        if self.cur_handle is None: # not found
+        if self.cur_handle == None: # not found
             val_at_min_handle = sys.maxsize
             min_handle = None
 
@@ -165,12 +165,12 @@ class HashTable(CompressionFormat):
 
                 self.stats[self.coords_read_key] += 1
                 print("\tsearching coords: ind {}, coord {}, min_val {}".format(i, self.coords[i], val_at_min_handle))
-                if min_handle is None:
+                if min_handle == None:
                     if self.coords[i] > base:
                         min_handle = i
                         val_at_min_handle = self.coords[min_handle]
                 else: 
-                    assert min_handle is not None
+                    assert min_handle != None
                     if self.coords[i] > base and self.coords[i] < val_at_min_handle:
                         min_handle = i
                         val_at_min_handle = self.coords[min_handle]
@@ -185,9 +185,9 @@ class HashTable(CompressionFormat):
     
     # get next in iteration
     def nextInSlice(self):
-        if self.cur_handle is None:
+        if self.cur_handle == None:
             return None
-        if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far:
+        if self.num_to_ret != None and self.num_to_ret < self.num_ret_so_far:
             return None
         if self.num_ret_so_far >= len(self.coords):
             return None
@@ -209,7 +209,7 @@ class HashTable(CompressionFormat):
      
             self.stats[self.coords_read_key] += 1
             if self.coords[i] > cur_coord:
-                if next_handle is None or (self.coords[next_handle] > self.coords[i] and self.coords[i] > cur_coord):
+                if next_handle == None or (self.coords[next_handle] > self.coords[i] and self.coords[i] > cur_coord):
                     next_handle = i
         self.cur_handle = next_handle
         return to_ret
@@ -225,11 +225,11 @@ class HashTable(CompressionFormat):
         assert(len(self.ptrs) == len(self.coords))
         # search for them all
         for i in range(0, len(self.coords)):
-            assert self.coordToHandleNoStats(self.coords[i]) is not None
+            assert self.coordToHandleNoStats(self.coords[i]) != None
 
     # modify coords, need to append 1 to payloads
     def insertElement(self, coord, payload=0, count_stats=True, add_coord=True):
-        if coord is None:
+        if coord == None:
             return None
             
         # encode coord
@@ -243,18 +243,18 @@ class HashTable(CompressionFormat):
             self.cache[key] = bin_head
 
         # traverse this bucket
-        while bin_head is not None:
+        while bin_head != None:
             # print("\tbin head {}".format(bin_head))
             if count_stats:
                 key = self.name + '_IdxToCoords_' + str(bin_head)
                 cached_val = self.cache.get(key)
                 self.cache[key] = self.coords[bin_head]
 
-            if self.coords[bin_head] is coord:
+            if self.coords[bin_head] == coord:
                 # update payload or return because found
                 return bin_head 
             bin_head = self.ptrs[bin_head]
-        assert bin_head is None
+        assert bin_head == None
 
         # make room for elt
         self.ptrs.append(self.ht[hash_key])
@@ -279,10 +279,10 @@ class HashTable(CompressionFormat):
         if density >= self.max_density:
             self.double_table(count_stats)
         assert(len(self.coords) == len(self.payloads))
-        return len(self.coords) - 1 # handle to coord is at the end
+        return len(self.coords) - 1 # handle to coord == at the end
 
     def updatePayload(self, handle, payload):
-        if handle is None:
+        if handle == None:
             return None
         key = self.name + '_IdxToPayloads_' + str(handle)
         cached_val = self.cache.get(key)
@@ -298,7 +298,7 @@ class HashTable(CompressionFormat):
         return len(self.payloads) + len(self.ht) 
         # return ((len(self.ht), len(self.payloads)), self)
 
-    # default implementation is like in C
+    # default implementation == like in C
     # overwrite if this is changed
     @staticmethod
     def encodePayload(prev_ind, ind, payload):

@@ -27,7 +27,7 @@ class CoordinateList(CompressionFormat):
 
         # TODO: HT to one payload
         cumulative_occupancy = 0
-        if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] is "Hf":
+        if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] == "Hf":
     	    cumulative_occupancy = [0, 0] 
 
         prev_nz = 0
@@ -86,7 +86,7 @@ class CoordinateList(CompressionFormat):
     def coordToHandle(self, coord):
         # print("\t{} coordToHandle for coord {}".format(self.name, coord))
         # if out of range, return None
-        if len(self.coords) is 0:
+        if len(self.coords) == 0:
             return None
         
         elif coord > self.coords[-1]: # short path to end
@@ -110,13 +110,7 @@ class CoordinateList(CompressionFormat):
                 print("{} coordToHandle coord {}, misses {}".format(self.name, coord, self.cache.miss_count))
             self.stats[self.coords_read_key] += 1; # add to num accesses in binary search
             return 0
-        """
-        key = self.name + "_coordToHandle_" + str(coord)
-        cached_val = self.cache.get(key)
-        if cached_val is not None:
-            print("cached {}, ret {}".format(key, cached_val))
-            return cached_val
-        """
+
         # do a binary search if in range
         lo = 0
         hi = len(self.coords) - 1
@@ -148,7 +142,7 @@ class CoordinateList(CompressionFormat):
     # make space in coords and payloads for elt
     # return the handle
     def insertElement(self, coord):
-        if coord is None:
+        if coord == None:
             return None
         print("{} insertElt: coord {}, coords currently {}, misses before {}".format(self.name, coord, self.coords, self.cache.miss_count))
 
@@ -156,7 +150,7 @@ class CoordinateList(CompressionFormat):
         
         print("{} insertElt: coord {}, handle_to_add {}, misses before {}".format(self.name, coord, handle_to_add, self.cache.miss_count))
         # if went off the end 
-        if handle_to_add is None:
+        if handle_to_add == None:
             self.coords = self.coords + [coord]
             if self.is_leaf:
                 self.payloads = self.payloads + [0]
@@ -179,7 +173,7 @@ class CoordinateList(CompressionFormat):
             print(self.cache)
 
             # fill out cache to end of line
-            assert(len(self.payloads) is len(self.coords))
+            assert(len(self.payloads) == len(self.coords))
             end_of_line = self.round_up(handle, self.words_in_line)
             for i in range(handle, end_of_line):
                 coords_key = self.name + "_handleToCoord_" + str(i)
@@ -194,7 +188,7 @@ class CoordinateList(CompressionFormat):
             return len(self.coords) - 1
 
         # if adding a new coord, make room for it
-        if self.coords[handle_to_add] is not coord:
+        if self.coords[handle_to_add] != coord:
             # add coord to coord list
             self.coords = self.coords[:handle_to_add] + [coord] + self.coords[handle_to_add:]
 
@@ -205,7 +199,7 @@ class CoordinateList(CompressionFormat):
                 self.payloads = self.payloads[:handle_to_add] + [self.next_fmt()] + self.payloads[handle_to_add:]
 
             # fill out cache to end of line
-            assert(len(self.payloads) is len(self.coords))
+            assert(len(self.payloads) == len(self.coords))
             for i in range(handle_to_add, len(self.coords)):
                 coords_key = self.name + "_handleToCoord_" + str(i)
                 payloads_key = self.name + "_handleToPayload_" + str(i)
@@ -213,7 +207,7 @@ class CoordinateList(CompressionFormat):
 
                 self.cache[coords_key] = self.coords[i]
                 self.cache[payloads_key] = self.payloads[i]
-            if cached_coord is None: # DRAM miss
+            if cached_coord == None: # DRAM miss
                     # bring the rest of the line in
                     end_of_line = self.round_up(i, self.words_in_line)
                     for j in range(i, end_of_line): 
@@ -233,7 +227,7 @@ class CoordinateList(CompressionFormat):
     # API Methods
     def handleToPayload(self, handle):
         # if next level has implicit payloads above (e.g. U), payload is implicit
-        if self.next_fmt is not None and not self.next_fmt.encodeUpperPayload():
+        if self.next_fmt != None and not self.next_fmt.encodeUpperPayload():
             print("\t\tnext level not encoded, ret {}".format(self.occupancy_so_far))
             
             return self.occupancy_so_far # self.idx_in_rank + handle
@@ -253,7 +247,7 @@ class CoordinateList(CompressionFormat):
     # return handle for termination
     def updatePayload(self, handle, payload):
         # print("\t{} updatePayload, handle = {}, payload = {}".format(self.name, handle, payload))
-        if handle is None:
+        if handle == None:
             return None
         
         if handle >= 0 and handle < len(self.payloads):
@@ -266,7 +260,7 @@ class CoordinateList(CompressionFormat):
         print("{} handleToPayload key: {}, miss count before {}".format(self.name, key, self.cache.miss_count))
         
         cached_val = self.cache.get(key)
-        assert cached_val is not None
+        assert cached_val != None
         self.cache[key] = payload
         print(self.cache)
         print("{} handleToPayload key: {}, miss count after {}".format(self.name, key, self.cache.miss_count))
@@ -283,7 +277,7 @@ class CoordinateList(CompressionFormat):
     # get size of representation
     def getSize(self): 
         # self.printFiber()
-        if self.next_fmt is not None and self.next_fmt.encodeUpperPayload():
+        if self.next_fmt != None and self.next_fmt.encodeUpperPayload():
             assert(len(self.payloads) > 0)
 
         size = len(self.coords) + len(self.occupancies)

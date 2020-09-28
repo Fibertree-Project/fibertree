@@ -15,7 +15,7 @@ class RunLengthEncoding(CompressionFormat):
 
         # TODO: HT to one payload
         cumulative_occupancy = 0
-        if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] is "Hf":
+        if depth < len(ranks) - 1 and codec.format_descriptor[depth + 1] == "Hf":
     	    cumulative_occupancy = [0, 0] 
 
         occ_list = list()

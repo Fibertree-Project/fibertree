@@ -70,7 +70,7 @@ class CompressionFormat:
         self.name = name
 
     def round_up(self, n, multiple):
-        if n % multiple is 0:
+        if n % multiple == 0:
             n += 1
         return ((n + multiple - 1) // multiple) * multiple
     # main functions
@@ -78,7 +78,7 @@ class CompressionFormat:
     # if handle is out of range, return None
     def handleToCoord(self, handle):
         # print("\t{} handleToCoord: handle {}, coords {}".format(self.name, handle, self.coords))
-        if handle is None or handle >= len(self.coords):
+        if handle == None or handle >= len(self.coords):
             return None
 	
         key = self.name + "_handleToCoord_" + str(handle)
@@ -100,7 +100,7 @@ class CompressionFormat:
 
     # given a handle, return payload there if in range, otherwise None
     def handleToPayload(self, handle):
-        if handle is None or handle >= len(self.payloads):
+        if handle == None or handle >= len(self.payloads):
             return None
         # do stats counting in handleToPayload because it later can go to
         # -> payloadToValue
@@ -123,9 +123,9 @@ class CompressionFormat:
     # get next handle during iteration through slice
     def nextInSlice(self):
         # print("\t{} in next: handle {}, slice max {}, num to ret {}, ret so far {}".format(self.name, self.coords_handle, self.getSliceMaxLength(), self.num_to_ret, self.num_ret_so_far))
-        if self.coords_handle is None or self.coords_handle >= self.getSliceMaxLength():
+        if self.coords_handle == None or self.coords_handle >= self.getSliceMaxLength():
             return None
-        if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far:
+        if self.num_to_ret != None and self.num_to_ret < self.num_ret_so_far:
             return None
         # for formats that don't need to touch memory to get next
         to_ret = self.coords_handle

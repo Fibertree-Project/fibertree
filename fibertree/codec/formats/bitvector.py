@@ -30,7 +30,7 @@ class Bitvector(CompressionFormat):
             self.next_fmt = codec.fmts[depth + 1]        
         
         if depth < len(ranks) - 1:
-            if codec.format_descriptor[depth + 1] is "Hf" or codec.format_descriptor[depth + 1] is "T":
+            if codec.format_descriptor[depth + 1] == "Hf" or codec.format_descriptor[depth + 1] == "T":
                 cumulative_occupancy = [0, 0]
         occ_list = list()
         occ_list.append(cumulative_occupancy)
@@ -97,7 +97,7 @@ class Bitvector(CompressionFormat):
         range_end = min(handle_start + self.bits_per_line, len(self.coords))
         self.cache[cache_key] = self.coords[handle_start:range_end]
         
-        if found is None:
+        if found == None:
             self.stats[self.coords_read_key] += 1
 
     # handle = coord_handle
@@ -107,7 +107,7 @@ class Bitvector(CompressionFormat):
         found = self.cache.get(cache_key) # look for it if there
         range_end = min(handle_start + self.bits_per_line, len(self.coords))
         self.cache[cache_key] = self.coords[handle_start:range_end]
-        if found is None:
+        if found == None:
             self.stats[self.coords_write_key] += 1
     """
     # given a handle (index into bit vector) return the coord 
@@ -116,7 +116,7 @@ class Bitvector(CompressionFormat):
         handle = iter_handle.coords_handle
 
         # print("{} handleToCoord, coord handle {}".format(self.name, handle))
-        if handle is None or handle >= len(self.coords):
+        if handle == None or handle >= len(self.coords):
             return None
         # if nothing is saved
         self.countCoordsCache(handle)
@@ -142,13 +142,13 @@ class Bitvector(CompressionFormat):
         size = math.ceil(len(self.coords) / self.bits_per_word) + len(self.occupancies)
         
         # count payloads only if next level is encoded
-        if self.next_fmt is None or self.next_fmt.encodeUpperPayload():
+        if self.next_fmt == None or self.next_fmt.encodeUpperPayload():
             size += len(self.payloads)
         return size
 
     # insertElement makes space for coord, payload and returns handle
     def insertElement(self, coord):
-         if coord is None:
+         if coord == None:
              return TwoHandle(None, None)
          coord_handle_to_add = self.handleToCoord(TwoHandle(coord))
          
@@ -158,7 +158,7 @@ class Bitvector(CompressionFormat):
          # either way, need to count left
          payload_to_add_handle = self.countLeft(coord_handle_to_add)        
          # if unset, make space for it
-         if self.coords[coord_handle_to_add] is 0:
+         if self.coords[coord_handle_to_add] == 0:
              self.payloads = self.payloads[:payload_to_add_handle] + [0] + self.payloads[payload_to_add_handle:]
              self.stats[self.payloads_write_key] += len(self.payloads) - payload_to_add_handle
              self.coords[coord_handle_to_add] = 1
@@ -167,7 +167,7 @@ class Bitvector(CompressionFormat):
     def updatePayload(self, handle, payload):
         print("\t{} updatePayload: handle {}, payload {}".format(self.name, handle, payload))
         payload_handle = handle.payloads_handle
-        if payload_handle is None:
+        if payload_handle == None:
             return None
         if payload_handle >= 0 and payload_handle < len(self.payloads):
             # we are always calling update payload right after inserting it, so don't need to count it twice
@@ -181,7 +181,7 @@ class Bitvector(CompressionFormat):
         for i in range(0, coords_handle):
             result += self.coords[i]
             # count up coords read per line
-            if i % self.bits_per_line is 0:
+            if i % self.bits_per_line == 0:
                 self.countCoordsCache(i)
         return result
 
@@ -198,10 +198,10 @@ class Bitvector(CompressionFormat):
     def nextInSlice(self):
         if self.iter_handle.coords_handle >= len(self.coords) or self.iter_handle.payloads_handle >= len(self.payloads):
             return None
-        if self.num_to_ret is not None and self.num_to_ret < self.num_ret_so_far:
+        if self.num_to_ret != None and self.num_to_ret < self.num_ret_so_far:
             return None
         # move to the next nonzero
-        while self.iter_handle.coords_handle < len(self.coords) and self.coords[self.iter_handle.coords_handle] is not 1:
+        while self.iter_handle.coords_handle < len(self.coords) and self.coords[self.iter_handle.coords_handle] != 1:
             self.countCoordsCache(self.iter_handle.coords_handle)
             self.iter_handle.coords_handle += 1
         

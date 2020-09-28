@@ -84,11 +84,11 @@ for key in stacking_order:
     parts = temp.split("_")
     label = ""
     inp_name = ""
-    if parts[0] is "A":
+    if parts[0] == "A":
         inp_name = "Fr"
-    elif parts[0] is "B":
+    elif parts[0] == "B":
         inp_name = "Gr"
-    elif parts[0] is "Z":
+    elif parts[0] == "Z":
         inp_name = "Fr'"
 
     inp_name += " " + parts[1]
