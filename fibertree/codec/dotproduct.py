@@ -21,9 +21,9 @@ from swoop import *
 #
 
 
-a = Tensor(name="A", rank_ids=["K1", "K0"])
-b = Tensor(name="B", rank_ids=["K1", "K0"])
-z = Tensor(name="Z", rank_ids=[])
+a = SwoopTensor(name="A", rank_ids=["K1", "K0"])
+b = SwoopTensor(name="B", rank_ids=["K1", "K0"])
+z = SwoopTensor(name="Z", rank_ids=[])
 
 a_k1 = a.getStartHandle()
 b_k1 = b.getStartHandle()
@@ -60,21 +60,21 @@ b_valuess = PayloadsToValues(b_k0s, b_k0_payloadss)
 # Compute result and reduce
 
 # Original sequential code
-partial_productss = Compute(lambda a, b: a * b, a_valuess, b_valuess)
+#partial_productss = Compute(lambda a, b: a * b, a_valuess, b_valuess)
 
 # BEGIN PARALLEL_FOR
-#NUM_PES = 4
-#dist_func = lambda n: n % NUM_PES 
-#k0_distribution_choicess = Compute(dist_func, ab_k0_coordss)
-#a_valuess_distributed = Distribute(4, k0_distribution_choicess, a_valuess)
-#b_valuess_distributed = Distribute(4, k0_distribution_choicess, b_valuess)
+NUM_PES = 4
+dist_func = lambda n: n % NUM_PES 
+k0_distribution_choicess = Compute(dist_func, ab_k0_coordss)
+a_valuess_distributed = Distribute(4, k0_distribution_choicess, a_valuess)
+b_valuess_distributed = Distribute(4, k0_distribution_choicess, b_valuess)
 
-#body_func = lambda a, b: a * b
-#resultss = []
-#for pe in range(NUM_PES):
-#  resultss.append(Compute(body_func, a_valuess_distributed[pe], b_valuess_distributed[pe], instance_name=str(pe)))
-  
-#partial_productss = Collect(NUM_PES, k0_distribution_choicess, resultss)
+body_func = lambda a, b: a * b
+resultss = []
+for pe in range(NUM_PES):
+  resultss.append(Compute(body_func, a_valuess_distributed[pe], b_valuess_distributed[pe], instance_name=str(pe)))
+ 
+partial_productss = Collect(NUM_PES, k0_distribution_choicess, resultss)
 # END PARALLEL FOR
 
 partial_sums = Reduce(partial_productss)
@@ -102,7 +102,7 @@ b.setImplementations("K1", [my_b_k1])
 b.setImplementations("K0", my_b_k0)
 z.setImplementations("root", [my_z_root])
 
-evaluate(z_root_ack, 2)
+evaluate(z_root_ack, 0)
 
 expected_val = 160
 

@@ -8,6 +8,20 @@ DEFAULT_TRACE_LEVEL = 3
 class NoTransmit:
   pass
 
+# 
+# Marker
+#
+# An explicit Marker indicating which level of marker it is.
+class Marker:
+  def __init__(self, level=1):
+    self.level = level
+
+  def offset(self, delta):
+    return Marker(self.level + delta)
+    
+  def __str__(self):
+    return f"Marker_{self.level}"
+
 
 #
 # SwoopTensor
@@ -19,7 +33,7 @@ class NoTransmit:
 
 class SwoopTensor:
   def __init__(self, name, rank_ids):
-    assert(len(rank_ids) >= 0)
+    assert len(rank_ids) >= 0
     # All tensors have a root rank.
     my_rank_ids = rank_ids[:]
     my_rank_ids.insert(0, "root")
@@ -90,7 +104,6 @@ class Rank:
     return self.implementations[fiber_idx].coordToHandle(coord)
   
   def insertElement(self, fiber_idx, coord):
-    print(self.implementations)
     return self.implementations[fiber_idx].insertElement(coord)
   
   def updatePayload(self, fiber_idx, handle, payload):
@@ -203,13 +216,10 @@ class AST:
     for prod in self.producers:
       if not prod.initialized:
         prod.initialize()
-    # Get the initial fiber handle in place for evaulation.
-    if (hasattr(self, "fiber_handles") and self.current_fiber is None):
-      self.nextFiber()
     
   def evaluate(self):
     self.trace("Unimplemented Evaluate")
-    return None
+    assert False
   
   def finalize(self, stats_dict):
     self.dumpStats(stats_dict)
@@ -219,13 +229,27 @@ class AST:
       # if not prod.finalized:
       prod.finalize(stats_dict)
   
-  def nextFiber(self):
-    assert(hasattr(self, "fiber_handles") and self.fiber_handles is not None)
-    prev_fiber = self.current_fiber
-    self.current_fiber = self.fiber_handles.nextValue(self)
-    
-    self.trace(3, "Prev fiber handle {}, New fiber handle:{}".format(prev_fiber, self.current_fiber))
-
+  def setupCurrentFiber(self, offset=1):
+    assert self.fiber_handles is not None
+    # See if we need a new fiber handle
+    if self.current_fiber is None:
+      next_fh = self.fiber_handles.nextValue(self)
+      # If it was a marker, just pass it through
+      if isinstance(next_fh, Marker):
+        # Check for consistency in all other producers
+        for producer in self.producers:
+          if producer != self.fiber_handles:
+            # They should be giving us markers, and of the same level.
+            marker = producer.nextValue(self)
+            assert isinstance(marker, Marker)
+            assert marker.level == next_fh.level + offset
+        # The caller should return this marker (possibly with an offset)
+        return next_fh.offset(offset)
+      else:
+        # Just a normal new fiber handle.
+        self.trace(3, "New fiber handle:{}".format(next_fh))
+        self.current_fiber = next_fh
+        return None
   
   def nextValue(self, other):
     if other is not None:
@@ -236,24 +260,6 @@ class AST:
         return res_q.pop(0) # Important: We need 0 here, otherwise it will skip None
 
     # Proceed with normal evaluation.
-    # If it has a current_fiber, if that is None, then we advance it.
-    if (hasattr(self, "fiber_handles") and self.current_fiber is None):
-      # Just pop all producers (should also be None) and return None.
-      self.trace(3, f"Eval: Passthrough empty fiber handle.")
-      for prod in self.producers:
-        if prod != self.fiber_handles:
-          res = prod.nextValue(self)
-          if (res is not None):
-            self.trace(0, f"Expected None from producer: {prod.getName()} => {res}")
-          # print("\tcurrent fiber {}, res: {}".format(self.current_fiber, res))
-          assert(res is None)
-      # Return none and try again next time.
-      for (caller, q) in self.cur_results.items():
-        if caller != other:
-            q.append(None)
-      self.nextFiber()
-      return None
-    # At this point, child can expect current_fiber is not None (if used)
     # Call evaluate, but only once and fan out the result to later callers.
     self.trace(4, f"Eval {other}")
     res = self.evaluate()
@@ -290,8 +296,8 @@ class AST:
     return sp
     
   def __getitem__(self, n):
-    assert(self.num_fields != 0)
-    assert(n < self.num_fields)
+    assert self.num_fields != 0
+    assert n < self.num_fields
     sp = Splitter(self, n)
     return sp
   
@@ -325,6 +331,8 @@ class Slice (AST):
   def evaluate(self):
     res = fiber_handle.nextInSlice()
     self.trace(2, f"NextInSlice: {res}")
+    if res is None:
+      return Marker()
     return res
   
 #
@@ -337,29 +345,27 @@ class Slice (AST):
 class Scan (AST):
   def __init__(self, fiber_handles):
     super().__init__("Scan", fiber_handles)
-    self.active = False
   
   def evaluate(self):
     
-    if not self.active:
-      self.trace(3, "Fiber Slice Setup {}".format(self.current_fiber))
-      self.current_fiber.setupSlice()
+    # Make sure we have a fiber handle to work with.
+    starting_new_fiber = self.current_fiber is None
+    marker = self.setupCurrentFiber()
+    # If it's a marker, pass it through
+    if marker is not None:
+      return marker
     
+    # If we started a new fiber, setup the Slice.
+    if starting_new_fiber: 
+      self.current_fiber.setupSlice(0, 0, 0)
+    
+    # At this point, we should always have a current fiber.
     res = self.current_fiber.nextInSlice()
-    if res is None and self.active:
-      self.trace(3, "Fiber Done.")
-      self.nextFiber()
-      self.active = False
-      return None
-    self.active = True
-    self.trace(2, f"Next: {res}")
-    # if res is None:
     if res is None:
-      self.trace(3, "after next, Fiber Done.")
-      self.nextFiber()
-      self.active = False
-      return None
-
+      self.trace(3, "Fiber Done.")
+      self.current_fiber = None
+      return Marker()
+    self.trace(2, f"Next: {res}")
     return res
 
 
@@ -379,33 +385,21 @@ class InsertionScan (AST):
     self.active = False
   
   def evaluate(self):
-#    if not self.active:
-#      self.updateCurrentFiber()
-#      if self.current_fiber is None:     
-#        coord = self.coords.nextValue(self)
-#        assert(coord is None)
-#        self.trace(3, "Done.")
-#        return (None, None)
-#      self.trace(2, f"Start Fiber {self.current_fiber.position}")
-#      self.active = True
-
+    # Make sure we have a fiber handle to work with.
+    marker = self.setupCurrentFiber()
+    # If it's a marker, pass it through (different offset per field)
+    if marker is not None:
+      return (marker, marker.offset(-1))
+    
     coord = self.coords.nextValue(self)
-    print("\tInsertionScan: coord {}, active {}, current fiber {}".format(coord, self.active, self.current_fiber))
-    if coord is None:
-      if self.active:
-        new_handle = self.current_fiber.getUpdatedFiberHandle()
-        self.trace(3, f"Fiber Done. New Handle: {new_handle}")
-      else:
-        new_handle = None
-      self.active = False
-      self.nextFiber()
-      assert (not new_handle is None or coord is None)
-      
-      print("\t\tcoord {}, newHandle: {}".format(coord, new_handle))
-      return (None, new_handle)
-    self.active = True
-    self.trace(2, f"Inserting: {coord}")
+    if isinstance(coord, Marker):
+      assert coord.level == 1
+      new_handle = self.current_fiber.getUpdatedFiberHandle()
+      self.current_fiber = None
+      self.trace(3, f"Fiber Done. New Handle: {new_handle}")
+      return (coord, new_handle)
     handle = self.current_fiber.insertElement(coord)
+    self.trace(2, f"{coord} => {handle}")
     return (handle, NoTransmit)
 
 
@@ -433,11 +427,18 @@ class HandlesToCoords (AST):
     handles.connect(self)
 
   def evaluate(self):
+    # Make sure we have a fiber handle to work with.
+    marker = self.setupCurrentFiber()
+    # If it's a marker, pass it through
+    if marker is not None:
+      return marker
+
     handle = self.handles.nextValue(self)
-    if handle is None:
-      self.trace(3, "None")
-      self.nextFiber()
-      return None
+    if isinstance(handle, Marker):
+      self.trace(3, f"{handle}")
+      assert handle.level == 1
+      self.current_fiber = None
+      return handle
     coord = self.current_fiber.handleToCoord(handle)
     self.trace(2, f"{handle} => {coord}")
     return coord
@@ -456,24 +457,22 @@ class HandlesToPayloads (AST):
     handles.connect(self)
 
   def evaluate(self):
+    # Make sure we have a fiber handle to work with.
+    marker = self.setupCurrentFiber()
+    # If it's a marker, pass it through
+    if marker is not None:
+      return marker
+
     handle = self.handles.nextValue(self)
-    if handle is None:
-      self.trace(3, "None")
-      self.nextFiber()
-      return None
+    if isinstance(handle, Marker):
+      self.trace(3, f"{handle}")
+      assert handle.level == 1
+      self.current_fiber = None
+      return handle
     payload = self.current_fiber.handleToPayload(handle)
     self.trace(2, f"{handle} => {payload}")
     return payload
 
-
-#
-# HandlesToCoordsAndPayloads
-#
-# Simple convenience alias for concise code
-#
-#def HandlesToCoordsAndPayloads(rank, handles):
-#  return (HandlesToCoords(rank, handles2), HandlesToPayloads(rank, handles2))
-  
 
 #
 # PayloadsToFiberHandles
@@ -489,12 +488,18 @@ class PayloadsToFiberHandles (AST):
     payloads.connect(self)
 
   def evaluate(self):
+    # Make sure we have a fiber handle to work with.
+    marker = self.setupCurrentFiber()
+    # If it's a marker, pass it through
+    if marker is not None:
+      return marker
+   
     payload = self.payloads.nextValue(self)
-    # print("\tcurrent fiber in PayloadToFiberHandle {}".format(self.current_fiber))
-    if payload is None:
-      self.trace(3, "None")
-      self.nextFiber()
-      return None
+    if isinstance(payload, Marker):
+      self.trace(3, f"{payload}")
+      assert payload.level == 1
+      self.current_fiber = None
+      return payload
     fiber_handle = self.current_fiber.payloadToFiberHandle(payload)
     self.trace(2, f"{payload} => {fiber_handle}")
     return fiber_handle
@@ -513,11 +518,18 @@ class PayloadsToValues (AST):
     payloads.connect(self)
 
   def evaluate(self):
+    # Make sure we have a fiber handle to work with.
+    marker = self.setupCurrentFiber()
+    # If it's a marker, pass it through
+    if marker is not None:
+      return marker
+   
     payload = self.payloads.nextValue(self)
-    if payload is None:
-      self.trace(3, "None")
-      self.nextFiber()
-      return None
+    if isinstance(payload, Marker):
+      self.trace(3, f"{payload}")
+      assert payload.level == 1
+      self.current_fiber = None
+      return payload
     value = self.current_fiber.payloadToValue(payload)
     self.trace(2, f"{payload} => {value}")
     return value
@@ -540,11 +552,18 @@ class CoordsToHandles (AST):
     coords.connect(self)
 
   def evaluate(self):
+    # Make sure we have a fiber handle to work with.
+    marker = self.setupCurrentFiber()
+    # If it's a marker, pass it through
+    if marker is not None:
+      return marker
+   
     coord = self.coords.nextValue(self)
-    if coord is None:
-      self.trace(3, "None")
-      self.nextFiber()
-      return None
+    if isinstance(coord, Marker):
+      self.trace(3, f"{coord}")
+      assert coord.level == 1
+      self.current_fiber = None
+      return coord
     handle = self.current_fiber.coordToHandle(coord)
     self.trace(2, f"{coord} => {handle}")
     return handle
@@ -567,12 +586,19 @@ class InsertElements (AST):
     coords.connect(self)
 
   def evaluate(self):
+    # Make sure we have a fiber handle to work with.
+    marker = self.setupCurrentFiber()
+    # If it's a marker, pass it through
+    if marker is not None:
+      return marker
+   
     coord = self.coords.nextValue(self)
-    if coord is None:
+    if isinstance(coord, Marker):
       new_handle = self.current_fiber.getUpdatedFiberHandle()
       self.trace(3, f"Fiber done. New Handle: {new_handle}")
-      self.nextFiber()
-      return (None, new_handle)
+      assert coord.level == 1
+      self.current_fiber = None
+      return (coord, new_handle)
     handle = self.current_fiber.insertElement(coord)
     self.trace(2, f"{coord} => {handle}")
     return (handle, NoTransmit)
@@ -595,15 +621,21 @@ class UpdatePayloads (AST):
     payloads.connect(self)
 
   def evaluate(self):
+    # Make sure we have a fiber handle to work with.
+    marker = self.setupCurrentFiber()
+    # If it's a marker, pass it through
+    if marker is not None:
+      return marker
+   
     handle = self.handles.nextValue(self)
     payload = self.payloads.nextValue(self)
-    if handle is None and payload is None:
-    # if handle is None or payload is None:
-      self.trace(2, f"{handle} => {payload}")
-      assert (handle is None and payload is None)
-      self.trace(3, "Done.")
-      self.nextFiber()
-      return None
+    if isinstance(handle, Marker) or isinstance(payload, Marker):
+      assert  isinstance(handle, Marker) and isinstance(payload, Marker)
+      self.trace(2, f"{handle}, {payload}")
+      assert handle.level == 1
+      assert payload.level == 1
+      self.current_fiber = None
+      return handle
     self.trace(2, f"{handle} => {payload}")
     return self.current_fiber.updatePayload(handle, payload)
 
@@ -632,38 +664,38 @@ class Intersect (AST):
   def evaluate(self):
     a_coord = -2
     b_coord = -1
-    a_handle = None
-    b_handle = None
-    while a_coord != None and b_coord != None:
+    a_handle = Marker()
+    b_handle = Marker()
+    while not isinstance(a_coord, Marker) and not isinstance(b_coord, Marker):
       if a_coord == b_coord:
         self.trace(2, f"Intersection found at: {a_coord}: ({a_handle}, {b_handle})")
         return (a_coord, a_handle, b_handle)
-      while a_coord != None and b_coord != None and a_coord < b_coord:
+      while not isinstance(a_coord, Marker) and not isinstance(b_coord, Marker) and a_coord < b_coord:
         a_coord = self.a_coords.nextValue(self)
         a_handle = self.a_handles.nextValue(self)
         self.trace(3, f"Advancing A: {a_coord}, {b_coord} ({a_handle}, {b_handle})")        
-      while b_coord != None and a_coord != None and b_coord < a_coord:
+      while not isinstance(b_coord, Marker) and not isinstance(a_coord, Marker) and b_coord < a_coord:
         b_coord = self.b_coords.nextValue(self)
         b_handle = self.b_handles.nextValue(self)
         self.trace(3, f"Advancing B: {a_coord}, {b_coord} ({a_handle}, {b_handle})")
       # If one ended, drain the other
-      if a_coord is None:
-        while b_coord is not None:
+      if isinstance(a_coord, Marker):
+        while not isinstance(b_coord, Marker):
           b_coord = self.b_coords.nextValue(self)
           b_handle = self.b_handles.nextValue(self)
           self.trace(3, f"Draining B: {b_coord} ({b_handle})")
         self.trace(3, "Done.")
-        return (None, None, None)
-      elif b_coord is None:
-        while a_coord is not None:
+        return (b_coord, a_handle, b_handle)
+      elif isinstance(b_coord, Marker):
+        while not isinstance(a_coord, Marker):
           a_coord = self.a_coords.nextValue(self)
           a_handle = self.a_handles.nextValue(self)
           self.trace(3, f"Draining A: {a_coord} ({a_handle})")
         self.trace(3, "Done.")
-        return (None, None, None)
+        return (a_coord, a_handle, b_handle)
 
     self.trace(3, "Done.")
-    return (None, None, None)
+    return (a_coord, a_handle, b_handle)
   
 
 #
@@ -686,8 +718,8 @@ class Splitter (AST):
       res = NoTransmit
       while res is NoTransmit:
         res = self.stream.nextValue(self)
-      if res is None:
-        my_field = None
+      if isinstance(res, Marker):
+        my_field = res[self.num]
       else:
         my_field = res[self.num]
     self.trace(3, f"{self.num} => {my_field}")
@@ -716,24 +748,29 @@ class Compute (AST):
     args = [None] * len(self.streams)
     for x, stream in enumerate(self.streams):
       args[x] = stream.nextValue(self)
-    # If one arg is None, they all should be None (in which case, skip the func)
-    any_is_none = False
-    all_are_none = True
+    # If one arg is a Marker, they all should be Markers (in which case, skip the func)
+    any_is_marker = False
+    all_are_markers = True
+    marker_level = None
     for arg in args:
-      assert(arg is not NoTransmit)
-      is_none = arg is None
-      any_is_none |= is_none
-      all_are_none &= is_none
+      assert arg is not NoTransmit
+      is_marker = isinstance(arg, Marker)
+      if is_marker:
+        assert marker_level is None or marker_level == arg.level, f"Compute: Inconsistent markers: {marker_level}, {arg.level}"
+        marker_level = arg.level
+      any_is_marker |= is_marker
+      all_are_markers &= is_marker
 
-    if (any_is_none and not all_are_none):
+    if (any_is_marker and not all_are_markers):
       for arg in args:
-        self.trace(0, f"Inconsistent None: {arg}")
-    assert(not any_is_none or all_are_none)
+        self.trace(0, f"Inconsistent Marker: {arg}")
+    assert not any_is_marker or all_are_markers
     
-    if all_are_none:
-      self.trace(3, "None")
-      return None
+    if all_are_markers:
+      self.trace(3, f"{args[0]}")
+      return args[0]
       
+    self.trace(3, f"({args})")
     result = self.function(*args)
     self.trace(1, f"({args}) => {result}")
     return result
@@ -760,31 +797,38 @@ class Amplify (AST):
     self.accesses = 0
 
   def evaluate(self):
-    if self.current_value is None: # Is this initialization condition correct?  
-      self.current_value = self.smaller.nextValue(self)
-      if self.current_value is None:
-        res = self.bigger.nextValue(self)
-        if res is not None:
-          self.trace(0, f"Inconsitent None: {res}")
-        assert(res is None)
-        self.trace(3, "None")
-        return None
-      self.trace(3, f"{self.smaller.class_name}: Init: {self.current_value}")
-      
+
+    # Make sure we have a value to amplify.
+    if self.current_value is None:
+      next_val = self.smaller.nextValue(self)
+      # If it was a marker, just pass it through
+      if isinstance(next_val, Marker):
+        # Check for consistency in bigger
+        marker = self.bigger.nextValue(self)
+        assert isinstance(marker, Marker)
+        # It should be giving us markers, offset by 1
+        assert marker.level == next_val.level + 1
+        # Use the offset marker to take into account the markers below.
+        return marker
+      else:
+        # Just a normal new value.
+        self.trace(3, f"{self.smaller.class_name}: New value: {next_val}")
+        self.current_value = next_val
+
     next = self.bigger.nextValue(self)
-    if next is None:
+    # See if we are done with current amplification
+    if isinstance(next, Marker):
+      assert next.level == 1
       self.current_value = None
-      self.trace(3, f"{self.smaller.class_name}: Done")
-    else:
-        # increment stat for buffer access to smaller
-        self.accesses += 1
+      return next
+    # increment stat for buffer access to smaller
+    self.accesses += 1
     self.trace(2, f"{self.smaller.class_name}: {next} => {self.current_value}")
     return self.current_value
-
-    @override
-    def dumpStats(self, stats_dict):
-      print("dumpStats {}".format(self.class_name))
-      stats_dict[self.class_name] = self.accesses
+    
+  def dumpStats(self, stats_dict):
+    #print("dumpStats {}".format(self.class_name))
+    stats_dict[self.class_name] = self.accesses
 
 #
 # Reduce
@@ -806,36 +850,40 @@ class Reduce (AST):
     self.bigger = bigger
     bigger.connect(self)
     self.accesses = 0
+
   def evaluate(self):
+    # If we are connected to an initial value stream, use it.
     if self.smaller is not None:
       current_value = self.smaller.nextValue(self)
-      if current_value is None:
+      if isinstance(current_value, Marker):
         next = self.bigger.nextValue(self)
-        if next is not None:
-          self.trace(0, f"Inconsitent None: {current_value} => {next}")
-        assert(next is None)
-        self.trace(3, "Init: None")
-        return None
+        if not isinstance(next, Marker):
+          self.trace(0, f"Inconsitent Marker: {current_value} => {next}")
+          assert False
+        assert current_value.level + 1 == next.level
+        self.trace(3, f"Passthrough: {current_value}")
+        return current_value
       self.trace(3, f"Init: {current_value}")
     else:
-      current_value = None
-    
-    next = 0
-    while next is not None:
+      current_value = 0
+
+    next = self.bigger.nextValue(self)
+    while not isinstance(next, Marker):
+      self.trace(2, f"{current_value} + {next} => {current_value + next}")
+      current_value += next
+      # increment a stat for smaller (thing being reduced into)
+      self.accesses += 1
       next = self.bigger.nextValue(self)
-      if next is not None:
-        if current_value is None:
-          current_value = 0
-          self.trace(3, f"Init: 0")
-        self.trace(2, f"{current_value} + {next} => {current_value + next}")
-        current_value += next
-        self.accesses += 1
-        # increment a stat for smaller (thing being reduced into)
-    self.trace(3, f"Output: {current_value}")
-    return current_value
+    if next.level == 1:
+      self.trace(3, f"Output: {current_value}")
+      return current_value
+    else:
+      assert self.smaller == None
+      self.trace(3, f"Passthrough: {next.offset(-1)}")
+      return next.offset(-1)
 
   def dumpStats(self, stats_dict):
-    print("dumpStats {}".format(self.class_name))
+    #print("dumpStats {}".format(self.class_name))
     stats_dict[self.class_name] = self.accesses
 
 
@@ -859,8 +907,8 @@ class Stream0 (AST):
   def evaluate(self):
     #assert(not self.done)
     if self.done:
-      self.trace(3, "None")
-      return None
+      self.trace(3, "Done")
+      return Marker(0)
     self.done = True
     self.trace(3, f"{self.val}")
     return self.val
@@ -882,13 +930,15 @@ class Distribute (AST):
   
   def evaluate(self):
     choice = self.distribution_choices.nextValue(self)
-    val = self.stream.nextValue(self)
-    if choice is None:
-      assert(val is None)
-      self.trace(3, "None.")
-      return [None] * self.N
-    assert(choice < self.N)
+    if isinstance(choice, Marker):
+      self.trace(3, f"{choice}")
+      marker = self.stream.nextValue(self)
+      assert isinstance(marker, Marker)
+      assert marker.level == choice.level
+      return [{choice}] * self.N
+    assert choice < self.N
     res = [NoTransmit] * self.N
+    val = self.stream.nextValue(self)
     res[choice] = val
     self.trace(3, f"{val} => {choice}")
     return res
@@ -913,11 +963,16 @@ class Collect (AST):
   
   def evaluate(self):
     choice = self.distribution_choices.nextValue(self)
-    if choice is None:
-      self.trace(3, "None")
-      return None
-    assert(choice < self.N)
+    if isinstance(choice, Marker):
+      self.trace(3, f"{choice}")
+      for stream in self.stream_array:
+        marker = stream.nextValue(self)
+        assert isinstance(marker, Marker)
+        assert marker.level == choice.level
+      return choice
+    assert choice < self.N
     val = self.stream_array[choice].nextValue(self)
+    assert not isinstance(val, Marker)
     self.trace(3, f"{choice} => {val}")
     return val
 
@@ -948,14 +1003,14 @@ class BasicIntermediateRankImplementation:
     return handle
   
   def handleToPayload(self, handle):
-    assert(handle < self.shape_of_next_rank)
+    assert handle < self.shape_of_next_rank
     return (self.pos * self.shape) + handle
   
   def payloadToFiberHandle(self, payload):
     return payload
   
   def payloadToValue(self, payload):
-    assert(False)
+    assert False
   
   def coordToHandle(self, coord):
     return coord
@@ -973,7 +1028,7 @@ class BasicIntermediateRankImplementation:
     return fiber_handle
 
   def valueToPayload(self, value):
-    assert(False)
+    assert False
 
 
   def dumpStats(self, stats_dict):
@@ -1007,7 +1062,7 @@ class BasicFiberImplementation:
     return self.vals[handle]
   
   def payloadToFiberHandle(self, payload):
-    assert(False)
+    assert False
   
   def payloadToValue(self, payload):
     return payload
@@ -1021,7 +1076,7 @@ class BasicFiberImplementation:
     return coord
   
   def updatePayload(self, handle, payload):
-    assert(handle is not None)
+    assert handle is not None
     self.vals[handle] = payload
     return handle
   
@@ -1029,7 +1084,7 @@ class BasicFiberImplementation:
     return len(self.vals)
 
   def fiberHandleToPayload(self, fiber_handle):
-    assert(False)
+    assert False
 
   def valueToPayload(self, value):
     return value
@@ -1041,24 +1096,24 @@ class BasicFiberImplementation:
 #
 # evaluate
 #
-# Run the given node (and all nodes connected to it) until it returns None
+# Run the given node (and all nodes connected to it) until it returns a Marker
 # N times in a row.
 #
 
 
 def evaluate(node, n = 1, stats_dict = {}):
-  assert(n >= 0)
+  assert n >= 0
   node.initialize()
-  consecutive_dones = -1
-  while (consecutive_dones != n):
+  consecutive_markers = -1
+  while (consecutive_markers != n):
     res = node.nextValue(None)
     print(f"+++++++++")
     print(f"Evaluate: {res}")
     print(f"+++++++++")
-    if res is None:
-      consecutive_dones += 1
+    if isinstance(res, Marker):
+      consecutive_markers += 1
     else:
-      consecutive_dones = 0
+      consecutive_markers = 0
   node.finalize(stats_dict)
 
 
@@ -1134,7 +1189,7 @@ if __name__ == "__main__":
   print("===========================")
   print(f"Final element-wise result: {my_z_K.vals}")
   print("===========================")
-  assert(my_z_K.vals == [4, 10, 18])
+  assert my_z_K.vals == [4, 10, 18]
 
 
 
@@ -1218,7 +1273,7 @@ if __name__ == "__main__":
   print("==========================")
   print(f"Final A-Stationary result: {my_z_n.vals}")
   print("==========================")
-  assert(my_z_n.vals == [32, 38, 44])
+  assert my_z_n.vals == [32, 38, 44]
   
 
 
@@ -1299,4 +1354,4 @@ if __name__ == "__main__":
   print("==========================")
   print(f"Final Z-Stationary result: {my_z_n.vals}")
   print("==========================")
-  assert(my_z_n.vals == [32, 38, 44])
+  assert my_z_n.vals == [32, 38, 44]

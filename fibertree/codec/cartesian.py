@@ -22,9 +22,9 @@ from swoop import *
 #
 
 
-a = Tensor(name="A", rank_ids=["M"])
-b = Tensor(name="B", rank_ids=["N1", "N0"])
-z = Tensor(name="Z", rank_ids=["N1", "M", "N0"])
+a = SwoopTensor(name="A", rank_ids=["M"])
+b = SwoopTensor(name="B", rank_ids=["N1", "N0"])
+z = SwoopTensor(name="Z", rank_ids=["N1", "M", "N0"])
 
 a_m = a.getStartHandle()
 b_n1 = b.getStartHandle()
