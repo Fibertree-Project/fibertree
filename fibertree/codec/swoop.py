@@ -192,8 +192,9 @@ class AST:
   def __init__(self, class_name, fiber_handles = None, num_fields = 1):
     self.class_name = class_name
     self.num_fields = num_fields
-    self.num_fanout = 0
-    self.cur_results = {} # dictionary of FIFOs, only used if num_fanout > 1
+    self.cur_results = [] # 1 dic per field, 1 dic-entry per fanout
+    for f in range(num_fields):
+      self.cur_results.append({})
     self.producers = []
     self.initialized = False
     self.finalized = False
@@ -206,10 +207,9 @@ class AST:
   def _addProducer(self, other):
     self.producers.append(other)
   
-  def connect(self, other):
+  def connect(self, other, field=0):
     other._addProducer(self)
-    self.cur_results[other] = []
-    self.num_fanout += 1
+    self.cur_results[field][other] = []
 
   def initialize(self):
     self.initialized = True
@@ -251,9 +251,9 @@ class AST:
         self.current_fiber = next_fh
         return None
   
-  def nextValue(self, other):
+  def nextValue(self, other, field=0):
     if other is not None:
-      res_q = self.cur_results[other]
+      res_q = self.cur_results[field][other]
       # If we have queue'd up a value because of fanout, just use it.
       if len(res_q) > 0:
         self.trace(4, f"Fanout: {other} => {res_q[0]}")
@@ -263,11 +263,18 @@ class AST:
     # Call evaluate, but only once and fan out the result to later callers.
     self.trace(4, f"Eval {other}")
     res = self.evaluate()
-    for (caller, q) in self.cur_results.items():
-      if caller != other:
-          q.append(res)
+    for n in range(self.num_fields):
+      for (caller, q) in self.cur_results[n].items():
+        if caller != other or n != field:
+          if self.num_fields == 1:
+            q.append(res)
+          else:
+            q.append(res[n])
     self.trace(4, f"Eval: {other} => {res}")
-    return res
+    if self.num_fields == 1:
+      return res
+    else:
+      return res[field]
 
   def trace(self, level, args):
     if (level > self.trace_level):
@@ -590,7 +597,7 @@ class InsertElements (AST):
     marker = self.setupCurrentFiber()
     # If it's a marker, pass it through
     if marker is not None:
-      return marker
+      return (marker, marker.offset(-1))
    
     coord = self.coords.nextValue(self)
     if isinstance(coord, Marker):
@@ -709,21 +716,15 @@ class Splitter (AST):
   def __init__(self, stream, num):
     super().__init__("Splitter(" + stream.class_name + ")[" + str(num) + "]")
     self.stream = stream
-    stream.connect(self)
+    stream.connect(self, num)
     self.num = num
 
   def evaluate(self):
-    my_field = NoTransmit
-    while my_field is NoTransmit:
-      res = NoTransmit
-      while res is NoTransmit:
-        res = self.stream.nextValue(self)
-      if isinstance(res, Marker):
-        my_field = res[self.num]
-      else:
-        my_field = res[self.num]
-    self.trace(3, f"{self.num} => {my_field}")
-    return my_field
+    res = NoTransmit
+    while res is NoTransmit:
+      res = self.stream.nextValue(self, self.num)
+    self.trace(3, f"{self.num} => {res}")
+    return res
 
 #
 # Compute
