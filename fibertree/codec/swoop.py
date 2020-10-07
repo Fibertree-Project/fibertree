@@ -753,6 +753,7 @@ class Compute (AST):
     any_is_marker = False
     all_are_markers = True
     marker_level = None
+    self.trace(1, f"{args}")
     for arg in args:
       assert arg is not NoTransmit
       is_marker = isinstance(arg, Marker)
@@ -763,17 +764,15 @@ class Compute (AST):
       all_are_markers &= is_marker
 
     if (any_is_marker and not all_are_markers):
-      for arg in args:
-        self.trace(0, f"Inconsistent Marker: {arg}")
+      self.trace(0, f"Inconsistent Markers: {args}")
     assert not any_is_marker or all_are_markers
     
     if all_are_markers:
       self.trace(3, f"{args[0]}")
       return args[0]
-      
-    self.trace(3, f"({args})")
+
     result = self.function(*args)
-    self.trace(1, f"({args}) => {result}")
+    self.trace(1, f"{args} => {result}")
     return result
 
 #
@@ -821,6 +820,7 @@ class Amplify (AST):
     if isinstance(next, Marker):
       assert next.level == 1
       self.current_value = None
+      self.trace(2, f"{self.smaller.class_name}: Done.")
       return next
     # increment stat for buffer access to smaller
     self.accesses += 1
@@ -921,8 +921,11 @@ class Stream0 (AST):
 #
 
 class Distribute (AST):
-  def __init__(self, N, distribution_choices, stream):
-    super().__init__("Distribute", num_fields=N)
+  def __init__(self, N, distribution_choices, stream, instance_name=None):
+    name = "Distribute"
+    if instance_name is not None:
+      name += "_" + instance_name
+    super().__init__(name, num_fields=N)
     self.N = N
     self.distribution_choices = distribution_choices
     distribution_choices.connect(self)
@@ -936,7 +939,7 @@ class Distribute (AST):
       marker = self.stream.nextValue(self)
       assert isinstance(marker, Marker)
       assert marker.level == choice.level
-      return [{choice}] * self.N
+      return [choice] * self.N
     assert choice < self.N
     res = [NoTransmit] * self.N
     val = self.stream.nextValue(self)

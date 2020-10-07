@@ -79,7 +79,6 @@ partial_productss = Collect(NUM_PES, k0_distribution_choicess, resultss)
 
 partial_sums = Reduce(partial_productss)
 z_root_new_value = Reduce(partial_sums)
-#z_root_new_payload = ValuesToPayloads(z_root, z_root_new_value)
 z_root_handle = Stream0(0) # XXX Improve this
 z_root_ack = UpdatePayloads(z_root, z_root_handle, z_root_new_value)
 
