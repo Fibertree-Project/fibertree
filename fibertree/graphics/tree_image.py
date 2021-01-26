@@ -302,6 +302,12 @@ class TreeImage():
                                level+1,
                                targets.pop(0),
                                len(color_coord_or_subtensor) > 0)
+            else:
+                #
+                # Nothing to connect a line to so pop target
+                #
+                targets.pop(0)
+
 
             if not Payload.contains(p, Fiber):
                 #
