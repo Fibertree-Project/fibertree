@@ -13,6 +13,77 @@ class CoordPayload():
         yield self.coord
         yield self.payload
 
+    #
+    # Position based methods
+    #
+    def __getitem__(self, keys):
+        """__getitem__
+
+        Do a __getitem__() on the payload of "self".  Generally this
+        will only be meaningful if the payload is a fiber. So see
+        Fiber.__setitem__() for more information.
+
+        Parameters
+        ----------
+        keys: single integer/slicr or tuple of integers/slices
+        The positions or slices in an n-D fiber
+
+        Returns
+        -------
+        tuple or Fiber
+        A tuple of a coordinate and payload or a Fiber of the slice
+
+        Raises
+        ------
+
+        IndexError
+        Index out of range
+
+        TypeError
+        Invalid key type
+
+        """
+        return self.payload.__getitem__(keys)
+
+
+    def __setitem__(self, key, newvalue):
+        """__setitem__
+
+        Do a __setitem__() on the payload of "self".  Generally this
+        will only be meaningful if the payload is a fiber. So see
+        Fiber.__setitem__() for more information.
+
+        Parameters
+        ----------
+        key: single integer
+        The position in the fiber to be set
+
+        newvalue: a CoordPayload or a payload value
+        The coordinate/payload or just payload to assign
+
+        Returns
+        -------
+        Nothing
+
+        Raises
+        ------
+
+        IndexError
+        Index out of range
+
+        TypeError
+        Invalid key type
+
+        CoordinateError
+        Invalid coordinate
+
+        """
+
+        self.payload.__setitem__(key, newvalue)
+
+        #
+    # Arithmetic operations
+    #
     def __add__(self, other):
         """__add__"""
 
