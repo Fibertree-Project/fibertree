@@ -123,9 +123,15 @@ class TreeImage():
             #
             # Draw a 0-D tensor, i.e., a value
             #
+            hlm = self.highlight_manager
+            hl = hlm.getColorCoord(0)
+
             self.draw_coord(0, 0, "R")
             self.draw_line(0, 1/2, 1, 1/2)
-            self.draw_value(1, 0, Payload.get(root))
+            self.draw_value(1,
+                            0,
+                            Payload.get(root),
+                            hl)
             region_end = 1
         else:
             #

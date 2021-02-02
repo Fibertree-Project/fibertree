@@ -109,7 +109,7 @@ class HighlightManager():
         # tell the parent which of this child's workers were
         # highlighted
         #
-        if self.level == 0:
+        if self.level <= 0:
             self.highlight_coords = self.active_coords
 
             for worker, coords in self.highlight_coords.items():
