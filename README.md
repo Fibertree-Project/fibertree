@@ -9,11 +9,19 @@ rendered in a simplified version of this system see sections 8.2 and
 Install
 =======
 
-To install an editable copy in your home directory run:
+To install an editable copy in your home directory run the following
+in the root directory of a clone of this repository:
 
 ```console
-  % pip3 install --user -e .
+  % python3 -m pip install --user -e .
+
 ```
+To install from the remote git repository, run the following:
+
+```console
+  % python3 -m pip install git+https://github.com/Fibertree-Project/fibertree
+```
+
 
 Explore Jupyter Notebooks
 =========================

@@ -10,7 +10,7 @@ with open("requirements.txt", "r") as fh:
 
 setup(name='fiber-tree',
       version='0.1',
-      description='Fiber-tree style tensor simulator',
+      description='Fibertree style tensor simulator',
       long_description=readme(),
       classifiers=[
         'Development Status :: 3 - Alpha',
@@ -23,7 +23,11 @@ setup(name='fiber-tree',
       author='Joel S. Emer',
       author_email='jsemer@mit.edu',
       license='MIT',
-      packages=['fibertree'],
+      packages=['fibertree',
+                'fibertree.core',
+                'fibertree.graphics',
+                'fibertree.codec',
+                'fibertree.codec.formats'],
       install_requires=[req for req in requirements if req[:2] != "# "],
       include_package_data=True,
       zip_safe=False)
