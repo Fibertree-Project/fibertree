@@ -403,7 +403,7 @@ class TreeImage():
         x2 = x1 + 40
         y2 = y1 + 40
 
-        color = "goldenrod" if len(highlight) > 0 else "black"
+        color = "goldenrod" if len(highlight) > 0 else "saddlebrown"
 
         x_text = x1+15
 
@@ -415,7 +415,11 @@ class TreeImage():
             if int(coord) >= 1000:
                 x_text = x_text - 7
 
-        self.draw.ellipse(((x1,y1), (x2,y2)), color, 1)
+        if coord != "R":
+            self.draw.ellipse(((x1,y1), (x2,y2)), color, 1)
+        else:
+            self._draw_diamond(x1, y1, x2, y2, "black")
+
         #
         # Hack: drawing text twice looks better in PIL
         #
@@ -483,6 +487,13 @@ class TreeImage():
                                str(v),
                                font=self.fnt,
                                fill="white")
+
+
+    def _draw_diamond(self, x1, y1, x2, y2, fill_color):
+        mid_x = x1+(x2-x1)/2
+        mid_y = y1+(y2-y1)/2
+
+        self.draw.polygon([(mid_x, y1), (x1, mid_y), (mid_x, y2), (x2, mid_y)], fill_color, 1)
 
 
     def draw_line(self, level1, offset1, level2, offset2, highlight=False):
