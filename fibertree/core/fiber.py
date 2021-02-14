@@ -200,7 +200,13 @@ class Fiber:
         if len(coords) == 0:
             return None
 
-        return Fiber(coords, payloads, max_coord=len(coords) - 1)
+        #
+        # Create fiber
+        #
+        # Note: max_coord dervived from input argument list and
+        #       assuming coordinates start at 0
+        #
+        return Fiber(coords, payloads, max_coord=len(payload_list) - 1)
 
 
     @classmethod
@@ -1370,7 +1376,7 @@ class Fiber:
             # Backup for cases where there is no  owner
             # or owner didn't know shape
 
-            shape = self.estimateShape()
+            shape = self.estimateShape(all_ranks=all_ranks)
 
             if not all_ranks:
                 shape = shape[0:1]
@@ -1378,17 +1384,17 @@ class Fiber:
         return shape
 
 
-    def estimateShape(self):
+    def estimateShape(self, all_ranks=True):
         """estimateShape
 
         Traverse a fiber tree to estimate its shape
 
         """
 
-        return self._calcShape()
+        return self._calcShape(all_ranks=all_ranks)
 
 
-    def _calcShape(self, shape=None, level=0):
+    def _calcShape(self, shape=None, level=0, all_ranks=True):
         """ _calcShape()
 
         Find the maximum coordinate at each level of the tree
@@ -1426,11 +1432,12 @@ class Fiber:
             max_coord = self.maxCoord()
 
         #
-        # If fiber is not empty, but max_coord isn't meaningful,
-        # assume fiber is dense and return count of elements
+        # The fiber is not empty, but max_coord isn't meaningful,
+        # so assume fiber is dense and coodinates start at zero,
+        # and return count of elements minus one.
         #
         if max_coord is None:
-            max_coord = len(self.coords)
+            max_coord = len(self.coords)-1
 
         #
         # Update shape for this Fiber at this level
@@ -1440,9 +1447,9 @@ class Fiber:
         #
         # Recursively process payloads that are Fibers
         #
-        if Payload.contains(self.payloads[0], Fiber):
+        if all_ranks and Payload.contains(self.payloads[0], Fiber):
             for p in self.payloads:
-                Payload.get(p)._calcShape(shape, level + 1)
+                shape = Payload.get(p)._calcShape(shape, level + 1)
 
         return shape
 

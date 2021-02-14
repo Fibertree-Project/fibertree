@@ -1,5 +1,6 @@
 import copy
 import yaml
+from copy import deepcopy
 
 from .rank    import Rank
 from .fiber   import Fiber
@@ -246,11 +247,15 @@ class Tensor:
 
             rank_ids = [f"R{maxrank-i}" for i in range(maxrank + 1)]
 
-        tensor = cls(rank_ids=rank_ids, shape=shape)
+        #
+        # Create empty Tensor, which gets populated with a fiber below
+        #
+        tensor = cls(rank_ids=rank_ids,
+                     shape=shape,
+                     name=name,
+                     color=color)
 
         tensor.setRoot(fiber)
-        tensor.setName(name)
-        tensor.setColor("red")
         tensor.setMutable(False)
 
         return tensor
@@ -357,12 +362,24 @@ class Tensor:
     def setRoot(self, root):
         """(Re-)populate self.ranks with "root"""
 
+        #
         # Note: rank 0 tensors are not allowed in this path
+        #
         assert isinstance(root, Fiber)
+
+        #
+        # Copy fiber if it already belongs to another tensor
+        #
+        # Note: shapes and owners will be overwritten in _addFiber()
+        #
+        if root.getOwner() is not None:
+            root = deepcopy(root)
 
         self._root = root
 
+        #
         # Clear out existing rank information
+        #
         for r in self.ranks:
             r.clearFibers()
 

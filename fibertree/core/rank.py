@@ -5,10 +5,38 @@ from .payload import Payload
 
 
 class Rank:
-    """ Rank class """
+    """Rank class
+
+    Class representing a "rank" of a tensor. It holds all the fibers
+    at a rank, information about them and a pointer to the next rank.
+    """
 
     def __init__(self, id, shape=None, next_rank=None):
-        """__init__"""
+        """
+        Create a new rank.
+
+         Parameters
+        -----------
+
+        id: String
+        The name of the rank
+
+        shape: Number
+        The shape of the fibers in the rank
+
+        next_rank: Rank
+        The next rank in the tensor
+
+        Attributes
+        ----------
+
+        estimated_shape: Boolean
+        Is the shape estimated or given
+
+        fibers: List
+        A list of the fibers in the rank
+
+        """
 
         self.id = id
 
@@ -131,7 +159,10 @@ class Rank:
 # Fundamental methods
 #
     def append(self, fiber):
-        """append"""
+        """
+        Append the provided fiber into a rank
+
+        """
 
         #
         # Get the raw fiber (if it was wrapped in a payload)
