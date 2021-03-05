@@ -3,6 +3,7 @@ import cv2
 import copy
 
 from PIL import Image, ImageDraw, ImageFont
+from tqdm.notebook import tqdm
 
 from fibertree import Tensor
 from fibertree import TensorImage
@@ -13,7 +14,7 @@ from fibertree import Payload
 class MovieCanvas():
     """MovieCanvas"""
 
-    def __init__(self, *tensors, style='tree'):
+    def __init__(self, *tensors, style='tree', progress=True):
         """__init__
 
         Parameters
@@ -21,14 +22,22 @@ class MovieCanvas():
         tensors: list
         A list of tensors or fibers objects to track
 
-        style: string
+        style: string (default: 'tree')
         Display style ('tree', 'uncompressed', 'tree+uncompressed')
+
+        progress: Boolean (default: True)
+        Enable tqdm style progress bar on movie creation
 
         """
         #
         # Set image type
         #
         self.style = style
+
+        #
+        # Set tqdm control
+        #
+        self.use_tqdm = progress
 
         #
         # Set up tensor class variables
@@ -109,9 +118,10 @@ class MovieCanvas():
         fourcc = cv2.VideoWriter_fourcc(*"vp09")
         out = cv2.VideoWriter(filename, fourcc, 1, (final_width, final_height))
 
-        for image in final_images:
+        for image in self._tqdm(final_images):
             for duplication_cnt in range(1):
                 out.write(cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR))
+
         out.release()
 
 #
@@ -191,6 +201,45 @@ class MovieCanvas():
         final_height = final_height + 75
 
         return (final_width, final_height, flattened_height)
+
+#
+# Tqdm-related methods
+#
+# TBD: Move to some more central location
+#
+
+    def _tqdm(self, iterable):
+        """
+        _tqdm
+
+        Conditional tqdm based on wheter we are in a notebook
+
+        """
+
+        if self.use_tqdm and MovieCanvas._in_ipynb():
+            return tqdm(iterable)
+        else:
+            return iterable
+
+
+    @staticmethod
+    def _in_ipynb():
+        """
+        _in_ipynb
+
+        Are we in an IPython notebook?
+
+        """
+
+        try:
+            shell = get_ipython().__class__.__name__
+            if shell == 'ZMQInteractiveShell':
+                return True
+            else:
+                return False
+        except NameError:
+            return False
+
 
 
 if __name__ == "__main__":
