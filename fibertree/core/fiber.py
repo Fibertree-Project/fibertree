@@ -1810,6 +1810,104 @@ class Fiber:
         return self
 
 #
+# Aggretated intersection/union methods
+#
+
+    @staticmethod
+    def intersection(*args):
+
+        nested_result = args[0] & args[1]
+
+        for arg in args[2:]:
+            nested_result = nested_result & arg
+
+        c_result = []
+        p_result = []
+
+        for c_nested, p_nested in nested_result:
+            #
+            # Add coordinate
+            #
+            c_result.append(c_nested)
+
+            #
+            # Get out payload value
+            #
+            p_nested = Payload.get(p_nested)
+
+            #
+            # Create flattened payload
+            #
+            p = ()
+            while isinstance(p_nested, tuple):
+                p = (p_nested[1],) + p
+                p_nested = p_nested[0]
+                p_nested = Payload.get(p_nested)
+
+
+            p = (Payload.maybe_box(p_nested),) + p
+
+            p_result.append(Payload(p))
+
+        result = Fiber(coords=c_result, payloads=p_result)
+        result._setDefault(tuple([arg.getDefault() for arg in args]))
+
+        return result
+
+    @staticmethod
+    def union(*args):
+
+        nested_result = args[0] | args[1]
+
+        for arg in args[2:]:
+            nested_result = nested_result | arg
+
+        c_result = []
+        p_result = []
+
+        for c_nested, p_nested in nested_result:
+            #
+            # Add coordinate
+            #
+            c_result.append(c_nested)
+
+            #
+            # Get out payload value
+            #
+            p_nested = p_nested.value
+
+            #
+            # Create flattened payload
+            #
+            p = ()
+            mask=""
+            mask_num = ord("A")+len(args)
+
+            while isinstance(p_nested, tuple):
+                mask_num -= 1
+                ab_mask = p_nested[0]
+
+                if "B" in ab_mask:
+                    mask = chr(mask_num) + mask
+
+                p = (p_nested[2],) + p
+                p_nested = Payload.get(p_nested[1])
+
+            if "A" in ab_mask:
+                mask = "A" + mask
+
+            p = (mask, Payload.maybe_box(p_nested),) + p
+
+            p_result.append(Payload(p))
+
+        result = Fiber(coords=c_result, payloads=p_result)
+        result._setDefault(tuple([""]+[arg.getDefault() for arg in args]))
+
+        return result
+
+
+
+#
 # Merge methods
 #
     def __and__(self, other):
