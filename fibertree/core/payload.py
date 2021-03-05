@@ -71,10 +71,20 @@ class Payload:
 #
 # Transition methods
 #
-# Note: the following two methods are used as part of the transition from
-#       Fibers holding a raw Fiber as a payload to that Fiber being embedded
-#       in in a Payload object
+# Note: The following methods are used as part of a future transition
+#       from Fibers holding a raw Fiber as a payload to that Fiber
+#       being embedded in in a Payload object.
 #
+    @staticmethod
+    def maybe_box(value):
+        """_maybe_box"""
+
+        if isinstance(value, (bool, float, int, str, tuple, frozenset)):
+            return Payload(value)
+
+        return value
+
+
     @staticmethod
     def contains(payload, type):
         """Return whether "payload" is of type "type"

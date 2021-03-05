@@ -125,7 +125,7 @@ class Rank:
         """
 
         self._default_is_set = True
-        self._default = value
+        self._default = Payload.maybe_box(value)
 
         return self
 

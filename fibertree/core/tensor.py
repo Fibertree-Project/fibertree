@@ -405,7 +405,11 @@ class Tensor:
 
         root = self._root
 
+        #
         # Either we have a 0-D tensor or the root is a Fiber
+        #
+        # TBD: This is broken if Fibers are wrapped in a Payload
+        #
         assert (isinstance(root, Payload) or
                 root == self.ranks[0].getFibers()[0])
 

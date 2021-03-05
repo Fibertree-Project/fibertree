@@ -94,7 +94,7 @@ class Fiber:
         #    so zeros will be preserved
         #
         self.coords = coords
-        self.payloads = [self._maybe_box(p) for p in payloads]
+        self.payloads = [Payload.maybe_box(p) for p in payloads]
 
         #
         # Set a specific constant value to the maximum legal coordinate
@@ -111,7 +111,7 @@ class Fiber:
         #
         # Create default value
         #
-        self._default = 0
+        self._default = Payload(0)
 
         #
         # Initialize "saved position"
@@ -373,7 +373,7 @@ class Fiber:
 
 
         if len(coords) > 1:
-            assert isinstance(payload, Fiber), \
+            assert Payload.contains(payload, Fiber), \
                 "getPayload too many coordinates"
 
             # Recurse to the next level's fiber
@@ -433,7 +433,7 @@ class Fiber:
 
         if len(coords) > 1:
             # Recurse to the next level's fiber
-            assert isinstance(payload, Fiber), "Too many coordinates"
+            assert Payload.contains(payload, Fiber), "Too many coordinates"
 
             return payload.getPayloadRef(*coords[1:])
 
@@ -455,7 +455,7 @@ class Fiber:
 
         value = self._createDefault()
 
-        payload = self._maybe_box(value)
+        payload = Payload.maybe_box(value)
 
         try:
             index = next(x for x, val in enumerate(self.coords) if val > coord)
@@ -788,7 +788,7 @@ class Fiber:
         if value is None:
             value = self._createDefault()
 
-        payload = self._maybe_box(value)
+        payload = Payload.maybe_box(value)
 
         index = 0
         try:
@@ -809,7 +809,7 @@ class Fiber:
 
         Fiber._deprecated("Fiber.insert() is deprecated use getPayloadRef()")
 
-        payload = self._maybe_box(value)
+        payload = Payload.maybe_box(value)
 
         try:
             index = next(x for x, val in enumerate(self.coords) if val > coord)
@@ -843,6 +843,12 @@ class Fiber:
         """setDefault"""
 
         Fiber._deprecated("Fiber.setDefault() default values should be set by the owning rank")
+
+        self._setDefault(default)
+
+
+    def _setDefault(self, default):
+        """_setDefault - internal use version"""
 
         self._default = default
 
@@ -878,15 +884,13 @@ class Fiber:
         #
         # For unowned fibers, try to guess a default value
         #
-        if len(self.payloads) > 0 and isinstance(self.payloads[0], Fiber):
+        if len(self.payloads) > 0 and Payload.contains(self.payloads[0], Fiber):
             return Fiber
 
         if self._default != 0:
-            Fiber._deprecated("Fiber.getDefault() used a fiber-level default values")
-
             return self._default
 
-        return 0
+        return Payload(0)
 
 
 
@@ -904,7 +908,7 @@ class Fiber:
             # TBD: This is a messy interaction with rank
             #      See Rank.append()
             #
-            if isinstance(value, Fiber):
+            if Payload.contains(value, Fiber):
                 owner = self.getOwner()
                 if owner:
                     value.setOwner(owner.next_rank)
@@ -1152,7 +1156,7 @@ class Fiber:
         # A payload of None just updates the coordinate
         #
         if payload is not None:
-            self.payloads[position] = self._maybe_box(payload)
+            self.payloads[position] = Payload.maybe_box(payload)
 
 
     def __len__(self):
@@ -1233,7 +1237,7 @@ class Fiber:
         assert self.maxCoord() is None or self.maxCoord() < coord, \
             "Fiber coordinates must be monotonically increasing"
 
-        payload = self._maybe_box(value)
+        payload = Payload.maybe_box(value)
 
         self.coords.append(coord)
         self.payloads.append(payload)
@@ -1242,7 +1246,7 @@ class Fiber:
     def extend(self, other):
         """extend - Extend a fiber with another fiber"""
 
-        assert isinstance(other, Fiber), \
+        assert Payload.contains(other, Fiber), \
             "Fibers can only be extended with another fiber"
 
         if other.isEmpty():
@@ -1540,7 +1544,7 @@ class Fiber:
 
         """
 
-        assert isinstance(other, Fiber)
+        assert Payload.contains(other, Fiber)
 
         if len(self.coords) != 0:
             #
@@ -1603,7 +1607,7 @@ class Fiber:
         class _SplitterNonUniform():
 
             def __init__(self, splits):
-                if isinstance(splits, Fiber):
+                if Payload.contains(splits, Fiber):
                     self.splits = splits.coords.copy()
                 else:
                     self.splits = splits.copy()
@@ -1788,9 +1792,12 @@ class Fiber:
     def __add__(self, other):
         """__add__"""
 
-        assert isinstance(other, Fiber), \
+        assert Payload.contains(other, Fiber), \
             "Fiber addition must involve two fibers"
 
+        #
+        # TBD: Set default for Fiber
+        #
         return Fiber(coords=self.coords + other.coords,
                      payloads=self.payloads + other.payloads)
 
@@ -1853,6 +1860,9 @@ class Fiber:
 
             return CoordPayload(coord, payload)
 
+        a_fiber = self
+        b_fiber = other
+
         a = self.__iter__()
         b = other.__iter__()
 
@@ -1879,7 +1889,10 @@ class Fiber:
                 b_coord, b_payload = get_next_nonempty(b)
                 continue
 
-        return Fiber(z_coords, z_payloads)
+        result = Fiber(z_coords, z_payloads)
+        result._setDefault((a_fiber.getDefault(), b_fiber.getDefault()))
+
+        return result
 
 
     def __or__(self, other):
@@ -1986,7 +1999,10 @@ class Fiber:
 
             b_coord, b_payload = get_next_nonempty(b)
 
-        return Fiber(z_coords, z_payloads)
+        result = Fiber(z_coords, z_payloads)
+        result._setDefault(("", a_fiber.getDefault(), b_fiber.getDefault()))
+
+        return result
 
 
     def __xor__(self, other):
@@ -2088,7 +2104,10 @@ class Fiber:
 
             b_coord, b_payload = get_next_nonempty(b)
 
-        return Fiber(z_coords, z_payloads)
+        result = Fiber(z_coords, z_payloads)
+        result._setDefault(("", a_fiber.getDefault(), b_fiber.getDefault()))
+
+        return result
 
 
 
@@ -2143,6 +2162,8 @@ class Fiber:
 
             return CoordPayload(coord, payload)
 
+        a_fiber = self
+        b_fiber = other
 
         # "a" is self!
         b = other.__iter__()
@@ -2164,12 +2185,15 @@ class Fiber:
             z_payloads.append((a_payload, b_payload))
             b_coord, b_payload = get_next_nonempty(b)
 
-        return Fiber(z_coords, z_payloads)
+        result = Fiber(z_coords, z_payloads)
+        result._setDefault((a_fiber.getDefault(), b_fiber.getDefault()))
+
+        return result
 
     def __sub__(self, other):
         """__sub__
 
-        Return the "diffence" of "other" from "self" by considering
+        Return the "difference" of "other" from "self" by considering
         all possible coordinates and returning a fiber consisting of
         payloads containing a tuple of the payloads of the inputs for
         coordinates where the following truth table returns True:
@@ -2213,6 +2237,9 @@ class Fiber:
 
             return CoordPayload(coord, payload)
 
+        a_fiber = self
+        b_fiber = other
+
         a = self.__iter__()
         b = other.__iter__()
 
@@ -2245,7 +2272,10 @@ class Fiber:
 
             a_coord, a_payload = get_next(a)
 
-        return Fiber(z_coords, z_payloads)
+        result = Fiber(z_coords, z_payloads)
+        result._setDefault(a_fiber.getDefault())
+
+        return result
 
 
 #
@@ -2286,6 +2316,9 @@ class Fiber:
         #
         swapped = flattened_sorted.unflattenRanks()
 
+        #
+        # TBD: set default
+        #
         return swapped
 
 
@@ -2298,7 +2331,7 @@ class Fiber:
         if levels == 1:
             cur_payloads = self.payloads
         else:
-            assert (isinstance(self.payloads[0], Fiber)), \
+            assert Payload.contains(self.payloads[0], Fiber), \
                 "Insuffient levels to flatten"
 
             cur_payloads = []
@@ -2347,7 +2380,7 @@ class Fiber:
                 p1_fiber = None
 
                 for n, p1_p in enumerate(p1):
-                    if isinstance(p1_p, Fiber):
+                    if Payload.contains(p1_p, Fiber):
                         p1_fiber = p1_p
 
                         if len(p1) == 2:
@@ -2376,7 +2409,9 @@ class Fiber:
                 # I don't know how to handle this payload
                 #
                 raise PayloadError
-
+        #
+        # TBD: set default
+        #
         return Fiber(coords, payloads)
 
     @staticmethod
@@ -2498,6 +2533,9 @@ class Fiber:
 
         #
         # Create (and return) the new top (c1) rank
+        #
+        #
+        # TBD: set default
         #
         return Fiber(coords1, payloads1)
 
@@ -2663,7 +2701,7 @@ class Fiber:
         next_indent = 0
         items = len(self.coords)
 
-        if self.payloads and isinstance(self.payloads[0], Fiber):
+        if self.payloads and Payload.contains(self.payloads[0], Fiber):
 
             for (c, p) in zip(self.coords[0:cutoff], self.payloads[0:cutoff]):
                 if coord_indent == 0:
@@ -2823,15 +2861,6 @@ class Fiber:
 #
 # Utility functions
 #
-
-    def _maybe_box(self, value):
-        """_maybe_box"""
-
-        if isinstance(value, (bool, float, int, str, tuple, frozenset)):
-            return Payload(value)
-
-        return value
-
 
     @staticmethod
     def _deprecated(message):
