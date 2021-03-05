@@ -439,17 +439,25 @@ class TreeImage():
         if not isinstance(value, tuple):
             value = ( value, )
 
+        value = self._flatten_value(value)
+
         font_y = 30
 
+        #
+        # Calculate location of rectangle around value
+        #
         x1 = self.offset2x(offset) + 20
         y1 = self.level2y(level) - 10
 
         x2 = x1 + 40
-        y2 = y1 + len(value)*(font_y+10)
+        y2 = y1 + 10 + len(value)*(font_y)
 
         if y2 > self.max_y:
             self.max_y = y2
 
+        #
+        # Draw rectangle (with or without highlights)
+        #
         if len(highlight) == 0:
             fill_color = self._color
             self.draw.rectangle(((x1, y1), (x2, y2)), fill_color, 1)
@@ -462,10 +470,16 @@ class TreeImage():
                 self.draw.rectangle(((x1, y1c), (x2, y2c)), fill_color, 1)
                 y1c = y2c
 
+        #
+        # Draw vertical stack of values from tuple
+        #
         for i, v in enumerate(value):
             if isinstance(v, Payload):
                 v = v.value
 
+            #
+            # Calculate location of text
+            #
             x_text = x1+15
             y_text = y1+10+(i*font_y)
 
@@ -487,6 +501,28 @@ class TreeImage():
                                str(v),
                                font=self.fnt,
                                fill="white")
+
+
+    def _flatten_value(self, value, first=True):
+
+        if isinstance(value, Payload):
+            value = value.value
+
+        if isinstance(value, tuple):
+            result = []
+
+            if not first:
+                result.append("(")
+
+            for i in value:
+                result.extend(self._flatten_value(i, first=False))
+
+            if not first:
+                result.append(")")
+        else:
+            result = [ value ]
+
+        return result
 
 
     def _draw_diamond(self, x1, y1, x2, y2, fill_color):
