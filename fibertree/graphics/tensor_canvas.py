@@ -21,16 +21,23 @@ class TensorCanvas():
 
     It manges the shadows of the tracked tensors in an addActivity()
     method. That method is used to support incremental addition of
-    highlights on a per worker basis and handles "skew". In specific,
+    highlights at a specfic time and at a particular worker, which is
+    is specified by the "spacetime" keyword. In more detail,
     addActivity() uses the shadows of the tracked tensors, logs
     highlights and logs changes to mutable tensors. Then when a frame
-    ends, collects the appropriate highlights and replays the changes
-    into the appropriate shadow tensor and passes the highlights to
-    the addFrame() method in a {Movie,SpaceTime}Canvas, which displays
-    those highlignts on the current state of the shadow tensors.
+    is to be displayed it collects the appropriate highlights and
+    replays the changes into the appropriate shadow tensor and passes
+    highlights to the addFrame() method in a {Movie,SpaceTime}Canvas,
+    which displays those highlights on the current state of the shadow
+    tensors.
+
+    The addFrame() method can be called exclictly to output the
+    information from the oldest frame, but it is best to just wait
+    until the information for all frames has been recorded, and all
+    frames will be output..
 
     This class also provides primitive support for having an activity
-    "wait" for a corrdinate in another tensor to be updated. To do
+    "wait" for a coordinate in another tensor to be updated. To do
     this it tracks the update time of each coordinate that changes
     a value. This capability is enabled with the "enable_wait" keyword.
 
@@ -42,7 +49,7 @@ class TensorCanvas():
         Parameters
         ----------
         tensors: list
-        A list of tensors or fibers objects to track
+        A list of tensors or fiber objects to track
 
         animation: string
         Type of animation ('none', 'movie', 'spacetime')
@@ -54,7 +61,6 @@ class TensorCanvas():
         Enable tracking update times to allow waiting for an update
 
         """
-
         #
         # Places to collect information about the frames
         #
@@ -63,6 +69,8 @@ class TensorCanvas():
         self.num_tensors = num_tensors
         self.orig_tensors = []
         self.shadow_tensors = []
+
+        self.using_spacetimestamp = None
 
         self.update_times = [] if enable_wait else None
         self.waitname_map = {}
@@ -93,7 +101,15 @@ class TensorCanvas():
             if enable_wait:
                 self.update_times.append(Tensor(rank_ids=t.getRankIds()))
 
+        #
+        # Create a list to hold a record of activity at each timestamp
+        #
         self.log = []
+
+        #
+        # Flag to help addFrame() know if it is adding activity
+        # to an existing frame
+        #
         self.inframe = False
 
         #
@@ -109,27 +125,91 @@ class TensorCanvas():
         #
         # Create desired canvas
         #
+        # Note: We create the canvas with the shadow tensors, so that
+        # the visualized activity happens in the desired order
+        #
         if animation == 'movie':
             self.canvas = MovieCanvas(*self.shadow_tensors, style=style)
         elif animation == 'spacetime':
             self.canvas = SpacetimeCanvas(*self.shadow_tensors)
+        elif animation == 'none':
+            self.canvas = NoneCanvas()
         else:
             print(f"TensorCanvas: No animation type: {animation}")
 
 
-    def addActivity(self, *highlights, worker="anon", skew=0, wait=None, end_frame=False):
-        """ addActivity """
+    def addActivity(self, *highlights, spacetime=None, worker="anon", skew=0, wait=None, end_frame=False):
+        """ addActivity
+
+        Add an activity to be displayed in an animation.
+
+        Parameters
+        ----------
+        highlights: list
+        A list of highlight specifications for each tensor being animated
+        See highlights.py for formats for highlights.
+
+        spacetime: tuple
+        A tuple containing the "worker" performing the activity and a "timestamp"
+        specifying the time the activity occurs. Timestamps are tuples of integers
+
+        worker: string
+        Name of the worker performing the action (mutually exclusive with spacetimestamp)
+
+        skew: integer
+        Time the activity occurs relative to current time (mutually exclusive with spacetimestamp)
+
+        wait: list of tensors
+        Specify a list of tensors that must be updated before this activiy can occur. After
+        the dependency is satisfied add the skew.
+
+        end_frame: Boolean
+        If true call addFrame() after adding activity. Deprecated.
+
+        """
+        #
+        # Rename spacetime to spacetimestamp to avoid confusion
+        # with the spacetime style
+        #
+        spacetimestamp = spacetime
+
         #
         # Set that we are in a frame
         #
         self.inframe = True
 
+        if spacetimestamp is not None:
+            #
+            # Spacetimestamp mode
+            #
+            assert self.using_spacetimestamp in [None, True], "One cannot mix spacetimestamp and skew"
+
+            self.using_spacetimestamp = True
+
+            worker = spacetimestamp[0]
+            timestamp = spacetimestamp[1]
+        else:
+            #
+            # Skew mode - user must invoke AddFrame()
+            #
+            assert self.using_spacetimestamp in [None, False], "One cannot mix spacetimestamp and skew"
+
+            self.using_spacetimestamp = False
+
+            #
+            # Convert skew into a global time
+            #
+            timestamp = self.cycle + skew
+
         #
         # Canonicalize highlights
         #
-        # Note: The highlights parameter is a list of points or list
+        # Note 1: The highlights parameter is a list of points or list
         # of lists of points one for each tracked tensor They will be
-        # turned into an actual highlight data strcture here
+        # turned into an actual highlight data strcture here.
+        #
+        # Note 2: The highlight specification must not contain a worker,
+        # because that will override the default worker, but is not checked.
         #
         highlights_list = []
 
@@ -142,6 +222,7 @@ class TensorCanvas():
         # time among those inputs
         #
         if wait is not None:
+            assert False, "Wait is currently broken"
             assert self.update_times is not None, "Keyword 'enable_wait' not set"
 
             delay = -1
@@ -169,17 +250,17 @@ class TensorCanvas():
         #
         # Tell the canvas to remember the current tensor states
         #
-        self._logChanges(*highlights_list, skew=skew)
+        log_idx = self._logChanges(*highlights_list, timestamp=timestamp)
 
         #
-        # Collect the highlights for this frame accounting for skew
+        # Collect the highlights for this frame accounting for global time
         #
         # TBD: There must be a better way to combine the highlights.
         #      Using this code exactly one addActivity() must have all
         #      the activity for a worker
         #
         for n, highlight in enumerate([highlights[worker] for highlights in highlights_list]):
-            self.log[skew].highlights[n][worker] = highlight
+            self.log[log_idx].highlights[n][worker] = highlight
 
         #
         # Sometimes addActivity should end the frame
@@ -267,31 +348,42 @@ class TensorCanvas():
 # tensors being tracked
 #
 
-    def _logChanges(self, *highlights, skew=0):
+    def _logChanges(self, *highlights, timestamp=None):
         """logChanges
 
         Log current values (at the highlighted points) to the mutable
         tensors for later replay into the shadow tensors at time
-        "skew".
+        "timestamp".
 
         Parameters:
 
         highlights: a highlights dictionary
         A per PE list of highlighted points for each tracked tensor
 
-        skew: integer
-        The relative time at which these values are to be replayed
+        timestamp: tuple of integers
+        The time at which these values are to be replayed
 
         """
+
+        assert timestamp is not None, "Timestamp error"
 
         tensors = self.orig_tensors
         update_times = self.update_times
 
-        for n in range(len(self.log), skew+1):
-            self._createChanges()
+        #
+        # Find the log entry for "timestamp" or create one
+        #
+        log_idx_list = [ idx for idx, element in enumerate(self.log) if element.timestamp == timestamp]
+        if len(log_idx_list) >= 1:
+            log_idx = log_idx_list[0]
+        else:
+            log_idx = self._createChanges(timestamp)
 
-        points = self.log[skew].points
-        values = self.log[skew].values
+        #
+        # Get references to the lists of points and values updated at timestamp
+        #
+        points = self.log[log_idx].points
+        values = self.log[log_idx].values
 
         for tnum, highlight in enumerate(highlights):
             #
@@ -315,7 +407,9 @@ class TensorCanvas():
 
                     if update_times is not None:
                         updatetime_ref = update_times[tnum].getPayloadRef(*point)
-                        updatetime_ref <<= self.cycle + skew
+                        updatetime_ref <<= timestamp
+
+        return log_idx
 
 
     def _replayChanges(self):
@@ -340,15 +434,19 @@ class TensorCanvas():
                     ref = shadow.getPayloadRef(*point)
                     ref <<= value
 
-
         del self.log[0]
-        self.cycle += 1
+
+        #
+        # Increment cycle
+        #
+        if not self.using_spacetimestamp:
+            self.cycle += 1
 
 
-    def _createChanges(self):
+    def _createChanges(self, timestamp):
         """ _createChanges """
 
-        FrameLog = namedtuple('FrameLog', ['points', 'values', 'highlights'])
+        FrameLog = namedtuple('FrameLog', ['timestamp', 'points', 'values', 'highlights'])
 
         num_tensors = self.num_tensors
 
@@ -356,7 +454,26 @@ class TensorCanvas():
         new_values = [[] for n in range(num_tensors)]
         new_highlights = [{} for n in range(num_tensors)]
 
-        self.log.append(FrameLog(new_points, new_values, new_highlights))
+        framelog = FrameLog(timestamp, new_points, new_values, new_highlights)
+
+        if len(self.log) == 0:
+            self.log.append(framelog)
+            return 0
+
+        #
+        # Insert new changes at proper place in the log
+        #   TBD: Do a more sophisticated insertion
+        #
+
+        for i in range(len(self.log)):
+            if self.log[i].timestamp > timestamp:
+                log_idx = i
+                self.log.insert(log_idx, framelog)
+                return log_idx
+
+        self.log.append(framelog)
+
+        return len(self.log)-1
 
 
 #
@@ -438,3 +555,33 @@ class CycleManager():
         """
 
         self.cycle = self.worker_max
+
+
+class NoneCanvas():
+    """NoneCanvas - does nothing"""
+
+    def __init__(self):
+        """__init__"""
+
+        return
+
+    def addFrame(self, *highlighted_coords_per_tensor):
+        """addFrame"""
+
+        return
+
+    def getLastFrame(self, message=None):
+        """getLastFrame"""
+
+        from PIL import Image
+
+        im = Image.new("RGB", (10, 10), "wheat")
+
+        return [im]
+
+
+    def saveMovie(self, filename=None):
+        """saveMovie"""
+
+        print("NoneCanvas: saveMovie - unimplemented")
+        return None
