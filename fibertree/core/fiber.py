@@ -1,6 +1,7 @@
 """Fiber"""
 
 from functools import partialmethod
+from copy import deepcopy
 import yaml
 import random
 
@@ -888,7 +889,7 @@ class Fiber:
             return Fiber
 
         if self._default != 0:
-            return self._default
+            return deepcopy(self._default)
 
         return Payload(0)
 

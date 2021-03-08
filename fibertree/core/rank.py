@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from .fiber import Fiber
 from .payload import Payload
 
@@ -152,7 +154,7 @@ class Rank:
 
         assert self._default_is_set
 
-        return self._default
+        return deepcopy(self._default)
 
 
 #
