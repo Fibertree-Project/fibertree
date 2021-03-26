@@ -1,8 +1,35 @@
-""" Payload class"""
+""" Payload module
+
+"""
 
 
 class Payload:
-    """Payload class"""
+    """Payload class
+
+    A class to hold the payload of an element of a fiber.
+
+    A subtantial set of infix operators are provided that operate
+    on a Payload and another Payload or a scalar value. These include:
+
+    - +:   Addition
+    - +=:  Addition
+    - -:   Subtraction
+    - -=:  Subtraction
+    - *:   Multiplication
+    - *=:  Multiplication
+    - /:   Division
+    - /=:  Division
+    - //:  Integer division
+    - =:   Equal
+    - !=:  Not equal
+    - <:   Less than
+    - \>:   Great than
+    - <=:  Less than or equal
+    - \>=:  Greater than or equal
+    - &:   Boolean and
+    - |:   Boolean or
+
+    """
 
     def __init__(self, value=None):
         """__init__"""
@@ -77,12 +104,26 @@ class Payload:
 #
     @staticmethod
     def maybe_box(value):
-        """_maybe_box"""
+        """_maybe_box
+
+        Wrap certain values in a Payload wrapper. Currently only
+        certain types are **boxed**, and notably Fibers are not
+        boxed nor are values that are aleardy a Payload.
+
+        """
 
         if isinstance(value, (bool, float, int, str, tuple, frozenset)):
             return Payload(value)
 
         return value
+
+
+    @staticmethod
+    def is_payload(payload):
+
+        from .fiber import Fiber
+
+        return isinstance(payload, (Payload, Fiber))
 
 
     @staticmethod

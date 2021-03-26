@@ -302,7 +302,7 @@ class TreeImage():
             #
             # Draw the line if the next level will actually draw something.
             #
-            if not Payload.contains(p, Fiber) or not p.isEmpty():
+            if not Payload.contains(p, Fiber) or len(p.coords) > 0:
                 self.draw_line(level,
                                pos+0.5,
                                level+1,

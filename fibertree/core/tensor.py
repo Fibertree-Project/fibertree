@@ -305,6 +305,19 @@ class Tensor:
 
 
 
+    @staticmethod
+    def _shape2lists(shape):
+        """ Return a nest of lists of "shape" filled with zeros"""
+
+        if len(shape) > 1:
+            subtree = Tensor._shape2lists(shape[1:])
+        else:
+            subtree = 0
+
+        result = [subtree for _ in range(shape[0])]
+
+        return result
+
 #
 # Accessor methods
 #
@@ -320,6 +333,10 @@ class Tensor:
         self.ranks = []
         last_rank = None
 
+        #
+        # Populate the list of ranks (in reverse) so the "next_rank" field
+        # can be filled in
+        #
         for id, dimension in reversed(list(zip(rank_ids, shape))):
             new_rank = Rank(id=id, shape=dimension, next_rank=last_rank)
             self.ranks.insert(0, new_rank)

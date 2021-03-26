@@ -127,7 +127,7 @@ class Rank:
         """
 
         self._default_is_set = True
-        self._default = Payload.maybe_box(value)
+        self._default = value
 
         return self
 
@@ -154,7 +154,7 @@ class Rank:
 
         assert self._default_is_set
 
-        return deepcopy(self._default)
+        return self._default
 
 
 #
@@ -190,6 +190,8 @@ class Rank:
         #
         # Check default value for new coordinates in the fiber
         #
+        # Deprecating use of rank.getDefault()
+        #
         if self.next_rank is None:
             assert self.getDefault() != Fiber, \
                 "Leaf rank default should not be Fiber"
@@ -206,7 +208,13 @@ class Rank:
 # Linked list methods
 #
     def setNextRank(self, next_rank):
-        """setNextRank"""
+        """setNextRank
+
+        Record a reference to the next rank. If that rank exists then the
+        default payload of fibers in this rank must be a fiber,
+        otherwise set the default payload to zero.
+
+        """
 
         self.next_rank = next_rank
 

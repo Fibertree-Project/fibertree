@@ -53,16 +53,17 @@ class Fiber:
         payloads: list (default: [])
         List of corresponding payloads for the coordinates
 
+        default: value (default: 0)
+        Default value of a payload in this fiber
+
         initial: value (default: None)
         A value to initialize all payloads.
 
         max_coord: value (default: no maximum coordinate)
-        The maximum legal coordinate value
+        The maximum legal coordinate value (this is really "shape-1")
 
         """
 
-        assert default == 0, \
-            "Fiber defaults are no longer supported in constructor"
 
         if coords is None:
             if payloads is None:
@@ -74,6 +75,8 @@ class Fiber:
             else:
                 #
                 # If only payloads are given create a "dense" fiber
+                #
+                # TBD: Reconcile coords with shape
                 #
                 coords = range(len(payloads))
         else:
@@ -91,8 +94,11 @@ class Fiber:
 
         #
         # Note:
+        #    If a payload is already boxed, Payload.maybe_box() will
+        #    NOT double box it.
+        #
         #    We do not eliminate explicit zeros in the payloads
-        #    so zeros will be preserved
+        #    so zeros will be preserved.
         #
         self.coords = coords
         self.payloads = [Payload.maybe_box(p) for p in payloads]
@@ -102,17 +108,17 @@ class Fiber:
         #
         # TBD: If not None there are lots of places this should be checked
         #
-        self.max_legal_coord = max_coord
+        self._max_coord = max_coord
 
         #
-        # Owner rank... set on append to rank
+        # Owner rank... set later when fiber is appended to a rank
         #
         self.setOwner(None)
 
         #
         # Create default value
         #
-        self._default = Payload(0)
+        self._default = default
 
         #
         # Initialize "saved position"
@@ -126,7 +132,7 @@ class Fiber:
 
 
     @classmethod
-    def fromCoordPayloadList(cls, *cp, default=0):
+    def fromCoordPayloadList(cls, *cp, **kwargs):
         """Construct a Fiber from a coordinate/payload list
 
         Parameters
@@ -138,16 +144,16 @@ class Fiber:
 
         (coords, payloads) = zip(*cp)
 
-        return cls(coords, payloads, default=default)
+        return cls(coords, payloads, **kwargs)
 
 
     @classmethod
-    def fromYAMLfile(cls, yamlfile, default=0):
+    def fromYAMLfile(cls, yamlfile, default=0, **kwargs):
         """Construct a Fiber from a YAML file"""
 
         (coords, payloads) = Fiber.parse(yamlfile, default)
 
-        return cls(coords, payloads, default=default)
+        return cls(coords, payloads, default=default, **kwargs)
 
 
     @classmethod
@@ -178,10 +184,19 @@ class Fiber:
 
         assert(isinstance(payload_list, list))
 
+        if isinstance(payload_list[0], list):
+            size_check = len(payload_list[0])
+
+            for p in payload_list:
+                assert size_check == len(p), \
+                       "All lists must be the same length"
+
         # Create zipped list of (non-empty) coordinates/payloads
         zipped = [(c, p) for c, p in enumerate(payload_list) if p != 0]
 
+        #
         # Recursively unzip the lists into a Fiber
+        #
         if len(zipped) == 0:
             # Got an empty subtree
             return None
@@ -189,6 +204,7 @@ class Fiber:
         if isinstance(payload_list[0], list):
             coords = []
             payloads = []
+
             for c, p in zipped:
                 real_p = Fiber._makeFiber(p)
                 if real_p is not None:
@@ -249,7 +265,7 @@ class Fiber:
                                                density[1:],
                                                interval)
                     if payload.isEmpty():
-                        break
+                        continue
 
                 coords.append(c)
                 payloads.append(payload)
@@ -363,15 +379,16 @@ class Fiber:
             #
             # Otherwise return the provided default.
             #
-            # Note: we record we found it at the final index
+            # TBD: We (arbitarily) record we found it at the final
+            #      index, this may not work for the next
+            #      shortcut-based lookup
             #
             index = len(self.coords)
 
             if allocate or len(coords) > 1:
-                payload = self._createDefault()
+                payload = self._createDefault(addtorank=False)
             else:
                 payload = default
-
 
         if len(coords) > 1:
             assert Payload.contains(payload, Fiber), \
@@ -392,8 +409,10 @@ class Fiber:
         """payload
 
         Return the final payload after recursively traversing the
-        levels of the fiber tree for at each coordinate in coords.
-        If the payload is empty, then recursively return the default payload
+        levels of the fiber tree for at each coordinate in coords,
+        which are essential the coordinates of a "point".  If the
+        payload is empty, then recursively return the "default"
+        payload
 
         If "start_pos" is specified it is used as a shortcut to start the
         search for the coordinate. And a new position is saved for use in
@@ -402,14 +421,14 @@ class Fiber:
         Parameters
         ----------
         coords: coordinates
-        List of coordinates to traverse
+        List of coordinates to traverse, i.e., a "point"
 
         start_pos: scalar or Payload() containing a scalar
         Optional shortcut value to optimize search
 
         Returns
         -------
-        payload: a scalar or Fiber
+        payload: a (boxed) scalar or Fiber
 
         Raises
         ------
@@ -425,10 +444,17 @@ class Fiber:
         start_pos = Payload.get(start_pos)
 
         try:
+            #
+            # Try to find the index for the first coordinate in the "point"
+            # and get the payload at that index
+            #
             index = self.coords.index(coords[0])
             payload = self.payloads[index]
         except Exception:
+            #
             # Coordinate didn't exist so create a payload
+            # at that coordinate then the index will exist
+            #
             payload = self._create_payload(coords[0])
             index = self.coords.index(coords[0])
 
@@ -440,6 +466,8 @@ class Fiber:
 
         if start_pos is not None:
             self.setSavedPos(index, distance=index - start_pos)
+
+        assert Payload.is_payload(payload)
 
         return payload
 
@@ -454,9 +482,9 @@ class Fiber:
         # Create a payload at coord
         # Iemporary value (should be None)
 
-        value = self._createDefault()
+        payload = self._createDefault()
 
-        payload = Payload.maybe_box(value)
+        assert Payload.is_payload(payload)
 
         try:
             index = next(x for x, val in enumerate(self.coords) if val > coord)
@@ -474,15 +502,7 @@ class Fiber:
         #
         payload = self.payloads[index]
 
-        #
-        # If the payload we created is a fiber,
-        # then insert it into the its proper rank
-        #
-        if Payload.contains(value, Fiber):
-            assert(self._owner is not None)
-            next_rank = self._owner.getNextRank()
-            if next_rank is not None:
-                next_rank.append(payload)
+        assert Payload.is_payload(payload)
 
         return payload
 
@@ -851,7 +871,15 @@ class Fiber:
     def _setDefault(self, default):
         """_setDefault - internal use version"""
 
-        self._default = default
+        owner = self.getOwner()
+
+        #
+        # Try to set default at owning rank, otherwise hold value locally
+        #
+        if owner is not None:
+            owner.setDefault(default)
+        else:
+            self._default = default
 
 
     def getDefault(self):
@@ -891,32 +919,116 @@ class Fiber:
         if self._default != 0:
             return deepcopy(self._default)
 
-        return Payload(0)
+        return 0
 
 
 
-    def _createDefault(self):
-        """_createDefault"""
+    def _createDefault(self, addtorank=True):
+        """_createDefault
+
+        Obtain the default payload for a fiber. This method goes one
+        step further than getDefault() because if the default payload
+        is itself a fiber it creates a Fiber().
+
+        Finally, if the current fiber is part of a a non-leaf rank
+        it (optionally) adds the new fiber into the **next** rank.
+
+        TBD: Fold this into an option to getDefault()
+
+        """
 
         default = self.getDefault()
+        owner = self.getOwner()
+
+        return Fiber._instantiateDefault(default, owner, addtorank)
+
+
+    @staticmethod
+    def _instantiateDefault(default, owner=None, addtorank=False):
+        """_instantiateDefault
+
+        Create (recursively for tuples) an instance of a default
+        payload for a fiber. This method goes one step further than
+        getDefault() because if the default payload is itself (or
+        contains) a fiber it creates a Fiber() object.
+
+        Finally, if the newly created fiber is part of a a non-leaf
+        rank it (optionally) adds the new fiber into the **next**
+        rank.
+
+        Arguments:
+        ----------
+
+        default: unboxed payload
+        A default value from a fiber
+
+        owner: rank
+        The rank that owns the fiber we are creating a payload for
+
+        addtorank: Boolean 
+        If the newly created value is a fiber, then should that fiber
+        be added to the its owning rank (owner.next_rank)
+
+        Returns
+        -------
+
+        A payload
+
+        """
+
+        if isinstance(default, tuple):
+            #
+            # Recursively create defaults. Note each of the elements of the tuple
+            # will be **boxed**
+            #
+            return Payload(tuple([Fiber._instantiateDefault(e, owner) for e in default]))
 
         if callable(default):
+            #
+            # Call the method to create the value
+            #
+            # Note, currently, this must be a fiber..
+            #
             value = default()
 
             #
-            # Conditionaly set the owning rank
+            # Conditionaly set the owning rank of the
+            # newly created fiber by appending it to the
+            # next rank of the tensor.
+            #
+            # Adding it to the owner.next_rank sets the
+            # "default" for the rank, otherwise we set a
+            # "default" explcitly.
             #
             # TBD: This is a messy interaction with rank
             #      See Rank.append()
             #
             if Payload.contains(value, Fiber):
-                owner = self.getOwner()
-                if owner:
-                    value.setOwner(owner.next_rank)
+                if owner and owner.next_rank is not None:
+                    #
+                    # The new fiber is nominally part of
+                    # "owner.next_rank"
+                    #
+                    if addtorank:
+                        #
+                        # Actually add it to the rank
+                        #
+                        owner.next_rank.append(value)
+                    else:
+                        #
+                        # Set the owner, but do not add to rank
+                        #
+                        value.setOwner(owner.next_rank)
+                else:
+                    value._setDefault(Fiber)
+            else:
+                assert False, "Unsupported Payload type"
         else:
+            assert not isinstance(default, Payload)
+
             value = default
 
-        return value
+        return Payload.maybe_box(value)
 
 
     #
@@ -985,7 +1097,14 @@ class Fiber:
 
         """
 
-        # TBD: Should check that the candidate is not an explicit zero
+        #
+        # If _max_coord is set we assume it is correct
+        #
+        # TBD: _max_coord is not always maintained properly for
+        #      some fiber mutations
+        #
+        if self._max_coord is not None:
+            return self._max_coord
 
         if len(self.coords) == 0:
             return None
@@ -996,6 +1115,9 @@ class Fiber:
             #
             return None
 
+        #
+        # TBD: Maybe should actually look for largest non-empty coordinate
+        #
         return max(self.coords)
 
 
@@ -1171,6 +1293,8 @@ class Fiber:
 
         Empty is defined as of zero length, only containing zeros
         or only containing subfibers that are empty.
+
+        TBD: Probably should check for "default" value not 0
         """
 
         return all(map(Payload.isEmpty, self.payloads))
@@ -1431,10 +1555,7 @@ class Fiber:
         #
         # Try to determine the maximum coordinate
         #
-        if self.max_legal_coord is not None:
-            max_coord = self.max_legal_coord
-        else:
-            max_coord = self.maxCoord()
+        max_coord = self.maxCoord()
 
         #
         # The fiber is not empty, but max_coord isn't meaningful,
@@ -1791,10 +1912,16 @@ class Fiber:
 #
 
     def __add__(self, other):
-        """__add__"""
+        """__add__
+
+        Concatenate two fibers
+
+        TBD: Make sure coordinates are monitonically increasing
+
+        """
 
         assert Payload.contains(other, Fiber), \
-            "Fiber addition must involve two fibers"
+            "Fiber concatenation must involve two fibers"
 
         #
         # TBD: Set default for Fiber
@@ -2249,6 +2376,7 @@ class Fiber:
                 coord, payload = next(iter)
             except StopIteration:
                 return (None, None)
+
             return CoordPayload(coord, payload)
 
         def get_next_nonempty(iter):
@@ -2278,6 +2406,7 @@ class Fiber:
             # TBD: Optimize with co-iteration...
 
             a_payload = self.getPayload(b_coord, allocate=False)
+
             if a_payload is None:
                 a_payload = self._create_payload(b_coord)
 
@@ -2691,6 +2820,9 @@ class Fiber:
 
         Note: explict zeros do not result in inequality
         """
+
+        if not isinstance(other, Fiber):
+            return False
 
         for c, (mask, ps, po) in self | other:
             if mask == "A" and not Payload.isEmpty(ps):
