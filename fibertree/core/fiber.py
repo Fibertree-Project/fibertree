@@ -1694,6 +1694,35 @@ class Fiber:
 #
 # Note: all these methods return a new fiber
 #
+    def __truediv__(self, partitions):
+        """__truediv__
+
+        Split a fiber uniformly in coordinate space into "partitions" partitions
+
+        Note: This depends on maxCoord() being meaningful
+
+        TBD: Is there a reasonable semantic if "partitions" is a fiber
+        """
+
+        max_coord = self.maxCoord()
+
+        assert max_coord is not None, \
+               "Cannot partition a fiber without a maximum coordinate"
+
+        return self.splitUniform((max_coord+partitions-1)//partitions)
+
+
+    def __floordiv__(self, partitions):
+        """__truediv__
+
+        Split a fiber evenly in position space into "partitions" partitions
+
+        TBD: Is there a reasonable semantic if "partitions" is a fiber
+        """
+
+        occupancy = len(self.coords)
+
+        return self.splitEqual ((occupancy+partitions-1)//partitions)
 
 
     def splitUniform(self, step, partitions=1, relativeCoords=False):

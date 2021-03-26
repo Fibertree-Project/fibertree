@@ -739,6 +739,25 @@ class Tensor:
 # Note: all these methods return a new tensor
 # TBD: Allow depth to be specified by rank_id
 #
+    def __truediv__(self, arg):
+        """__truediv__ """
+
+        return self._splitGeneric(Fiber.__truediv__,
+                                  None,
+                                  arg,
+                                  depth=0)
+
+
+
+    def __floordiv__(self, arg):
+        """__floordiv__ """
+
+        return self._splitGeneric(Fiber.__floordiv__,
+                                  None,
+                                  arg,
+                                  depth=0)
+
+
 
     def splitUniform(self, *args, depth=0, **kwargs):
         """ splitUniform """
