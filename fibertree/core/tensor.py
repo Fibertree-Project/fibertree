@@ -10,7 +10,37 @@ from .payload import Payload
 
 
 class Tensor:
-    """ Tensor Class """
+    """Tensor Class
+
+    This constructor should be used to create an empty tensor,
+    which has the given "rank_ids" and optionally the given
+    "shape", "name" and "color".
+
+    Parameters
+    -----------
+
+    rank_ids: list of strings
+        List containing names of ranks.
+
+    shape: list of integers
+        A list of shapes of the ranks
+
+    name: string
+        A name for the tensor
+
+    color: string, default="red"
+        The color to paint values when displaying the tensor
+
+
+    Notes
+    -----
+
+    For historical reasons, this constructor tries to get a Tensor
+    from the specified "yamlfile", which is the first argument, so
+    existing code uses it with the "yamlfile" keyword. That usage
+    is deprecated in favor of using Tensor.fromYAMLfile().
+
+    """
 
     def __init__(self,
                  yamlfile="",
@@ -18,38 +48,7 @@ class Tensor:
                  shape=None,
                  name="",
                  color="red"):
-        """__init__
-
-        Construct a Tensor.
-
-        This constructor should be used to create an empty tensor,
-        which has the given "rank_ids" and optionally the given
-        "shape", "name" and "color".
-
-        For historical reasons, this constructor tries to get a Tensor
-        from the specified "yamlfile", which is the first argument, so
-        existing code uses it with the "yamlfile" keyword. That usage
-        is deprecated in favor of using Tensor.fromYAMLfile().
-
-        Parameters:
-        ------------
-
-        rank_ids: list
-        List containing names of ranks.
-        Default: Must be provided (unless yamlfile is non-empty)
-
-        shape: list
-        A list of shapes of the ranks
-
-        name: string
-        A name for the tensor
-        Default: "" (unless yamlfile is non-empty)
-
-        color: string
-        The color to paint values when displaying the tensor
-        Default: "red"
-
-        """
+        """__init__"""
 
         self.yamlfile = yamlfile
 
@@ -92,18 +91,16 @@ class Tensor:
 
     @classmethod
     def fromYAMLfile(cls, yamlfile):
-        """Tensor.fromYAMLfile()
-
-        Construct a Tensor from a YAML file
+        """Construct a tensor from a YAML file
 
         This constructor creates a Tensor from the specified
-        "yamlfile".
+        `yamlfile`.
 
-        Parameters:
-        ------------
+        Parameters
+        -----------
 
         yamlfile: string
-        Filename of file containing a YAML representation of a tensor
+            Filename of file containing a YAML representation of a tensor
 
         """
         (rank_ids, root, shape, name) = Tensor.parse(yamlfile)
@@ -124,33 +121,26 @@ class Tensor:
                          shape=None,
                          name="",
                          color="red"):
-        """Tensor.fromUncompressed()
+        """Construct a Tensor from uncompressed nest of lists
 
-        Construct a Tensor from uncompressed fiber tree
+        Parameters
+        ----------
 
-        Parameters:
-        ------------
-
-        rank_ids: list
-        List containing names of ranks.
-        Default: ["Rn", "Rn-1", ... "R0"]
+        rank_ids: list, default=["Rn", "Rn-1", ... "R0"]
+            List containing names of ranks.
 
         root: list of lists
+            A list of lists with an uncompressed represenation of the
+            tensor, zero values are assumed empty.
 
-        A list of lists with an uncompressed represenation of the
-        tensor, zero values are assumed empty.
+        shape: list, default=(calculated from shape of "root")
+            A list of shapes of the ranks
 
-        shape: list
-        A list of shapes of the ranks
-        Default: calculated from shape of "root"
+        name: string, default=""
+            A name for the tensor
 
-        name: string
-        A name for the tensor
-        Default: ""
-
-        color: string
-        The color to paint values when displaying the tensor
-        Default: "red"
+        color: string, default="red"
+            The color to paint values when displaying the tensor
 
         """
 
@@ -197,7 +187,6 @@ class Tensor:
 
         return shape
 
-
     @classmethod
     def fromFiber(cls,
                   rank_ids=None,
@@ -205,32 +194,25 @@ class Tensor:
                   shape=None,
                   name="",
                   color="red"):
-        """Tensor.fromFiber
+        """Construct a tensor from a fiber
 
-        Construct a Tensor from a Fiber
+        Parameters
+        -----------
 
-        Parameters:
-        ------------
-
-        rank_ids: list
-        List containing names of ranks.
-        Default: ["Rn", "Rn-1", ... "R0"]
+        rank_ids: list, default=["Rn", "Rn-1", ... "R0"]
+            List containing names of ranks.
 
         fiber: Fiber
-        A fiber to form the root of the new Tensor
+            A fiber to form the root of the new Tensor
 
-        shape: list
-        A list of shapes of the ranks
-        Default: The shape of "fiber"
+        shape: list, default=(the shape of "fiber")
+            A list of shapes of the ranks
 
-        name: string
-        A name for the tensor
-        Default: ""
+        name: string, default=""
+            A name for the tensor
 
-        color: string
-        The color to paint values when displaying the tensor
-        Default: "red"
-
+        color: string, default="red"
+            The color to paint values when displaying the tensor
 
         """
 
@@ -270,28 +252,27 @@ class Tensor:
                    seed=None,
                    name="",
                    color="red"):
-        """Tensor.fromRandom()
+        """Create a random tensor
 
-        Create a random tensor
+        Parameters
+        ----------
 
-        Parameters:
-        -----------
+        rank_ids: list
+            The "rank ids" for the tensor
 
-        rank_ids - list
-        The "rank ids" for the tensor
+        shape: list
+            The "shape" (i.e., size) of each level of the tree
 
-        shape - list
-        The "shape" (i.e., size) of each level of the tree
+        density: list
+            The probability that an element of the fiber will not be
+            *empty* for each level of the tree
 
-        density - list
-        The probability that an element of the fiber will not be empty
-        for each level of the tree
+        interval: integer
+            The closed range [0:`interval`] of each value at the leaf
+            level of the tree
 
-        interval - number
-        The range (from 0 to "interval") of each value at the leaf of the tree
-
-        seed - a valid argument for random.seed
-        A seed to pass to random.seed
+        seed: a valid argument for `random.seed`
+            A seed to pass to `random.seed`
 
         """
 
@@ -322,7 +303,27 @@ class Tensor:
 # Accessor methods
 #
     def setRankInfo(self, rank_ids, shape):
-        """setRankInfo"""
+        """Initialize rank info
+
+        This method creates and initializes the list of ranks in this
+        tensor with the provided lists of `rank_ids` and `shape`. The
+        fibers associated with the ranks get set separately with
+        `Tensor.setRoot()`.
+
+        Parameters
+        ----------
+
+        rank_ids: list of strings
+            Names to assign to ranks
+
+        shape: list of integers
+            Shapes to assign to ranks
+
+        Returns
+        -------
+        Nothing
+
+        """
 
         if shape is None:
             shape = [None] * len(rank_ids)
@@ -344,7 +345,7 @@ class Tensor:
 
 
     def syncRankInfo(self, ranks):
-        """resyncRankInfo"""
+        """.. deprecated::"""
 
         # TBD: Currently unused and untested, so probably broken
 
@@ -357,7 +358,19 @@ class Tensor:
 
 
     def getRankIds(self):
-        """getRankIds"""
+        """Get the rank ids of the tensor
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+
+        rank_ids: list of strings
+            List of names of ranks
+
+        """
 
         #
         # Get the rank id for each rank
@@ -366,7 +379,19 @@ class Tensor:
 
 
     def getShape(self):
-        """getShape"""
+        """Get the shape of the tensor
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+
+        shape: list of integers
+            List of the shapes of each rank
+
+        """
 
         #
         # Get the shape for each rank
@@ -377,7 +402,24 @@ class Tensor:
 
 
     def setRoot(self, root):
-        """(Re-)populate self.ranks with "root"""
+        """Set the root fiber of tensor
+
+        The method will (re-)populate the ranks of the tensor
+        (`self.ranks`) with the fibertree contents of the provided
+        `root` fiber.
+
+        Parameters
+        ----------
+
+        root: Fiber
+            The fiber that will be root of the tensor
+
+
+        Returns
+        --------
+        Nothing
+
+        """
 
         #
         # Note: rank 0 tensors are not allowed in this path
@@ -418,7 +460,19 @@ class Tensor:
 
 
     def getRoot(self):
-        """root"""
+        """Get the root fiber of the tensor
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+
+        root: Fiber
+            The fibertree at the root of the tensor
+
+        """
 
         root = self._root
 
@@ -434,7 +488,7 @@ class Tensor:
 
 
     def root(self):
-        """root"""
+        """.. deprecated::"""
 
         Tensor._deprecated("Tensor.root() is deprecated, use getRoot()")
 
@@ -442,18 +496,18 @@ class Tensor:
 
 
     def setName(self, name):
-        """setName
-
-        Set name for the tensor
+        """Set name for the tensor
 
         Parameters
         ----------
+
         name: string
-        Name to use for tensor
+            Name to use for tensor
 
         Returns
         -------
-        self: So method can be used in a chain
+        self: Tensor
+            So method can be used in a chain
 
         Raises
         ------
@@ -466,9 +520,7 @@ class Tensor:
 
 
     def getName(self):
-        """Getname
-
-        Get name of tensor
+        """Get name of tensor
 
         Parameters
         ----------
@@ -476,7 +528,8 @@ class Tensor:
 
         Returns
         -------
-        name: Name of tensor
+        name: string
+            Name of tensor
 
         Raises
         ------
@@ -488,17 +541,17 @@ class Tensor:
 
 
     def setColor(self, color):
-        """setColor
-
-        Set color for elements of tensor
+        """Set color for elements of tensor
 
         Parameters
         ----------
-        color: Color to use for scalar values in tensor
+        color: string
+             Color to use for scalar values in tensor
 
         Returns
         -------
-        self: So method can be used in a chain
+        self: Tensor
+           So method can be used in a chain
 
         Raises
         ------
@@ -511,9 +564,7 @@ class Tensor:
 
 
     def getColor(self):
-        """Getcolror
-
-        Get color for elements of tensor
+        """Get color for elements of tensor
 
         Parameters
         ----------
@@ -521,7 +572,8 @@ class Tensor:
 
         Returns
         -------
-        color: Color to use for scalar values in tensor
+        color: string
+            Color being used for scalar values in the tensor
 
         Raises
         ------
@@ -533,19 +585,17 @@ class Tensor:
 
 
     def setDefault(self, value):
-        """setDefault
-
-        Set the default value for the leaf payloads of the tensor
+        """Set the default value for the leaf payloads of the tensor
 
         Parameters
         ----------
         value: value
-        A value to use for leaf payload values in tensor
+            A value to use for leaf payload values in tensor
 
         Returns
         -------
-        self:
-        So method can be used in a chain
+        self: Tensor
+            So method can be used in a chain
 
         Raises
         ------
@@ -564,9 +614,7 @@ class Tensor:
 
 
     def getDefault(self):
-        """GetDefault
-
-        Get the default payload for leaf ranks
+        """Get the default payload for leaf ranks
 
         Parameters
         ----------
@@ -575,7 +623,7 @@ class Tensor:
         Returns
         -------
         value: value
-        Default payload of the leaf rank
+            Default payload of the leaf rank
 
         Raises
         ------
@@ -587,7 +635,7 @@ class Tensor:
 
 
     def setMutable(self, value):
-        """setMutable
+        """Set the mutabilility hint
 
         Set the "hint" as to whether the tensor is mutable or not,
         i.e., its value will change. Note: this property is not
@@ -598,12 +646,12 @@ class Tensor:
         Parameters
         ----------
         value: Bool
-        Is the tensor mutable or not.
+            Is the tensor mutable or not.
 
         Returns
         -------
-        self:
-        So method can be used in a chain
+        self: Tensor
+            So method can be used in a chain
 
         Raises
         ------
@@ -617,7 +665,7 @@ class Tensor:
 
 
     def isMutable(self):
-        """isMutable
+        """Returns mutability attribute
 
         Returns the "hint" that the tensor is mutable
 
@@ -628,7 +676,7 @@ class Tensor:
         Returns
         -------
         value: Bool
-        Whether the tensor is set mutable or not
+            Whether the tensor is set mutable or not
 
         Raises
         ------
@@ -663,21 +711,34 @@ class Tensor:
 # root fiber is the logical activity
 #
     def getPayload(self, *args, **kwargs):
-        """getPayload"""
+        """Get payload at a point
+
+        Tensor-level version of method that operates on the root
+        fiber of the tensor. See `Fiber.getPayload()` for details.
+
+        """
 
         return self.getRoot().getPayload(*args, **kwargs)
 
 
     def getPayloadRef(self, *args, **kwargs):
-        """getPayload"""
+        """Get a reference to a payloat at at point
+
+        Tensor-level version of method that operates on the root
+        fiber of the tensor. See `Fiber.getPayloadRef()` for details.
+
+        """
 
         return self.getRoot().getPayloadRef(*args, **kwargs)
 
 
     def countValues(self):
-        """countValues
+        """Get count on non-empty values in tensor
 
         Count of non-empty payload values in the leaf rank of tensor
+
+        Tensor-level version of method that operates on the root
+        fiber of the tensor. See `Fiber.countValues()` for details.
 
         """
         return self.getRoot().countValues()
@@ -696,20 +757,31 @@ class Tensor:
 
 
     def __getitem__(self, keys):
-        """__getitem__"""
+        """__getitem__
+
+        Tensor-level version of method that operates on the root
+        fiber of the tensor. See `Fiber.__getitem__()` for details.
+
+        """
 
         return self.getRoot().__getitem__(keys)
 
     def __setitem__(self, key, newvalue):
-        """__setitem__"""
+        """__setitem__
+
+        Tensor-level version of method that operates on the root
+        fiber of the tensor. See `Fiber.__setitem__()` for details.
+
+        """
 
         self.getRoot().__setitem__(key, newvalue)
 
 
     def updateCoords(self, func, depth=0):
-        """updateCoords
+        """Update coordinates of root fiber
 
-        Trampoline to fiber function
+        Tensor-level version of method that operates on the root
+        fiber of the tensor. See `Fiber.updateCoords()` for details.
 
         """
 
@@ -721,9 +793,10 @@ class Tensor:
 
 
     def updatePayloads(self, func, depth=0):
-        """updatePayloads
+        """Update payloads of root fiber
 
-        Trampoline to fiber function
+        Tensor-level version of method that operates on the root
+        fiber of the tensor. See `Fiber.updatePayloads()` for details.
 
         """
 
@@ -740,7 +813,12 @@ class Tensor:
 # TBD: Allow depth to be specified by rank_id
 #
     def __truediv__(self, arg):
-        """__truediv__ """
+        """Split root fiber in coordinate space
+
+        Tensor-level version of method that operates on the root
+        fiber of the tensor. See `Fiber.__truediv()` for details.
+
+        """
 
         return self._splitGeneric(Fiber.__truediv__,
                                   None,
@@ -750,7 +828,12 @@ class Tensor:
 
 
     def __floordiv__(self, arg):
-        """__floordiv__ """
+        """Split root fiber in position space
+
+        Tensor-level version of method that operates on the root
+        fiber of the tensor. See `Fiber.__floordiv()` for details.
+
+        """
 
         return self._splitGeneric(Fiber.__floordiv__,
                                   None,
@@ -760,7 +843,26 @@ class Tensor:
 
 
     def splitUniform(self, *args, depth=0, **kwargs):
-        """ splitUniform """
+        """Split tensor's fibertree uniformly in coordinate space
+
+        Tensor-level version of method that operates on the tensor's fibertree
+        at depth `depth`. See `Fiber.splitUniform()` for more details.
+
+        Parameters
+        ----------
+
+        depth: integer, default=0
+            Level of fibertree to split
+
+        See `Fiber.splitUniform()` for other arguments.
+
+        Returns
+        -------
+
+        split_tensor: Tensor
+             A new split tensor
+
+        """
 
         return self._splitGeneric(Fiber.splitUniform,
                                   Fiber.splitUniformBelow,
@@ -769,7 +871,26 @@ class Tensor:
                                   **kwargs)
 
     def splitNonUniform(self, *args, depth=0, **kwargs):
-        """ splitNonUniform """
+        """Split tensor's fibertree non-uniformly in coordinate space
+
+        Tensor-level version of method that operates on the tensor's fibertree
+        at depth `depth`. See `Fiber.splitNonUniform()` for more details.
+
+        Parameters
+        ----------
+
+        depth: integer, default=0
+            Level of fibertree to split
+
+        See `Fiber.splitNonUniform()` for other arguments.
+
+        Returns
+        -------
+
+        split_tensor: Tensor
+             A new split tensor
+
+        """
 
         return self._splitGeneric(Fiber.splitNonUniform,
                                   Fiber.splitNonUniformBelow,
@@ -779,7 +900,26 @@ class Tensor:
 
 
     def splitEqual(self, *args, depth=0, **kwargs):
-        """ splitEqual """
+        """Split tensor's fibertree equally in position space
+
+        Tensor-level version of method that operates on the tensor's fibertree
+        at depth `depth`. See `Fiber.splitEqual()` for more details.
+
+        Parameters
+        ----------
+
+        depth: integer, default=0
+            Level of fibertree to split
+
+        See `Fiber.splitEqual()` for other arguments.
+
+        Returns
+        -------
+
+        split_tensor: Tensor
+             A new split tensor
+
+        """
 
         return self._splitGeneric(Fiber.splitEqual,
                                   Fiber.splitEqualBelow,
@@ -788,7 +928,26 @@ class Tensor:
                                   **kwargs)
 
     def splitUnEqual(self, *args, depth=0, **kwargs):
-        """ splitUnEqual """
+        """Split tensor's fibertree unequally in postion space
+
+        Tensor-level version of method that operates on the tensor's fibertree
+        at depth `depth`. See `Fiber.splitUnEqual()` for more details.
+
+        Parameters
+        ----------
+
+        depth: integer, default=0
+            Level of fibertree to split
+
+        See `Fiber.splitUnEqual()` for other arguments.
+
+        Returns
+        -------
+
+        split_tensor: Tensor
+             A new split tensor
+
+        """
 
         return self._splitGeneric(Fiber.splitUnEqual,
                                   Fiber.splitUnEqualBelow,
@@ -838,10 +997,23 @@ class Tensor:
 # Swizzle and swap methods
 #
     def swizzleRanks(self, rank_ids):
-        """swizzleRanks
+        """Swizzle the ranks of the tensor
 
         Re-arrange (swizzle) the ranks of the tensor so they match the
-        given rank_ids
+        given `rank_ids`. This is accompished via a series of rank swaps.
+
+        Parameters
+        ----------
+
+        rank_ids: list of strings
+            List of names of ranks in desired order (top to bottom)
+
+
+        Returns
+        -------
+
+        swizzled_tensor: Tensor
+            New tensor with ranks swizzed
 
         """
 
@@ -870,7 +1042,26 @@ class Tensor:
 
 
     def swapRanks(self, depth=0):
-        """ swapRanks """
+        """Swap a pair of ranks in the  tensor's fibertree.
+
+        Tensor-level version of method that operates on the tensor's fibertree
+        at depth `depth`. See `Fiber.swapRanks()` for more details.
+
+        Parameters
+        ----------
+
+        depth: integer, default=0
+            Level of fibertree to split
+
+        See `Fiber.swapRanks()` for other arguments.
+
+        Returns
+        -------
+
+        swapped_tensor: Tensor
+             A new tensor with two ranks swapped
+
+        """
 
         #
         # Create new list of rank ids
@@ -901,7 +1092,26 @@ class Tensor:
 
 
     def flattenRanks(self, depth=0, levels=1, coord_style="tuple"):
-        """ swapRanks """
+        """Flatten ranks in the  tensor's fibertree.
+
+        Tensor-level version of method that operates on the tensor's fibertree
+        at depth `depth`. See `Fiber.flattenRanks()` for more details.
+
+        Parameters
+        ----------
+
+        depth: integer, default=0
+            Level of fibertree to split
+
+        See `Fiber.flattenRanks()` for other arguments.
+
+        Returns
+        -------
+
+        flattened_tensor: Tensor
+             A new tensor with some ranks flattened
+
+        """
 
         #
         # Create new list of rank ids
@@ -948,7 +1158,26 @@ class Tensor:
 
 
     def unflattenRanks(self, depth=0, levels=1):
-        """ swapRanks """
+        """Unflatten ranks in the  tensor's fibertree.
+
+        Tensor-level version of method that operates on the tensor's fibertree
+        at depth `depth`. See `Fiber.unflattenRanks()` for more details.
+
+        Parameters
+        ----------
+
+        depth: integer, default=0
+            Level of fibertree to split
+
+        See `Fiber.unflattenRanks()` for other arguments.
+
+        Returns
+        -------
+
+        unflattened_tensor: Tensor
+             A new tensor with some ranks unflattened
+
+        """
 
         #
         # Create new list of rank ids
@@ -1158,3 +1387,14 @@ class Tensor:
         import warnings
 
         warnings.warn(message, FutureWarning, stacklevel=3)
+
+#
+# Pdoc stuff
+#
+__pdoc__ = {'Tensor.parse':         False,
+            'Tensor.__setitem__':   True,
+            'Tensor.__getitem__':   True,
+            'Tensor.__ilshift__':   True,
+            'Tensor.__truediv__':   True,
+            'Tensor.__floordiv__':  True,
+           }

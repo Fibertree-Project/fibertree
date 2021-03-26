@@ -8,7 +8,7 @@ class Payload:
 
     A class to hold the payload of an element of a fiber.
 
-    A subtantial set of infix operators are provided that operate
+    A substantial set of infix operators are provided that operate
     on a Payload and another Payload or a scalar value. These include:
 
     - +:   Addition
@@ -23,9 +23,9 @@ class Payload:
     - =:   Equal
     - !=:  Not equal
     - <:   Less than
-    - \>:   Great than
+    - &gt;:   Great than
     - <=:  Less than or equal
-    - \>=:  Greater than or equal
+    - &gt;=:  Greater than or equal
     - &:   Boolean and
     - |:   Boolean or
 
