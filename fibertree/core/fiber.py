@@ -1,4 +1,10 @@
-"""Fiber"""
+"""Fiber
+
+A class used to implement the fibers (or the entire **fibertree**) of
+a tensor.
+
+"""
+
 
 from functools import partialmethod
 from copy import deepcopy
@@ -52,24 +58,6 @@ class Fiber:
     Fibers can be iterated and return a series of `CoordPayload`
     elements (see `fibertree.core.coord_payload`).
 
-    Parameters
-    ----------
-
-    coords: list, default=[]
-        List of coordinate values
-
-    payloads: list, default=[]
-        List of corresponding payloads for the coordinates
-
-    default: value, default=0
-        Default value of a payload in this fiber
-
-    initial: value, default=None
-        A value to initialize all payloads.
-
-    max_coord: value, default=no maximum coordinate
-            The maximum legal coordinate value (this is really "shape-1")
-
     Attributes
     ----------
 
@@ -99,6 +87,33 @@ class Fiber:
       method. See `Fiber.getRange()` for an example of a method that
       both saves and can use these **shortcuts**.
 
+    Constructor
+    -----------
+
+    The `Fiber` constructor creates an fiber with a given set of
+    coordinates and payloads (in struct of lists form).
+
+    Parameters
+    ----------
+
+    coords: list, default=[]
+        List of coordinate values
+
+    payloads: list, default=[]
+        List of corresponding payloads for the coordinates
+
+    default: value, default=0
+        Default value of a payload in this fiber
+
+    shape: integer, default=None
+        Declared shape for the fiber
+
+    initial: value, default=None
+        A value to initialize all payloads.
+
+    max_coord: value, default=no maximum coordinate
+            The maximum legal coordinate value (this is really "shape-1")
+
 
     Notes
     -----
@@ -109,8 +124,8 @@ class Fiber:
     the fiber. A variety of methods use a `postion` to reference an
     element, such as `Fiber.__getitem__()` and `Fiber.__setitem__()`
 
-    Currently the internal implementation of a Fiber is to hold a list
-    of coorindates and a list of payloads (struct of lists) and the
+    Currently, the internal implementation of a Fiber is to hold a list
+    of coordinates and a list of payloads (struct of lists) and the
     instance variables holding those lists (coords and payloads) are
     currently left public...
 
@@ -350,17 +365,19 @@ class Fiber:
         -----------
 
         shape: list
-            The `shape` (i.e., size) of each level of the tree
+            The `shape` (i.e., size) of the fibers at each level of
+            the tree.
 
         density: list
-            The probability that an element of the fiber will not be empty
-            for each level of the tree
+            The probability that an element of the fiber will not be
+            empty for each level of the tree.
 
         interval: number
-            The range (from 0 to `interval`) of each value at the leaf of the tree
+            The range (from 0 to `interval`) of each value at the leaf
+            level of the tree.
 
         seed: a valid argument for `random.seed`
-            A seed to pass to `random.seed`
+            A seed to pass to `random.seed`.
 
         """
 
@@ -464,13 +481,13 @@ class Fiber:
         This method operates in two modes: allocate=True and False.
 
         For "allocate=True" mode, if any coordinate refers to a
-        non-existant element, a payload is created (a fiber for at a
+        non-existent element, a payload is created (a fiber for at a
         non-leaf level or a zero at the leaf) recursively, but not
         inserted into the fiber tree. The final such payload is
         returned to the caller.
 
         For "allocate=False" mode, if any coordinate refers to a
-        non-existant element, nothing is created and the `default`
+        non-existent element, nothing is created and the `default`
         value is returned.
 
         If `start_pos` is specified it is used as a shortcut to start the
@@ -2228,6 +2245,14 @@ class Fiber:
         other: Fiber
             A fiber whose elements will be inserted into `self`
 
+        Notes
+        -----
+
+        There is an analogous assignment operator for the `Payload`
+        and `CoordPayload` classes, so one can "assign" a new value to
+        a "payload" irrespective of whether the "payload" is a
+        `Payload`, a `CoordPayload` or a `Fiber`.
+
         """
 
         assert Payload.contains(other, Fiber)
@@ -2674,8 +2699,8 @@ class Fiber:
     def intersection(*args):
         """Intersect a set of fibers.
 
-        Create a new fiber containing **all** the coordinates that are
-        common to all the fibers in `args` and for eacho of those
+        Create a new fiber containing all the coordinates that are
+        common to **all** the fibers in `args` and for each of those
         coordinates create a payload that is the combination of the
         payloads of all the input fibers. Note, however, unlike a
         sequence of two-operand intersections (see Fiber.__and__()`)
@@ -2736,8 +2761,8 @@ class Fiber:
     def union(*args):
         """Union a set of fibers.
 
-        Create a new fiber containing **any** coordinates that exist
-        in any of the fibers in `args` and for each of those
+        Create a new fiber containing the coordinates that exist in
+        **any** of the fibers in `args` and for each of those
         coordinates create a payload that is the combination of the
         payloads of all the input fibers. Note, however, unlike a
         sequence of two-operand unions (see `Fiber.__or__()`) the

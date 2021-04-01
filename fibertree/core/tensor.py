@@ -1,3 +1,9 @@
+"""Tensor
+
+A class used to implement the a tensor based on the **fibertree**
+abstraction for representing tensors.
+
+"""
 import copy
 import yaml
 from copy import deepcopy
@@ -6,15 +12,62 @@ from .rank    import Rank
 from .fiber   import Fiber
 from .payload import Payload
 
-""" Tensor """
+
 
 
 class Tensor:
     """Tensor Class
 
-    This constructor should be used to create an empty tensor,
-    which has the given "rank_ids" and optionally the given
-    "shape", "name" and "color".
+    The Tensor class is a foundational class in this system and is
+    used to model a tensor using a largely format-agnostic
+    representation of the tensor. More specifically, this class uses a
+    tree structure of fibers (called a **fibertree**) to represent the
+    ranks of a tensor. More details on this representation can be
+    found in sections 8.2 and 8.3 of the book "Efficient Processing of
+    Deep Neural Networks" [1].
+
+    Attributes
+    ----------
+
+    The principal attributes of a tensor are:
+
+    - **name**: A name of the tensor.
+
+    - **color**: A color to use to represent the tensor when it is
+        drawn.
+
+    - **root**: The root of a tensor is a reference to the top fiber
+        of the fibertree comprising the structure of the tensor. The
+        fibertree is implemented using the `Fiber` class.
+
+    - **ranks**: The tensor contains a list of ranks, each of which
+        contains all of the fibers at each level of the tensor's
+        fibertree. The list contains instances of the `Rank` class,
+        and each rank has a **rank id**, a **shape**, a **default
+        value** and a **next_rank**. The **next rank** field is used
+        to create a linked list of ranks in the tensor.
+
+    - **rank ids**: The rank ids of a tensor is a list of the names
+        (or rank ids) of each rank of the tensor.
+
+    - **shape**: The shape of a tensor is a list of the shapes of the
+        fibers in each rank.
+
+    - **default value**: The default value of a tensor is the default
+        value of payloads of the fibers in the leaf rank of the
+        tensor.
+
+
+    See the `Rank` and `Fiber` classes for more details on the
+    attributes associated with those classes.
+
+
+    Constructor
+    -----------
+
+    The main tensor constructor should be used to create an empty
+    tensor, which has the given `rank_ids` and optionally the given
+    `shape`, `name` and `color`.
 
     Parameters
     -----------
@@ -25,7 +78,7 @@ class Tensor:
     shape: list of integers
         A list of shapes of the ranks
 
-    name: string
+    name: string, default=""
         A name for the tensor
 
     color: string, default="red"
@@ -39,6 +92,14 @@ class Tensor:
     from the specified "yamlfile", which is the first argument, so
     existing code uses it with the "yamlfile" keyword. That usage
     is deprecated in favor of using Tensor.fromYAMLfile().
+
+    Bibliography
+    ------------
+
+    [1] "[Efficient Processing of Deep Neural Networks](http://www.morganclaypoolpublishers.com/catalog_Orig/product_info.php?products_id=1530)",
+    Vivienne Sze, Yu-Hsin Chen, Tien-Ju Yang, and Joel S. Emer,
+    Synthesis Lectures on Computer Architecture,
+    June 2020, 15:2, 1-341.
 
     """
 
@@ -381,15 +442,26 @@ class Tensor:
     def getShape(self, authoritative=False):
         """Get the shape of the tensor.
 
+        Get a list of the shapes of each of the ranks that comprise
+        the tensor.  Since the shape may sometimes be estimated, this
+        method gives the option of insisting that the returned shape
+        be known authoritatively (if not the method returns None).
+
         Parameters
         ----------
-        None
+        authoritative: Boolean, default=False
+            Control whether to return an estimated (non-authoritative) shape
 
         Returns
         -------
-
-        shape: list of integers
+        shape: list of integers or None
             List of the shapes of each rank
+
+
+        Notes
+        -----
+
+        A rank zero tensor will return an empty list
 
         """
 

@@ -1,11 +1,93 @@
+"""CoordPayload
+
+A class used to represent an **element** of a fiber, i.e., a
+coordinate/payload tuple.
+
+"""
 
 class CoordPayload():
+    """An element of a fiber.
 
+    Instances of this class are returned by some `Fiber` methods, most
+    significantly, iteration (see `Fiber.__iter__()`).
+
+    In many instances one just wants to operate on the `payload` part
+    of the element. Therefore, this class provides a variety of
+    overloaded operations that do just that. These include index
+    operations ([]) and many operators, including:
+
+    - Addition: (+, +-)
+    - Subtraction: (-, -=)
+    - Multiplication: (*, *=)
+    - Division: (/, /=)
+    - Integer division: (//)
+    - Left shift: (<<)
+    - Boolean and: (&)
+    - Boolean or: (|)
+    - Equal: (=)
+    - Not equal: (!=)
+    - Less than: (<)
+    - Great than: (&gt;)
+    - Less than or equal: (<=)
+    - Greater than or equal: (&gt;=)
+
+    In addition to the above operators one needs to be able to
+    conveniently assign a new value to the payload of a
+    `CoordPayload`. Since the normal Python assignment operator (=)
+    will replace a pointer to a class rather than update a value in
+    the class (i.e., the **boxed** value) we overload the operator
+    "<<=" to assign a new **boxed** value to the payload (see
+    `CoordPayload.__ilshift__()`)
+
+    Attributes
+    ----------
+
+    coord: a hashable value
+        A value used as a coordinate
+
+    payload: a legal payload
+        A legal "payload" value.
+
+
+    Note - these attributes are just left public in the class, so
+    given an instance of this class named `element` one can access the
+    attributes as `element.coord` and `element.payload`.
+
+    Constructor
+    -----------
+
+    The `CoordPayload` constructor creates an element of a fiber with
+    a given `coord` and `payload`.
+
+    Parameters
+    ----------
+
+    coord: a hashable value
+        A value used as a coordinate
+
+    payload: a legal payload
+        A legal "payload" value.
+
+
+    Notes
+    -----
+
+    Construction of a element of this class relies on the `payload`
+    argument already being a legal payload. Frequently, that will be
+    will a instance of a `Payload` (see `fibertree.core.payload`). But
+    because it is already a legal payload `__init__()` does not try to
+    invoke `Payload.maybe_box()`.
+
+    Iteration through an instance of this class results in the
+    "coordinate" followed by the "payload".
+
+    """
     def __init__(self, coord, payload):
         """__init__"""
 
         self.coord = coord
         self.payload = payload
+
 
     def __iter__(self):
         """__iter__"""
@@ -17,49 +99,49 @@ class CoordPayload():
     # Position based methods
     #
     def __getitem__(self, keys):
-        """__getitem__
+        """Index into the payload
 
-        Do a __getitem__() on the payload of "self".  Generally this
+        Do a `__getitem__()` on the payload of `self`.  Generally this
         will only be meaningful if the payload is a fiber. So see
-        Fiber.__setitem__() for more information.
+        `Fiber.__getitem__()` for more information.
 
         Parameters
         ----------
-        keys: single integer/slicr or tuple of integers/slices
-        The positions or slices in an n-D fiber
+        keys: single integer/slice or tuple of integers/slices
+            The positions or slices in an n-D fiber
 
         Returns
         -------
         tuple or Fiber
-        A tuple of a coordinate and payload or a Fiber of the slice
+            A tuple of a coordinate and payload or a Fiber of the slice
 
         Raises
         ------
 
         IndexError
-        Index out of range
+            Index out of range
 
         TypeError
-        Invalid key type
+            Invalid key type
 
         """
         return self.payload.__getitem__(keys)
 
 
     def __setitem__(self, key, newvalue):
-        """__setitem__
+        """Index into a payload and update the value
 
-        Do a __setitem__() on the payload of "self".  Generally this
+        Do a `__setitem__()` on the payload of `self`.  Generally this
         will only be meaningful if the payload is a fiber. So see
-        Fiber.__setitem__() for more information.
+        `Fiber.__setitem__()` for more information.
 
         Parameters
         ----------
         key: single integer
-        The position in the fiber to be set
+            The position in the fiber to be set
 
         newvalue: a CoordPayload or a payload value
-        The coordinate/payload or just payload to assign
+            The coordinate/payload or just payload to assign
 
         Returns
         -------
@@ -69,19 +151,72 @@ class CoordPayload():
         ------
 
         IndexError
-        Index out of range
+            Index out of range
 
         TypeError
-        Invalid key type
+            Invalid key type
 
         CoordinateError
-        Invalid coordinate
+            Invalid coordinate
 
         """
 
         self.payload.__setitem__(key, newvalue)
 
-        #
+    #
+    # Assignment operator
+    #
+    def __ilshift__(self, other):
+        """Assign a new **boxed** value.
+
+        Assigns a new value to a `Payload`. Since the normal
+        Python assignment operator (=) will replace a pointer to a class
+        rather than update a value in the class (i.e., the **boxed**
+        value) we overload the "<<=" operator to assign a new **boxed**
+        value to a `Payload`
+
+        Parameters
+        ----------
+        other: Payload or scalar
+            A value to assign as the new **boxed** value.
+
+        Returns
+        -------
+        Nothing
+
+
+        Examples
+        --------
+
+        ```
+        >>> a = CoordPayload(1, 4)
+        >>> print(a)
+        CoordPayload(1, 4)
+        >>> b = a
+        >>> b <<= 6
+        >>> print(a)
+        CoordPayload(1, 6)
+        >>> b = 8
+        >>> print(a)
+        CoordPayload(1, 6)
+        ```
+
+        Notes
+        -----
+
+        There is an analogous assignment operator for the `Payload`
+        and `Fiber` classes, so one can "assign" a new value to a
+        "payload" irrespective of whether the "payload" is a
+        `Payload`, a `CoordPayload` or a `Fiber`.
+
+        """
+        if isinstance(other, CoordPayload):
+            self.payload <<= other.payload
+        else:
+            self.payload <<= self.payload + other
+
+
+    #
     # Arithmetic operations
     #
     def __add__(self, other):
@@ -184,11 +319,6 @@ class CoordPayload():
 
         return self
 
-    def __repr__(self):
-        """__repr__"""
-
-        return str(f"CoordPayload(coord={self.coord}, payload={self.payload})")
-
 
 #
 # Comparison operations
@@ -242,6 +372,21 @@ class CoordPayload():
 
         return self.payload != other
 
+    #
+    # Printing
+    #
+    def __repr__(self):
+        """__repr__"""
+
+        return str(f"CoordPayload(coord={self.coord}, payload={self.payload})")
+
+#
+# Pdoc stuff
+#
+__pdoc__ = {'CoordPayload.__getitem__':   True,
+            'CoordPayload.__setitem__':   True,
+            'CoordPayload.__ilshift__':   True,
+           }
 
 ##############################################
 

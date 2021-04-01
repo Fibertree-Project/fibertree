@@ -1,44 +1,70 @@
+"""Rank
+
+A class used to implement a rank (or dimension) of a tensor.
+
+"""
+
 from copy import deepcopy
 
 from .fiber import Fiber
 from .payload import Payload
 
-""" Rank """
-
 
 class Rank:
-    """Rank class
+    """Class representing a "rank" (or dimension) of a tensor.
 
-    Class representing a "rank" of a tensor. It holds all the fibers
-    at a rank, information about them and a pointer to the next rank.
-    """
+    An instance of this class holds a list of all the fibers at a
+    rank, common attributes of the fibers in the rank, and a pointer
+    to the next rank.
 
-    def __init__(self, id, shape=None, next_rank=None):
-        """
-        Create a new rank.
+    A `Tensor` contains a list of the ranks it is comprised of, and
+    the "next rank" pointer is used to create a linked list of those
+    ranks..
 
-         Parameters
-        -----------
+    Attributes
+    ----------
 
-        id: String
+    rank_id: string
         The name of the rank
 
-        shape: Number
+    estimated_shape: Boolean
+        Is the shape estimated or was it provided explicitly
+
+    shape: integer
         The shape of the fibers in the rank
 
-        next_rank: Rank
-        The next rank in the tensor
-
-        Attributes
-        ----------
-
-        estimated_shape: Boolean
-        Is the shape estimated or given
-
-        fibers: List
+    fibers: list of Fibers
         A list of the fibers in the rank
 
-        """
+    Constructor
+    -----------
+
+    The `Rank` constructor creates an empty rank.
+
+    Parameters
+    -----------
+
+    id: string
+        The name (rank_id) of the rank
+
+    shape: integer, default=None
+        The shape of the fibers in the rank
+
+    next_rank: Rank, default=None
+        The next rank in the tensor
+
+
+    Notes
+    -----
+
+    The fibers in a rank are NOT provided as part of the contructor
+    but are added incrementally using `Rank.append()`.
+
+    """
+
+
+    def __init__(self, id, shape=None, next_rank=None):
+        """__init__"""
 
         self._id = id
 
@@ -57,13 +83,48 @@ class Rank:
 # Accessor methods
 #
     def getId(self):
-        """Return id of rank"""
+        """Return id of rank.
+
+        Get the rank id of this rank, i.e., the name of this
+        rank/dimension.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        rank_id: string
+            Rank id of this rank
+
+        """
 
         return self._id
 
 
     def getRankIds(self, all_ranks=True):
-        """Return list of ranks"""
+        """Get a list of ranks ids.
+
+        Get a list of rank ids starting at this rank and optionally
+        including the rank ids all succeeding (lower level) ranks.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        rank_id: list of strings
+            List of rank ids
+
+        Todo
+        ----
+
+        There is an asymmetry between this method and
+        `Rank.getShape()` because it always returns a list,
+        irrespective of the value of `all_ranks`.
+
+        """
 
         rankids = [self._id]
 
@@ -74,7 +135,7 @@ class Rank:
 
 
     def getName(self):
-        """Return name of rank"""
+        """.. deprecated::"""
 
         Rank._deprecated("Use of Rank.getName() is deprecated - use Rank.getId()")
 
@@ -84,6 +145,29 @@ class Rank:
     def getShape(self, all_ranks=True, authoritative=False):
         """Return shape of rank.
 
+        Since the shape may sometimes be estimated, this method gives
+        the option of insisting that the returned shape be known
+        authoritatively (if not the method returns None).
+
+        Parameters
+        ----------
+        all_ranks: Boolean, default=True
+            Control whether to return shape of all ranks or just this one
+
+        authoritative: Boolean, default=False
+            Control whether to return an estimated (non-authoritative) shape
+
+        Returns
+        -------
+        shape: integer, list of integers or None
+            The shape of this rank or this rank and all succeeding ranks
+
+        Todo
+        ----
+
+        There is an asymmetry between this method and
+        `Rank.getRankIds()` because it sometimes returns a list and
+        sometimes a scalar depending on the value of `all_ranks`.
 
         """
 
@@ -136,12 +220,33 @@ class Rank:
 
 
     def getFibers(self):
-        """Return list of fibers in the rank"""
+        """Return list of fibers in the rank.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        fibers: list of Fibers
+            All the fibers in this rank
+
+        """
 
         return self.fibers
 
     def clearFibers(self):
-        """Empty rank of all fibers"""
+        """Empty rank of all fibers.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+
+        """
 
         self.fibers = []
 
@@ -149,19 +254,17 @@ class Rank:
     # Default payload methods
     #
     def setDefault(self, value):
-        """setDefault
-
-        Set the default payload value for fibers in this rank
+        """Set the default payload value for fibers in this rank.
 
         Parameters
         ----------
         value: value
-        An (unboxed) value to use as the payload value for fibers in this rank
+            An (unboxed) value to use as the payload value for fibers in this rank
 
         Returns
         -------
-        self:
-        So method can be used in a chain
+        self: Rank
+           So method can be used in a chain
 
         Raises
         ------
@@ -176,9 +279,7 @@ class Rank:
 
 
     def getDefault(self):
-        """getDefault
-
-        Get the default payload for fibers in this rank
+        """Get the default payload for fibers in this rank
 
         Parameters
         ----------
@@ -187,7 +288,7 @@ class Rank:
         Returns
         -------
         value: value
-        The (unboxed) default payload of fibers in this rank
+            The (unboxed) default payload of fibers in this rank
 
         Raises
         ------
@@ -204,8 +305,28 @@ class Rank:
 # Fundamental methods
 #
     def append(self, fiber):
-        """
-        Append the provided fiber into a rank
+        """Append the provided fiber into a rank
+
+        Parameters
+        ----------
+        fiber: Fiber
+            A fiber to add to the rank
+
+        Returns
+        -------
+        Nothing
+
+
+        Notes
+        -----
+
+        If the **shape** of the rank is being estimated, this method
+        might update the rank's shape.
+
+        TODO
+        ----
+
+        Maybe should rename to appendFiber()
 
         """
 
@@ -251,11 +372,24 @@ class Rank:
 # Linked list methods
 #
     def setNextRank(self, next_rank):
-        """setNextRank
+        """Set the next rank
 
         Record a reference to the next rank. If that rank exists then the
         default payload of fibers in this rank must be a fiber,
         otherwise set the default payload to zero.
+
+        Parameters
+        ----------
+        next_rank: None
+
+        Returns
+        -------
+        Nothing
+
+
+        Todo
+        ----
+            The default payload probably shouldn't be zero.
 
         """
 
@@ -268,7 +402,18 @@ class Rank:
 
 
     def getNextRank(self):
-        """getNextRank"""
+        """Get the next rank
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        next_rank: Rank
+            The next rank
+
+        """
 
         return self.next_rank
 
