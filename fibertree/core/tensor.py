@@ -378,8 +378,8 @@ class Tensor:
         return [r.getId() for r in self.ranks]
 
 
-    def getShape(self):
-        """Get the shape of the tensor
+    def getShape(self, authoritative=False):
+        """Get the shape of the tensor.
 
         Parameters
         ----------
@@ -396,9 +396,10 @@ class Tensor:
         #
         # Get the shape for each rank
         #
-        # TBD: Fix awkward interface to getShape
-        #
-        return [r.getShape(all_ranks=False)[0] for r in self.ranks]
+        if len(self.ranks) == 0:
+            return []
+
+        return self.ranks[0].getShape(all_ranks=True, authoritative=authoritative)
 
 
     def setRoot(self, root):

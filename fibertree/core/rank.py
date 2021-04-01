@@ -40,14 +40,14 @@ class Rank:
 
         """
 
-        self.id = id
+        self._id = id
 
         if shape is None:
-            self.estimated_shape = True
-            self.shape = 0
+            self._estimated_shape = True
+            self._shape = 0
         else:
-            self.estimated_shape = False
-            self.shape = shape
+            self._estimated_shape = False
+            self._shape = shape
 
         self.setNextRank(next_rank)
 
@@ -59,13 +59,13 @@ class Rank:
     def getId(self):
         """Return id of rank"""
 
-        return self.id
+        return self._id
 
 
     def getRankIds(self, all_ranks=True):
         """Return list of ranks"""
 
-        rankids = [self.id]
+        rankids = [self._id]
 
         if all_ranks and self.next_rank is not None:
             rankids.extend(self.next_rank.getRankIds(all_ranks=True))
@@ -76,18 +76,58 @@ class Rank:
     def getName(self):
         """Return name of rank"""
 
-        # Deprecated
+        Rank._deprecated("Use of Rank.getName() is deprecated - use Rank.getId()")
 
-        return self.id
+        return self._id
 
 
-    def getShape(self, all_ranks=True):
-        """Return shape of rank"""
+    def getShape(self, all_ranks=True, authoritative=False):
+        """Return shape of rank.
 
-        shape = [self.shape]
 
-        if all_ranks and self.next_rank is not None:
-            shape.extend(self.next_rank.getShape(all_ranks=True))
+        """
+
+        if all_ranks == False:
+            #
+            # Handle case where user just wants shape of this rank
+            #
+            if authoritative and self._estimated_shape:
+                #
+                # We do not know the shape authoritatively
+                #
+                return None
+
+            if self._shape == 0:
+                #
+                # We do not actually know the shape
+                #
+                return 0
+
+            return self._shape
+
+        #
+        # Get shape of all ranks
+        #
+        if authoritative and self._estimated_shape:
+            #
+            # This will cause the final return to be None
+            #
+            return None
+
+        shape = [self._shape]
+
+        if self.next_rank is not None:
+            rest_of_shape = self.next_rank.getShape(all_ranks=True, authoritative=authoritative)
+            if rest_of_shape is None:
+                return None
+
+            shape.extend(rest_of_shape)
+
+        #
+        # If we didn't have a shape for any rank, assume we don't know anything
+        #
+        if any([s == 0 for s in shape]):
+            return None
 
         return shape
 
@@ -171,7 +211,7 @@ class Rank:
         #
         fiber = Payload.get(fiber)
 
-        if self.estimated_shape:
+        if self._estimated_shape:
             #
             # Get shape from fiber and see it is larger that current shape
             # making sure we don't get info from a prior owning rank
@@ -180,7 +220,7 @@ class Rank:
             # change estimated_shape to True
             #
             fiber.setOwner(None)
-            self.shape = max(self.shape, fiber.getShape(all_ranks=False)[0])
+            self._shape = max(self._shape, fiber.getShape(all_ranks=False))
 
         #
         # Set this rank as owner of the fiber
@@ -237,7 +277,7 @@ class Rank:
         """__str__"""
 
         string = indent * ' '
-        string += f"Rank: {self.id} "
+        string += f"Rank: {self._id} "
 
         next_indent = len(string)
 
@@ -250,7 +290,19 @@ class Rank:
     def __repr__(self):
         """__repr__"""
 
-        string = "R(%s)/[" % self.id
+        string = "R(%s)/[" % self._id
         string += ", ".join([x.__repr__() for x in self.fibers])
         string += "]"
         return string
+
+#
+# Utility functions
+#
+
+    @staticmethod
+    def _deprecated(message):
+        import warnings
+
+        warnings.warn(message, FutureWarning, stacklevel=3)
+
+

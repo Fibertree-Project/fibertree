@@ -121,6 +121,7 @@ class Fiber:
                  coords=None,
                  payloads=None,
                  default=0,
+                 shape=None,
                  initial=None,
                  max_coord=None):
 
@@ -166,12 +167,19 @@ class Fiber:
         """The list of payloads of the fiber"""
 
         #
+        # Set a specific contstant value for the shape of this fiber
+        #
+        # Note: this value is overridden by the owning rank's shape
+        #
+        self._shape = shape
+        #
         # Set a specific constant value to the maximum legal coordinate
         #
         # TBD: If not None there are lots of places this should be checked
         #
         self._max_coord = max_coord
-
+        if max_coord is not None:
+            Fiber._deprecated("Explicitly setting a fiber's max_coord is deprecated")
         #
         # Owner rank... set later when fiber is appended to a rank
         #
@@ -328,7 +336,7 @@ class Fiber:
         # Note: max_coord dervived from input argument list and
         #       assuming coordinates start at 0
         #
-        return Fiber(coords, payloads, max_coord=len(payload_list) - 1)
+        return Fiber(coords, payloads, shape=len(payload_list))
 
 
     @classmethod
@@ -1961,14 +1969,14 @@ class Fiber:
         if owner is not None:
             shape = owner.getShape(all_ranks=all_ranks)
 
-        if shape is None or any([s == 0 for s in shape]):
-            # Backup for cases where there is no  owner
-            # or owner didn't know shape
+        if shape is not None:
+            return shape
 
-            shape = self.estimateShape(all_ranks=all_ranks)
-
-            if not all_ranks:
-                shape = shape[0:1]
+        #
+        # Backup for cases where there is no  owner
+        # or owner didn't know shape
+        #
+        shape = self.estimateShape(all_ranks=all_ranks)
 
         return shape
 
@@ -1979,8 +1987,16 @@ class Fiber:
         Traverse a fiber tree to estimate its shape
 
         """
+        shape = self._calcShape(all_ranks=all_ranks)
 
-        return self._calcShape(all_ranks=all_ranks)
+        #
+        # Since _calcShape() always returns a list we may
+        # need to get out first value
+        #
+        if not all_ranks:
+            shape = shape[0]
+
+        return shape
 
 
     def _calcShape(self, shape=None, level=0, all_ranks=True):
@@ -2225,12 +2241,12 @@ class Fiber:
         Is there a reasonable semantic if `partitions` is a fiber
         """
 
-        max_coord = self.maxCoord()
+        shape = self.getShape(all_ranks=False)
 
-        assert max_coord is not None, \
+        assert shape is not None, \
                "Cannot partition a fiber without a maximum coordinate"
 
-        return self.splitUniform((max_coord+partitions-1)//partitions)
+        return self.splitUniform((shape+partitions-1)//partitions)
 
 
     def __floordiv__(self, partitions):
@@ -3761,7 +3777,7 @@ class Fiber:
         if self._owner is None:
             str += "F/["
         else:
-            str += f"F({self._owner.getName()})/["
+            str += f"F({self._owner.getId()})/["
 
         coord_indent = 0
         next_indent = 0
@@ -3823,7 +3839,7 @@ class Fiber:
         str = f"Fiber({self.coords!r}, {self.payloads!r}"
 
         if self._owner:
-            str += f", owner={self._owner.getName()}"
+            str += f", owner={self._owner.getId()}"
 
         str += ")"
 

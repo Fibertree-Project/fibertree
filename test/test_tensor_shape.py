@@ -16,7 +16,7 @@ class TestTensor(unittest.TestCase):
         t1 = Tensor(rank_ids=["M", "K"])
 
         self.assertEqual(t1.getRankIds(), ["M", "K"])
-        self.assertEqual(t1.getShape(), [0, 0])
+        self.assertEqual(t1.getShape(), None)
 
         t2 = Tensor(rank_ids=["M", "K"], shape=[10,20])
 
