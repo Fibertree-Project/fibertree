@@ -37,7 +37,7 @@ class UncompressedImage():
         self.col_extent = extent[1]
         self.row_map = row_map
 
-        level = len(self.object.getShape())-1
+        level = self.object.getDepth()-1
         self.highlight_manager = HighlightManager(highlights, level=level)
 
         #
@@ -155,14 +155,16 @@ class UncompressedImage():
             # Recursively draw the fibers of a non-0-D tensor
             #
             shape = fiber.getShape(all_ranks=True)
+            dimensions = len(shape)
 
+            hl_manager = self.highlight_manager
 
-            if len(shape) == 3:
-                region_size = self.traverse_cube(shape, fiber, highlight_manager=self.highlight_manager)
-            elif len(shape) == 2:
-                region_size = self.traverse_matrix(shape, fiber, highlight_manager=self.highlight_manager)
-            elif len(shape) == 1:
-                region_size = self.traverse_vector(shape, fiber, highlight_manager=self.highlight_manager)
+            if dimensions == 3:
+                region_size = self.traverse_cube(shape, fiber, highlight_manager=hl_manager)
+            elif dimensions == 2:
+                region_size = self.traverse_matrix(shape, fiber, highlight_manager=hl_manager)
+            elif dimensions == 1:
+                region_size = self.traverse_vector(shape, fiber, highlight_manager=hl_manager)
             else:
                 region_size = [1, 1]
 
@@ -301,7 +303,7 @@ class UncompressedImage():
         if rank_label:
             self.draw_label(row_origin, col_origin+col_hack, "Rank: "+self._getId(fiber))
 
-            for c in range(fiber.getShape(all_ranks=False)[0]):
+            for c in range(fiber.getShape(all_ranks=False)):
                 self.draw_label(row_origin+1, col_origin+col_hack+c, f"{c:^3}")
 
             rank_label_offset = 2
@@ -371,6 +373,7 @@ class UncompressedImage():
 
             if isinstance(fiber, Fiber):
                 payload = fiber.getPayload(coord)
+                assert not isinstance(payload, Fiber)
 
             row_count = self.draw_value(row_cur, col_cur, payload, color_coord_or_subtensor)
 
@@ -395,7 +398,7 @@ class UncompressedImage():
         if fiber.getOwner() is None:
             return ""
 
-        return str(fiber.getOwner().getName())
+        return str(fiber.getOwner().getId())
 
 #
 # Image methods

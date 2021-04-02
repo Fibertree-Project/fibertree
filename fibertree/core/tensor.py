@@ -225,7 +225,7 @@ class Tensor:
             if shape is not None:
                 maxrank = len(shape) - 1
             else:
-                maxrank = len(fiber.getShape()) - 1
+                maxrank = fiber.getDepth() - 1
 
             rank_ids = [f"R{maxrank-i}" for i in range(maxrank + 1)]
 
@@ -400,6 +400,29 @@ class Tensor:
             return []
 
         return self.ranks[0].getShape(all_ranks=True, authoritative=authoritative)
+
+
+    def getDepth(self):
+        """Get the depth of the tensor
+
+        Get the depth, i.e., number of dimensions, of the tensor.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        depth: integer
+            Number of dimensions in the tensor
+
+        Raises
+        ------
+        None
+
+        """
+
+        return len(self.ranks)
 
 
     def setRoot(self, root):

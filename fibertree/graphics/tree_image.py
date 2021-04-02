@@ -36,7 +36,7 @@ class TreeImage():
         self.row_extent = extent[0]
         self.col_extent = extent[1]
 
-        level = len(self.object.getShape())-1
+        level = self.object.getDepth()-1
         self.highlight_manager = HighlightManager(highlights, level=level)
 
         #
@@ -206,7 +206,7 @@ class TreeImage():
         # Print out the rank information (if available)
         #
         if offset == 0 and not fiber.getOwner() is None:
-            self.draw_rank(level, "Rank: %s " % fiber.getOwner().getName())
+            self.draw_rank(level, "Rank: %s " % fiber.getOwner().getId())
 
         #
         # Initialize drawing region information

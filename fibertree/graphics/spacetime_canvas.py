@@ -45,7 +45,7 @@ class SpacetimeCanvas():
                 spacetime.setName(tensor.getName())
                 spacetime.setColor(tensor.getColor())
             else:
-                assert len(tensor.getShape()) == 1, "Only 1-D fibers are supported"
+                assert tensor.getDepth() == 1, "Only 1-D fibers are supported"
 
                 spacetime = Tensor(rank_ids=["T", "S"])
 
@@ -130,7 +130,7 @@ class SpacetimeCanvas():
             #
             #
             spacetime_name = spacetime.getName()
-            spacetime_ranks = len(spacetime.getShape())
+            spacetime_ranks = spacetime.getDepth()
 
             if spacetime_ranks > 2:
                 #

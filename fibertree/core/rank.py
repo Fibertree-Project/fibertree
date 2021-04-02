@@ -114,7 +114,10 @@ class Rank:
             #
             return None
 
-        shape = [self._shape]
+        if self._shape == 0 and len(self.fibers) > 0:
+            shape = [max([f.estimateShape(all_ranks=False) for f in self.fibers])]
+        else:
+            shape = [self._shape]
 
         if self.next_rank is not None:
             rest_of_shape = self.next_rank.getShape(all_ranks=True, authoritative=authoritative)
@@ -126,8 +129,8 @@ class Rank:
         #
         # If we didn't have a shape for any rank, assume we don't know anything
         #
-        if any([s == 0 for s in shape]):
-            return None
+        #if any([s == 0 for s in shape]):
+        #    return None
 
         return shape
 

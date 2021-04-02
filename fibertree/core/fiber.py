@@ -1196,13 +1196,20 @@ class Fiber:
         """
 
         default = self.getDefault()
+
+        a_payload = (self.payloads or [None])[0]
+        if isinstance(a_payload, Fiber):
+            next_default = a_payload.getDefault()
+        else:
+            next_default = None
+
         owner = self.getOwner()
 
-        return Fiber._instantiateDefault(default, owner, addtorank)
+        return Fiber._instantiateDefault(owner, default, next_default, addtorank)
 
 
     @staticmethod
-    def _instantiateDefault(default, owner=None, addtorank=False):
+    def _instantiateDefault(owner, default, next_default=None, addtorank=False):
         """_instantiateDefault
 
         Create (recursively for tuples) an instance of a default
@@ -1239,7 +1246,7 @@ class Fiber:
             # Recursively create defaults. Note each of the elements of the tuple
             # will be **boxed**
             #
-            return Payload(tuple([Fiber._instantiateDefault(e, owner) for e in default]))
+            return Payload(tuple([Fiber._instantiateDefault(owner, e) for e in default]))
 
         if callable(default):
             #
@@ -1278,7 +1285,7 @@ class Fiber:
                         #
                         value.setOwner(owner.next_rank)
                 else:
-                    value._setDefault(Fiber)
+                    value._setDefault(next_default)
             else:
                 assert False, "Unsupported Payload type"
         else:
@@ -2086,12 +2093,59 @@ class Fiber:
         # Approximate rankids for fiber not in a tensor
         #
 
-        rankids = [f"X.{len(self.getShape())-1}"]
-
-        if len(self) > 0 and Payload.contains(self.payloads[0], Fiber):
-            rankids.extend(self.payloads[0].getRankIds())
+        rankids = [f"X.{d}" for d in reversed(range(self.getDepth()))]
 
         return rankids
+
+#
+# Dimensionality method
+#
+    def getDepth(self):
+        """Get the depth of the fiber
+
+        Get the depth, i.e., number of dimensions, of the fiber
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        depth: integer
+            The depth of the fibertree
+
+        Raises
+        ------
+        None
+
+        """
+
+        owner = self.getOwner()
+
+        if owner is not None:
+            #
+            # In a tensor, so get the number of ranks starting at this fiber
+            #
+            depth = 0
+
+            while owner is not None:
+                depth += 1
+                owner = owner.next_rank
+
+            return depth
+
+        #
+        # Just have a raw fiber, so count levels
+        #
+        fiber = self
+
+        depth = 1
+
+        while len(fiber.payloads) > 0 and isinstance(fiber.payloads[0], Fiber):
+            depth += 1
+            fiber = fiber.payloads[0]
+
+        return depth
 
 
 #
