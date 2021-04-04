@@ -259,7 +259,7 @@ class Rank:
         Parameters
         ----------
         value: value
-            An (unboxed) value to use as the payload value for fibers in this rank
+            A value to use as the payload value for fibers in this rank
 
         Returns
         -------
@@ -270,10 +270,15 @@ class Rank:
         ------
         None
 
+        Notes
+        -----
+
+        We make sure that the value saved is **boxed**.
+
         """
 
         self._default_is_set = True
-        self._default = value
+        self._default = Payload.maybe_box(value)
 
         return self
 
@@ -288,17 +293,27 @@ class Rank:
         Returns
         -------
         value: value
-            The (unboxed) default payload of fibers in this rank
+            A copy of the (boxed) default payload of fibers in this
+            rank
 
         Raises
         ------
         None
 
+        Notes
+        -----
+
+        We `deepcopy()` the return value so that everyone has their
+        own unique **boxed** value
+
         """
 
         assert self._default_is_set
 
-        return self._default
+        #
+        # Return a copy of the default
+        #
+        return deepcopy(self._default)
 
 
 #
@@ -353,8 +368,6 @@ class Rank:
 
         #
         # Check default value for new coordinates in the fiber
-        #
-        # Deprecating use of rank.getDefault()
         #
         if self.next_rank is None:
             assert self.getDefault() != Fiber, \

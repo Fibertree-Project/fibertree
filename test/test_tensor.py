@@ -279,7 +279,7 @@ class TestTensor(unittest.TestCase):
 
         self.assertEqual(a_s, a_s_ref)
 
-        a_r_ref = "T()/[2]"
+        a_r_ref = "T()/[Payload(2)]"
 
         a_r = f"{a!r}"
 

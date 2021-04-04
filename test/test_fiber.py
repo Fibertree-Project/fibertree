@@ -572,6 +572,28 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(a.getPayload(test[i], allocate=False, default=-1),
                              answer_default[i])
 
+    def test_getPayloadRef_update(self):
+        """Update payload references"""
+
+        #
+        # Test that each payload or allocated payload is an unique object
+        # but updates do not get reflected back to the original fiber
+        #
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+
+        test = [0, 4, 5, 6, 3]
+        update = [10, 11, 12, 13, 14]
+        answer = [0, 5, 0, 7, 0]
+
+        for i in range(len(test)):
+            x = a.getPayload(test[i])
+            x <<= update[i]
+            self.assertEqual(a.getPayload(test[i]), answer[i])
+
+
     def test_getPayload_2(self):
         """Access payloads - multilevel"""
 
@@ -594,6 +616,28 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(p, answer_allocate[i])
             p = a.getPayload(*test[i], allocate=False)
             self.assertEqual(p, answer_noallocate[i])
+
+    def test_getPayload_2_update(self):
+        """Update payloads - multilevel"""
+
+        a = Fiber.fromUncompressed([[1, 2, 0, 4, 5, 0],
+                                    [0, 0, 0, 0, 0, 0],
+                                    [0, 0, 3, 4, 0, 0]])
+
+
+        test = [(0,), (1,), (2, 0), (2, 2), (1, 1)]
+        update = [ Fiber([3], [20]), Fiber([4], [21]), 22, 23, 24 ]
+        check = [(0,3), (1, 3), (2,0), (2,2), (1,1)]
+        answer = [20, 0, 0, 23, 0]
+
+        for i in range(len(test)):
+            with self.subTest(test=i):
+                p = a.getPayload(*test[i], allocate=True)
+                p <<= update[i]
+                q = a.getPayload(*check[i])
+                self.assertEqual(q, answer[i])
+
+
 
     def test_getPayload_3(self):
         """Access payloads - complex"""
@@ -666,6 +710,26 @@ class TestFiber(unittest.TestCase):
         for i in range(len(test)):
             self.assertEqual(a.getPayloadRef(test[i]), answer[i])
 
+    def test_getPayloadRef_update(self):
+        """Update payload references"""
+
+        #
+        # Test that each payload or allocated payload is an unique object
+        #
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+
+        test = [0, 4, 5, 6, 3]
+        update = [10, 11, 12, 13, 14]
+        answer = [10, 11, 12, 13, 14]
+
+        for i in range(len(test)):
+            x = a.getPayloadRef(test[i])
+            x <<= update[i]
+            self.assertEqual(a.getPayload(test[i]), answer[i])
+
 
     def test_getPayloadRef2(self):
         """Get payload references 2-D"""
@@ -682,6 +746,24 @@ class TestFiber(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             a.getPayloadRef(3, 2, 4)
+
+    def test_getPayloadRef2_update(self):
+        """Update payload references 2-D"""
+
+        t = Tensor(rank_ids=["m", "n"])
+        a = t.getRoot()
+
+        test = [(0,), (2,), (1, 3), (2, 1)]
+        update = [ Fiber([3], [20]), Fiber([4], [21]), 22, 23 ]
+        check = [(0,3), (2,4), (1,3), (2,1)]
+        answer = [20, 21, 22, 23]
+
+        for i in range(len(test)):
+            with self.subTest(test=i):
+                p = a.getPayloadRef(*test[i])
+                p <<= update[i]
+                q = a.getPayload(*check[i])
+                self.assertEqual(q, answer[i])
 
 
     def test_getPayloadRef_shortcut(self):
@@ -914,7 +996,7 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(r, ["X.1", "X.0"])
 
     def test_uncompress(self):
-        """Test recursive iteration"""
+        """Test uncompress"""
 
         uncompressed_ref = [[0, 0, 0, 0, 0, 0, 0, 0],
                             [0, 0, 0, 0, 0, 0, 0, 0],
@@ -929,6 +1011,25 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(uncompressed, uncompressed_ref)
 
+
+    def test_uncompress_default(self):
+        """Test uncompress with non-zero default"""
+
+        uncompressed_ref = [[-1, -1, -1, -1, -1, -1, -1, -1],
+                            [-1, -1, -1, -1, -1, -1, -1, -1],
+                            [-1,  2, -1, -1,  5, -1, -1,  8],
+                            [-1, -1, -1, -1, -1, -1, -1, -1],
+                            [-1, -1,  3, -1,  5, -1,  7, -1]]
+
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+        # Dirty way of setting non-zero default...
+        for c, p in a:
+            p._setDefault(-1)
+
+        uncompressed = a.uncompress()
+
+        self.assertEqual(uncompressed, uncompressed_ref)
 
     def test_project(self):
         """Test projections"""

@@ -184,7 +184,8 @@ class Fiber:
         #
         # Set a specific contstant value for the shape of this fiber
         #
-        # Note: this value is overridden by the owning rank's shape
+        # Note1: this value is overridden by the owning rank's shape
+        # Note2: no checks are done to see if this value is violated
         #
         self._shape = shape
         #
@@ -203,7 +204,7 @@ class Fiber:
         #
         # Create default value
         #
-        self._default = default
+        self._default = Payload.maybe_box(default)
 
         #
         # Initialize "saved position"
@@ -381,6 +382,9 @@ class Fiber:
 
         """
 
+        assert len(shape) == len(density), \
+               "Density and shape arrays must be same length"
+
         if seed is not None:
             random.seed(seed)
 
@@ -554,7 +558,7 @@ class Fiber:
             if allocate or len(coords) > 1:
                 payload = self._createDefault(addtorank=False)
             else:
-                payload = default
+                payload = Payload.maybe_box(default)
 
         if len(coords) > 1:
             assert Payload.contains(payload, Fiber), \
@@ -1154,7 +1158,7 @@ class Fiber:
         if owner is not None:
             owner.setDefault(default)
         else:
-            self._default = default
+            self._default = Payload.maybe_box(default)
 
 
     def getDefault(self):
@@ -1169,7 +1173,7 @@ class Fiber:
         Returns
         -------
         value: value
-            The (unboxed) default payload of fibers in this rank
+            A copy of the default payload of fibers in this rank
 
         Raises
         ------
@@ -1188,13 +1192,15 @@ class Fiber:
         #
         # For unowned fibers, try to guess a default value
         #
+        # Note: the payload being a Fiber overwrides self._default
+        #
         if len(self.payloads) > 0 and Payload.contains(self.payloads[0], Fiber):
             return Fiber
 
         if self._default != 0:
             return deepcopy(self._default)
 
-        return 0
+        return Payload(0)
 
 
 
@@ -1212,6 +1218,8 @@ class Fiber:
 
         """
 
+        owner = self.getOwner()
+
         default = self.getDefault()
 
         a_payload = (self.payloads or [None])[0]
@@ -1220,8 +1228,6 @@ class Fiber:
         else:
             next_default = None
 
-        owner = self.getOwner()
-
         return Fiber._instantiateDefault(owner, default, next_default, addtorank)
 
 
@@ -1229,10 +1235,11 @@ class Fiber:
     def _instantiateDefault(owner, default, next_default=None, addtorank=False):
         """_instantiateDefault
 
-        Create (recursively for tuples) an instance of a default
-        payload for a fiber. This method goes one step further than
-        getDefault() because if the default payload is itself (or
-        contains) a fiber it creates a Fiber() object.
+        Create (recursively for default values that are tuples) an
+        instance of a default payload for a fiber. This method goes
+        one step further than getDefault() because if the default
+        payload is itself (or contains) a fiber it creates a Fiber()
+        object.
 
         Finally, if the newly created fiber is part of a a non-leaf
         rank it (optionally) adds the new fiber into the **next**
@@ -1241,11 +1248,14 @@ class Fiber:
         Parameters
         ----------
 
-        default: unboxed payload
-            A default value from a fiber
-
         owner: rank
             The rank that owns the fiber we are creating a payload for
+
+        default: a payload (boxed or unboxed)
+            A default value from a fiber
+
+        next_default: a payload (boxed or unboxed)
+            If `default` is a Fiber then a default payload for that fiber
 
         addtorank: Boolean 
             If the newly created value is a fiber, then should that fiber
@@ -1254,14 +1264,18 @@ class Fiber:
         Returns
         -------
 
-        A payload
+        A (boxed) payload
 
         """
+        #
+        # Selectively unbox the default
+        #
+        default = Payload.get(default)
 
         if isinstance(default, tuple):
             #
             # Recursively create defaults. Note each of the elements of the tuple
-            # will be **boxed**
+            # will be **boxed** as will the final result...
             #
             return Payload(tuple([Fiber._instantiateDefault(owner, e) for e in default]))
 
@@ -1290,6 +1304,8 @@ class Fiber:
                     #
                     # The new fiber is nominally part of
                     # "owner.next_rank"
+                    #
+                    # TBD: Rank.append() sets owner, maybe that should be done here.
                     #
                     if addtorank:
                         #
@@ -1996,6 +2012,9 @@ class Fiber:
         if shape is not None:
             return shape
 
+        if self._shape is not None:
+            return self._shape
+
         #
         # Backup for cases where there is no  owner
         # or owner didn't know shape
@@ -2187,6 +2206,13 @@ class Fiber:
         -------
         uncompressed: list of lists
 
+        Notes
+        ------
+
+        All elements of the lists are **unboxed**, i.e., never of type
+        `Payload`. However, nested elements, e.g., as part of a
+        `tuple`, of type `Payload` are not **unboxed**.
+
         """
 
         if shape is None:
@@ -2213,7 +2239,17 @@ class Fiber:
         """Recursive fill empty"""
 
         if level + 1 > len(shape):
-            return 0
+            #
+            # Find a fiber at the leaf level
+            #
+            f = self
+            while isinstance(f.payloads[0], Fiber):
+                f = f.payloads[0]
+
+            #
+            # Use the **unboxed** default from the leaf level fiber
+            #
+            return Payload.get(f.getDefault())
 
         f = []
 
@@ -3915,7 +3951,8 @@ class Fiber:
 
         # TBD: Owner is not properly reflected in representation
 
-        str = f"Fiber({self.coords!r}, {self.payloads!r}"
+        payloads = [Payload.get(r) for r in self.payloads]
+        str = f"Fiber({self.coords!r}, {payloads!r}"
 
         if self._owner:
             str += f", owner={self._owner.getId()}"

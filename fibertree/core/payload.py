@@ -335,22 +335,25 @@ class Payload:
         return self.value.print(title)
 
 
-    def __format__(self, spec="d"):
+    def __format__(self, spec=""):
         """__format__"""
 
-        return f"<{self.value:{spec}}>"
+        if len(spec) > 0:
+            return f"<{self.value:{spec}}>"
+        else:
+            return f"<{self.value}>"
 
 
     def __str__(self):
         """__str__"""
 
-        return "<%s>" % self.value.__str__()
+        return f"<{self.value.__str__()}>"
+
 
     def __repr__(self):
         """__repr__"""
 
-        return "%s" % self.value
-
+        return f"Payload({self.value.__repr__()})"
 #
 # Arithmetic operations
 #

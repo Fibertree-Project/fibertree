@@ -75,8 +75,11 @@ class Tensor:
     rank_ids: list of strings
         List containing names of ranks.
 
-    shape: list of integers
+    shape: list of integers, default=None
         A list of shapes of the ranks
+
+    default: value, default=0
+        A default value for elements in the leaf rank
 
     name: string, default=""
         A name for the tensor
@@ -107,6 +110,7 @@ class Tensor:
                  yamlfile="",
                  rank_ids=None,
                  shape=None,
+                 default=0,
                  name="",
                  color="red"):
         """__init__"""
@@ -123,7 +127,7 @@ class Tensor:
             if shape is None:
                 shape = root.estimateShape()
 
-            self.setRankInfo(rank_ids, shape)
+            self.setRankInfo(rank_ids, shape, default)
             self.setRoot(root)
             self.setName(name)
             self.setColor(color)
@@ -135,7 +139,7 @@ class Tensor:
         #
         assert(rank_ids is not None)
 
-        self.setRankInfo(rank_ids, shape)
+        self.setRankInfo(rank_ids, shape, default)
         self.setName(name)
         self.setColor(color)
         self.setMutable(True)
@@ -162,6 +166,12 @@ class Tensor:
 
         yamlfile: string
             Filename of file containing a YAML representation of a tensor
+
+
+        Todo
+        ----
+
+        YAML file does not provide a non-zero default value
 
         """
         (rank_ids, root, shape, name) = Tensor.parse(yamlfile)
@@ -363,7 +373,7 @@ class Tensor:
 #
 # Accessor methods
 #
-    def setRankInfo(self, rank_ids, shape):
+    def setRankInfo(self, rank_ids, shape, default=0):
         """Initialize rank info
 
         This method creates and initializes the list of ranks in this
@@ -379,6 +389,9 @@ class Tensor:
 
         shape: list of integers
             Shapes to assign to ranks
+
+        default: value, default=0
+            A value to use as the default for the leaf rank
 
         Returns
         -------
@@ -403,6 +416,12 @@ class Tensor:
             new_rank = Rank(id=id, shape=dimension, next_rank=last_rank)
             self.ranks.insert(0, new_rank)
             last_rank = new_rank
+
+        #
+        # If provided, set leaf rank with a non-zero default
+        #
+        if default != 0:
+            self.ranks[-1].setDefault(default)
 
 
     def syncRankInfo(self, ranks):
@@ -697,6 +716,12 @@ class Tensor:
         ------
         None
 
+        Notes
+        -----
+
+        The **default** value will be **boxed** by
+        `Rank.getDefault()`.
+
         """
 
         assert value != Fiber, "Leaf payloads cannot be a Fiber"
@@ -719,11 +744,18 @@ class Tensor:
         Returns
         -------
         value: value
-            Default payload of the leaf rank
+            A copy of the default payload of the leaf rank
 
         Raises
         ------
         None
+
+        Notes
+        -----
+
+        A `deepcopy()` of the **default** value will have been
+        performed in `Rank.getDefault()` so the value returned will be
+        unique.
 
         """
 
