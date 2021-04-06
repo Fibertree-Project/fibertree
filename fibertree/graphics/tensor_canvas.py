@@ -288,8 +288,19 @@ class TensorCanvas():
         #      Using this code exactly one addActivity() must have all
         #      the activity for a worker
         #
+        active_highlights = self.log[log_idx].highlights
+
         for n, highlight in enumerate([highlights[worker] for highlights in highlights_list]):
-            self.log[log_idx].highlights[n][worker] = highlight
+
+            if worker not in active_highlights[n]:
+                active_highlights[n][worker] = highlight
+                self.logger.debug("New highlight %s", highlight)
+                self.logger.debug("After: %s", active_highlights[n][worker])
+            else:
+                self.logger.debug("Before: %s", active_highlights[n][worker])
+                self.logger.debug("Appending highlight %s", highlight)
+                active_highlights[n][worker].extend(highlight)
+                self.logger.debug("After: %s", active_highlights[n][worker])
 
         #
         # Sometimes addActivity should end the frame

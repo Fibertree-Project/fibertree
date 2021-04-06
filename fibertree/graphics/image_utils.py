@@ -20,17 +20,17 @@ class ImageUtils():
 
     """
 
-    #
-    # Map worker names to colors
-    #
-    hl_colors = [0xdaa520,   # worker 0 d (goldenrod)
-                 0x977316,   # worker 1 a
-                 0xe4b849,   # worker 2 f
-                 0xc4941d,   # worker 3 c
-                 0xea1f33,   # worker 4 e
-                 0xae8319,   # worker 5 b
-                 0xe8c15f]   # worker 6 g
-
+    hl_colors = ["goldenrod",
+                 "#efcf62",   # worker 0 - yellow
+                 "#85b5c9",   # worker 2 - aqua
+                 "#dd7820",   # worker 1 - orange
+                 "#90bf89",   # worker x - light green
+                 "#daa520",   # worker 3 - goldenrod
+                 "#91a9f1",   # worker 4 - light blue
+                 "#ea1f33",   # worker 4 e
+                 "#ae8319",   # worker 5 b
+                 "#e8c15f"]   # worker 6 g
+    """A pre-defined set of colors for highlighting workers."""
     #
     # Next color to allocate
     #
@@ -53,6 +53,28 @@ class ImageUtils():
         self.logger = logging.getLogger('fibertree.graphics.image_utils')
 
         
+    @staticmethod
+    def setColor(worker, color):
+        """Set color for a worker.
+
+        Parameters
+        ----------
+
+        worker: hashable value
+            Name of a worker (spacestamp)
+
+        color: Pillow color
+            Color to associate with `worker`
+
+        """
+
+        hl_map = ImageUtils.hl_map
+
+        if worker in hl_map:
+            print(f"WARNING: {worker} already has a color - OVERWRITING!")
+
+        hl_map[worker] = color
+
 
     @staticmethod
     def getColor(worker):

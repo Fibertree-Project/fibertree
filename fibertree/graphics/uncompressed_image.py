@@ -145,10 +145,16 @@ class UncompressedImage():
         #
         # Crop the image
         #
-        self.im = self.im.crop((0,
-                                0,
-                                self.col2x(region_size[1])+200,
-                                20+self.row2y(region_size[0])))
+        if region_size[0] > self.row_extent or region_size[1] > self.col_extent:
+            msg = f"Uncompressed image too large [ {region_size[0]}, {region_size[1]}"
+            self.logger.info(msg)
+            return
+
+        right = 200+self._col2x(region_size[1])
+        lower = 20+self._row2y(region_size[0])
+
+        self.logger.debug(f"right: {region_size[1]}/{right}, lower: {region_size[0]}/{lower}")
+        self.im = self.im.crop((0, 0, right, lower))
 
 
     def show(self):
@@ -205,6 +211,45 @@ class UncompressedImage():
         #
         # Print out the rank information (if available)
         #
+        self._draw_label(row_origin, col_origin, "Rank: "+self._getId(fiber))
+        self._draw_label(row_origin+1, col_origin, "|")
+        self._draw_label(row_origin+2, col_origin, "V")
+
+        row_cur = row_origin + 3
+        row_max = row_origin + 3
+        col_cur = col_origin
+
+        #
+        # Just show the nonEmpty cubes
+        #
+        for cube_c, cube_p in fiber:
+
+            self._draw_label(row_cur, col_origin, f"{cube_c}")
+            row_cur += 2
+            row_max = row_cur
+
+            highlight_manager_next = highlight_manager.addFiber(cube_c)
+
+            self.logger.debug(f"Coord: {cube_c} - draw as [{row_cur}, {col_origin}]")
+
+            rc_range = self._traverse_cube(shape[1:],
+                                           cube_p,
+                                           row_origin=row_cur,
+                                           col_origin=col_origin,
+                                           highlight_manager=highlight_manager_next)
+
+            self.logger.debug(f"Coord: {cube_c} - rc_range: {rc_range}")
+
+            # row_cur does not change
+            row_cur = rc_range[0] + 2
+            row_max = row_cur
+
+            # col_cur does not change
+            col_max = max(row_max, rc_range[1])
+
+        return [row_max, col_max]
+
+
     def _traverse_cube(self, shape, fiber, row_origin=1, col_origin=0, highlight_manager=None):
         """ traverse_cube """
 
@@ -241,7 +286,7 @@ class UncompressedImage():
 
             if col_cur > self.col_extent: break
 
-
+        self.logger.debug(f"Hypercube extent: [{row_max}, {col_max}]")
         return [row_max, col_max]
 
 
@@ -390,8 +435,13 @@ class UncompressedImage():
         col_cur = col_origin + coord_label_offset
         col_max = col_origin + coord_label_offset
 
-        payload = 0
-
+        #
+        # Determine if coordinates are integers
+        #
+        if len(fiber) > 0 and isinstance(fiber.coords[0], int):
+            coord_is_int = True
+        else:
+            coord_is_int = False
 
         #
         # Process each coordinate in the shape
@@ -405,8 +455,26 @@ class UncompressedImage():
             color_coord_or_subtensor = color_coord | color_subtensor
 
             if isinstance(fiber, Fiber):
-                payload = fiber.getPayload(coord)
+                #
+                # For printing a non-empty row
+                #
+                if coord_is_int:
+                    payload = fiber.getPayload(coord)
+                else:
+                    #
+                    # Just show non-integer coordinates in order
+                    #
+                    try:
+                        payload = fiber.payloads[coord]
+                    except:
+                        payload = 0
+
                 assert not isinstance(payload, Fiber)
+            else:
+                #
+                # For printing a empty row
+                #
+                payload = 0
 
             row_count = self._draw_value(row_cur, col_cur, payload, color_coord_or_subtensor)
 
