@@ -1,3 +1,7 @@
+"""Tensor Image Module"""
+
+import logging
+
 from PIL import Image, ImageDraw, ImageFont
 
 from fibertree import Tensor
@@ -9,6 +13,11 @@ from .highlights import HighlightManager
 from .tree_image import TreeImage
 from .uncompressed_image import UncompressedImage
 
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.graphics.tensor_image')
+
 
 class TensorImage():
     """TensorImage
@@ -17,36 +26,43 @@ class TensorImage():
     trampoline to the desired style, except when multiple images need
     to be combined.
 
-    """
+    Constructor
+    -----------
 
-    def __init__(self, object, *args, highlights={}, style='tree', **kwargs):
-        """__init__
+    Create an image corresponding the a given tensor or fiber in style
+    "style". Optionally highlight elements of the tensor/fiber
 
-        Create an image corresponding the a given tensor or fiber in
-        style "style". Optionally highlight elements of the
-        tensor/fiber
 
-        Parameters
-        ----------
-        object: tensor or fiber
+    Parameters
+    ----------
+    object: tensor or fiber
         A tensor or fiber object to draw
 
-        highlights: dictionary or list or tuple
+    highlights: dictionary or list or tuple
         A dictionary of "workers" each with list of points to highlight
         list is a list of point tuples to highlight (assumes one "worker")
         tuple is a single point to highlight (assumes one "worker")
 
-        style: string or list
+    style: string or list
         String containing "tree", "uncompressed" or
         "tree+uncompressed" indicating the style of the image to create
 
-        extent: tuple
+    extent: tuple
         Maximum row/col to use for image
 
-        **kwargs: keyword arguments
+    **kwargs: keyword arguments
         Additional keyword arguments to pass on to the desired style
 
-        """
+    """
+
+    def __init__(self, object, *args, highlights={}, style='tree', **kwargs):
+        """__init__"""
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.graphics.tensor_image')
+
 
         highlights = HighlightManager.canonicalizeHighlights(highlights)
 
@@ -97,6 +113,14 @@ class TensorImage():
 
 
     def show(self):
+        """Display the image
+
+        Parameters
+        ----------
+        None
+
+        """
+
         self.im.show()
 
 

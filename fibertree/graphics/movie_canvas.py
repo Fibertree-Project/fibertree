@@ -1,3 +1,6 @@
+"""Movie Canvas Module"""
+
+import logging
 import numpy
 import cv2
 import copy
@@ -11,24 +14,45 @@ from fibertree import UncompressedImage
 from fibertree import Fiber
 from fibertree import Payload
 
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.graphics.movie_canvas')
+
+
 class MovieCanvas():
-    """MovieCanvas"""
+    """MovieCanvas
 
-    def __init__(self, *tensors, style='tree', progress=True):
-        """__init__
+    A class to create a movie of activity in a set of tensors. This
+    class is used by the `TensorCanvas` class as one of the ways it
+    can display activity. Various ways of displaying the tenor (e.g.,
+    `TreeImage` and `UncompressedImage`) are supported.
 
-        Parameters
-        ----------
-        tensors: list
+
+    Constructor
+    -----------
+
+    Parameters
+    ----------
+    tensors: list
         A list of tensors or fibers objects to track
 
-        style: string (default: 'tree')
+    style: string (default: 'tree')
         Display style ('tree', 'uncompressed', 'tree+uncompressed')
 
-        progress: Boolean (default: True)
+    progress: Boolean (default: True)
         Enable tqdm style progress bar on movie creation
 
-        """
+    """
+
+    def __init__(self, *tensors, style='tree', progress=True):
+        """__init__"""
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.graphics.movie_canvas')
+
         #
         # Set image type
         #
@@ -62,7 +86,15 @@ class MovieCanvas():
 
 
     def addFrame(self, *highlighted_coords_per_tensor):
-        """addFrame"""
+        """Add a frame to the movie
+
+        Parameters
+        ----------
+
+        highlighted_coords_per_tensor: list of highlights
+            Highlights to add to the registered tensors
+
+        """
 
         #
         # Handle the case where nothing should be highlighted anywhere.
@@ -85,9 +117,24 @@ class MovieCanvas():
 
 
     def getLastFrame(self, message=None):
-        #
-        # Add an final frame with nothing highlighted (it looks better)
-        #
+        """Get the final frame
+
+        Get an image of the final frame. This method also adds a final
+        frame with nothing highlighted, because it looks better
+
+        Parameters
+        ---------
+
+        message: string, default=None
+            A message to add to the image
+
+        Returns
+        -------
+        final_frame: image
+            An image of the final frame
+
+        """
+
         self.addFrame()
 
         end = len(self.image_list_per_tensor[0])
@@ -110,7 +157,15 @@ class MovieCanvas():
 
 
     def saveMovie(self, filename=None):
-        """saveMovie"""
+        """Save the movie to a file
+
+        Parameters
+        ----------
+
+        filename: string, default=None
+            Name of a file to save the movie
+
+        """
 
         end = len(self.image_list_per_tensor[0])
         (final_images, final_width, final_height) = self._combineFrames(0, end)

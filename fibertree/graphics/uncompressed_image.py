@@ -1,3 +1,7 @@
+"""Uncompressed Image Module"""
+
+import logging
+
 from PIL import Image, ImageDraw
 
 from fibertree import Tensor
@@ -7,26 +11,41 @@ from fibertree import Payload
 from fibertree import ImageUtils
 from fibertree import HighlightManager
 
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.graphics.uncompressed_image')
+
+
 class UncompressedImage():
-    """UncompressedImage"""
+    """UncompressedImage
 
+    This class is used to draw an uncompressed representation of a tensor
 
-    def __init__(self, object, highlights={}, extent=(30, 200), row_map=None):
-        """__init__
+    Constructor
+    -----------
 
-        Parameters
-        ----------
+    Parameters
+    ----------
 
-        object: tensor or fiber
+    object: tensor or fiber
         A tensor or fiber object to draw
 
-        highlights: dictionary
+    highlights: dictionary
         A dictionary of "workers" each with list of points to highlight
 
-        extent: tuple
+    extent: tuple
         Maximum row/col to use for image
-
     """
+
+    def __init__(self, object, highlights={}, extent=(100, 200), row_map=None):
+        """__init__"""
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.graphics.uncompressed_image')
+
         #
         # Record paramters
         #
@@ -53,11 +72,13 @@ class UncompressedImage():
         #
         # Draw the tensor
         #
-        self.create_uncompressed()
+        self._create_uncompressed()
 
 
-    def create_uncompressed(self):
-        """create_uncompressed: Create an image of a tensor or fiber tree
+    def _create_uncompressed(self):
+        """Create uncompressed image
+
+        Create an image of a tensor or fiber tree
 
         Notes
         ------
@@ -73,7 +94,7 @@ class UncompressedImage():
         #
         # Create the objects for the image
         #
-        self.image_setup()
+        self._image_setup()
 
         #
         # Display either the root of a tensor or a raw fiber
@@ -93,7 +114,7 @@ class UncompressedImage():
 
             ranks = ", ".join([str(r) for r in object.getRankIds()])
 
-            self.draw_label(0, 0, f"Tensor: {name}[{ranks}]")
+            self._draw_label(0, 0, f"Tensor: {name}[{ranks}]")
 
         elif isinstance(object, Fiber):
             #
@@ -119,7 +140,7 @@ class UncompressedImage():
 
         else:
             # Draw a non-0-D tensor or a fiber, i.e., the fiber tree
-            region_size = self.traverse(root)
+            region_size = self._traverse(root)
 
         #
         # Crop the image
@@ -131,13 +152,15 @@ class UncompressedImage():
 
 
     def show(self):
+        """Show the fibertree image"""
+
         self.im.show()
 
 
 #
 # Method to traverse (and draw) all the cells in the tensor
 #
-    def traverse(self, fiber):
+    def _traverse(self, fiber):
         """traverse"""
 
         #
@@ -159,25 +182,37 @@ class UncompressedImage():
 
             hl_manager = self.highlight_manager
 
-            if dimensions == 3:
-                region_size = self.traverse_cube(shape, fiber, highlight_manager=hl_manager)
+            if dimensions == 4:
+                region_size = self._traverse_hypercube(shape, fiber, highlight_manager=hl_manager)
+            elif dimensions == 3:
+                region_size = self._traverse_cube(shape, fiber, highlight_manager=hl_manager)
             elif dimensions == 2:
-                region_size = self.traverse_matrix(shape, fiber, highlight_manager=hl_manager)
+                region_size = self._traverse_matrix(shape, fiber, highlight_manager=hl_manager)
             elif dimensions == 1:
-                region_size = self.traverse_vector(shape, fiber, highlight_manager=hl_manager)
+                region_size = self._traverse_vector(shape, fiber, highlight_manager=hl_manager)
             else:
+                self.logger.info(f"Unsupported number of ranks for uncompressed image ({dimensions})")
                 region_size = [1, 1]
 
         return region_size
 
 
-    def traverse_cube(self, shape, fiber, row_origin=1, col_origin=0, highlight_manager=None):
-        """ traverse_cube - unimplemented """
+    def _traverse_hypercube(self, shape, fiber, row_origin=1, col_origin=0, highlight_manager=None):
+        """ traverse_hypercube - unimplemented """
+
+        self.logger.debug("Display a hypercube")
 
         #
         # Print out the rank information (if available)
         #
-        self.draw_label(row_origin, col_origin, "Rank: "+self._getId(fiber)+" ----->")
+    def _traverse_cube(self, shape, fiber, row_origin=1, col_origin=0, highlight_manager=None):
+        """ traverse_cube """
+
+        self.logger.debug(f"Drawing cube at [{row_origin}, {col_origin}]")
+        #
+        # Print out the rank information (if available)
+        #
+        self._draw_label(row_origin, col_origin, "Rank: "+self._getId(fiber)+" ----->")
 
         row_cur = row_origin + 1
         row_max = row_origin + 1
@@ -188,11 +223,11 @@ class UncompressedImage():
         #
         for matrix_c, matrix_p in fiber:
 
-            self.draw_label(row_origin, col_cur+5, f"{matrix_c}")
+            self._draw_label(row_origin, col_cur+5, f"{matrix_c}")
 
             highlight_manager_next = highlight_manager.addFiber(matrix_c)
 
-            rc_range = self.traverse_matrix(shape[1:],
+            rc_range = self._traverse_matrix(shape[1:],
                                             matrix_p,
                                             row_origin=row_cur,
                                             col_origin=col_cur,
@@ -211,14 +246,14 @@ class UncompressedImage():
 
 
 
-    def traverse_matrix(self, shape, fiber, row_origin=1, col_origin=0, highlight_manager=None):
+    def _traverse_matrix(self, shape, fiber, row_origin=1, col_origin=0, highlight_manager=None):
         """ traverse_matrix """
 
         #
         # Print out the rank information (if available)
         #
         label = "Rank: "+self._getId(fiber)
-        self.draw_label(row_origin+2, col_origin, label)
+        self._draw_label(row_origin+2, col_origin, label)
 
         #
         # Set up variables to track rows and columns (note offset for rank label)
@@ -258,7 +293,7 @@ class UncompressedImage():
 
             highlight_manager_next = highlight_manager.addFiber(row_c)
 
-            rc_range = self.traverse_vector(shape[1:],
+            rc_range = self._traverse_vector(shape[1:],
                                              row_p,
                                              row_origin=row_cur,
                                              col_origin=col_cur,
@@ -279,16 +314,14 @@ class UncompressedImage():
         return [row_max, col_max]
 
 
-    def traverse_vector(self,
-                        shape,
-                        fiber,
-                        row_origin=1,
-                        col_origin=0,
-                        highlight_manager=None,
-                        rank_label=True,
-                        coord_label=None):
-
-        # Default payload
+    def _traverse_vector(self,
+                         shape,
+                         fiber,
+                         row_origin=1,
+                         col_origin=0,
+                         highlight_manager=None,
+                         rank_label=True,
+                         coord_label=None):
 
         #
         # Print out the rank information (if available)
@@ -301,10 +334,10 @@ class UncompressedImage():
             col_hack = 0
 
         if rank_label:
-            self.draw_label(row_origin, col_origin+col_hack, "Rank: "+self._getId(fiber))
+            self._draw_label(row_origin, col_origin+col_hack, "Rank: "+self._getId(fiber))
 
             for c in range(fiber.getShape(all_ranks=False)):
-                self.draw_label(row_origin+1, col_origin+col_hack+c, f"{c:^3}")
+                self._draw_label(row_origin+1, col_origin+col_hack+c, f"{c:^3}")
 
             rank_label_offset = 2
         else:
@@ -325,7 +358,7 @@ class UncompressedImage():
             self._empty_count += 1
 
             if self._empty_count == 2:
-                self.draw_label(row_origin, col_origin+col_hack, "...")
+                self._draw_label(row_origin, col_origin+col_hack, "...")
                 return [ row_origin+1, col_origin]
 
             if self._empty_count > 2:
@@ -340,7 +373,7 @@ class UncompressedImage():
             except Exception:
                 label = f"{str(coord_label):>9}"
 
-            self.draw_label(row_origin+rank_label_offset, col_origin, label)
+            self._draw_label(row_origin+rank_label_offset, col_origin, label)
             coord_label_offset = col_hack
         else:
             coord_label_offset = 0
@@ -375,7 +408,7 @@ class UncompressedImage():
                 payload = fiber.getPayload(coord)
                 assert not isinstance(payload, Fiber)
 
-            row_count = self.draw_value(row_cur, col_cur, payload, color_coord_or_subtensor)
+            row_count = self._draw_value(row_cur, col_cur, payload, color_coord_or_subtensor)
 
             # row_cur does not change
             row_max = max(row_max, row_cur+row_count)
@@ -403,12 +436,12 @@ class UncompressedImage():
 #
 # Image methods
 #
-    def image_setup(self):
+    def _image_setup(self):
 
         # Constrain image size (overage matches crop above)
 
-        x_pixels = self.col2x(self.col_extent+1) + 200 # was 8192
-        y_pixels = self.row2y(self.row_extent+1) + 20 # was 1024
+        x_pixels = self._col2x(self.col_extent+1) + 200 # was 8192
+        y_pixels = self._row2y(self.row_extent+1) + 20 # was 1024
 
         # Create an image at least this tall (in pixels)
         self.max_y = 100
@@ -434,11 +467,11 @@ class UncompressedImage():
 #          - row
 #          - column
 #
-    def draw_label(self, row, column, label):
+    def _draw_label(self, row, column, label):
         """draw_label"""
 
-        x1 = self.col2x(column) + 20
-        y1 = self.row2y(row) - 10
+        x1 = self._col2x(column) + 20
+        y1 = self._row2y(row) - 10
 
         # Hack: drawing text twice looks better in PIL
         self.draw.text((x1+10,y1+10), label, font=self.fnt, fill="black")
@@ -446,7 +479,7 @@ class UncompressedImage():
 
 
 
-    def draw_value(self, row, column, value, highlight=[]):
+    def _draw_value(self, row, column, value, highlight=[]):
         """draw_value"""
 
         #
@@ -454,7 +487,7 @@ class UncompressedImage():
         #
         if row >= self.row_extent or column >= self.col_extent:
             if row == self.row_extent or column == self.col_extent:
-                self.draw_label(row, column, "...")
+                self._draw_label(row, column, "...")
                 return 2
 
             return 0
@@ -470,8 +503,8 @@ class UncompressedImage():
 
         font_y = 30
 
-        x1 = self.col2x(column) + 20
-        y1 = self.row2y(row) - 10
+        x1 = self._col2x(column) + 20
+        y1 = self._row2y(row) - 10
 
         x2 = x1 + 40
         y2 = y1 + row_count*(font_y+10)
@@ -528,10 +561,10 @@ class UncompressedImage():
 #
 # Methods to convert positions specified in col/row space into pixels
 #
-    def col2x(self, col):
+    def _col2x(self, col):
         return 200 + 40*col
             
-    def row2y(self, row):
+    def _row2y(self, row):
         return 40 + 40*row
 
 

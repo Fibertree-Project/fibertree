@@ -1,13 +1,22 @@
+"""Image Utilities Module"""
+
+import logging
 import os
 
 from PIL import Image, ImageDraw, ImageFont
+
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.graphics.image_utils')
+
 
 class ImageUtils():
     """ImageUtils
 
     A utility class for supporting graphics for multiple drawing
     classes. A number of global attributes are class variables of this
-    class
+    class.
 
     """
 
@@ -26,22 +35,40 @@ class ImageUtils():
     # Next color to allocate
     #
     hl_next = 0
+    """The index of the next color to assign as a highlight."""
     
     #
     # Map of worker names to colors
     #
     hl_map = {}
+    """A hash map of worker names (spacestamps) to colors."""
 
 
     def __init__(self):
         """__init__ """
 
-        pass
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.graphics.image_utils')
+
         
 
     @staticmethod
     def getColor(worker):
-        """ getColor() """
+        """ Get color associated with a worker.
+
+        If no color is currently assigned to `worker`, then assign one
+        round-robin from `hl_colors`.
+
+        Parameters
+        ----------
+
+        worker: hashable value
+            Name of a worker (spacestamp)
+
+
+        """
 
         hl_map = ImageUtils.hl_map
 
@@ -64,7 +91,7 @@ class ImageUtils():
 
     @staticmethod
     def resetColors():
-        """ resetColors """
+        """Clear all worker colors."""
 
         ImageUtils.hl_next = 0
         ImageUtils.hl_map = {}
@@ -72,7 +99,7 @@ class ImageUtils():
 
     @staticmethod
     def getFont():
-        """getFont
+        """Get a font for use in images.
 
         Get a standard font for various image classes to use. First
         looks for a file as specified by environment variable

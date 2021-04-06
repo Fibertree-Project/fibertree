@@ -1,3 +1,6 @@
+"""Spacetime Canvas Module"""
+
+import logging
 import copy
 
 from fibertree import Tensor
@@ -6,19 +9,37 @@ from fibertree import Payload
 
 from fibertree import TensorImage
 
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.graphics.spacetime_canvas')
+
+
 
 class SpacetimeCanvas():
-    """SpaceTimeCanvas"""
+    """SpaceTimeCanvas
 
-    def __init__(self, *tensors):
-        """__init__
+    A class to create a spacetime diagram of activity in a set of
+    tensors. This class is used by the `TensorCanvas` class as one of
+    the ways it can display activity.
 
-        Parameters
-        ----------
-        tensors: list
+    Constructor
+    -----------
+
+    Parameters
+    ----------
+    tensors: list
         A list of tensors or fibers objects to track
 
-        """
+    """
+
+    def __init__(self, *tensors):
+        """__init__"""
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.graphics.spacetime_canvas')
 
         #
         # Structures to hold infomation about each tracked tensor
@@ -64,7 +85,15 @@ class SpacetimeCanvas():
 
 
     def addFrame(self, *highlighted_coords_per_tensor):
-        """addFrame"""
+        """Add a timestep to the spacetime diagram
+
+        Parameters
+        ----------
+
+        highlighted_coords_per_tensor: list of highlights
+            Highlights to add to the registered tensors
+
+        """
 
         #
         # Handle the case where nothing should be highlighted anywhere.
@@ -120,7 +149,22 @@ class SpacetimeCanvas():
 
 
     def getLastFrame(self, message=None):
-        """getLastFrame"""
+        """Get the final frame
+
+        Create a image of the final spacetime diagram.
+
+        Parameters
+        ---------
+
+        message: string, default=None
+            A message to add to the image
+
+        Returns
+        -------
+        final_frame: image
+            An image of the spacetime diagram
+
+        """
 
         images = []
 
@@ -163,7 +207,11 @@ class SpacetimeCanvas():
 
 
     def saveMovie(self):
-        """saveMovie"""
+        """saveMovie
+
+        Does nothing for spacetime diagrams.
+
+        """
 
         print("SpaceTimeCanvas: saveMovie - unimplemented")
         return None

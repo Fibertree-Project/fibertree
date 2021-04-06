@@ -1,7 +1,23 @@
+"""Highlight Module"""
+
+import logging
+
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.graphics.highlights')
+
+
+
 class HighlightManager():
     """HighlightManager """
 
     def __init__(self, highlights={}, highlight_subtensor={}, parent=None, level=None):
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.graphics.highlights')
 
         self.highlights = highlights
         self.highlight_subtensor = highlight_subtensor

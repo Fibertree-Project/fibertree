@@ -1,3 +1,7 @@
+"""Tensor Canvas Module"""
+
+import logging
+
 import copy
 from collections import namedtuple
 
@@ -10,6 +14,12 @@ from .highlights import HighlightManager
 
 from .movie_canvas import MovieCanvas
 from .spacetime_canvas import SpacetimeCanvas
+
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.graphics.tensor_canvas')
+
 
 class TensorCanvas():
     """TensorCanvas
@@ -41,26 +51,37 @@ class TensorCanvas():
     this it tracks the update time of each coordinate that changes
     a value. This capability is enabled with the "enable_wait" keyword.
 
+    Constructor
+    -----------
+
+    Create an animation canvas of the requested type for for the given
+    tensors.
+
+    Parameters
+    ----------
+    tensors: list
+        A list of tensors or fiber objects to track
+
+    animation: string
+        Type of animation ('none', 'movie', 'spacetime')
+
+    style: string
+        Display style for movies ('tree', 'uncompressed', 'tree+uncompressed')
+
+    enable_wait: Boolean
+        Enable tracking update times to allow waiting for an update
+
     """
 
     def __init__(self, *tensors, animation='movie', style='tree', enable_wait=False):
         """__init__
 
-        Parameters
-        ----------
-        tensors: list
-        A list of tensors or fiber objects to track
-
-        animation: string
-        Type of animation ('none', 'movie', 'spacetime')
-
-        style: string
-        Display style for movies ('tree', 'uncompressed', 'tree+uncompressed')
-
-        enable_wait: Boolean
-        Enable tracking update times to allow waiting for an update
-
         """
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.graphics.tensor_canvas')
+
         #
         # Places to collect information about the frames
         #
@@ -135,36 +156,44 @@ class TensorCanvas():
         elif animation == 'none':
             self.canvas = NoneCanvas()
         else:
-            print(f"TensorCanvas: No animation type: {animation}")
+            self.logger.warning("TensorCanvas: No animation type: %s", animation)
 
 
     def addActivity(self, *highlights, spacetime=None, worker="anon", skew=0, wait=None, end_frame=False):
-        """ addActivity
+        """addActivity
 
         Add an activity to be displayed in an animation.
 
         Parameters
         ----------
         highlights: list
-        A list of highlight specifications for each tensor being animated
-        See highlights.py for formats for highlights.
+            A list of highlight specifications for each tensor being animated
+            See highlights.py for formats for highlights.
 
         spacetime: tuple
-        A tuple containing the "worker" performing the activity and a "timestamp"
-        specifying the time the activity occurs. Timestamps are tuples of integers
+            A tuple containing the "worker" performing the activity and a "timestamp"
+            specifying the time the activity occurs. Timestamps are tuples of integers
 
         worker: string
-        Name of the worker performing the action (mutually exclusive with spacetimestamp)
+            Name of the worker performing the action (mutually exclusive with `spacetime`)
 
         skew: integer
-        Time the activity occurs relative to current time (mutually exclusive with spacetimestamp)
+            Time the activity occurs relative to current time (mutually exclusive with `spacetime`)
 
         wait: list of tensors
-        Specify a list of tensors that must be updated before this activiy can occur. After
-        the dependency is satisfied add the skew.
+            Specify a list of tensors that must be updated before this activiy can occur. After
+            the dependency is satisfied add the skew.
 
         end_frame: Boolean
-        If true call addFrame() after adding activity. Deprecated.
+            If true call addFrame() after adding activity. Deprecated.
+
+
+        Notes
+        -----
+
+        For mutable tensors the `highlights` parameter must
+        authoritatively indicate the **points** that have been changed
+        for the first time.
 
         """
         #
@@ -288,8 +317,18 @@ class TensorCanvas():
 
 
     def addFrame(self, *highlights):
-        """addFrame"""
+        """Add a step to the movie or spacetime diagram
 
+        A step (or cycle) to the animation. For movies this
+        corresponds to a frame in the movie.
+
+        Parameters
+        ----------
+
+        highlighted_coords_per_tensor: list of highlights
+            Highlights to add to the registered tensors
+
+        """
         #
         # For situations where caller did not use addActivity()
         # call it one time for them
@@ -321,7 +360,23 @@ class TensorCanvas():
 
 
     def getLastFrame(self, message=None):
-        """ getLastFrame """
+        """Finalize the movie/spacetime diagram
+
+        Finalize the animation by adding all the pending cycles to the
+        animation.  Get an image of the final frame.
+
+        Parameters
+        ---------
+
+        message: string, default=None
+            A message to add to the image
+
+        Returns
+        -------
+        final_frame: image
+            An image of the final frame
+
+        """
 
         #
         # Push out any remaining logged activity
@@ -333,7 +388,18 @@ class TensorCanvas():
 
 
     def saveMovie(self, filename=None):
-        """ saveMovie """
+        """Save the animation to a file
+
+        If the animation can be saved to a file, this method will do
+        that.
+
+        Parameters
+        ----------
+
+        filename: string, default=None
+            Name of a file to save the movie
+
+        """
 
         #
         # Push out any remaining logged activity
@@ -355,13 +421,14 @@ class TensorCanvas():
         tensors for later replay into the shadow tensors at time
         "timestamp".
 
-        Parameters:
+        Parameters
+        ----------
 
         highlights: a highlights dictionary
-        A per PE list of highlighted points for each tracked tensor
+            A per PE list of highlighted points for each tracked tensor
 
         timestamp: tuple of integers
-        The time at which these values are to be replayed
+            The time at which these values are to be replayed
 
         """
 
@@ -376,6 +443,7 @@ class TensorCanvas():
         log_idx_list = [ idx for idx, element in enumerate(self.log) if element.timestamp == timestamp]
         if len(log_idx_list) >= 1:
             log_idx = log_idx_list[0]
+            self.logger.debug("Found existing timestamp at %s", log_idx)
         else:
             log_idx = self._createChanges(timestamp)
 
@@ -583,5 +651,5 @@ class NoneCanvas():
     def saveMovie(self, filename=None):
         """saveMovie"""
 
-        print("NoneCanvas: saveMovie - unimplemented")
+        self.logger.info("NoneCanvas: saveMovie - unimplemented")
         return None
