@@ -4,6 +4,12 @@ A class implementing a **boxed** value to use as a payload
 of an element of a fiber.
 
 """
+import logging
+
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.core.payload')
 
 
 class Payload:
@@ -81,6 +87,11 @@ class Payload:
 
     def __init__(self, value=None):
         """__init__"""
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.core.payload')
 
         self.value = value
 

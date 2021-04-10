@@ -4,11 +4,17 @@ A class used to implement a rank (or dimension) of a tensor.
 
 """
 
+import logging
+
 from copy import deepcopy
 
 from .fiber import Fiber
 from .payload import Payload
 
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.core.rank')
 
 class Rank:
     """Class representing a "rank" (or dimension) of a tensor.
@@ -65,6 +71,11 @@ class Rank:
 
     def __init__(self, id, shape=None, next_rank=None):
         """__init__"""
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.core.rank')
 
         self._id = id
 

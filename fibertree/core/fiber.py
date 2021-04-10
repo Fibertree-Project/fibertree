@@ -5,6 +5,7 @@ a tensor.
 
 """
 
+import logging
 
 from functools import partialmethod
 from copy import deepcopy
@@ -13,6 +14,12 @@ import random
 
 from .coord_payload import CoordPayload
 from .payload import Payload
+
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.core.fiber')
+
 
 #
 # Define an error class
@@ -140,6 +147,14 @@ class Fiber:
                  initial=None,
                  max_coord=None):
 
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.core.fiber')
+
+        #
+        # Handle cases with missing inputs
+        #
         if coords is None:
             if payloads is None:
                 #

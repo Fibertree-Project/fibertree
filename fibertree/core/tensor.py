@@ -4,6 +4,8 @@ A class used to implement the a tensor based on the **fibertree**
 abstraction for representing tensors.
 
 """
+import logging
+
 import copy
 import yaml
 from copy import deepcopy
@@ -12,7 +14,10 @@ from .rank    import Rank
 from .fiber   import Fiber
 from .payload import Payload
 
-
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.core.tensor')
 
 
 class Tensor:
@@ -114,6 +119,11 @@ class Tensor:
                  name="",
                  color="red"):
         """__init__"""
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.core.tensor')
 
         self.yamlfile = yamlfile
 

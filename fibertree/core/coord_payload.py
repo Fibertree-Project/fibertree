@@ -4,6 +4,13 @@ A class used to represent an **element** of a fiber, i.e., a
 coordinate/payload tuple.
 
 """
+import logging
+
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.core.coord_payload')
+
 
 class CoordPayload():
     """An element of a fiber.
@@ -84,6 +91,12 @@ class CoordPayload():
     """
     def __init__(self, coord, payload):
         """__init__"""
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.core.coord_payload')
+
 
         self.coord = coord
         self.payload = payload
