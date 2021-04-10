@@ -1905,14 +1905,15 @@ class Fiber:
         Raises
         ------
 
-        Nothing (but should check for violation of monotonacity)
+        Nothing
 
 
         Notes
         -----
 
-        Function currently does not check that coordinates remain
-        monotonically increasing.
+        This method checks and that coordinates remain monotonically
+        increasing and re-orders to make sure
+        self.coords/self.payloads preserve monotonacity.
 
         """
         if depth > 0:
@@ -1921,8 +1922,27 @@ class Fiber:
                 p.updateCoords(func, depth=depth - 1)
         else:
             # Update my coordinates
+
+            no_sort_needed = True
+
+            last_coord = None
+
             for i in range(len(self.coords)):
-                self.coords[i] = func(i, self.coords[i], self.payloads[i])
+                new_coord = func(i, self.coords[i], self.payloads[i])
+                self.coords[i] = new_coord
+
+                no_sort_needed = no_sort_needed and ((last_coord is None) or (last_coord <= new_coord))
+                last_coord = new_coord
+
+            if not no_sort_needed:
+                #
+                # Resort the coords/payloads
+                #
+                self.logger.debug("Fiber.updateCoords() - sort needed")
+
+                zipped_cp = zip(self.coords, self.payloads)
+                sorted_cp = sorted(zipped_cp)
+                self.coords, self.payloads = [ list(tuple) for tuple in zip(*sorted_cp)]
 
         return None
 

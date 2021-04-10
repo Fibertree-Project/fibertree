@@ -915,7 +915,7 @@ class Tensor:
         self.getRoot().__setitem__(key, newvalue)
 
 
-    def updateCoords(self, func, depth=0):
+    def updateCoords(self, func, depth=0, **kwargs):
         """Update coordinates of root fiber
 
         Tensor-level version of method that operates on the root
@@ -925,12 +925,12 @@ class Tensor:
 
         new_tensor = copy.deepcopy(self)
 
-        new_tensor.getRoot().updateCoords(func, depth)
+        new_tensor.getRoot().updateCoords(func, depth=depth, **kwargs)
 
         return new_tensor
 
 
-    def updatePayloads(self, func, depth=0):
+    def updatePayloads(self, func, depth=0, **kwargs):
         """Update payloads of root fiber
 
         Tensor-level version of method that operates on the root
@@ -940,7 +940,7 @@ class Tensor:
 
         new_tensor = copy.deepcopy(self)
 
-        new_tensor.getRoot().updatePayloads(func, depth)
+        new_tensor.getRoot().updatePayloads(func, depth=depth, **kwargs)
 
         return new_tensor
 

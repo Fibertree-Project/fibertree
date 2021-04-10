@@ -1125,6 +1125,22 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(f, flat_split)
 
+    def test_updateCoords_reversed(self):
+        """Update coords - where coordinates need to be reversed"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+
+        f_ans = Fiber([ 100-c for c in reversed(c)], list(reversed(p)))
+        
+        f.updateCoords(lambda i, c, p: 100-c)
+
+        self.assertEqual(f, f_ans)
 
     def test_add(self):
         """Add fibers"""
