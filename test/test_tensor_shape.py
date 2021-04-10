@@ -62,8 +62,8 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(t2.getRankIds(), ["M"])
         self.assertEqual(t2.getShape(), [ 4 ])
 
-    def test_shape_fromUncompressed_2D(self):
-        """Test shape of a tensor from 2D nested lists"""
+    def test_shape_fromUncompressed_2D_A(self):
+        """Test shape of a tensor from 2D nested lists (tensor A)"""
 
         #         0    1    2    3
         #
@@ -75,10 +75,39 @@ class TestTensor(unittest.TestCase):
                [   0,   0,   0,   0 ],  # 5
                [   0, 601,   0, 603 ] ] # 6
 
+
         t1 = Tensor.fromUncompressed(["M", "K"], l1)
 
-        self.assertEqual(t1.getRankIds(), ["M", "K"])
-        self.assertEqual(t1.getShape(), [ 7, 4 ])
+        with self.subTest(test="All ranks"):
+            self.assertEqual(t1.getRankIds(), ["M", "K"])
+            self.assertEqual(t1.getShape(), [ 7, 4 ])
+
+        with self.subTest(test="All ranks specified"):
+            self.assertEqual(t1.getShape(["M", "K"]), [7, 4])
+
+        with self.subTest(test="Just rank 'M' as list"):
+            self.assertEqual(t1.getShape(["M"]), [7])
+
+        with self.subTest(test="Just rank 'K' as list"):
+            self.assertEqual(t1.getShape(["K"]), [4])
+
+        with self.subTest(test="Just rank 'M'"):
+            self.assertEqual(t1.getShape("M"), 7)
+
+        with self.subTest(test="Just rank 'K'"):
+            self.assertEqual(t1.getShape("K"), 4)
+
+        with self.subTest(test="Check authoritative"):
+            self.assertEqual(t1.getShape(authoritative=True), [7, 4])
+            self.assertEqual(t1.getShape(["M", "K"], authoritative=True), [7, 4])
+            self.assertEqual(t1.getShape(["M"], authoritative=True), [7])
+            self.assertEqual(t1.getShape(["K"], authoritative=True), [4])
+            self.assertEqual(t1.getShape("M", authoritative=True), 7)
+            self.assertEqual(t1.getShape("K", authoritative=True), 4)
+           
+
+    def test_shape_fromUncompressed_2D_B(self):
+        """Test shape of a tensor from 2D nested lists (tensor B)"""
 
         #         0    1    2    3
         #
@@ -93,28 +122,79 @@ class TestTensor(unittest.TestCase):
         t2 = Tensor.fromUncompressed(["M", "K"], l2)
 
         self.assertEqual(t2.getRankIds(), ["M", "K"])
-        self.assertEqual(t2.getShape(), [ 7, 4 ])
+        self.assertEqual(t2.getShape(), [7, 4])
 
 
     def test_shape_fromFiber(self):
-        """Test shape of a tensor from a fiber"""
+        """Test shape of a tensor from a fiber without authoritative shape"""
 
         y1 = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
         f1 = y1.getRoot()
 
-        t1 = Tensor.fromFiber(["K", "M"], f1)
-        
-        self.assertEqual(t1.getRankIds(), ["K", "M"])
-        self.assertEqual(t1.getShape(), [7, 4])
-    
+        t1 = Tensor.fromFiber(["M", "K"], f1)
 
-        y2 = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
-        f2 = y2.getRoot()
-        t2 = Tensor.fromFiber(["K100", "M100"], f2, [100,200] )
-        
-        self.assertEqual(t2.getRankIds(), ["K100", "M100"])
-        self.assertEqual(t2.getShape(), [100, 200])
-    
+        with self.subTest(test="All ranks"):
+            self.assertEqual(t1.getRankIds(), ["M", "K"])
+            self.assertEqual(t1.getShape(), [7, 4])
+
+        with self.subTest(test="All ranks specified"):
+            self.assertEqual(t1.getShape(["M", "K"]), [7, 4])
+
+        with self.subTest(test="Just rank 'M' as list"):
+            self.assertEqual(t1.getShape(["M"]), [7])
+
+        with self.subTest(test="Just rank 'K' as list"):
+            self.assertEqual(t1.getShape(["K"]), [4])
+
+        with self.subTest(test="Just rank 'M'"):
+            self.assertEqual(t1.getShape("M"), 7)
+
+        with self.subTest(test="Just rank 'K'"):
+            self.assertEqual(t1.getShape("K"), 4)
+
+        with self.subTest(test="Check authoritative"):
+            self.assertIsNone(t1.getShape(authoritative=True))
+            self.assertIsNone(t1.getShape(["M", "K"], authoritative=True))
+            self.assertIsNone(t1.getShape(["M"], authoritative=True))
+            self.assertIsNone(t1.getShape(["K"], authoritative=True))
+            self.assertIsNone(t1.getShape("M", authoritative=True))
+            self.assertIsNone(t1.getShape("K", authoritative=True))
+           
+
+    def test_shape_fromFiber_authoritative(self):
+        """Test shape of a tensor from a fiber with authoritative shape"""
+
+        y1 = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        f1 = y1.getRoot()
+        t1 = Tensor.fromFiber(["M", "K"], f1, [100,200])
+
+        with self.subTest(test="All ranks"):
+            self.assertEqual(t1.getRankIds(), ["M", "K"])
+            self.assertEqual(t1.getShape(), [100, 200])
+
+        with self.subTest(test="All ranks specified"):
+            self.assertEqual(t1.getShape(["M", "K"]), [100, 200])
+
+        with self.subTest(test="Just rank 'M'"):
+            self.assertEqual(t1.getShape(["M"]), [100])
+
+        with self.subTest(test="Just rank 'K'"):
+            self.assertEqual(t1.getShape(["K"]), [200])
+
+        with self.subTest(test="Just rank 'M'"):
+            self.assertEqual(t1.getShape("M"), 100)
+
+        with self.subTest(test="Just rank 'K'"):
+            self.assertEqual(t1.getShape("K"), 200)
+
+        with self.subTest(test="Check authoritative"):
+            self.assertEqual(t1.getShape(authoritative=True), [100, 200])
+            self.assertEqual(t1.getShape(["M", "K"], authoritative=True), [100, 200])
+            self.assertEqual(t1.getShape(["M"], authoritative=True), [100])
+            self.assertEqual(t1.getShape(["K"], authoritative=True), [200])
+            self.assertEqual(t1.getShape("M", authoritative=True), 100)
+            self.assertEqual(t1.getShape("K", authoritative=True), 200)
+           
         
 if __name__ == '__main__':
     unittest.main()

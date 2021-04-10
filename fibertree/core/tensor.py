@@ -468,23 +468,32 @@ class Tensor:
         return [r.getId() for r in self.ranks]
 
 
-    def getShape(self, authoritative=False):
+    def getShape(self, rank_ids=[], authoritative=False):
         """Get the shape of the tensor.
 
-        Get a list of the shapes of each of the ranks that comprise
-        the tensor.  Since the shape may sometimes be estimated, this
-        method gives the option of insisting that the returned shape
-        be known authoritatively (if not the method returns None).
+        Get the shape(s) of the ranks that comprise the tensor. If a
+        single `rank_id` is provided the shape of that rank is
+        returned as a scalar. If a list of `rank_ids` is provided a
+        list will be returned with the shapes of the requested
+        ranks. Or if no `rank_id` is provided a list of the shapes of
+        **all** the ranks of the tensor is returned.
+
+        Since the shape may sometimes be estimated, this method gives
+        the option of insisting that the returned shape be known
+        authoritatively (if not the method returns None).
 
         Parameters
         ----------
+        rank_ids: list of strings or a string, default=[]
+            A list of rankids or a single rankid
+
         authoritative: Boolean, default=False
             Control whether to return an estimated (non-authoritative) shape
 
         Returns
         -------
-        shape: list of integers or None
-            List of the shapes of each rank
+        shape: integer, list of integers or None
+            The shape or a list of the shapes of the requested rank(s).
 
 
         Notes
@@ -493,14 +502,58 @@ class Tensor:
         A rank zero tensor will return an empty list
 
         """
+        #
+        # Convert rankids into a list, but remember if it was list originally
+        #
+        if isinstance(rank_ids, str):
+            return_scalar = True
+            rank_ids = list(rank_ids)
+        else:
+            return_scalar = False
 
         #
-        # Get the shape for each rank
+        # Rank-0 tensors have no shape
         #
         if len(self.ranks) == 0:
             return []
 
-        return self.ranks[0].getShape(all_ranks=True, authoritative=authoritative)
+        #
+        # Return shapes for desired rank_ids
+        #
+        all_rank_ids = self.getRankIds()
+        all_shapes = self.ranks[0].getShape(all_ranks=True,
+                                            authoritative=authoritative)
+
+        #
+        # Maybe there is no authoritative shape
+        #
+        if all_shapes is None:
+            return None
+
+        if len(rank_ids) == 0:
+            requested_rank_ids = all_rank_ids
+        else:
+            requested_rank_ids = rank_ids
+
+        #
+        # Get shape for each requested rank
+        #
+        shapes = []
+
+        for rank_id in requested_rank_ids:
+            rank_num = all_rank_ids.index(rank_id)
+            shapes.append(all_shapes[rank_num])
+
+        #
+        # If exactly one shape was requested return a scalar
+        #
+        if return_scalar:
+            return shapes[0]
+
+        #
+        # Return list of requested ranks
+        #
+        return shapes
 
 
     def getDepth(self):
