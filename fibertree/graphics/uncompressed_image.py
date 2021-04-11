@@ -262,6 +262,7 @@ class UncompressedImage():
         row_cur = row_origin + 1
         row_max = row_origin + 1
         col_cur = col_origin
+        col_max = col_origin
 
         #
         # Just show the nonEmpty matrices
@@ -286,7 +287,6 @@ class UncompressedImage():
 
             if col_cur > self.col_extent: break
 
-        self.logger.debug(f"Hypercube extent: [{row_max}, {col_max}]")
         return [row_max, col_max]
 
 
