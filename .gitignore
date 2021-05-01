@@ -7,7 +7,7 @@ debug.py
 
 # Emacs files
 *~
-#*#
+\#*\#
 
 #pycharm
 **/.idea/
