@@ -1880,7 +1880,7 @@ class Fiber:
         return None
 
 
-    def updateCoords(self, func, depth=0):
+    def updateCoords(self, func, depth=0, rankid=None):
         """Update (rewrite) the values of the coordinates of a fiber
 
         Update each coordinate in the the fibers at a depth of `depth`
@@ -1897,6 +1897,10 @@ class Fiber:
 
         depth: integer
             The depth in the fiber tree to dive before traversing
+
+        rankid: string, default=None
+            The name of a rank, i.e., a rankid, at which to perform
+            the split, overrides the `depth` argument.
 
         Returns
         --------
@@ -1916,6 +1920,9 @@ class Fiber:
         self.coords/self.payloads preserve monotonacity.
 
         """
+        if rankid is not None:
+            depth = self._rankid2depth(rankid)
+
         if depth > 0:
             # Recurse down to depth...
             for p in self.payloads:
@@ -1947,7 +1954,7 @@ class Fiber:
         return None
 
 
-    def updatePayloads(self, func, depth=0):
+    def updatePayloads(self, func, depth=0, rankid=None):
         """Update the values of the payloads of a fiber
 
         Update each payload in the the fibers at a depth of `depth`
@@ -1965,6 +1972,10 @@ class Fiber:
         depth: integer
             The depth in the fibertree to dive before traversing
 
+        rankid: string, default=None
+            The name of a rank, i.e., a rankid, at which to perform
+            the split, overrides the `depth` argument.
+
         Returns
         --------
 
@@ -1976,6 +1987,9 @@ class Fiber:
         TBD: currently nothing
 
         """
+        if rankid is not None:
+            depth = self._rankid2depth(rankid)
+
         if depth > 0:
             # Recurse down to depth...
             for p in self.payloads:
