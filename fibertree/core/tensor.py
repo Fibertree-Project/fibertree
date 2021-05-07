@@ -1001,7 +1001,6 @@ class Tensor:
 # Split methods
 #
 # Note: all these methods return a new tensor
-# TBD: Allow depth to be specified by rank_id
 #
     def __truediv__(self, arg):
         """Split root fiber in coordinate space
@@ -1033,7 +1032,7 @@ class Tensor:
 
 
 
-    def splitUniform(self, *args, depth=0, **kwargs):
+    def splitUniform(self, *args, **kwargs):
         """Split tensor's fibertree uniformly in coordinate space
 
         Tensor-level version of method that operates on the tensor's fibertree
@@ -1042,10 +1041,7 @@ class Tensor:
         Parameters
         ----------
 
-        depth: integer, default=0
-            Level of fibertree to split
-
-        See `Fiber.splitUniform()` for other arguments.
+        See `Fiber.splitUniform()` for arguments.
 
         Returns
         -------
@@ -1056,12 +1052,10 @@ class Tensor:
         """
 
         return self._splitGeneric(Fiber.splitUniform,
-                                  Fiber.splitUniformBelow,
                                   *args,
-                                  depth=depth,
                                   **kwargs)
 
-    def splitNonUniform(self, *args, depth=0, **kwargs):
+    def splitNonUniform(self, *args, **kwargs):
         """Split tensor's fibertree non-uniformly in coordinate space
 
         Tensor-level version of method that operates on the tensor's fibertree
@@ -1070,10 +1064,7 @@ class Tensor:
         Parameters
         ----------
 
-        depth: integer, default=0
-            Level of fibertree to split
-
-        See `Fiber.splitNonUniform()` for other arguments.
+        See `Fiber.splitNonUniform()` for arguments.
 
         Returns
         -------
@@ -1084,13 +1075,11 @@ class Tensor:
         """
 
         return self._splitGeneric(Fiber.splitNonUniform,
-                                  Fiber.splitNonUniformBelow,
                                   *args,
-                                  depth=depth,
                                   **kwargs)
 
 
-    def splitEqual(self, *args, depth=0, **kwargs):
+    def splitEqual(self, *args, **kwargs):
         """Split tensor's fibertree equally in position space
 
         Tensor-level version of method that operates on the tensor's fibertree
@@ -1099,10 +1088,7 @@ class Tensor:
         Parameters
         ----------
 
-        depth: integer, default=0
-            Level of fibertree to split
-
-        See `Fiber.splitEqual()` for other arguments.
+        See `Fiber.splitEqual()` for arguments.
 
         Returns
         -------
@@ -1113,12 +1099,11 @@ class Tensor:
         """
 
         return self._splitGeneric(Fiber.splitEqual,
-                                  Fiber.splitEqualBelow,
                                   *args,
-                                  depth=depth,
                                   **kwargs)
 
-    def splitUnEqual(self, *args, depth=0, **kwargs):
+
+    def splitUnEqual(self, *args, **kwargs):
         """Split tensor's fibertree unequally in postion space
 
         Tensor-level version of method that operates on the tensor's fibertree
@@ -1127,10 +1112,7 @@ class Tensor:
         Parameters
         ----------
 
-        depth: integer, default=0
-            Level of fibertree to split
-
-        See `Fiber.splitUnEqual()` for other arguments.
+        See `Fiber.splitUnEqual()` for arguments.
 
         Returns
         -------
@@ -1141,19 +1123,28 @@ class Tensor:
         """
 
         return self._splitGeneric(Fiber.splitUnEqual,
-                                  Fiber.splitUnEqualBelow,
                                   *args,
-                                  depth=depth,
                                   **kwargs)
 
 
-    def _splitGeneric(self, func, funcBelow, *args, depth=0, **kwargs):
+    def _splitGeneric(self, func, *args, **kwargs):
         """ _splitGeneric... """
+
+        rank_ids = copy.deepcopy(self.getRankIds())
+
+        #
+        # Determine depth
+        #
+        if "rankid" in kwargs:
+            depth = rank_ids.index(kwargs["rankid"])
+        elif "depth" in kwargs:
+            depth = kwargs["depth"]
+        else:
+            depth = 0
 
         #
         # Create new list of rank ids
         #
-        rank_ids = copy.deepcopy(self.getRankIds())
         id = rank_ids[depth]
         rank_ids[depth] = f"{id}.1"
         rank_ids.insert(depth + 1, f"{id}.0")
@@ -1169,11 +1160,7 @@ class Tensor:
         # Create new root fiber
         #
         root_copy = copy.deepcopy(self.getRoot())
-        if depth == 0:
-            root = func(root_copy, *args, **kwargs)
-        else:
-            root = root_copy
-            funcBelow(root, *args, depth=depth - 1, **kwargs)
+        root = func(root_copy, *args, **kwargs)
 
         #
         # Create Tensor from rank_ids and root fiber

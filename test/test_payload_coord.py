@@ -2,7 +2,7 @@ import unittest
 
 from fibertree import Fiber, Payload,  CoordPayload
 
-class TestPayload(unittest.TestCase):
+class TestPayloadCoord(unittest.TestCase):
 
     def test_new(self):
 

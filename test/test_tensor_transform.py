@@ -6,7 +6,7 @@ from fibertree import Rank
 from fibertree import Tensor
 
 
-class TestTensor(unittest.TestCase):
+class TestTensorTransform(unittest.TestCase):
 
     def test_splitUniform_0(self):
         """ Test splitUniform - depth=0 """
@@ -14,24 +14,35 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUniform_0.yaml")
 
-        a_out = a.splitUniform(25, depth=0)
+        tests = { "by-depth": {"depth": 0},
+                  "by-name":  {"rankid": "M"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
-        self.assertEqual(a_out.getShape(), [26, 41, 42, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitUniform(25, **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
+                self.assertEqual(a_out.getShape(), [26, 41, 42, 10])
 
 
+        
     def test_splitUniform_1(self):
         """ Test splitUniform - depth=1 """
 
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUniform_1.yaml")
 
-        a_out = a.splitUniform(15, depth=1)
+        tests = { "by-depth": {"depth": 1},
+                  "by-name":  {"rankid": "N"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
-        self.assertEqual(a_out.getShape(), [41, 31, 42, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitUniform(15, **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
+                self.assertEqual(a_out.getShape(), [41, 31, 42, 10])
 
 
     def test_splitUniform_2(self):
@@ -39,13 +50,16 @@ class TestTensor(unittest.TestCase):
 
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUniform_2.yaml")
+        tests = { "by-depth": {"depth": 2},
+                  "by-name":  {"rankid": "K"}}
 
-        a_out = a.splitUniform(4, depth=2)
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitUniform(4, **kwargs)
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
-        self.assertEqual(a_out.getShape(), [41, 42, 9, 10])
-
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
+                self.assertEqual(a_out.getShape(), [41, 42, 9, 10])
 
 
     def test_splitNonUniform_0(self):
@@ -54,11 +68,16 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitNonUniform_0.yaml")
 
-        a_out = a.splitNonUniform([0, 15, 35], depth=0)
+        tests = { "by-depth": {"depth": 0},
+                  "by-name":  {"rankid": "M"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
-        self.assertEqual(a_out.getShape(), [36, 41, 42, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitNonUniform([0, 15, 35], **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
+                self.assertEqual(a_out.getShape(), [36, 41, 42, 10])
 
 
     def test_splitNonUniform_1(self):
@@ -67,11 +86,16 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitNonUniform_1.yaml")
 
-        a_out = a.splitNonUniform([0, 15, 25], depth=1)
+        tests = { "by-depth": {"depth": 1},
+                  "by-name":  {"rankid": "N"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
-        self.assertEqual(a_out.getShape(), [41, 26, 42, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitNonUniform([0, 15, 25], **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
+                self.assertEqual(a_out.getShape(), [41, 26, 42, 10])
 
 
     def test_splitNonUniform_2(self):
@@ -80,11 +104,16 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitNonUniform_2.yaml")
 
-        a_out = a.splitNonUniform([0, 4, 19], depth=2)
+        tests = { "by-depth": {"depth": 2},
+                  "by-name":  {"rankid": "K"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
-        self.assertEqual(a_out.getShape(), [41, 42, 5, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitNonUniform([0, 4, 19], **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
+                self.assertEqual(a_out.getShape(), [41, 42, 5, 10])
 
 
     def test_splitEqual_0(self):
@@ -93,11 +122,16 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitEqual_0.yaml")
 
-        a_out = a.splitEqual(2, depth=0)
+        tests = { "by-depth": {"depth": 0},
+                  "by-name":  {"rankid": "M"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
-        self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitEqual(2, **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
+                self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
 
 
     def test_splitEqual_1(self):
@@ -106,11 +140,16 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitEqual_1.yaml")
 
-        a_out = a.splitEqual(2, depth=1)
+        tests = { "by-depth": {"depth": 1},
+                  "by-name":  {"rankid": "N"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
-        self.assertEqual(a_out.getShape(), [41, 34, 42, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitEqual(2, **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
+                self.assertEqual(a_out.getShape(), [41, 34, 42, 10])
 
 
     def test_splitEqual_2(self):
@@ -119,11 +158,16 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitEqual_2.yaml")
 
-        a_out = a.splitEqual(2, depth=2)
+        tests = { "by-depth": {"depth": 2},
+                  "by-name":  {"rankid": "K"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
-        self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitEqual(2, **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
+                self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
 
 
@@ -133,11 +177,16 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUnEqual_0.yaml")
 
-        a_out = a.splitUnEqual([2, 1], depth=0)
+        tests = { "by-depth": {"depth": 0},
+                  "by-name":  {"rankid": "M"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
-        self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitUnEqual([2, 1], **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
+                self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
 
 
 
@@ -147,11 +196,16 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUnEqual_1.yaml")
 
-        a_out = a.splitUnEqual([2, 1], depth=1)
+        tests = { "by-depth": {"depth": 1},
+                  "by-name":  {"rankid": "N"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
-        self.assertEqual(a_out.getShape(), [41, 42, 42, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitUnEqual([2, 1], **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
+                self.assertEqual(a_out.getShape(), [41, 42, 42, 10])
 
 
     def test_splitUnEqual_2(self):
@@ -160,11 +214,16 @@ class TestTensor(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUnEqual_2.yaml")
 
-        a_out = a.splitUnEqual([2, 1], depth=2)
+        tests = { "by-depth": {"depth": 2},
+                  "by-name":  {"rankid": "K"}}
 
-        self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
-        self.assertEqual(a_out.getShape(), [41, 42, 9, 10])
+        for test, kwargs in tests.items():
+            with self.subTest(test=test):
+                a_out = a.splitUnEqual([2, 1], **kwargs)
+
+                self.assertEqual(a_out, a_verify)
+                self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
+                self.assertEqual(a_out.getShape(), [41, 42, 9, 10])
 
 
     def test_swapRanks_0(self):

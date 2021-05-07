@@ -8,7 +8,7 @@ from fibertree import Rank
 from fibertree import Tensor
 
 
-class TestTensor(unittest.TestCase):
+class TestTensorShape(unittest.TestCase):
 
     def test_shape_empty(self):
         """Test shape of empty tensor"""

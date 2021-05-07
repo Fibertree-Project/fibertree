@@ -2442,7 +2442,7 @@ class Fiber:
         return self.splitEqual ((occupancy+partitions-1)//partitions)
 
 
-    def splitUniform(self, step, partitions=1, relativeCoords=False):
+    def splitUniform(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None):
         """Split a fiber uniformly in coordinate space 
 
         Parameters
@@ -2455,11 +2455,23 @@ class Fiber:
             original coordinates (`relativeCoords`=False) or always
             start at zero (`relativeCoords`=True)
 
+        depth: integer, default=0
+            The depth in the fibertree to perform the split
+
+        rankid: string, default=None
+            The name of a rank, i.e., a rankid, at which to perform
+            the split, overrides the `depth` argument.
+
         Returns
         -------
         split_fiber: Fiber
             A fibertree with one more level corresonding to the
-            splits of the original fiber
+            splits of the original fiber.
+
+        Notes:
+        -------
+        References to pieces of the original tensor may be returned as
+        pieces of the returned tensor.
 
         """
 
@@ -2480,6 +2492,15 @@ class Fiber:
 
                 return count, last_group
 
+        if rankid is not None:
+            depth = self._rankid2depth(rankid)
+
+        if depth > 0:
+            split_fiber = deepcopy(self)
+            update_lambda = lambda p: p.splitUniform(step, partitions, relativeCoords)
+            split_fiber.updatePayloads(update_lambda, depth=depth-1)
+            return split_fiber
+
         splitter = _SplitterUniform(step)
 
         return self._splitGeneric(splitter,
@@ -2487,7 +2508,7 @@ class Fiber:
                                   relativeCoords=relativeCoords)
 
 
-    def splitNonUniform(self, splits, partitions=1, relativeCoords=False):
+    def splitNonUniform(self, splits, partitions=1, relativeCoords=False, depth=0, rankid=None):
         """Split a fiber non-uniformly in coordinate space 
 
         Parameters
@@ -2500,6 +2521,13 @@ class Fiber:
             original coordinates (`relativeCoords`=False) or always
             start at zero (`relativeCoords`=True)
 
+        depth: integer, default=0
+            The depth in the fibertree to perform the split
+
+        rankid: string, default=None
+            The name of a rank, i.e., a rankid, at which to perform
+            the split, overrides the `depth` argument.
+
         Returns
         -------
         split_fiber: Fiber
@@ -2507,10 +2535,12 @@ class Fiber:
             splits of the original fiber
 
 
-        Notes
-        -----
-
+        Notes:
+        -------
         One does not needs to include a split starting at coordinate zero.
+
+        References to pieces of the original tensor may be returned as
+        pieces of the returned tensor.
 
         """
 
@@ -2538,6 +2568,15 @@ class Fiber:
 
                 return count, last_group
 
+        if rankid is not None:
+            depth = self._rankid2depth(rankid)
+
+        if depth > 0:
+            split_fiber = deepcopy(self)
+            update_lambda = lambda p: p.splitNonUniform(splits, partitions, relativeCoords)
+            split_fiber.updatePayloads(update_lambda, depth=depth-1)
+            return split_fiber
+
         splitter = _SplitterNonUniform(splits)
 
         return self._splitGeneric(splitter,
@@ -2545,7 +2584,7 @@ class Fiber:
                                   relativeCoords=relativeCoords)
 
 
-    def splitEqual(self, step, partitions=1, relativeCoords=False):
+    def splitEqual(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None):
         """Split a fiber equally in postion space
 
         Parameters
@@ -2558,11 +2597,23 @@ class Fiber:
             original coordinates (`relativeCoords`=False) or always
             start at zero (`relativeCoords`=True)
 
+        depth: integer, default=0
+            The depth in the fibertree to perform the split
+
+        rankid: string, default=None
+            The name of a rank, i.e., a rankid, at which to perform
+            the split, overrides the `depth` argument.
+
         Returns
         -------
         split_fiber: Fiber
             A fibertree with one more level corresonding to the
             splits of the original fiber
+
+        Notes:
+        -------
+        References to pieces of the original tensor may be returned as
+        pieces of the returned tensor.
 
         """
 
@@ -2581,6 +2632,15 @@ class Fiber:
 
                 return count, c
 
+        if rankid is not None:
+            depth = self._rankid2depth(rankid)
+
+        if depth > 0:
+            split_fiber = deepcopy(self)
+            update_lambda = lambda p: p.splitEqual(step, partitions, relativeCoords)
+            split_fiber.updatePayloads(update_lambda, depth=depth-1)
+            return split_fiber
+
         splitter = _SplitterEqual(step)
 
         return self._splitGeneric(splitter,
@@ -2588,8 +2648,10 @@ class Fiber:
                                   relativeCoords=relativeCoords)
 
 
-    def splitUnEqual(self, sizes, partitions=1, relativeCoords=False):
+    def splitUnEqual(self, sizes, partitions=1, relativeCoords=False, depth=0, rankid=None):
         """Split a fiber unequally in postion space
+
+        Split a fiber by the sizes in `sizes`.
 
         Parameters
         ----------
@@ -2601,6 +2663,13 @@ class Fiber:
             original coordinates (`relativeCoords`=False) or always
             start at zero (`relativeCoords`=True)
 
+        depth: integer, default=0
+            The depth in the fibertree to perform the split
+
+        rankid: string, default=None
+            The name of a rank, i.e., a rankid, at which to perform
+            the split, overrides the `depth` argument.
+
         Returns
         -------
         split_fiber: Fiber
@@ -2609,11 +2678,11 @@ class Fiber:
 
         Notes
         ------
-
-        Split root fiber by the sizes in `sizes`.
-
         If there are more coordinates than the sum of the `sizes` all
         remaining coordinates are put into the final split.
+
+        References to pieces of the original tensor may be returned as
+        pieces of the returned tensor.
 
         """
 
@@ -2635,11 +2704,36 @@ class Fiber:
 
                 return count, c
 
+        if rankid is not None:
+            depth = self._rankid2depth(rankid)
+
+        if depth > 0:
+            split_fiber = deepcopy(self)
+            update_lambda = lambda p: p.splitUnEqual(sizes, partitions, relativeCoords)
+            split_fiber.updatePayloads(update_lambda, depth=depth-1)
+            return split_fiber
+
         splitter = _SplitterUnEqual(sizes)
 
         return self._splitGeneric(splitter,
                                   partitions,
                                   relativeCoords=relativeCoords)
+
+
+    def _rankid2depth(self, rankid):
+        """_rankid2depth
+
+        Finds the depth of a given rankid
+        """
+
+        owner = self.getOwner()
+
+        assert owner is not None, "Rankids exist only for fibers in a tensor"
+
+        rankids = owner.getRankIds()
+
+        return rankids.index(rankid)
+
 
 
     def _splitGeneric(self, splitter, partitions, relativeCoords):
