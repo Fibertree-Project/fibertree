@@ -194,7 +194,35 @@ class TestTensorShape(unittest.TestCase):
             self.assertEqual(t1.getShape(["K"], authoritative=True), [200])
             self.assertEqual(t1.getShape("M", authoritative=True), 100)
             self.assertEqual(t1.getShape("K", authoritative=True), 200)
-           
+
+    def test_rankid_2D(self):
+        """Test setting rank ids of 2D tensor"""
+
+        #         0    1    2    3
+        #
+        l1 = [ [   0,   0,   0,   0 ],  # 0
+               [ 100, 101, 102,   0 ],  # 1
+               [   0, 201,   0, 203 ],  # 2
+               [   0,   0,   0,   0 ],  # 3
+               [ 400,   0, 402,   0 ],  # 4
+               [   0,   0,   0,   0 ],  # 5
+               [   0, 601,   0, 603 ] ] # 6
+
+
+        rank_ids = ["M", "K"]
+        t1 = Tensor.fromUncompressed(rank_ids, l1)
+
+        rank_ids2 = t1.getRankIds()
+
+        self.assertEqual(rank_ids2, rank_ids)
+
+        rank_ids_new = ["M2", "M1"]
+        t1.setRankIds(rank_ids_new)
+
+        rank_ids3 = t1.getRankIds()
+
+        self.assertEqual(rank_ids3, rank_ids_new)
+
         
 if __name__ == '__main__':
     unittest.main()

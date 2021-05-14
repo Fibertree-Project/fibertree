@@ -144,6 +144,28 @@ class Rank:
 
         return rankids
 
+    def setId(self, rank_id):
+        """Set id of rank.
+
+        Set the rank id of this rank, i.e., the name of this
+        rank/dimension.
+
+        Parameters
+        ----------
+        rank_id: string
+            Rank id of this rank
+
+
+        Returns
+        -------
+        self: rank
+            Returns `self1 so method can be used in a chain
+
+        """
+
+        self._id = rank_id
+        return self
+
 
     def getName(self):
         """.. deprecated::"""

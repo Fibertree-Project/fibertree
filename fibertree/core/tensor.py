@@ -468,6 +468,29 @@ class Tensor:
         return [r.getId() for r in self.ranks]
 
 
+    def setRankIds(self, rank_ids):
+        """Set the rank ids of the tensor
+
+        Parameters
+        ----------
+        rank_ids: list of strings
+            List of names of ranks
+
+        Returns
+        -------
+        self: tensor
+            Returns `self` so method can be used in a chain
+
+        """
+        rank = self._root.getOwner()
+
+        for rank_id in rank_ids:
+            rank.setId(rank_id)
+            rank = rank.getNextRank()
+
+        return self
+
+
     def getShape(self, rank_ids=[], authoritative=False):
         """Get the shape of the tensor.
 
