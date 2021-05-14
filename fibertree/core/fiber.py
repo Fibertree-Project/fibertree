@@ -1786,6 +1786,42 @@ class Fiber:
             yield CoordPayload(coord, payload)
 
 
+    def iterShape(self):
+        """Iterate over fiber shape
+
+        Iterate over every coordinate in the shape, returning a
+        CoordPayload for each one, with a **default** value for
+        empty payloads.
+
+        Parameters
+        ----------
+        None
+
+        """
+
+        for c in range(self.getShape(all_ranks=False)):
+            p = self.getPayload(c)
+            yield CoordPayload(c, p)
+
+
+    def iterShapeRef(self):
+        """Iterate over fiber shape
+
+        Iterate over every coordinate in the shape, returning a
+        CoordPayload for each one, and creating elements for empty
+        payloads.
+
+        Parameters
+        ----------
+        None
+
+        """
+
+        for c in range(self.getShape(all_ranks=False)):
+            p = self.getPayloadRef(c)
+            yield CoordPayload(c, p)
+
+
 #
 # Core methods
 #

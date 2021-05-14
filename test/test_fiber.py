@@ -361,6 +361,54 @@ class TestFiber(unittest.TestCase):
             i += 1
 
 
+    def test_iterShape(self):
+        """Test iteration over a fiber's shape"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+
+        c0_ans = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p0_ans = [0, 2, 0, 0, 0, 0, 0, 0, 0, 10]
+
+        a = Fiber(c0, p0)
+
+        i = 0
+        for (c, p) in a.iterShape():
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+            i += 1
+
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0)
+            self.assertEqual(a.payloads, p0)
+
+    def test_iterShapeRef(self):
+        """Test iteration over a fiber's shape with allocation"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+
+        c0_ans = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p0_ans = [0, 2, 0, 0, 0, 0, 0, 0, 0, 10]
+
+        a = Fiber(c0, p0)
+
+        i = 0
+        for (c, p) in a.iterShapeRef():
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+            i += 1
+
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0_ans)
+            self.assertEqual(a.payloads, p0_ans)
+
+
+
     def test_getitem_simple(self):
         """Get item - simple"""
 
