@@ -20,5 +20,9 @@ from .graphics.tensor_canvas import *
 from .graphics.movie_canvas import *
 from .graphics.spacetime_canvas import *
 
+from .notebook.notebook_utils import *
+from .notebook.tensor_maker import *
+from .notebook.tensor_display import *
+
 from collections import namedtuple
 

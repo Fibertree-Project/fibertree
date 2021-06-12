@@ -154,7 +154,7 @@ class TensorCanvas():
         elif animation == 'spacetime':
             self.canvas = SpacetimeCanvas(*self.shadow_tensors)
         elif animation == 'none':
-            self.canvas = NoneCanvas()
+            self.canvas = NoneCanvas(*self.shadow_tensors, style=style)
         else:
             self.logger.warning("TensorCanvas: No animation type: %s", animation)
 
@@ -196,6 +196,12 @@ class TensorCanvas():
         for the first time.
 
         """
+        #
+        # Don't need to do anything for `NoneCanvas`
+        #
+        if isinstance(self.canvas, NoneCanvas):
+            return
+
         #
         # Rename spacetime to spacetimestamp to avoid confusion
         # with the spacetime style
@@ -341,6 +347,13 @@ class TensorCanvas():
 
         """
         #
+        # Don't need to do anything for `NoneCanvas`
+        #
+        if isinstance(self.canvas, NoneCanvas):
+            return
+
+
+        #
         # For situations where caller did not use addActivity()
         # call it one time for them
         #
@@ -415,8 +428,7 @@ class TensorCanvas():
         #
         # Push out any remaining logged activity
         #
-        for n in range(len(self.log)):
-            self.addFrame()
+        self.getLastFrame()
 
         return self.canvas.saveMovie(filename=filename)
 
@@ -639,24 +651,25 @@ class CycleManager():
 class NoneCanvas():
     """NoneCanvas - does nothing"""
 
-    def __init__(self):
+    def __init__(self, *tensors, animation='movie', style='tree', **kwargs):
         """__init__"""
+
+        # For 'none' we create a movie but don't add any frames
+        self.canvas = TensorCanvas(*tensors, animation='movie', style=style, **kwargs)
 
         return
 
     def addFrame(self, *highlighted_coords_per_tensor):
-        """addFrame"""
+        """addFrame - should never get called"""
 
         return
 
     def getLastFrame(self, message=None):
         """getLastFrame"""
 
-        from PIL import Image
+        im = self.canvas.getLastFrame(message=message)
 
-        im = Image.new("RGB", (10, 10), "wheat")
-
-        return [im]
+        return im
 
 
     def saveMovie(self, filename=None):
