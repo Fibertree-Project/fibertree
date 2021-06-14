@@ -1,23 +1,52 @@
 """Make Tensor Module"""
 
+#
+# Import standard libraries
+#
+import logging
+
+import yaml
+from pathlib import Path
+
+#
+# Import display classes/utilities
+#
 from ipywidgets import interact, interactive, fixed, interact_manual
 import ipywidgets as widgets
 
+#
+# Import fibertree libraries
+#
 from fibertree import Tensor
+
+#
+# Set up logging
+#
+module_logger = logging.getLogger('fibertree.notebook.tensor_maker')
+
 
 class TensorMaker():
 
-    def __init__(self):
+    def __init__(self, name=None, autoload=False):
         """ __init__ """
+
+        #
+        # Set up logging
+        #
+        self.logger = logging.getLogger('fibertree.noteboo.tensor_maker')
+
+
+        self.name = name
+        self.autoload = autoload
 
         #
         # Tensor creation variables
         #
         self.controls = {}
-        self.controls["Title"] = widgets.Label(value="Tensor Creation Controls")
 
         self.rank_ids = {}
         self.variables = {}
+        self.reset = {}
 
         self.colors = ["blue",
                        "green",
@@ -268,23 +297,117 @@ class TensorMaker():
     def displayControls(self):
         """Create and display the interactive controls"""
 
-        # Note repeated rank names will only appear once
+        #
+        # Display the tensor configuration controls
+        #
+        controls = self._getControls()
 
-        self._getControls()
+        display(controls)
 
-        display(self.controls)
+        #
+        # Display the reset button
+        #
+        load = widgets.Button(description='Load',
+                               tooltip='Load all controls values from a file')
+
+        load.on_click(lambda arg: self.loadControls())
+
+        store = widgets.Button(description='Store',
+                               tooltip='Store all controls to a file')
+
+        store.on_click(lambda arg: self.storeControls())
+
+        reset = widgets.Button(description='Reset',
+                               tooltip='Reset all control values to their default state')
+
+        reset.on_click(lambda arg: self.resetControls())
+
+
+        display(widgets.HBox([load, store, reset]))
 
 
     def _getControls(self):
-        self.controls = interactive(self._set_params, **self.controls)
 
-        return self.controls
+        title = widgets.Label(value="Tensor Creation Controls")
+
+        controls = interactive(self._set_params,
+                               Title=title,
+                               **self.controls)
+
+        #
+        # Collect reset values for all controls
+        #
+        for name, control in self.controls.items():
+            self.reset[name] = control.value
+
+        #
+        # Optionally load controls from file
+        #
+        if self.autoload:
+            self.loadControls()
+
+        return controls
 
 
     def _set_params(self, **kwargs):
 
         for variable, value in kwargs.items():
             self.variables[variable] = value
+
+
+
+
+    def storeControls(self):
+        """ storeControls """
+
+        filename = self._getFilename()
+        if filename is None:
+            return
+
+        state = {name: control.value for (name, control) in self.controls.items()}
+        state_yaml = yaml.dump(state, Dumper=yaml.SafeDumper)
+
+        with open(filename, "w") as control_file:
+            control_file.write(state_yaml)
+
+
+    def loadControls(self):
+        """ loadControls """
+
+        filename = self._getFilename(exists=True)
+        if filename is None:
+            return
+
+        with open(filename, "r") as control_file:
+            state_yaml = control_file.read()
+
+        state = yaml.load(state_yaml, Loader=yaml.SafeLoader)
+
+        for name, value in state.items():
+            self.controls[name].value = value
+
+
+    def resetControls(self):
+        """ resetControls """
+
+        for name, control in self.controls.items():
+            control.value = self.reset[name]
+
+
+    def _getFilename(self, exists=False):
+        if self.name is None:
+            self.logger.warning("No filename specified at init time")
+            return None
+
+        filename = Path(self.name+".yaml")
+
+        if exists and not filename.is_file():
+            self.logger.warning(f"Control file ({filename}) does not exist")
+            return None
+
+        return filename
+
+
 
 #
 # Methods to create a tensor from the interactively set attributes
