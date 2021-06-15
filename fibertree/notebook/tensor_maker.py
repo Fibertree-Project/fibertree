@@ -33,9 +33,12 @@ class TensorMaker():
         #
         # Set up logging
         #
-        self.logger = logging.getLogger('fibertree.noteboo.tensor_maker')
+        self.logger = logging.getLogger('fibertree.notebook.tensor_maker')
 
 
+        #
+        # Save parameters
+        #
         self.name = name
         self.autoload = autoload
 
@@ -54,6 +57,13 @@ class TensorMaker():
                        "purple",
                        "red",
                        "yellow"]
+
+        #
+        # Create directory for load/save configuration information
+        #
+        etcdir = Path("etc/tensormaker")
+        etcdir.mkdir(mode=0o755, parents=True, exist_ok=True)
+        self.etcdir = etcdir
 
 
 
@@ -399,7 +409,7 @@ class TensorMaker():
             self.logger.warning("No filename specified at init time")
             return None
 
-        filename = Path(self.name+".yaml")
+        filename = self.etcdir / Path(self.name+".yaml")
 
         if exists and not filename.is_file():
             self.logger.warning(f"Control file ({filename}) does not exist")

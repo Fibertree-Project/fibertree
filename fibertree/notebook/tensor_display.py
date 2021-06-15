@@ -7,6 +7,8 @@ import string
 import random
 import tempfile
 
+from pathlib import Path
+
 #
 # Import display classes/utilities
 #
@@ -70,6 +72,13 @@ class TensorDisplay():
             self.setAnimation(animation)
 
         self.rand = random.Random()
+
+        #
+        # Create tmp directory for movies
+        #
+        tmpdir = Path("tmp")
+        tmpdir.mkdir(mode=0o755, exist_ok=True)
+        self.tmpdir = tmpdir
 
 
     #
@@ -142,9 +151,10 @@ class TensorDisplay():
             return
 
         if filename is None:
-            filename = self._random_string(10)+".mp4"
+            basename = Path(self._random_string(10)+".mp4")
+            filename = self.tmpdir / basename
 
-        canvas.saveMovie(filename)
+        canvas.saveMovie(filename.as_posix())
 
         # Append random string to URL to prevent browser caching
         randomstring=self._random_string(10)
