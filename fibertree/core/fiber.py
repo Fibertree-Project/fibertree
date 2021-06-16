@@ -3688,7 +3688,7 @@ class Fiber:
             cur_payloads = []
 
             for p in self.payloads:
-                cur_payloads.append(p.flattenRanks(levels=levels - 1))
+                cur_payloads.append(p.flattenRanks(levels=levels - 1, style=style))
 
         #
         # Flatten this level

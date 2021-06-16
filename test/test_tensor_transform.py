@@ -382,6 +382,18 @@ class TestTensorTransform(unittest.TestCase):
 
         self.assertEqual(u04, t2)
 
+    def test_flattenRanks_l3_sa(self):
+        """Test flattenRanks - levels=3, coord_style=absolute"""
+        t0 = Tensor.fromUncompressed(rank_ids=["A"], root=list(range(16)))
+        s1 = t0.splitUniform(8, depth=0)
+        s2 = s1.splitUniform(4, depth=1)
+        s3 = s2.splitUniform(2, depth=2)
+
+        f4 = s3.flattenRanks(levels=3, coord_style="absolute")
+        f4.setRankIds(["A"])
+
+        self.assertEqual(f4, t0)
+
 
 if __name__ == '__main__':
     unittest.main()
