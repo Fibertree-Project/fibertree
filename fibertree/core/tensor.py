@@ -1279,9 +1279,14 @@ class Tensor:
         #
         shape = None
 
-        root = self._modifyRoot(Fiber.swapRanks,
-                                Fiber.swapRanksBelow,
-                                depth=depth)
+        # TODO
+        if not all(fiber.isEmpty() for fiber in self.ranks[depth].fibers):
+            root = self._modifyRoot(Fiber.swapRanks,
+                                    Fiber.swapRanksBelow,
+                                    depth=depth)
+        else:
+            root = copy.deepcopy(self.getRoot())
+
         #
         # Create Tensor from rank_ids and root fiber
         #

@@ -9,6 +9,9 @@ debug.py
 *~
 \#*\#
 
+# Vim files
+*.swp
+
 #pycharm
 **/.idea/
 venv/

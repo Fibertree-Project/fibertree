@@ -26,7 +26,7 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out.getShape(), [26, 41, 42, 10])
 
 
-        
+
     def test_splitUniform_1(self):
         """ Test splitUniform - depth=1 """
 
@@ -255,7 +255,7 @@ class TestTensorTransform(unittest.TestCase):
     def test_swizzleRanks(self):
         """ Test swizzleRanks """
 
-        a_MK = Tensor.fromUncompressed(["M", "K"], 
+        a_MK = Tensor.fromUncompressed(["M", "K"],
                                [[0, 0, 4, 0, 0, 5],
                                 [3, 2, 0, 3, 0, 2],
                                 [0, 2, 0, 0, 1, 2],
@@ -290,6 +290,14 @@ class TestTensorTransform(unittest.TestCase):
 
         a_MMKK_2 = a_MKMK.swizzleRanks(["M.1", "M.0", "K.1", "K.0"])
         self.assertEqual(a_MMKK_2, a_MMKK)
+
+    def test_swizzleRanks_empty(self):
+        """ Test swizzleRanks() on an empty tensor """
+        Z_MNOP = Tensor(rank_ids=["M", "N", "O", "P"])
+        Z_PNMO = Z_MNOP.swizzleRanks(rank_ids=["P", "N", "M", "O"])
+
+        self.assertEqual(Z_MNOP.getRankIds(), ["M", "N", "O", "P"])
+        self.assertEqual(Z_PNMO.getRankIds(), ["P", "N", "M", "O"])
 
 
     def test_flattenRanks_0(self):
@@ -326,7 +334,7 @@ class TestTensorTransform(unittest.TestCase):
 
         f01 = t0.flattenRanks(depth=0, levels=1)
         u01 = f01.unflattenRanks(depth=0, levels=1)
-        
+
         self.assertEqual(u01, t0)
 
     def test_flattenRanks_f02(self):
@@ -360,7 +368,7 @@ class TestTensorTransform(unittest.TestCase):
         t0 = Tensor.fromYAMLfile("./data/tensor_3d-0.yaml")
         t1 = Tensor.fromYAMLfile("./data/tensor_3d-1.yaml")
 
-        t2 = Tensor.fromFiber(["A", "B", "C", "D"], 
+        t2 = Tensor.fromFiber(["A", "B", "C", "D"],
                               Fiber([1, 4], [t0.getRoot(), t1.getRoot()]),
                               name="t2")
 

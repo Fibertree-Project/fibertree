@@ -9,6 +9,13 @@ from fibertree import TensorImage
 
 class TestFiberMutator(unittest.TestCase):
 
+    def test_swapRanks_empty(self):
+        """Test that swapRanks raises an error if the fiber is empty"""
+        z_m = Fiber()
+
+        with self.assertRaises(AssertionError):
+            z_m.swapRanks()
+
     def test_split_uniform_below(self):
         """Test splitUniformBelow"""
 
