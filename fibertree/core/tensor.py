@@ -1279,7 +1279,7 @@ class Tensor:
         #
         shape = None
 
-        # TODO
+        # Only call Fiber.swapRanks if there are actually payloads to swap
         if not all(fiber.isEmpty() for fiber in self.ranks[depth].fibers):
             root = self._modifyRoot(Fiber.swapRanks,
                                     Fiber.swapRanksBelow,
