@@ -1033,12 +1033,7 @@ class Tensor:
 
         """
 
-        return self._splitGeneric(Fiber.__truediv__,
-                                  None,
-                                  arg,
-                                  depth=0)
-
-
+        return self.splitUniform(arg, depth=0)
 
     def __floordiv__(self, arg):
         """Split root fiber in position space
@@ -1048,11 +1043,7 @@ class Tensor:
 
         """
 
-        return self._splitGeneric(Fiber.__floordiv__,
-                                  None,
-                                  arg,
-                                  depth=0)
-
+        return self.splitEqual(arg, depth=0)
 
 
     def splitUniform(self, *args, **kwargs):
