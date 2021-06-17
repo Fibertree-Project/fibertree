@@ -1,0 +1,132 @@
+tensor:
+  name: tensor_transform-b-truediv
+  rank_ids:
+  - M.1
+  - M.0
+  - N
+  root:
+  - fiber:
+      coords:
+      - 0
+      - 5
+      - 10
+      - 15
+      payloads:
+      - fiber:
+          coords:
+          - 0
+          - 1
+          payloads:
+          - fiber:
+              coords:
+              - 2
+              - 4
+              - 6
+              - 8
+              payloads:
+              - 8
+              - 7
+              - 1
+              - 10
+          - fiber:
+              coords:
+              - 0
+              - 2
+              - 3
+              - 5
+              payloads:
+              - 4
+              - 6
+              - 1
+              - 7
+      - fiber:
+          coords:
+          - 5
+          payloads:
+          - fiber:
+              coords:
+              - 4
+              - 6
+              - 7
+              payloads:
+              - 9
+              - 5
+              - 6
+      - fiber:
+          coords:
+          - 10
+          - 12
+          - 14
+          payloads:
+          - fiber:
+              coords:
+              - 0
+              - 4
+              - 6
+              - 7
+              - 8
+              - 9
+              payloads:
+              - 8
+              - 4
+              - 3
+              - 6
+              - 9
+              - 3
+          - fiber:
+              coords:
+              - 0
+              - 1
+              - 5
+              - 6
+              payloads:
+              - 1
+              - 5
+              - 3
+              - 4
+          - fiber:
+              coords:
+              - 3
+              - 7
+              payloads:
+              - 5
+              - 9
+      - fiber:
+          coords:
+          - 16
+          - 19
+          payloads:
+          - fiber:
+              coords:
+              - 0
+              - 2
+              - 3
+              - 4
+              - 8
+              payloads:
+              - 6
+              - 9
+              - 6
+              - 1
+              - 1
+          - fiber:
+              coords:
+              - 0
+              - 3
+              - 4
+              - 5
+              - 6
+              - 8
+              - 9
+              payloads:
+              - 9
+              - 2
+              - 1
+              - 5
+              - 2
+              - 5
+              - 3
+  shape:
+  - 16
+  - 20
+  - 10
