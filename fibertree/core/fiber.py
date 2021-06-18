@@ -2864,7 +2864,9 @@ class Fiber:
         # For 1 partition don't return a extra level of Fiber
 
         if partitions == 1:
-            return Fiber(rank1_fiber_coords[0], rank1_fiber_payloads[0])
+            fiber = Fiber(rank1_fiber_coords[0], rank1_fiber_payloads[0])
+            fiber._setDefault(Fiber())
+            return fiber
 
         # For >1 partitions return a Fiber with a payload for each partition
 
