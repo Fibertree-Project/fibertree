@@ -6,6 +6,15 @@ from fibertree import TensorImage
 
 class TestFiberSplit(unittest.TestCase):
 
+    def test_split_uniform_empty(self):
+        """Test splitUniform on empty fiber"""
+        empty = Fiber()
+        split = empty.splitUniform(5)
+
+        # After we split, we need to make sure that we have actually added
+        # another level to the empty fiber
+        self.assertIsInstance(split.getDefault(), Fiber)
+
     def test_split_uniform(self):
         """Test splitUniform"""
 
@@ -14,7 +23,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [ 0, 10, 20, 100, 120, 310, 410 ]
-        
+
         f = Fiber(c,p)
 
         #
@@ -49,7 +58,7 @@ class TestFiberSplit(unittest.TestCase):
         for i, (sc, sp)  in enumerate(split):
             self.assertEqual(sc, split_ref_coords[i])
             self.assertEqual(sp, split_ref_payloads[i])
-        
+
 
     def test_split_uniform_then_flatten(self):
         """Test that flattenRanks() can undo splitUniform"""
@@ -59,7 +68,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [ 0, 10, 20, 100, 120, 310, 410 ]
-        
+
         f = Fiber(c,p)
 
         #
@@ -72,7 +81,7 @@ class TestFiberSplit(unittest.TestCase):
         # Check that flattening after splitting gives us the same answer
         #
         self.assertEqual(split.flattenRanks(style="absolute"), f)
-        
+
 
     def test_split_uniform_relative(self):
         """Test splitUniform"""
@@ -141,6 +150,15 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(split.flattenRanks(style="relative"), f)
 
+    def test_split_nonuniform_empty(self):
+        """Test splitNonUniform on empty fiber"""
+        empty = Fiber()
+        split = empty.splitNonUniform([1, 5, 17])
+
+        # After we split, we need to make sure that we have actually added
+        # another level to the empty fiber
+        self.assertIsInstance(split.getDefault(), Fiber)
+
     def test_split_nonuniform1(self):
         """Test splitNonUniform - starting at coordinate 0"""
 
@@ -149,7 +167,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [ 0, 10, 20, 100, 120, 310, 410 ]
-        
+
         f = Fiber(c,p)
 
         #
@@ -229,7 +247,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [ 0, 10, 20, 100, 120, 310, 410 ]
-        
+
         f = Fiber(c,p)
 
         #
@@ -242,7 +260,17 @@ class TestFiberSplit(unittest.TestCase):
         # Check the split
         #
         self.assertEqual(split.flattenRanks(style="absolute"), f)
-        
+
+    def test_split_equal_empty(self):
+        """Test splitEqual on empty fiber"""
+        empty = Fiber()
+        split = empty.splitEqual(3)
+
+        # After we split, we need to make sure that we have actually added
+        # another level to the empty fiber
+        self.assertIsInstance(split.getDefault(), Fiber)
+
+
     def test_split_equal(self):
         """Test splitEqual"""
 
@@ -251,7 +279,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [ 0, 10, 20, 100, 120, 310, 410 ]
-        
+
         f = Fiber(c,p)
 
         #
@@ -275,7 +303,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         # Do the split
         #
-        size = 2 
+        size = 2
         split = f.splitEqual(size)
 
         #
@@ -284,7 +312,7 @@ class TestFiberSplit(unittest.TestCase):
         for i, (sc, sp)  in enumerate(split):
             self.assertEqual(sc, css[i][0])
             self.assertEqual(sp, split_ref[i])
-        
+
     def test_split_equal_then_flatten(self):
         """Test that flattenRanks can undo splitEqual"""
 
@@ -293,20 +321,30 @@ class TestFiberSplit(unittest.TestCase):
         #
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [ 0, 10, 20, 100, 120, 310, 410 ]
-        
+
         f = Fiber(c,p)
 
         #
         # Do the split
         #
-        size = 2 
+        size = 2
         split = f.splitEqual(size)
 
         #
         # Check the split
         #
         self.assertEqual(split.flattenRanks(style="absolute"), f)
-        
+
+    def test_split_unequal_empty(self):
+        """Test splitUnEqual on empty fiber"""
+        empty = Fiber()
+        split = empty.splitUnEqual([1, 5, 17])
+
+        # After we split, we need to make sure that we have actually added
+        # another level to the empty fiber
+        self.assertIsInstance(split.getDefault(), Fiber)
+
+
     def test_split_unequal(self):
         """Test splitUnequal"""
 
@@ -315,7 +353,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [ 0, 10, 20, 100, 120, 310, 410 ]
-        
+
         f = Fiber(c,p)
 
         #
@@ -346,7 +384,7 @@ class TestFiberSplit(unittest.TestCase):
         for i, (sc, sp)  in enumerate(split):
             self.assertEqual(sc, css[i][0])
             self.assertEqual(sp, split_ref[i])
-        
+
 
     def test_split_unequal_then_flatten(self):
         """Test that flattenRanks can undo splitUnequal"""
@@ -356,7 +394,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [ 0, 10, 20, 100, 120, 310, 410 ]
-        
+
         f = Fiber(c,p)
 
         #
@@ -369,8 +407,8 @@ class TestFiberSplit(unittest.TestCase):
         # Check the split
         #
         self.assertEqual(split.flattenRanks(style="absolute"), f)
-        
-        
+
+
     def test_split_equal_partioned(self):
         """Test splitEqual(2, partitions=2)"""
 
@@ -379,7 +417,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [ 0, 10, 20, 100, 120, 310, 410 ]
-        
+
         f = Fiber(c,p)
 
         #
@@ -410,7 +448,7 @@ class TestFiberSplit(unittest.TestCase):
 
     @staticmethod
     def _make_fiber_a():
-        
+
         f = Fiber([0, 1, 2, 10, 12, 31, 41], [ 0, 10, 20, 100, 120, 310, 410 ])
         return f
 
