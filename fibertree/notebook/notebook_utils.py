@@ -4,6 +4,7 @@
 # Import standard libraries
 #
 import logging
+from pathlib import Path
 
 #
 # Import display classes/utilities
@@ -165,10 +166,11 @@ def createEnableControl(name, choices=None):
 #
 # TBD: Deprecate use of this method
 #
-data_dir = "../../data"
+data_dir = Path("../../data")
 
 def datafileName(filename):
-    return os.path.join(data_dir, filename)
+
+    return data_dir / filename
 
 
 #
