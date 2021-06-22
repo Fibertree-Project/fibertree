@@ -312,6 +312,14 @@ class TestTensorTransform(unittest.TestCase):
         a_MMKK_2 = a_MKMK.swizzleRanks(["M.1", "M.0", "K.1", "K.0"])
         self.assertEqual(a_MMKK_2, a_MMKK)
 
+    def test_swizzleRanks_empty(self):
+        """ Test swizzleRanks() on an empty tensor """
+        Z_MNOP = Tensor(rank_ids=["M", "N", "O", "P"])
+        Z_PNMO = Z_MNOP.swizzleRanks(rank_ids=["P", "N", "M", "O"])
+
+        self.assertEqual(Z_MNOP.getRankIds(), ["M", "N", "O", "P"])
+        self.assertEqual(Z_PNMO.getRankIds(), ["P", "N", "M", "O"])
+
 
     def test_flattenRanks_0(self):
         """ Test flattenRanks - depth=0 """
@@ -394,6 +402,18 @@ class TestTensorTransform(unittest.TestCase):
         u04 = f04.unflattenRanks(depth=0, levels=3)
 
         self.assertEqual(u04, t2)
+
+    def test_flattenRanks_l3_sa(self):
+        """Test flattenRanks - levels=3, coord_style=absolute"""
+        t0 = Tensor.fromUncompressed(rank_ids=["A"], root=list(range(16)))
+        s1 = t0.splitUniform(8, depth=0)
+        s2 = s1.splitUniform(4, depth=1)
+        s3 = s2.splitUniform(2, depth=2)
+
+        f4 = s3.flattenRanks(levels=3, coord_style="absolute")
+        f4.setRankIds(["A"])
+
+        self.assertEqual(f4, t0)
 
 
 if __name__ == '__main__':

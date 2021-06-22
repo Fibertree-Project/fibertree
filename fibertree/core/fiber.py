@@ -138,7 +138,7 @@ class Fiber:
 
     """
 
-   
+
     def __init__(self,
                  coords=None,
                  payloads=None,
@@ -477,7 +477,7 @@ class Fiber:
         `Fiber.payloads` class instance variable directly.
 
         """
-        
+
         return self.payloads
 
 
@@ -1023,7 +1023,7 @@ class Fiber:
 
         TBD
         ----
-        
+
         Add support for **shortcuts**.
 
         """
@@ -1272,7 +1272,7 @@ class Fiber:
         next_default: a payload (boxed or unboxed)
             If `default` is a Fiber then a default payload for that fiber
 
-        addtorank: Boolean 
+        addtorank: Boolean
             If the newly created value is a fiber, then should that fiber
             be added to the its owning rank (owner.next_rank)
 
@@ -1834,7 +1834,7 @@ class Fiber:
         Nothing
 
         """
-        
+
         self.coords.clear()
         self.payloads.clear()
 
@@ -2493,7 +2493,7 @@ class Fiber:
 
 
     def splitUniform(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None):
-        """Split a fiber uniformly in coordinate space 
+        """Split a fiber uniformly in coordinate space
 
         Parameters
         ----------
@@ -2559,7 +2559,7 @@ class Fiber:
 
 
     def splitNonUniform(self, splits, partitions=1, relativeCoords=False, depth=0, rankid=None):
-        """Split a fiber non-uniformly in coordinate space 
+        """Split a fiber non-uniformly in coordinate space
 
         Parameters
         ----------
@@ -2864,7 +2864,9 @@ class Fiber:
         # For 1 partition don't return a extra level of Fiber
 
         if partitions == 1:
-            return Fiber(rank1_fiber_coords[0], rank1_fiber_payloads[0])
+            fiber = Fiber(rank1_fiber_coords[0], rank1_fiber_payloads[0])
+            fiber._setDefault(Fiber())
+            return fiber
 
         # For >1 partitions return a Fiber with a payload for each partition
 
@@ -3619,6 +3621,9 @@ class Fiber:
         #
         flattened = self.flattenRanks(style="pair")
 
+        # Make sure that the flattened fiber has at least one coordinate
+        assert(len(flattened.coords) > 0)
+
         # Make sure the coord is a >=2-element tuple
         assert(len(flattened.coords[0]) >= 2)
 
@@ -3685,7 +3690,7 @@ class Fiber:
             cur_payloads = []
 
             for p in self.payloads:
-                cur_payloads.append(p.flattenRanks(levels=levels - 1))
+                cur_payloads.append(p.flattenRanks(levels=levels - 1, style=style))
 
         #
         # Flatten this level
