@@ -10,14 +10,14 @@ class TestTensorTransform(unittest.TestCase):
 
     def test_truediv(self):
         """ Test /, the __truediv__ operator """
-        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
-        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUniform_0.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-b.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-b-truediv.yaml")
 
-        a_out = a / 25
+        a_out = a / 4
 
         self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
-        self.assertEqual(a_out.getShape(), [26, 41, 42, 10])
+        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N"])
+        self.assertEqual(a_out.getShape(), [16, 20, 10])
 
     def test_splitUniform_0(self):
         """ Test splitUniform - depth=0 """
@@ -128,14 +128,14 @@ class TestTensorTransform(unittest.TestCase):
 
     def test_floordiv(self):
         """ Test /, the __floordiv__ operator """
-        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
-        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitEqual_0.yaml")
+        a = Tensor.fromYAMLfile("./data/tensor_transform-b.yaml")
+        a_verify = Tensor.fromYAMLfile("./data/tensor_transform-b-floordiv.yaml")
 
-        a_out = a // 2
+        a_out = a // 4
 
         self.assertEqual(a_out, a_verify)
-        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
-        self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
+        self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N"])
+        self.assertEqual(a_out.getShape(), [17, 20, 10])
 
     def test_splitEqual_0(self):
         """ Test splitEqual - depth=0 """
