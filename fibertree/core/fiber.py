@@ -2398,6 +2398,7 @@ class Fiber:
             ref = self.getPayloadRef(c)
             ref <<= p
 
+        return self
 
 #
 # Split methods

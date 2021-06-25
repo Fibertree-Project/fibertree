@@ -821,6 +821,19 @@ class TestFiber(unittest.TestCase):
 
         pass
 
+    def test_ilshift(self):
+        """<<= infix operator"""
+
+        coords = [2, 4, 6, 8, 9, 12, 15, 16, 17, 20 ]
+        payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]
+
+        a = Fiber(coords, payloads)
+        b = Fiber()
+
+        b <<= a
+
+        self.assertEqual(a, b)
+
 
     def test_getRange(self):
         """getRange"""
@@ -1132,7 +1145,7 @@ class TestFiber(unittest.TestCase):
         f6 = f.prune(lambda n, c, p: True if p < 10 else None)
         self.assertEqual(f6, fl2_ref)
 
-    
+
     def test_upzip(self):
         """Test unzipping a fiber"""
 
@@ -1185,7 +1198,7 @@ class TestFiber(unittest.TestCase):
         f = Fiber(c,p)
 
         f_ans = Fiber([ 100-c for c in reversed(c)], list(reversed(p)))
-        
+
         f.updateCoords(lambda i, c, p: 100-c)
 
         self.assertEqual(f, f_ans)
@@ -1374,7 +1387,7 @@ class TestFiber(unittest.TestCase):
         au = [a1, a2, a3]
         bu = [b1, b2, b3]
         abu_ref = [a1, b2, []]
-        
+
         a = Fiber.fromUncompressed(au)
         b = Fiber.fromUncompressed(bu)
 
