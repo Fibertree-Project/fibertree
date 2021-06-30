@@ -31,7 +31,7 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(t.getShape(), shape)
         self.assertEqual(t.getRoot().getShape(), shape)
 
-        
+
     def test_constructor_shape(self):
         """Test construction of shape of tensor"""
 
@@ -236,7 +236,7 @@ class TestTensor(unittest.TestCase):
                                               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                                               [0, 0, 0, 4, 0, 2, 9, 4, 0, 5],
                                               [6, 3, 0, 8, 0, 10, 0, 9, 4, 0]])
-        
+
         tensor = Tensor.fromRandom(rank_ids, shape, [0.5, 0.5], 10, seed=3)
 
         self.assertEqual(tensor, tensor_ref)
@@ -337,6 +337,160 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(tensor, tensor_ref)
 
 
+    def test_getPayload_0d(self):
+        """Test getPayload of a 0-D tensor"""
+
+        p_ref = 10
+
+        t = Tensor(rank_ids=[])
+        r = t.getRoot()
+        r <<= p_ref
+
+        p = t.getPayload()
+        self.assertEqual(p_ref, p)
+
+        p = t.getPayload(0)
+        self.assertEqual(p_ref, p)
+
+        p = t.getPayload(1)
+        self.assertEqual(p_ref, p)
+
+
+
+    def test_getPayload_2d(self):
+        """Test getPayload of a 2-D tensor"""
+
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+
+        with self.subTest(test="Existing element"):
+            p23_ref = 203
+            p23 = t.getPayload(2, 3)
+
+            self.assertEqual(p23_ref, p23)
+
+            # Make sure change is seen
+            p23_new_ref = 310
+            p23 <<= p23_new_ref
+
+            p23_new = t.getPayload(2, 3)
+
+            self.assertEqual(p23_new_ref, p23_new)
+
+
+        with self.subTest(test="Non-existing element"):
+            p31_ref = 0
+            p31 = t.getPayload(3, 1)
+
+            self.assertEqual(p31_ref, p31)
+
+            # Make sure change is NOT seen
+            p31_new_ref = 100
+
+            p31 <<= p31_new_ref
+            p31_new = t.getPayload(3, 1)
+
+            self.assertEqual(0, p31_new)
+
+
+        with self.subTest(test="Element of non-existing fiber"):
+            p51_ref = 0
+            p51 = t.getPayload(5, 1)
+
+            self.assertEqual(p51_ref, p51)
+
+            # Make sure change is NOT seen
+            p51_new_ref = 100
+
+            p51 <<= p51_new_ref
+            p51_new = t.getPayload(5, 1)
+
+            self.assertEqual(0, p51_new)
+
+
+        with self.subTest(test="Existing fiber"):
+            p4_ref = Fiber([0, 2], [400, 402])
+            p4 = t.getPayload(4)
+
+            self.assertEqual(p4_ref, p4)
+
+
+    def test_getPayloadRef_0d(self):
+        """Test getPayloadRef of a 0-D tensor"""
+
+        p_ref = 10
+
+        t = Tensor(rank_ids=[])
+        r = t.getRoot()
+        r <<= p_ref
+
+        p = t.getPayloadRef()
+        self.assertEqual(p_ref, p)
+
+        p = t.getPayloadRef(0)
+        self.assertEqual(p_ref, p)
+
+        p = t.getPayloadRef(1)
+        self.assertEqual(p_ref, p)
+
+
+
+    def test_getPayloadRef_2d(self):
+        """Test getPayloadRef of a 2-D tensor"""
+
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+
+        with self.subTest(test="Existing element"):
+            p23_ref = 203
+            p23 = t.getPayloadRef(2, 3)
+
+            self.assertEqual(p23_ref, p23)
+
+            # Make sure change is seen
+            p23_new_ref = 310
+            p23 <<= p23_new_ref
+
+            p23_new = t.getPayload(2, 3)
+
+            self.assertEqual(p23_new_ref, p23_new)
+
+
+        with self.subTest(test="Non-existing element"):
+            p31_ref = 0
+            p31 = t.getPayloadRef(3, 1)
+
+            self.assertEqual(p31_ref, p31)
+
+            # Make sure change is seen
+            p31_new_ref = 100
+
+            p31 <<= p31_new_ref
+            p31_new = t.getPayload(3, 1)
+
+            self.assertEqual(p31_new_ref, p31_new)
+
+
+        with self.subTest(test="Element of non-existing fiber"):
+            p51_ref = 0
+            p51 = t.getPayloadRef(5, 1)
+
+            self.assertEqual(p51_ref, p51)
+
+            # Make sure change is NOT seen
+            p51_new_ref = 100
+
+            p51 <<= p51_new_ref
+            p51_new = t.getPayload(5, 1)
+
+            self.assertEqual(p51_new_ref, p51_new)
+
+
+        with self.subTest(test="Existing fiber"):
+            p4_ref = Fiber([0, 2], [400, 402])
+            p4 = t.getPayloadRef(4)
+
+            self.assertEqual(p4_ref, p4)
+
+
     def test_default(self):
         """Test of default default"""
 
@@ -428,4 +582,3 @@ class TestTensor(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

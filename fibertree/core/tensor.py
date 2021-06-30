@@ -932,7 +932,13 @@ class Tensor:
 
         """
 
-        return self.getRoot().getPayload(*args, **kwargs)
+        root = self.getRoot()
+
+        if isinstance(root, Payload):
+            # Handle rank-0 tensor
+            return root
+
+        return root.getPayload(*args, **kwargs)
 
 
     def getPayloadRef(self, *args, **kwargs):
@@ -943,7 +949,13 @@ class Tensor:
 
         """
 
-        return self.getRoot().getPayloadRef(*args, **kwargs)
+        root = self.getRoot()
+
+        if isinstance(root, Payload):
+            # Handle rank-0 tensor
+            return root
+
+        return root.getPayloadRef(*args, **kwargs)
 
 
     def countValues(self):
