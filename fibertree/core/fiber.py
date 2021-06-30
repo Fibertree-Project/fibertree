@@ -384,9 +384,10 @@ class Fiber:
             The `shape` (i.e., size) of the fibers at each level of
             the tree.
 
-        density: list
+        density: list or scalar
             The probability that an element of the fiber will not be
-            empty for each level of the tree.
+            empty for each level of the tree. A scalar is density for
+            leaf level of tree and other levels have density 1.0.
 
         interval: number
             The range (from 0 to `interval`) of each value at the leaf
@@ -396,6 +397,13 @@ class Fiber:
             A seed to pass to `random.seed`.
 
         """
+
+        if not isinstance(density, list):
+            #
+            # Convert scalar density to per rank density list
+            #
+            density = (len(shape)-1)*[1.0] + [density]
+
 
         assert len(shape) == len(density), \
                "Density and shape arrays must be same length"
