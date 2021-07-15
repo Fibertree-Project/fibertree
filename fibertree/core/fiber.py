@@ -808,6 +808,7 @@ class Fiber:
 
         assert not (size is None and end_coord is None)
         assert size is not None or end_coord is not None
+        assert self._ordered
 
         if trans_fn is None:
             # Default trans_fn is identify function (inefficient but easy)
@@ -868,7 +869,7 @@ class Fiber:
                 self.setSavedPos(pos, distance=first_pos - start_pos)
 
 
-        return Fiber(coords, payloads)
+        return self._newFiber(coords, payloads)
 
 
     def prune(self, trans_fn=None, start_pos=None):
@@ -877,9 +878,12 @@ class Fiber:
         Return a fiber containing a subset of the coordinates of the
         input fiber. The input fiber is traversed calling `trans_fn`
         for each element. Based on the return value the element is
-        included [True] (or not [False]) in then new fiber or
+        included [True] (or not [False]) in the new fiber or
         traversal is stopped [None].
 
+        Note: It is the responsibility of the `trans_fn` to cope with
+        the fact that the coordinates of the fiber are "ordered"
+        and/or "unique".
 
         Parameters
         ----------
@@ -897,7 +901,6 @@ class Fiber:
 
         Fiber
             Fiber containing the pruned element of the input Fiber.
-
 
         """
 
@@ -957,7 +960,7 @@ class Fiber:
                                  distance=first_pos - start_pos)
 
 
-        return Fiber(coords, payloads)
+        return self._newFiber(coords, payloads)
 
 
     def getPosition(self, coord, start_pos=None):
@@ -1087,6 +1090,15 @@ class Fiber:
         None
 
 
+        Notes
+        -----
+
+        This method returns a fiber that carries forward the "ordered"
+        and "unique" attributes of the original fiber.  However, it
+        largely does not check that the `trans_fn` maintains those
+        attributes. Although it does a crude check to see if the
+        coordinates seem to have been reversed.
+
         TBD
         ----
 
@@ -1126,7 +1138,7 @@ class Fiber:
                 coords.reverse()
                 payloads.reverse()
 
-        return Fiber(coords, payloads)
+        return self._newFiber(coords, payloads)
 
 #
 # Deprecated coordinate-based methods
@@ -1713,9 +1725,9 @@ class Fiber:
     def __setitem__(self, key, newvalue):
         """__setitem__
 
-        The `newvalue` parameter is either a CoordPayload an arbitrary
-        value to assign to the position "key" in the fiber.  If
-        `newvalue` is not a CoordPayload or the Coord in the
+        The `newvalue` parameter is either a CoordPayload or an
+        arbitrary value to assign to the position "key" in the fiber.
+        If `newvalue` is not a CoordPayload or the Coord in the
         CoordPayload is None the current coordinate will be left
         unchanged. The payload will be boxed if appropriate. If the
         payload is None, then the payload will be left unchanged.
@@ -1744,6 +1756,14 @@ class Fiber:
         CoordinateError
             Invalid coordinate
 
+
+        Notes
+        ------
+
+        If this fiber does has the "unique" attribute but not the
+        "ordered" attribute this method does not check that the new
+        coordinate is unique.
+
         """
 
         position = key
@@ -1762,11 +1782,12 @@ class Fiber:
             #
             # Check that coordinate order is maintained
             #
-            if position > 0 and coord <= self.coords[position - 1]:
-                raise CoordinateError
+            if self._ordered:
+                if position > 0 and coord <= self.coords[position - 1]:
+                    raise CoordinateError
 
-            if position + 1 < len(self.coords) and coord >= self.coords[position + 1]:
-                raise CoordinateError
+                if position + 1 < len(self.coords) and coord >= self.coords[position + 1]:
+                    raise CoordinateError
 
             self.coords[position] = coord
 
@@ -1832,7 +1853,7 @@ class Fiber:
                 else:
                     payloads.append(p)
 
-        return Fiber(coords, payloads)
+        return self._newFiber(coords, payloads)
 
 #
 # Iterator methods
@@ -1928,13 +1949,18 @@ class Fiber:
         Note
         ----
 
-        The coordinates in the Fiber must be monotonically increasing
-        and the payload will be optionally be **boxed**.
+        For "ordered" fibers, the coordinates in the Fiber must be
+        monotonically increasing.
+
+        The "unique" property is not checked for "unordered" fibers.
+
+        The payload will be optionally be **boxed**.
 
         """
 
-        assert self.maxCoord() is None or self.maxCoord() < coord, \
-            "Fiber coordinates must be monotonically increasing"
+        if self._ordered:
+            assert self.maxCoord() is None or self.maxCoord() < coord, \
+                   "Fiber coordinates in 'ordered' fibers must be monotonically increasing"
 
         payload = Payload.maybe_box(value)
 
@@ -1964,6 +1990,8 @@ class Fiber:
         The `other` fiber is not copied, so beware of multiple
         references to the same objects.
 
+        The "unique" property is not checked for "unordered" fibers.
+
         """
 
         assert Payload.contains(other, Fiber), \
@@ -1973,8 +2001,9 @@ class Fiber:
             # Extending with an empty fiber is a nop
             return None
 
-        assert self.maxCoord() is None or self.maxCoord() < other.coords[0], \
-            "Fiber coordinates must be monotonically increasing"
+        if self._ordered:
+            assert self.maxCoord() is None or self.maxCoord() < other.coords[0], \
+                "Fiber coordinates in 'ordered' fibers must be monotonically increasing"
 
         self.coords.extend(other.coords)
         self.payloads.extend(other.payloads)
@@ -2021,6 +2050,8 @@ class Fiber:
         increasing and re-orders to make sure
         self.coords/self.payloads preserve monotonacity.
 
+        The "unique" property is not checked.
+
         """
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -2043,7 +2074,7 @@ class Fiber:
                 no_sort_needed = no_sort_needed and ((last_coord is None) or (last_coord <= new_coord))
                 last_coord = new_coord
 
-            if not no_sort_needed:
+            if self._ordered and not no_sort_needed:
                 #
                 # Resort the coords/payloads
                 #
@@ -2128,7 +2159,8 @@ class Fiber:
 
         (payloads_a, payloads_b) = zip(*self.payloads)
 
-        return (Fiber(coords_a, payloads_a), Fiber(coords_b, payloads_b))
+        return (self._newFiber(coords_a, payloads_a),
+                self._newFiber(coords_b, payloads_b))
 
 #
 # Shape-related methods
@@ -2364,7 +2396,11 @@ class Fiber:
         `Payload`. However, nested elements, e.g., as part of a
         `tuple`, of type `Payload` are not **unboxed**.
 
+        This method only works for "ordered", "unique" fibers.
+
         """
+
+        assert self._ordered and self._unique
 
         if shape is None:
             shape = self.getShape(all_ranks=True)
@@ -2439,9 +2475,13 @@ class Fiber:
         a "payload" irrespective of whether the "payload" is a
         `Payload`, a `CoordPayload` or a `Fiber`.
 
+        This method is not supported for fibers without the "unique"
+        attribute.
+
         """
 
         assert Payload.contains(other, Fiber)
+        assert self._unique
 
         if len(self.coords) != 0:
             #
@@ -2529,7 +2569,7 @@ class Fiber:
                 coords.append(c)
                 payloads.append(other + p.value)
 
-        return Fiber(coords, payloads)
+        return self._newFiber(coords, payloads)
 
 
     def __radd__(self, other):
@@ -2664,7 +2704,7 @@ class Fiber:
                 coords.append(c)
                 payloads.append(other * p.value)
 
-        result = Fiber(coords, payloads)
+        result = self._newFiber(coords, payloads)
         return result
 
 
@@ -3213,7 +3253,7 @@ class Fiber:
         # For 1 partition don't return a extra level of Fiber
 
         if partitions == 1:
-            fiber = Fiber(rank1_fiber_coords[0], rank1_fiber_payloads[0])
+            fiber = self._newFiber(rank1_fiber_coords[0], rank1_fiber_payloads[0])
             fiber._setDefault(Fiber())
             return fiber
 
@@ -3222,10 +3262,10 @@ class Fiber:
         payloads = []
 
         for c1, p1 in zip(rank1_fiber_coords, rank1_fiber_payloads):
-            payload = Fiber(c1, p1)
+            payload = self._newFiber(c1, p1)
             payloads.append(payload)
 
-        return Fiber(payloads=payloads)
+        return self._newFiber(payloads=payloads)
 
 #
 # Operation methods
@@ -3246,8 +3286,8 @@ class Fiber:
         #
         # TBD: Set default for Fiber
         #
-        return Fiber(coords=self.coords + other.coords,
-                     payloads=self.payloads + other.payloads)
+        return self._newFiber(coords=self.coords + other.coords,
+                              payloads=self.payloads + other.payloads)
 
 
 
@@ -3278,7 +3318,14 @@ class Fiber:
         result: Fiber
             A fiber containing the intersection of all the input fibers.
 
+
+        Note
+        ----
+
+        Currently only supported for "ordered", "unique" fibers.
+
         """
+
         nested_result = args[0] & args[1]
 
         for arg in args[2:]:
@@ -3341,6 +3388,11 @@ class Fiber:
 
         result: Fiber
             A fiber containing the union of all the input fibers.
+
+        Note
+        ----
+
+        Currently only supported for "ordered", "unique" fibers.
 
         """
 
@@ -3434,6 +3486,11 @@ class Fiber:
         result: Fiber
             A fiber created according to the intersection rules
 
+        Note
+        ----
+
+        Currently only supported for "ordered", "unique" fibers.
+
         """
 
         def get_next(iter):
@@ -3456,6 +3513,8 @@ class Fiber:
                 (coord, payload) = get_next(iter)
 
             return CoordPayload(coord, payload)
+
+        assert self._ordered and self._unique
 
         a_fiber = self
         b_fiber = other
@@ -3530,6 +3589,11 @@ class Fiber:
         result: Fiber
             A fiber created according to the union rules
 
+        Note
+        ----
+
+        Currently only supported for "ordered", "unique" fibers.
+
         """
 
 
@@ -3552,6 +3616,8 @@ class Fiber:
                 (coord, payload) = get_next(iter)
 
             return CoordPayload(coord, payload)
+
+        assert self._ordered and self._unique
 
         a_fiber = self
         b_fiber = other
@@ -3653,6 +3719,11 @@ class Fiber:
         result: Fiber
             A fiber created according to the xor rules
 
+        Note
+        ----
+
+        Currently only supported for "ordered", "unique" fibers.
+
         """
 
 
@@ -3674,6 +3745,8 @@ class Fiber:
                 (coord, payload) = get_next(iter)
 
             return CoordPayload(coord, payload)
+
+        assert self._ordered and self._unique
 
         a_fiber = self
         b_fiber = other
@@ -3809,6 +3882,8 @@ class Fiber:
         b = other.__iter__()
 
         z_coords = []
+        z_a_payloads = []
+        z_b_payloads = []
         z_payloads = []
 
         b_coord, b_payload = get_next_nonempty(b)
@@ -3820,16 +3895,25 @@ class Fiber:
 
             a_payload = self.getPayload(b_coord, allocate=False)
 
+            z_a_payloads.append(a_payload)
+            z_b_payloads.append(b_payload)
+
+            b_coord, b_payload = get_next_nonempty(b)
+
+        #
+        # Collect z_payloads allowing for repeated coordinates
+        #
+        for b_coord, a_payload, b_payload in zip(z_coords, z_a_payloads, z_b_payloads):
+
             if a_payload is None:
                 a_payload = self._create_payload(b_coord)
 
             z_payloads.append((a_payload, b_payload))
-            b_coord, b_payload = get_next_nonempty(b)
 
-        result = Fiber(z_coords, z_payloads)
-        result._setDefault((a_fiber.getDefault(), b_fiber.getDefault()))
+        result = self._newFiber(z_coords, z_payloads)
 
         return result
+
 
     def __sub__(self, other):
         """__sub__
@@ -3870,6 +3954,11 @@ class Fiber:
             A fiber created according to the subtraction rules
 
 
+        Note
+        ----
+
+        Currently only supported for "ordered", "unique" fibers.
+
         """
 
 
@@ -3891,6 +3980,8 @@ class Fiber:
                 (coord, payload) = get_next(iter)
 
             return CoordPayload(coord, payload)
+
+        assert self._ordered and self._unique
 
         a_fiber = self
         b_fiber = other
@@ -3957,7 +4048,14 @@ class Fiber:
         FIXME: flattenRanks() could be more general to support all p1 types,
         including tuples.
 
+        Note
+        ----
+
+        Currently only supported for "ordered", "unique" fibers.
+
         """
+
+        assert self._ordered and self._unique
 
         #
         # Flatten the (highest) two ranks
@@ -4019,7 +4117,14 @@ class Fiber:
         result: Fiber
             Fiber with `level` ranks flattened into the current rank
 
+        Note
+        ----
+
+        Currently only supported for "ordered", "unique" fibers.
+
         """
+
+        assert self._ordered and self._unique
 
         #
         # Flatten deeper levels first, if requested
@@ -4176,9 +4281,15 @@ class Fiber:
         fiber was flattened with either the 'relative' or 'absolute'
         styles.
 
+        Note
+        ----
+
+        Currently only supported for "ordered", "unique" fibers.
+
         """
 
-        assert(isinstance(self.coords[0], tuple))
+        assert isinstance(self.coords[0], tuple)
+        assert self._ordered and self._unique
 
         #
         # Place to collect cordinates/payloads for new top rank
@@ -4258,7 +4369,7 @@ class Fiber:
         #
         # TBD: set default
         #
-        return Fiber(coords1, payloads1)
+        return self._newFiber(coords1, payloads1)
 
 #
 # Closures to operate on all payloads at a specified depth
