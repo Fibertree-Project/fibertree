@@ -4586,6 +4586,45 @@ class Fiber:
 #
 # Utility functions
 #
+    def _newFiber(self,
+                  coords=None,
+                  payloads=None,
+                  default=None,
+                  shape=None,
+                  initial=None,
+                  max_coord=None,
+                  ordered=None,
+                  unique=None):
+        """Create a new fiber carrying over attributes from `self`
+
+        Note: Input parameters must be kept in sync with `__init__`,
+        and certain input parameters that come in as `None` take their
+        values from `self`.
+
+        """
+
+        if ordered is None:
+            ordered = self._ordered
+
+        if unique is None:
+            unique = self._unique
+
+        if default is None:
+            default = self._default
+
+        if shape is None:
+            default = self._shape
+
+        return Fiber(coords=coords,
+                     payloads=payloads,
+                     default=default,
+                     shape=shape,
+                     initial=initial,
+                     max_coord=max_coord,
+                     ordered=ordered,
+                     unique=unique)
+
+
     def _checkOrdered(self):
         """ Check that coordinates satisfy the "ordered" attribute """
 
