@@ -1194,6 +1194,7 @@ class Tensor:
         tensor = Tensor.fromFiber(rank_ids, root, shape)
         tensor.setName(self.getName() + "+split")
         tensor.setColor(self.getColor())
+        tensor.setMutable(self.isMutable())
 
         return tensor
 
@@ -1296,6 +1297,7 @@ class Tensor:
         tensor = Tensor.fromFiber(rank_ids, root, shape)
         tensor.setName(self.getName() + "+swapped")
         tensor.setColor(self.getColor())
+        tensor.setMutable(self.isMutable())
 
         return tensor
 
@@ -1362,6 +1364,7 @@ class Tensor:
         tensor = Tensor.fromFiber(rank_ids, root, shape)
         tensor.setName(self.getName() + "+flattened")
         tensor.setColor(self.getColor())
+        tensor.setMutable(self.isMutable())
 
         return tensor
 
@@ -1408,16 +1411,22 @@ class Tensor:
         #
         shape = None
 
-        root = self._modifyRoot(Fiber.unflattenRanks,
-                                Fiber.unflattenRanksBelow,
-                                depth=depth,
-                                levels=levels)
+        # Only call Fiber.unflattenRanks if there are actually ranks to unflatten
+        if not all(fiber.isEmpty() for fiber in self.ranks[depth].fibers):
+            root = self._modifyRoot(Fiber.unflattenRanks,
+                                    Fiber.unflattenRanksBelow,
+                                    depth=depth,
+                                    levels=levels)
+        else:
+            root = Fiber()
+
         #
         # Create Tensor from rank_ids and root fiber
         #
         tensor = Tensor.fromFiber(rank_ids, root, shape)
         tensor.setName(self.getName() + "+unflattened")
         tensor.setColor(self.getColor())
+        tensor.setMutable(self.isMutable())
 
         return tensor
 

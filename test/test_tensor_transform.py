@@ -415,6 +415,13 @@ class TestTensorTransform(unittest.TestCase):
 
         self.assertEqual(f4, t0)
 
+    def test_unflattenRanks_empty(self):
+        t = Tensor(rank_ids=["X", "Y", "Z"])
+        t2 = t.flattenRanks()
+        t3 = t2.unflattenRanks()
+        t3.setRankIds(["X", "Y", "Z"])
+
+        self.assertEqual(t, t3)
 
 if __name__ == '__main__':
     unittest.main()

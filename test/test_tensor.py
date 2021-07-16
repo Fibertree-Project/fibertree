@@ -579,6 +579,55 @@ class TestTensor(unittest.TestCase):
 
         self.assertTrue(tensor == tensor_tmp)
 
+    def test_init_mutable(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        self.assertFalse(t.isMutable())
+
+        t2 = Tensor(rank_ids=["X", "Y", "Z"])
+        self.assertTrue(t2.isMutable())
+
+    def test_mutable(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        t.setMutable(True)
+        self.assertTrue(t.isMutable())
+
+    def test_mutable_after_split(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        t2 = t.splitUniform(10)
+        self.assertFalse(t2.isMutable())
+
+        t3 = Tensor(rank_ids=["X", "Y", "Z"])
+        t4 = t3.splitUniform(10)
+        self.assertTrue(t4.isMutable())
+
+    def test_mutable_after_swap(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        t2 = t.swapRanks()
+        self.assertFalse(t2.isMutable())
+
+        t3 = Tensor(rank_ids=["X", "Y", "Z"])
+        t4 = t3.swapRanks()
+        self.assertTrue(t4.isMutable())
+
+    def test_mutable_after_flatten(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        t2 = t.flattenRanks()
+        self.assertFalse(t2.isMutable())
+
+        t3 = Tensor(rank_ids=["X", "Y", "Z"])
+        t4 = t3.flattenRanks()
+        self.assertTrue(t4.isMutable())
+
+    def test_mutable_after_unflatten(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        t2 = t.flattenRanks()
+        t3 = t2.unflattenRanks()
+        self.assertFalse(t3.isMutable())
+
+        t4 = Tensor(rank_ids=["X", "Y", "Z"])
+        t5 = t4.flattenRanks()
+        t6 = t5.unflattenRanks()
+        self.assertTrue(t6.isMutable())
 
 if __name__ == '__main__':
     unittest.main()
