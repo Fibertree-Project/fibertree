@@ -867,7 +867,7 @@ class TestFiber(unittest.TestCase):
         """getRange flattened coordinates"""
 
         coords = [(0, 2), (0, 4), (0, 6), (0, 8), (0, 9),
-                  (1, 2), (1, 5),(1, 5), (1, 7),
+                  (1, 2), (1, 5), (1, 6), (1, 7),
                   (2, 0)]
 
         payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]

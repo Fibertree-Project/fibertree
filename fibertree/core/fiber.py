@@ -121,6 +121,12 @@ class Fiber:
     max_coord: value, default=no maximum coordinate
             The maximum legal coordinate value (this is really "shape-1")
 
+    ordered: Boolean, default=True
+        Attribute specifing that the coordinates are monotonically increasing
+
+    unique: Boolean, default=True
+        Attribute specifing that the coordinates are unique
+
 
     Notes
     -----
@@ -145,12 +151,20 @@ class Fiber:
                  default=0,
                  shape=None,
                  initial=None,
-                 max_coord=None):
+                 max_coord=None,
+                 ordered=True,
+                 unique=True):
 
         #
         # Set up logging
         #
         self.logger = logging.getLogger('fibertree.core.fiber')
+
+        #
+        # Collect attributes
+        #
+        self._ordered = ordered
+        self._unique = unique
 
         #
         # Handle cases with missing inputs
@@ -195,6 +209,12 @@ class Fiber:
 
         self.payloads = [Payload.maybe_box(p) for p in payloads]
         """The list of payloads of the fiber"""
+
+        #
+        # Check that fiber attributes are satisfied
+        #
+        self._checkOrdered()
+        self._checkUnique()
 
         #
         # Set a specific contstant value for the shape of this fiber
@@ -4528,6 +4548,42 @@ class Fiber:
 #
 # Utility functions
 #
+    def _checkOrdered(self):
+        """ Check that coordinates satisfy the "ordered" attribute """
+
+        if not self._ordered or len(self.coords) == 0:
+            return True
+
+        coords = self.coords
+
+        last = coords[0]
+
+        for c in coords[1:]:
+            if c <= last:
+                assert False, "Illegal non-monotonic coordinate"
+
+            last = c
+
+
+    def _checkUnique(self):
+        """ Check that coordinates satisfy the "unique" attribute """
+
+        if not self._unique:
+            return True
+
+        if self._ordered:
+            coords = self.coords
+        else:
+            coords = sorted(self.coords)
+
+        last = None
+
+        for c in coords:
+            if c == last:
+                assert False, "Illegal repeated coordinate"
+
+            last = c
+
 
     @staticmethod
     def _deprecated(message):
