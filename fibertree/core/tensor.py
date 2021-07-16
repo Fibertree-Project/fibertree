@@ -530,7 +530,7 @@ class Tensor:
         #
         if isinstance(rank_ids, str):
             return_scalar = True
-            rank_ids = list(rank_ids)
+            rank_ids = [rank_ids]
         else:
             return_scalar = False
 

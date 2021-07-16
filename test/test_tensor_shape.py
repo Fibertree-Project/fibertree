@@ -62,7 +62,7 @@ class TestTensorShape(unittest.TestCase):
         self.assertEqual(t2.getRankIds(), ["M"])
         self.assertEqual(t2.getShape(), [ 4 ])
 
-    def test_shape_fromUncompressed_2D_A(self):
+    def test_shape_fromUncompressed_2D_A1(self):
         """Test shape of a tensor from 2D nested lists (tensor A)"""
 
         #         0    1    2    3
@@ -105,6 +105,50 @@ class TestTensorShape(unittest.TestCase):
             self.assertEqual(t1.getShape("M", authoritative=True), 7)
             self.assertEqual(t1.getShape("K", authoritative=True), 4)
            
+
+    def test_shape_fromUncompressed_2D_A2(self):
+        """Test shape of a tensor from 2D nested lists (tensor A, multiletter ranks_ids)"""
+
+        #         0    1    2    3
+        #
+        l1 = [ [   0,   0,   0,   0 ],  # 0
+               [ 100, 101, 102,   0 ],  # 1
+               [   0, 201,   0, 203 ],  # 2
+               [   0,   0,   0,   0 ],  # 3
+               [ 400,   0, 402,   0 ],  # 4
+               [   0,   0,   0,   0 ],  # 5
+               [   0, 601,   0, 603 ] ] # 6
+
+
+        t1 = Tensor.fromUncompressed(["MA", "KA"], l1)
+
+        with self.subTest(test="All ranks"):
+            self.assertEqual(t1.getRankIds(), ["MA", "KA"])
+            self.assertEqual(t1.getShape(), [ 7, 4 ])
+
+        with self.subTest(test="All ranks specified"):
+            self.assertEqual(t1.getShape(["MA", "KA"]), [7, 4])
+
+        with self.subTest(test="Just rank 'MA' as list"):
+            self.assertEqual(t1.getShape(["MA"]), [7])
+
+        with self.subTest(test="Just rank 'KA' as list"):
+            self.assertEqual(t1.getShape(["KA"]), [4])
+
+        with self.subTest(test="Just rank 'MA'"):
+            self.assertEqual(t1.getShape("MA"), 7)
+
+        with self.subTest(test="Just rank 'KA'"):
+            self.assertEqual(t1.getShape("KA"), 4)
+
+        with self.subTest(test="Check authoritative"):
+            self.assertEqual(t1.getShape(authoritative=True), [7, 4])
+            self.assertEqual(t1.getShape(["MA", "KA"], authoritative=True), [7, 4])
+            self.assertEqual(t1.getShape(["MA"], authoritative=True), [7])
+            self.assertEqual(t1.getShape(["KA"], authoritative=True), [4])
+            self.assertEqual(t1.getShape("MA", authoritative=True), 7)
+            self.assertEqual(t1.getShape("KA", authoritative=True), 4)
+
 
     def test_shape_fromUncompressed_2D_B(self):
         """Test shape of a tensor from 2D nested lists (tensor B)"""
