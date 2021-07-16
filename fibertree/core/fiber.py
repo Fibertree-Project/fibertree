@@ -83,6 +83,13 @@ class Fiber:
       shapes of the fibers at each level of the tree. A fiber's (or
       fibertree's) shape can be accessed with `Fiber.getShape()`
 
+    - An **ordered** attribute which indicates and maintains the
+      invariant that the coordinates of the fiber are monitonically
+      increasing.
+
+    - A **unique** attribute which indicates and maintains the
+      invariant that the coordinates of the fiber are unique.
+
     - An **owner** rank. Since fibers are often part of a `Tensor`,
       the fiber may have an owning rank (see `Fiber.setOwner()`). When
       owned by a rank, some fiber atributes are actually obtained from
@@ -507,6 +514,37 @@ class Fiber:
         """
 
         return self.payloads
+
+
+    def isOrdered(self):
+        """Return the status of the "ordered" attribute
+
+        Returns
+        -------
+        is_ordered: Boolean
+            Set to True if the coordinates are ordered
+
+
+        Note: this attribute cannot be changed after fiber creation.
+
+        """
+
+        return self._ordered
+
+
+    def isUnique(self):
+        """Return the status of the "unique" attribute
+
+        Returns
+        -------
+        is_unique: Boolean
+            Set to True if the coordinates are ordered
+
+        Note: this attribute cannot be changed after fiber creation.
+
+        """
+
+        return self._unique
 
 
 #
