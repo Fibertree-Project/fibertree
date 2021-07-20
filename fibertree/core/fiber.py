@@ -2355,7 +2355,6 @@ class Fiber:
 # Arithmetic operations
 #
 
-
     def __ilshift__(self, other):
         """Fiber assignment
 
@@ -2405,6 +2404,289 @@ class Fiber:
 
             ref = self.getPayloadRef(c)
             ref <<= p
+
+        return self
+
+
+    def __add__(self, other):
+        """Scalar/fiber or fiber/fiber elementwise addition
+
+        This operation does one of two things based on the type of
+        `other`. If `other` is a fiber then `other` is added
+        element-wise with `self`. Otherwise `other` is treated as a
+        scalar and added to each element of `self`. In either case a
+        new fiber is created with those sums.
+
+        Parameters
+        ----------
+
+        other: scalar | fiber
+            The scalar to add to each element of `self`
+            or the fiber to add elementwise to `self`
+
+        Returns
+        -------
+
+        result_fiber: Fiber
+            The fiber after the addition of `other` to `self`
+
+
+        Examples
+        --------
+
+        >>> f = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6])
+        >>> f + 2
+        Fiber([0, 1, 2, 5], [3, 4, 5, 2, 2, 8])
+
+
+        Note
+        -----
+
+        From the persepctive of modeling activity, this operation has
+        implict loops that get exectuted atomically. Therefore, it
+        should be used selectively when one is trying to show all the
+        activity in a program's flow.
+
+        When doing scalar/fiber addition, empty elements of `self`
+        will be treated as zero and the value of `other` will appear
+        in the output for those coordinates. When doing fiber/fiber
+        addition the result will have the union of the coordinates of
+        `self` and `other`.
+
+        """
+
+        coords = []
+        payloads = []
+
+        #
+        # If `other` is a fiber element-wise add the two fibers
+        # Otherwise add `other` to each element of `self`
+        #
+        if isinstance(other, Fiber):
+            for c, (_, self_val, other_val) in self | other:
+                coords.append(c)
+                payloads.append(self_val + other_val)
+        else:
+            for c, p in self.iterShape():
+                coords.append(c)
+                payloads.append(other + p.value)
+
+        return Fiber(coords, payloads)
+
+
+    def __radd__(self, other):
+        """ Scalar/fiber addition
+
+        See __add__ for more information.
+
+        Examples
+        --------
+
+        >>> f = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6])
+        >>> 2 + f
+        Fiber([0, 1, 2, 5], [3, 4, 5, 2, 2, 8])
+
+        """
+
+        return self.__add__(other)
+
+
+    def __iadd__(self, other):
+        """Add a scalar or a fiber to a fiber
+
+        This operation does one of two things based on the type of
+        `other`. If `other` is a fiber then `other` is added
+        elementwise to `self`. Otherwise it is treated as a scalar and
+        added to each element of `self`. In either case `self` is
+        updated with the sum.
+
+        Parameters
+        ----------
+
+        other: scalar | fiber
+            The scalar to add to each element of `self`
+            or the fiber to add elementwise to `self`
+
+        Returns
+        -------
+
+        None
+
+
+        Examples
+        --------
+
+        >>> f = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6])
+        >>> f += 2
+        >>> f
+        Fiber([0, 1, 2, 5], [3, 4, 5, 2, 2, 8])
+
+
+        Note
+        -----
+
+        From the persepctive of modeling activity, this operation has
+        implict loops that get exectuted atomically. Therefore, it
+        should be used selectively when one is trying to show all the
+        activity in a program's flow.
+
+        When doing the addtions, empty elements of `self` will be
+        treated as zero and and will be included in the sum (only with
+        non-empty coordiantes of `other` if it is a fiber), creating
+        new non-empty elements in `self`.
+
+        """
+
+        #
+        # If `other` is a fiber add each element of `other` to `self`
+        #
+        if isinstance(other, Fiber):
+            for _, (self_ref, other_val) in self << other:
+                self_ref += other_val
+            return self
+
+        #
+        # Othewise add `other` to each element of `self`
+        #
+        for c, p in self.iterShapeRef():
+            p += other
+
+        return self
+
+
+    def __mul__(self, other):
+        """Scalar/fiber and fiber/fiber elementwise multiplication
+
+        This operation does one of two things based on the type of
+        `other`. If `other` is a fiber then `other` is multiplied
+        element-wise with `self`. Otherwise `other` is treated as a
+        scalar and used to scale each element of `self`. In either
+        case a new fiber is created with those products.
+
+        Parameters
+        ----------
+
+        other: scalar | Fiber
+            The scalar to scale each element of `self` by
+            or the fiber to multiply elementwise with `self`.
+
+        Returns
+        -------
+
+        result_fiber: Fiber
+            A fiber scaled or elementwise multiplied by `other`
+
+
+        Examples
+        --------
+
+        >>> f = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6])
+        >>> f * 2
+        Fiber([0, 1, 2, 5], [2, 4, 6, 12])
+
+        Notes
+        -----
+
+        From the persepctive of modeling activity, this operation has
+        implict loops that get exectuted atomically. Therefore, it
+        should be used selectively when one is trying to show all the
+        activity in a program's flow.
+
+        """
+
+        coords = []
+        payloads = []
+
+        if isinstance(other, Fiber):
+            for c, (a_val, b_val) in self & other:
+                coords.append(c)
+                payloads.append(a_val * b_val)
+        else:
+            for c, p in self:
+                coords.append(c)
+                payloads.append(other * p.value)
+
+        result = Fiber(coords, payloads)
+        return result
+
+
+    def __rmul__(self, other):
+        """ Scalar/fiber multiplication
+
+        See __mul__ for more information.
+
+        Examples
+        --------
+
+        >>> f = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6])
+        >>> 2 * f
+        Fiber([0, 1, 2, 5], [2, 4, 6, 12])
+
+        """
+
+        return self.__mul__(other)
+
+
+    def __imul__(self, other):
+        """__imul__
+
+        This operation does one of two things based on the type of
+        `other`. If `other` is a fiber then `other` is multiplied
+        elementwise by `self`. Otherwise it is treated as a scalar and
+        scales each element of `self`. In either case `self` is
+        updated with the products.
+
+        Parameters
+        ----------
+
+        other: scalar | Fiber
+            The scalar to scale each element of `self`
+            or the fiber to multiply elementwise to `self`
+
+        Returns
+        -------
+
+        None
+
+
+        Examples
+        --------
+
+        >>> f = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6])
+        >>> f *= 2
+        >>> f
+        Fiber([0, 1, 2, 5], [2, 4, 6, 12])
+
+        Notes
+        -----
+
+        From the persepctive of modeling activity, this operation has
+        implict loops that get exectuted atomically. Therefore, it
+        should be used selectively when one is trying to show all the
+        activity in a program's flow.
+
+        """
+
+        #
+        # If `other` is a fiber, elementwise multiply `other` by `self`
+        #
+        if isinstance(other, Fiber):
+            for c, (self_val, other_val) in self & other:
+                #
+                # Get a reference to the c coordinate in `self`.  Note
+                # that is may be a zero and therefore a hard zero will
+                # be included in the final fiber.
+                #
+                self_ref = self.getPayloadRef(c)
+                self_ref <<= self_val * other_val
+
+            return self
+
+        #
+        # Othewise multiply `other` to each element of `self`
+        #
+        for _, p in self:
+            p *= other
 
         return self
 
@@ -2891,8 +3173,8 @@ class Fiber:
 # Operation methods
 #
 
-    def __add__(self, other):
-        """__add__
+    def concat(self, other):
+        """ concat
 
         Concatenate two fibers
 
@@ -2910,12 +3192,6 @@ class Fiber:
                      payloads=self.payloads + other.payloads)
 
 
-    def __iadd__(self, other):
-        """__iadd__"""
-
-        self.extend(other)
-
-        return self
 
 #
 # Aggretated intersection/union methods
@@ -4272,6 +4548,11 @@ __pdoc__ = {'Fiber.dict2fiber':    False,
             'Fiber.__truediv__':   True,
             'Fiber.__floordiv__':  True,
             'Fiber.__add__':  True,
+            'Fiber.__radd__':  True,
+            'Fiber.__iadd__':  True,
+            'Fiber.__mul__':  True,
+            'Fiber.__rmul__':  True,
+            'Fiber.__imul__':  True,
             'Fiber.__and__':  True,
             'Fiber.__or__':  True,
             'Fiber.__xor__':  True,

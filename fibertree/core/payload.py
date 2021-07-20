@@ -85,6 +85,25 @@ class Payload:
 
     """
 
+    def __new__(cls, value=None):
+
+        from .fiber import Fiber
+
+        #
+        # Since we do not wrap Fibers in a Payload, we check if we
+        # just want to just return the Fiber.
+        #
+        if isinstance(value, Fiber):
+            return value
+
+        #
+        # Just handle regular Payload creation
+        #
+        self = super(Payload, cls).__new__(cls)
+        self.__init__(value=value)
+        return self
+
+
     def __init__(self, value=None):
         """__init__"""
 
