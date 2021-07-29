@@ -189,7 +189,7 @@ class Fiber:
                 #
                 # TBD: Reconcile coords with shape
                 #
-                coords = range(len(payloads))
+                coords = list(range(len(payloads)))
         else:
             if payloads is None:
                 #
@@ -197,7 +197,7 @@ class Fiber:
                 #
                 # TBD: Creating a set of zeros is odd...
                 #
-                payloads = [initial for x in range(len(coords))]
+                payloads = len(coords)*[initial]
 
 
         assert (len(coords) == len(payloads)), \
@@ -2407,7 +2407,7 @@ class Fiber:
 
         f = []
 
-        shape_fiber = Fiber(coords=range(shape[level]), initial=1)
+        shape_fiber = Fiber(coords=list(range(shape[level])), initial=1)
         for c, (mask, p, _) in self | shape_fiber:
 
             if (mask == "AB"):
