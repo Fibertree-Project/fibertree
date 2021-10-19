@@ -16,6 +16,7 @@ from IPython.display import display # to display images
 from IPython.display import Image
 from IPython.display import HTML
 from IPython.display import Javascript
+from IPython.display import Video
 
 #
 # Try to import ipywidgets
@@ -154,31 +155,21 @@ class TensorDisplay():
             basename = Path(self._random_string(10)+".mp4")
             filename = self.tmpdir / basename
 
-        canvas.saveMovie(filename.as_posix())
+        posix_filename = filename.as_posix()
+        canvas.saveMovie(posix_filename)
 
-        # Append random string to URL to prevent browser caching
-        randomstring=self._random_string(10)
+        # TBD: Actually pay attention to width and centering
         final_width = "" if width is None else " width=\"{0}\"".format(width)
+        final_center = "" if not center else " style=\"display:block; margin: 0 auto;\""
+
         final_loop = "" if not loop else " loop"
         final_autoplay = "" if not autoplay else " autoplay"
         final_controls = "" if not controls else " controls"
-        final_center = "" if not center else " style=\"display:block; margin: 0 auto;\""
 
-        html = """
-            <video{}{}{}{}{}>
-                <source src="{}?t={}" type="video/mp4">
-            </video>
-          """
+        final_attributes = f"{final_loop}{final_autoplay}{final_controls}"
 
-        html_formated = html.format(final_width,
-                                    final_loop,
-                                    final_autoplay,
-                                    final_controls,
-                                    final_center,
-                                    filename,
-                                    randomstring)
-
-        display(HTML(html_formated))
+        video = Video(f"./{posix_filename}", html_attributes=final_attributes)
+        display(video)
 
 
 
