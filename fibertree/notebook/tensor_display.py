@@ -168,7 +168,7 @@ class TensorDisplay():
 
         final_attributes = f"{final_loop}{final_autoplay}{final_controls}"
 
-        video = Video(f"./{posix_filename}", html_attributes=final_attributes)
+        video = Video(f"./{posix_filename}", html_attributes=final_attributes, width=800)
         display(video)
 
 
