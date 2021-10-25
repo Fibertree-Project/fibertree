@@ -3528,11 +3528,15 @@ class Fiber:
         z_coords = []
         z_payloads = []
 
+        if Metrics.isCollecting():
+            line = inspect.stack()[1].code_context[0]
+
         a_coord, a_payload = get_next_nonempty(a)
         b_coord, b_payload = get_next_nonempty(b)
 
         if Metrics.isCollecting():
-            line = inspect.stack()[1].code_context[0]
+            Metrics.inc(line, "metadata_read_tensor0", 1)
+            Metrics.inc(line, "metadata_read_tensor1", 1)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
@@ -3545,6 +3549,9 @@ class Fiber:
                 if Metrics.isCollecting():
                     Metrics.inc(line, "successful_intersect", 1)
                     Metrics.inc(line, "attempt_intersect", 1)
+                    Metrics.inc(line, "metadata_read_tensor0", 1)
+                    Metrics.inc(line, "metadata_read_tensor1", 1)
+
 
                 continue
 
@@ -3552,6 +3559,7 @@ class Fiber:
                 a_coord, a_payload = get_next_nonempty(a)
 
                 if Metrics.isCollecting():
+                    Metrics.inc(line, "metadata_read_tensor0", 1)
                     Metrics.inc(line, "attempt_intersect", 1)
 
                 continue
@@ -3560,6 +3568,7 @@ class Fiber:
                 b_coord, b_payload = get_next_nonempty(b)
 
                 if Metrics.isCollecting():
+                    Metrics.inc(line, "metadata_read_tensor1", 1)
                     Metrics.inc(line, "attempt_intersect", 1)
 
                 continue
@@ -3905,7 +3914,13 @@ class Fiber:
         z_b_payloads = []
         z_payloads = []
 
+        if Metrics.isCollecting():
+            line = inspect.stack()[1].code_context[0]
+
         b_coord, b_payload = get_next_nonempty(b)
+
+        if Metrics.isCollecting():
+            Metrics.inc(line, "metadata_read_tensor1", 1)
 
         while b_coord is not None:
             z_coords.append(b_coord)
@@ -3919,13 +3934,27 @@ class Fiber:
 
             b_coord, b_payload = get_next_nonempty(b)
 
+            if Metrics.isCollecting():
+                Metrics.inc(line, "metadata_read_tensor1", 1)
+
         #
         # Collect z_payloads allowing for repeated coordinates
         #
         for b_coord, a_payload, b_payload in zip(z_coords, z_a_payloads, z_b_payloads):
 
             if a_payload is None:
+
+                if Metrics.isCollecting():
+                    if self.maxCoord() is None or self.maxCoord() < b_coord:
+                        Metrics.inc(line, "metadata_insert_tensor0", 1)
+                    else:
+                        Metrics.inc(line, "metadata_append_tensor0", 1)
+
                 a_payload = self._create_payload(b_coord)
+
+            else:
+                if Metrics.isCollecting():
+                    Metrics.inc(line, "metadata_read_tensor0", 1)
 
             z_payloads.append((a_payload, b_payload))
 
