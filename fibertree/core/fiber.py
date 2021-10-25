@@ -5,6 +5,7 @@ a tensor.
 
 """
 
+import inspect
 import logging
 
 from functools import partialmethod
@@ -14,6 +15,7 @@ import random
 
 from .coord_payload import CoordPayload
 from .payload import Payload
+from .metrics import Metrics
 
 #
 # Set up logging
@@ -3516,6 +3518,7 @@ class Fiber:
 
         assert self._ordered and self._unique
 
+
         a_fiber = self
         b_fiber = other
 
@@ -3528,6 +3531,9 @@ class Fiber:
         a_coord, a_payload = get_next_nonempty(a)
         b_coord, b_payload = get_next_nonempty(b)
 
+        if Metrics.isCollecting():
+            line = inspect.stack()[1].code_context[0]
+
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
                 z_coords.append(a_coord)
@@ -3535,14 +3541,27 @@ class Fiber:
 
                 a_coord, a_payload = get_next_nonempty(a)
                 b_coord, b_payload = get_next_nonempty(b)
+
+                if Metrics.isCollecting():
+                    Metrics.inc(line, "successful_intersect", 1)
+                    Metrics.inc(line, "attempt_intersect", 1)
+
                 continue
 
             if a_coord < b_coord:
                 a_coord, a_payload = get_next_nonempty(a)
+
+                if Metrics.isCollecting():
+                    Metrics.inc(line, "attempt_intersect", 1)
+
                 continue
 
             if a_coord > b_coord:
                 b_coord, b_payload = get_next_nonempty(b)
+
+                if Metrics.isCollecting():
+                    Metrics.inc(line, "attempt_intersect", 1)
+
                 continue
 
         result = Fiber(z_coords, z_payloads)

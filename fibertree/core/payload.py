@@ -4,7 +4,10 @@ A class implementing a **boxed** value to use as a payload
 of an element of a fiber.
 
 """
+import inspect
 import logging
+
+from .metrics import Metrics
 
 #
 # Set up logging
@@ -395,12 +398,22 @@ class Payload:
         else:
             ans = self.value + other
 
+        # Collect metrics
+        if Metrics.isCollecting():
+            line = inspect.stack()[1].code_context[0]
+            Metrics.inc(line, "payload_add", 1)
+
         return Payload(ans)
 
     def __radd__(self, other):
         """__radd__"""
 
         assert not isinstance(other, Payload)
+
+        # Collect metrics
+        if Metrics.isCollecting():
+            line = inspect.stack()[1].code_context[0]
+            Metrics.inc(line, "payload_add", 1)
 
         return Payload(other + self.value)
 
@@ -411,6 +424,12 @@ class Payload:
             self.value = self.value + other.value
         else:
             self.value = self.value + other
+
+        # Collect metrics
+        if Metrics.isCollecting():
+            line = inspect.stack()[1].code_context[0]
+            Metrics.inc(line, "payload_add", 1)
+
         return self
 
     # Note: we use <<= in place of base '=' so this is a pure overwrite
@@ -501,6 +520,11 @@ class Payload:
         else:
             ans = self.value * other
 
+        # Collect metrics
+        if Metrics.isCollecting():
+            line = inspect.stack()[1].code_context[0]
+            Metrics.inc(line, "payload_mul", 1)
+
         return Payload(ans)
 
     def __truediv__(self, other):
@@ -518,6 +542,11 @@ class Payload:
 
         assert not isinstance(other, Payload)
 
+        # Collect metrics
+        if Metrics.isCollecting():
+            line = inspect.stack()[1].code_context[0]
+            Metrics.inc(line, "payload_mul", 1)
+
         return Payload(other * self.value)
 
 
@@ -528,6 +557,12 @@ class Payload:
             self.value = self.value * other.value
         else:
             self.value = self.value * other
+
+        # Collect metrics
+        if Metrics.isCollecting():
+            line = inspect.stack()[1].code_context[0]
+            Metrics.inc(line, "payload_mul", 1)
+
         return self
 
 
