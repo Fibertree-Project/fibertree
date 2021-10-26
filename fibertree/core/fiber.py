@@ -3945,9 +3945,9 @@ class Fiber:
 
                 if Metrics.isCollecting():
                     if self.maxCoord() is None or self.maxCoord() < b_coord:
-                        Metrics.inc(line, "metadata_insert_tensor0", 1)
-                    else:
                         Metrics.inc(line, "metadata_append_tensor0", 1)
+                    else:
+                        Metrics.inc(line, "metadata_insert_tensor0", 1)
 
                 a_payload = self._create_payload(b_coord)
 
