@@ -4,7 +4,6 @@ A class implementing a **boxed** value to use as a payload
 of an element of a fiber.
 
 """
-import inspect
 import logging
 
 from .metrics import Metrics
@@ -400,7 +399,7 @@ class Payload:
 
         # Collect metrics
         if Metrics.isCollecting():
-            line = inspect.stack()[1].code_context[0]
+            line = "Compute"
             Metrics.inc(line, "payload_add", 1)
 
         return Payload(ans)
@@ -412,7 +411,7 @@ class Payload:
 
         # Collect metrics
         if Metrics.isCollecting():
-            line = inspect.stack()[1].code_context[0]
+            line = "Compute"
             Metrics.inc(line, "payload_add", 1)
 
         return Payload(other + self.value)
@@ -427,7 +426,7 @@ class Payload:
 
         # Collect metrics
         if Metrics.isCollecting():
-            line = inspect.stack()[1].code_context[0]
+            line = "Compute"
             Metrics.inc(line, "payload_add", 1)
 
         return self
@@ -522,7 +521,7 @@ class Payload:
 
         # Collect metrics
         if Metrics.isCollecting():
-            line = inspect.stack()[1].code_context[0]
+            line = "Compute"
             Metrics.inc(line, "payload_mul", 1)
 
         return Payload(ans)
@@ -544,7 +543,7 @@ class Payload:
 
         # Collect metrics
         if Metrics.isCollecting():
-            line = inspect.stack()[1].code_context[0]
+            line = "Compute"
             Metrics.inc(line, "payload_mul", 1)
 
         return Payload(other * self.value)
@@ -560,7 +559,7 @@ class Payload:
 
         # Collect metrics
         if Metrics.isCollecting():
-            line = inspect.stack()[1].code_context[0]
+            line = "Compute"
             Metrics.inc(line, "payload_mul", 1)
 
         return self

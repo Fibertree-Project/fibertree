@@ -5,7 +5,6 @@ a tensor.
 
 """
 
-import inspect
 import logging
 
 from functools import partialmethod
@@ -3529,7 +3528,7 @@ class Fiber:
         z_payloads = []
 
         if Metrics.isCollecting():
-            line = inspect.stack()[1].code_context[0]
+            line = "Rank " + self.getOwner().getId()
 
         a_coord, a_payload = get_next_nonempty(a)
         b_coord, b_payload = get_next_nonempty(b)
@@ -3915,7 +3914,7 @@ class Fiber:
         z_payloads = []
 
         if Metrics.isCollecting():
-            line = inspect.stack()[1].code_context[0]
+            line = "Rank " + self.getOwner().getId()
 
         b_coord, b_payload = get_next_nonempty(b)
 
