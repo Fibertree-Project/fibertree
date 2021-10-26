@@ -42,6 +42,9 @@ class Rank:
     fibers: list of Fibers
         A list of the fibers in the rank
 
+    compressed: Boolean
+        Is this rank compressed (only non-default values are stored)
+
     Constructor
     -----------
 
@@ -59,6 +62,9 @@ class Rank:
     next_rank: Rank, default=None
         The next rank in the tensor
 
+    compressed: Boolean, default=True
+        Is this rank compressed (only non-default values are stored)
+
 
     Notes
     -----
@@ -69,7 +75,7 @@ class Rank:
     """
 
 
-    def __init__(self, id, shape=None, next_rank=None):
+    def __init__(self, id, shape=None, next_rank=None, compressed=True):
         """__init__"""
 
         #
@@ -90,9 +96,15 @@ class Rank:
 
         self.fibers = []
 
+        self.compressed = compressed
+
 #
 # Accessor methods
 #
+    def getCompressed(self):
+        """Return whether or not the rank is compressed"""
+        return self.compressed
+
     def getId(self):
         """Return id of rank.
 

@@ -3542,15 +3542,21 @@ class Fiber:
                 z_coords.append(a_coord)
                 z_payloads.append((a_payload, b_payload))
 
-                a_coord, a_payload = get_next_nonempty(a)
-                b_coord, b_payload = get_next_nonempty(b)
-
                 if Metrics.isCollecting():
                     Metrics.inc(line, "successful_intersect", 1)
                     Metrics.inc(line, "attempt_intersect", 1)
+
                     Metrics.inc(line, "metadata_read_tensor0", 1)
                     Metrics.inc(line, "metadata_read_tensor1", 1)
 
+                    if isinstance(a_payload, Payload):
+                        Metrics.inc(line, "data_read_tensor0", 1)
+
+                    if isinstance(b_payload, Payload):
+                        Metrics.inc(line, "data_read_tensor1", 1)
+
+                a_coord, a_payload = get_next_nonempty(a)
+                b_coord, b_payload = get_next_nonempty(b)
 
                 continue
 
@@ -3920,6 +3926,8 @@ class Fiber:
 
         if Metrics.isCollecting():
             Metrics.inc(line, "metadata_read_tensor1", 1)
+            if isinstance(b_payload, Payload):
+                Metrics.inc(line, "data_read_tensor1", 1)
 
         while b_coord is not None:
             z_coords.append(b_coord)
@@ -3935,6 +3943,8 @@ class Fiber:
 
             if Metrics.isCollecting():
                 Metrics.inc(line, "metadata_read_tensor1", 1)
+                if isinstance(b_payload, Payload):
+                    Metrics.inc(line, "data_read_tensor1", 1)
 
         #
         # Collect z_payloads allowing for repeated coordinates
@@ -3954,6 +3964,9 @@ class Fiber:
             else:
                 if Metrics.isCollecting():
                     Metrics.inc(line, "metadata_read_tensor0", 1)
+
+            if isinstance(a_payload, Payload):
+                Metrics.inc(line, "data_read_tensor0", 1)
 
             z_payloads.append((a_payload, b_payload))
 
