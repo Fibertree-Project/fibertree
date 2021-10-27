@@ -3527,33 +3527,37 @@ class Fiber:
         z_coords = []
         z_payloads = []
 
-        if Metrics.isCollecting():
-            line = "Rank " + self.getOwner().getId()
-
         a_coord, a_payload = get_next_nonempty(a)
         b_coord, b_payload = get_next_nonempty(b)
 
-        if Metrics.isCollecting():
-            Metrics.inc(line, "metadata_read_tensor0", 1)
-            Metrics.inc(line, "metadata_read_tensor1", 1)
+        if self.getOwner() is None:
+            line = "Rank Unknown"
+        else:
+            line = "Rank " + self.getOwner().getId()
+
+        # Collect metadata access metrics
+        Metrics.inc(line, "metadata_read_tensor0", 1)
+        Metrics.inc(line, "metadata_read_tensor1", 1)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
                 z_coords.append(a_coord)
                 z_payloads.append((a_payload, b_payload))
 
-                if Metrics.isCollecting():
-                    Metrics.inc(line, "successful_intersect", 1)
-                    Metrics.inc(line, "attempt_intersect", 1)
+                # Collect intersection metrics
+                Metrics.inc(line, "successful_intersect", 1)
+                Metrics.inc(line, "attempt_intersect", 1)
 
-                    Metrics.inc(line, "metadata_read_tensor0", 1)
-                    Metrics.inc(line, "metadata_read_tensor1", 1)
+                # Collect metadata access metrics
+                Metrics.inc(line, "metadata_read_tensor0", 1)
+                Metrics.inc(line, "metadata_read_tensor1", 1)
 
-                    if isinstance(a_payload, Payload):
-                        Metrics.inc(line, "data_read_tensor0", 1)
+                # Collect data access metrics
+                if isinstance(a_payload, Payload):
+                    Metrics.inc(line, "data_read_tensor0", 1)
 
-                    if isinstance(b_payload, Payload):
-                        Metrics.inc(line, "data_read_tensor1", 1)
+                if isinstance(b_payload, Payload):
+                    Metrics.inc(line, "data_read_tensor1", 1)
 
                 a_coord, a_payload = get_next_nonempty(a)
                 b_coord, b_payload = get_next_nonempty(b)
@@ -3563,18 +3567,18 @@ class Fiber:
             if a_coord < b_coord:
                 a_coord, a_payload = get_next_nonempty(a)
 
-                if Metrics.isCollecting():
-                    Metrics.inc(line, "metadata_read_tensor0", 1)
-                    Metrics.inc(line, "attempt_intersect", 1)
+                # Collect metadata access and intersection metrics
+                Metrics.inc(line, "metadata_read_tensor0", 1)
+                Metrics.inc(line, "attempt_intersect", 1)
 
                 continue
 
             if a_coord > b_coord:
                 b_coord, b_payload = get_next_nonempty(b)
 
-                if Metrics.isCollecting():
-                    Metrics.inc(line, "metadata_read_tensor1", 1)
-                    Metrics.inc(line, "attempt_intersect", 1)
+                # Collect metadata access and intersection metrics
+                Metrics.inc(line, "metadata_read_tensor1", 1)
+                Metrics.inc(line, "attempt_intersect", 1)
 
                 continue
 
@@ -3919,15 +3923,18 @@ class Fiber:
         z_b_payloads = []
         z_payloads = []
 
-        if Metrics.isCollecting():
-            line = "Rank " + self.getOwner().getId()
 
         b_coord, b_payload = get_next_nonempty(b)
 
-        if Metrics.isCollecting():
-            Metrics.inc(line, "metadata_read_tensor1", 1)
-            if isinstance(b_payload, Payload):
-                Metrics.inc(line, "data_read_tensor1", 1)
+        if self.getOwner() is None:
+            line = "Rank Unknown"
+        else:
+            line = "Rank " + self.getOwner().getId()
+
+        # Collect metadata and data access metrics
+        Metrics.inc(line, "metadata_read_tensor1", 1)
+        if isinstance(b_payload, Payload):
+            Metrics.inc(line, "data_read_tensor1", 1)
 
         while b_coord is not None:
             z_coords.append(b_coord)
@@ -3941,10 +3948,10 @@ class Fiber:
 
             b_coord, b_payload = get_next_nonempty(b)
 
-            if Metrics.isCollecting():
-                Metrics.inc(line, "metadata_read_tensor1", 1)
-                if isinstance(b_payload, Payload):
-                    Metrics.inc(line, "data_read_tensor1", 1)
+            # Collect metadata and data access metrics
+            Metrics.inc(line, "metadata_read_tensor1", 1)
+            if isinstance(b_payload, Payload):
+                Metrics.inc(line, "data_read_tensor1", 1)
 
         #
         # Collect z_payloads allowing for repeated coordinates
@@ -3953,18 +3960,19 @@ class Fiber:
 
             if a_payload is None:
 
-                if Metrics.isCollecting():
-                    if self.maxCoord() is None or self.maxCoord() < b_coord:
-                        Metrics.inc(line, "metadata_append_tensor0", 1)
-                    else:
-                        Metrics.inc(line, "metadata_insert_tensor0", 1)
+                # Collect metadata access metrics
+                if self.maxCoord() is None or self.maxCoord() < b_coord:
+                    Metrics.inc(line, "metadata_append_tensor0", 1)
+                else:
+                    Metrics.inc(line, "metadata_insert_tensor0", 1)
 
                 a_payload = self._create_payload(b_coord)
 
             else:
-                if Metrics.isCollecting():
-                    Metrics.inc(line, "metadata_read_tensor0", 1)
+                # Collect metadata access metrics
+                Metrics.inc(line, "metadata_read_tensor0", 1)
 
+            # Collect data access metrics
             if isinstance(a_payload, Payload):
                 Metrics.inc(line, "data_read_tensor0", 1)
 
