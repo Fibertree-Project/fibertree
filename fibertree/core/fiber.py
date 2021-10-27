@@ -3961,20 +3961,29 @@ class Fiber:
             if a_payload is None:
 
                 # Collect metadata access metrics
-                if self.maxCoord() is None or self.maxCoord() < b_coord:
+                append = self.maxCoord() is None or self.maxCoord() < b_coord
+                if append:
                     Metrics.inc(line, "metadata_append_tensor0", 1)
                 else:
                     Metrics.inc(line, "metadata_insert_tensor0", 1)
 
                 a_payload = self._create_payload(b_coord)
 
+                # Collect data access metrics
+                if isinstance(a_payload, Payload):
+                    if append:
+                        Metrics.inc(line, "data_append_tensor0", 1)
+                    else:
+                        Metrics.inc(line, "data_insert_tensor0", 1)
+
+
             else:
                 # Collect metadata access metrics
                 Metrics.inc(line, "metadata_read_tensor0", 1)
 
-            # Collect data access metrics
-            if isinstance(a_payload, Payload):
-                Metrics.inc(line, "data_read_tensor0", 1)
+                # Collect data access metrics
+                if isinstance(a_payload, Payload):
+                    Metrics.inc(line, "data_read_tensor0", 1)
 
             z_payloads.append((a_payload, b_payload))
 
