@@ -43,9 +43,9 @@ class Payload:
     - Equal: (=)
     - Not equal: (!=)
     - Less than: (<)
-    - Great than: (&gt;)
+    - Great than: (>)
     - Less than or equal: (<=)
-    - Greater than or equal: (&gt;=)
+    - Greater than or equal: (>=)
 
     In addition to the above operators one needs to be able to
     conveniently assign a new value to a `Payload`. Since the normal
@@ -422,6 +422,7 @@ class Payload:
 
         # Collect metrics
         Metrics.inc("Compute", "payload_add", 1)
+        Metrics.inc("Compute", "data_update", 1)
 
         return self
 
@@ -549,6 +550,7 @@ class Payload:
 
         # Collect metrics
         Metrics.inc("Compute", "payload_mul", 1)
+        Metrics.inc("Compute", "data_update", 1)
 
         return self
 

@@ -58,6 +58,16 @@ class TestMetrics(unittest.TestCase):
 
         Metrics.endCollect()
 
+    def test_inc_not_collecting(self):
+        """Test that nothing happens if collection is not happening"""
+        Metrics.beginCollect()
+        Metrics.inc("Line 1", "Metric 1", 5)
+        Metrics.endCollect()
+
+        Metrics.inc("Line 1", "Metric 1", 7)
+
+        self.assertEqual(Metrics.dump(), {"Line 1": {"Metric 1": 5}})
+
     def test_new_collection(self):
         """Test that a beginCollect() restarts collection"""
         Metrics.beginCollect()
