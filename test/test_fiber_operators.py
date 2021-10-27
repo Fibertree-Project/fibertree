@@ -3,7 +3,9 @@
 import unittest
 
 from fibertree import Fiber
+from fibertree import Metrics
 from fibertree import Payload
+from fibertree import Tensor
 
 class TestFiberOperators(unittest.TestCase):
     """ Tests of fiber operators """
@@ -64,6 +66,81 @@ class TestFiberOperators(unittest.TestCase):
             # f_in gets clobbered!
             f_in += g_in
             self.assertEqual(fg_ref, f_in)
+
+
+    def test_and_metrics_fiber(self):
+        """Test metrics collected during Fiber.__and__ on unowned fibers"""
+        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 0, 6])
+        b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 0])
+
+        Metrics.beginCollect()
+        _ = a_k & b_k
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank Unknown": {
+                "metadata_read_tensor0": 3,
+                "metadata_read_tensor1": 4,
+                "data_read_tensor0": 1,
+                "data_read_tensor1": 1,
+                "successful_intersect": 1,
+                "attempt_intersect": 4
+            }}
+        )
+
+
+    def test_and_metrics_1d_2d_tensor(self):
+        """Test metrics collected during Fiber.__and__ on a 1D and 2D tensor"""
+        A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 0, 6])
+        a_k = A_K.getRoot()
+
+        B_KM = Tensor.fromUncompressed(
+                rank_ids=["K", "M"],
+                root=[[1], [0], [3], [0], [5], [0]]
+        )
+        b_k = B_KM.getRoot()
+
+        Metrics.beginCollect()
+        _ = a_k & b_k
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank K": {
+                "metadata_read_tensor0": 3,
+                "metadata_read_tensor1": 4,
+                "data_read_tensor0": 1,
+                "successful_intersect": 1,
+                "attempt_intersect": 4
+            }}
+        )
+
+
+    def test_and_metrics_2d_1d_tensor(self):
+        """Test metrics collected during Fiber.__and__ on a 2D and 1D tensor"""
+        A_KM = Tensor.fromUncompressed(
+                rank_ids=["K", "M"],
+                root=[[1], [0], [0], [4], [0], [6]])
+        a_k = A_KM.getRoot()
+
+        B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
+        b_k = B_K.getRoot()
+
+        Metrics.beginCollect()
+        _ = a_k & b_k
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank K": {
+                "metadata_read_tensor0": 3,
+                "metadata_read_tensor1": 4,
+                "data_read_tensor1": 1,
+                "successful_intersect": 1,
+                "attempt_intersect": 4
+            }}
+        )
 
 
     def test_mul_int(self):
