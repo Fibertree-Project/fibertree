@@ -42,8 +42,9 @@ class Rank:
     fibers: list of Fibers
         A list of the fibers in the rank
 
-    compressed: Boolean
-        Is this rank compressed (only non-default values are stored)
+    fmt: string
+        What format is this rank in (either "C" (compressed) or
+        "U" (uncompressed))
 
     Constructor
     -----------
@@ -62,8 +63,9 @@ class Rank:
     next_rank: Rank, default=None
         The next rank in the tensor
 
-    compressed: Boolean, default=True
-        Is this rank compressed (only non-default values are stored)
+    fmt: Boolean, default="C"
+        What format is this rank in (either "C" (compressed) or
+        "U" (uncompressed))
 
 
     Notes
@@ -75,7 +77,7 @@ class Rank:
     """
 
 
-    def __init__(self, id, shape=None, next_rank=None, compressed=True):
+    def __init__(self, id, shape=None, next_rank=None, fmt="C"):
         """__init__"""
 
         #
@@ -96,14 +98,11 @@ class Rank:
 
         self.fibers = []
 
-        self.compressed = compressed
+        self.setFormat(fmt)
 
 #
 # Accessor methods
 #
-    def getCompressed(self):
-        """Return whether or not the rank is compressed"""
-        return self.compressed
 
     def getId(self):
         """Return id of rank.
@@ -360,6 +359,52 @@ class Rank:
         #
         return deepcopy(self._default)
 
+    def setFormat(self, fmt):
+        """Set the format for this rank
+
+        Set the format to the given value
+
+        Parameters
+        ----------
+
+        fmt: string
+            The format of the rank; "C" = compressed, "U" = uncompressed
+
+        Returns
+        -------
+        None
+
+
+        Raises
+        ------
+
+        AssertionError
+            Illegal format
+
+        """
+        assert fmt == "C" or fmt == "U"
+        self.fmt = fmt
+
+    def getFormat(self):
+        """Get the format of this rank
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+
+        fmt: string
+            The format of the rank; "C" = compressed, "U" = uncompressed
+
+
+        Raises
+        ------
+        None
+
+        """
+        return self.fmt
 
 #
 # Fundamental methods

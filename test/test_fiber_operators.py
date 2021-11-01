@@ -142,6 +142,76 @@ class TestFiberOperators(unittest.TestCase):
             }}
         )
 
+    def test_and_with_format(self):
+        """Test Fiber.__and__ with toggling the format"""
+        A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 4, 0])
+        a_k = A_K.getRoot()
+
+        B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 5])
+        b_k = B_K.getRoot()
+
+        # Both tensors are compressed
+        A_K.setFormat("K", "C")
+        B_K.setFormat("K", "C")
+
+        inds = []
+        for k, _ in a_k & b_k:
+            inds.append(k)
+        self.assertEqual(inds, [0, 3])
+
+        # A is uncompressed and B is compressed
+        A_K.setFormat("K", "U")
+        B_K.setFormat("K", "C")
+
+        inds = []
+        for k, _ in a_k & b_k:
+            inds.append(k)
+        self.assertEqual(inds, [0, 3, 4])
+
+        # A is compressed and B is uncompressed
+        A_K.setFormat("K", "C")
+        B_K.setFormat("K", "U")
+
+        inds = []
+        for k, _ in a_k & b_k:
+            inds.append(k)
+        self.assertEqual(inds, [0, 2, 3])
+
+        # Both tensors are uncompressed
+        A_K.setFormat("K", "U")
+        B_K.setFormat("K", "U")
+
+        inds = []
+        for k, _ in a_k & b_k:
+            inds.append(k)
+        self.assertEqual(inds, [0, 1, 2, 3, 4])
+
+    def test_lshift_with_format(self):
+        """Test that Fiber.__lshift__ obeys the specified format"""
+        A_M = Tensor.fromUncompressed(rank_ids=["M"], root=[1, 0, 3, 4, 0])
+        a_m = A_M.getRoot()
+
+        # A_M is compressed
+        A_M.setFormat("M", "C")
+
+        Z_M = Tensor(rank_ids=["M"])
+        z_m = Z_M.getRoot()
+
+        inds = []
+        for m, _ in z_m << a_m:
+            inds.append(m)
+        self.assertEqual(inds, [0, 2, 3])
+
+        # A_M is uncompressed
+        A_M.setFormat("M", "U")
+
+        Z_M = Tensor(rank_ids=["M"])
+        z_m = Z_M.getRoot()
+
+        inds = []
+        for m, _ in z_m << a_m:
+            inds.append(m)
+        self.assertEqual(inds, [0,  1, 2, 3, 4])
 
     def test_mul_int(self):
         """Test __mul__ integers"""
@@ -181,7 +251,6 @@ class TestFiberOperators(unittest.TestCase):
             # f_in gets clobbered!
             f_in *= two
             self.assertEqual(f_ref, f_in)
-
 
 if __name__ == '__main__':
     unittest.main()

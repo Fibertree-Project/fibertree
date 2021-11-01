@@ -3521,14 +3521,43 @@ class Fiber:
         a_fiber = self
         b_fiber = other
 
-        a = self.__iter__()
-        b = other.__iter__()
-
         z_coords = []
         z_payloads = []
 
-        a_coord, a_payload = get_next_nonempty(a)
-        b_coord, b_payload = get_next_nonempty(b)
+        # Get the format of a
+        if self.getOwner() is None:
+            fmt = "C"
+        else:
+            fmt = self.getOwner().getFormat()
+
+        # Get the iterator over a
+        if fmt == "C":
+            a = self.__iter__()
+            next_a = lambda: get_next_nonempty(a)
+        elif fmt == "U":
+            a = self.iterShape()
+            next_a = lambda: get_next(a)
+        else:
+            raise ValueError("Unknown format")
+
+        # Get the format of b
+        if other.getOwner() is None:
+            fmt = "C"
+        else:
+            fmt = other.getOwner().getFormat()
+
+        # Get the iterator over b
+        if fmt == "C":
+            b = other.__iter__()
+            next_b = lambda: get_next_nonempty(b)
+        elif fmt == "U":
+            b = other.iterShape()
+            next_b = lambda: get_next(b)
+        else:
+            raise ValueError("Unknown format")
+
+        a_coord, a_payload = next_a()
+        b_coord, b_payload = next_b()
 
         if self.getOwner() is None:
             line = "Rank Unknown"
@@ -3559,13 +3588,13 @@ class Fiber:
                 if isinstance(b_payload, Payload):
                     Metrics.inc(line, "data_read_tensor1", 1)
 
-                a_coord, a_payload = get_next_nonempty(a)
-                b_coord, b_payload = get_next_nonempty(b)
+                a_coord, a_payload = next_a()
+                b_coord, b_payload = next_b()
 
                 continue
 
             if a_coord < b_coord:
-                a_coord, a_payload = get_next_nonempty(a)
+                a_coord, a_payload = next_a()
 
                 # Collect metadata access and intersection metrics
                 Metrics.inc(line, "metadata_read_tensor0", 1)
@@ -3574,7 +3603,7 @@ class Fiber:
                 continue
 
             if a_coord > b_coord:
-                b_coord, b_payload = get_next_nonempty(b)
+                b_coord, b_payload = next_b()
 
                 # Collect metadata access and intersection metrics
                 Metrics.inc(line, "metadata_read_tensor1", 1)
@@ -3891,7 +3920,6 @@ class Fiber:
 
         """
 
-
         def get_next(iter):
             """get_next"""
 
@@ -3916,7 +3944,22 @@ class Fiber:
         b_fiber = other
 
         # "a" is self!
-        b = other.__iter__()
+
+        # Get the format of b
+        if other.getOwner() is None:
+            fmt = "C"
+        else:
+            fmt = other.getOwner().getFormat()
+
+        # Get the iterator over b
+        if fmt == "C":
+            b = other.__iter__()
+            next_b = lambda: get_next_nonempty(b)
+        elif fmt == "U":
+            b = other.iterShape()
+            next_b = lambda: get_next(b)
+        else:
+            raise ValueError("Unknown format")
 
         z_coords = []
         z_a_payloads = []
@@ -3924,7 +3967,7 @@ class Fiber:
         z_payloads = []
 
 
-        b_coord, b_payload = get_next_nonempty(b)
+        b_coord, b_payload = next_b()
 
         if self.getOwner() is None:
             line = "Rank Unknown"
@@ -3946,7 +3989,7 @@ class Fiber:
             z_a_payloads.append(a_payload)
             z_b_payloads.append(b_payload)
 
-            b_coord, b_payload = get_next_nonempty(b)
+            b_coord, b_payload = next_b()
 
             # Collect metadata and data access metrics
             Metrics.inc(line, "metadata_read_tensor1", 1)

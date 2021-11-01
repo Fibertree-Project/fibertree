@@ -900,6 +900,67 @@ class Tensor:
 
         return self._mutable
 
+    def setFormat(self, rank_id, fmt):
+        """Set the format for the given rank
+
+        Sets the format of the rank specified by the `rank_id` to the given
+        value
+
+        Parameters
+        ----------
+
+        rank_id: string
+            The ID of the rank whose format to modify
+
+        fmt: string
+            The format of the rank; "C" = compressed, "U" = uncompressed
+
+        Returns
+        -------
+        None
+
+
+        Raises
+        ------
+
+        ValueError
+            rank_id is not a named rank in the tensor
+
+        AssertionError
+            Illegal format
+
+        """
+
+        rank_ids = self.getRankIds()
+        self.ranks[rank_ids.index(rank_id)].setFormat(fmt)
+
+    def getFormat(self, rank_id):
+        """Get the format of the given rank
+
+        Gets the format of the rank specified by the `rank_id`
+
+        Parameters
+        ----------
+
+        rank_id: string
+            The ID of the rank whose format to modify
+
+        Returns
+        -------
+
+        fmt: string
+            The format of the rank; "C" = compressed, "U" = uncompressed
+
+
+        Raises
+        ------
+
+        ValueError
+            rank_id is not a named rank in the tensor
+        """
+
+        rank_ids = self.getRankIds()
+        return self.ranks[rank_ids.index(rank_id)].getFormat()
 
 #
 #  Comparison operations

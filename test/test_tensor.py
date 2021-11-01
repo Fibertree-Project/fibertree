@@ -629,5 +629,20 @@ class TestTensor(unittest.TestCase):
         t6 = t5.unflattenRanks()
         self.assertTrue(t6.isMutable())
 
+    def test_get_set_format(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+
+        self.assertEqual(t.getFormat("M"), "C")
+        self.assertEqual(t.getFormat("K"), "C")
+
+        t.setFormat("K", "U")
+
+        self.assertEqual(t.getFormat("M"), "C")
+        self.assertEqual(t.getFormat("K"), "U")
+
+        self.assertRaises(ValueError, lambda: t.getFormat("N"))
+        self.assertRaises(ValueError, lambda: t.setFormat("N", "C"))
+        self.assertRaises(AssertionError, lambda: t.setFormat("M", "G"))
+
 if __name__ == '__main__':
     unittest.main()
