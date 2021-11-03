@@ -644,5 +644,46 @@ class TestTensor(unittest.TestCase):
         self.assertRaises(ValueError, lambda: t.setFormat("N", "C"))
         self.assertRaises(AssertionError, lambda: t.setFormat("M", "G"))
 
+    def test_format_after_split(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        t.setFormat("K", "U")
+        t2 = t.splitUniform(5, depth=1)
+        t3 = t2.splitUniform(6, depth=0)
+
+        self.assertEqual(t3.getFormat("M.1"), "C")
+        self.assertEqual(t3.getFormat("M.0"), "C")
+        self.assertEqual(t3.getFormat("K.1"), "U")
+        self.assertEqual(t3.getFormat("K.0"), "U")
+
+    def test_format_after_swap(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        t.setFormat("K", "U")
+        t2 = t.swapRanks()
+
+        self.assertEqual(t2.getFormat("M"), "C")
+        self.assertEqual(t2.getFormat("K"), "U")
+
+    def test_format_after_flatten(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        t2 = t.splitUniform(2, depth=1)
+        t2.setFormat("M", "U")
+        t2.setFormat("K.0", "U")
+
+        t3 = t2.flattenRanks()
+        self.assertEqual(t3.getFormat(["M", "K.1"]), "C")
+        self.assertEqual(t3.getFormat("K.0"), "U")
+
+    def test_format_after_unflatten(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        t2 = t.splitUniform(2, depth=1)
+        t2.setFormat("M", "U")
+        t2.setFormat("K.0", "U")
+
+        t3 = t2.flattenRanks()
+        t4 = t3.unflattenRanks()
+        self.assertEqual(t4.getFormat("M"), "C")
+        self.assertEqual(t4.getFormat("K.1"), "C")
+        self.assertEqual(t4.getFormat("K.0"), "U")
+
 if __name__ == '__main__':
     unittest.main()

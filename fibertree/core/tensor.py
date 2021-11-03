@@ -1257,6 +1257,17 @@ class Tensor:
         tensor.setColor(self.getColor())
         tensor.setMutable(self.isMutable())
 
+        # Maintain the formats
+        for rank_id in tensor.getRankIds():
+            if rank_id == id + ".1":
+                old_id = id
+            elif rank_id == id + ".0":
+                old_id = id
+            else:
+                old_id = rank_id
+            tensor.setFormat(rank_id, self.getFormat(old_id))
+
+
         return tensor
 
 #
@@ -1360,6 +1371,10 @@ class Tensor:
         tensor.setColor(self.getColor())
         tensor.setMutable(self.isMutable())
 
+        # Maintain the formats
+        for rank_id in tensor.getRankIds():
+            tensor.setFormat(rank_id, self.getFormat(rank_id))
+
         return tensor
 
 
@@ -1427,6 +1442,14 @@ class Tensor:
         tensor.setColor(self.getColor())
         tensor.setMutable(self.isMutable())
 
+        # Maintain the formats for unflattened rank_ids
+        # Compress everything else
+        for rank_id in tensor.getRankIds():
+            if rank_id in self.getRankIds():
+                tensor.setFormat(rank_id, self.getFormat(rank_id))
+            else:
+                tensor.setFormat(rank_id, "C")
+
         return tensor
 
 
@@ -1488,6 +1511,15 @@ class Tensor:
         tensor.setName(self.getName() + "+unflattened")
         tensor.setColor(self.getColor())
         tensor.setMutable(self.isMutable())
+
+        # Maintain the formats for all untouched rank_ids
+        # Compress everything else
+        for rank_id in tensor.getRankIds():
+            if rank_id in self.getRankIds():
+                tensor.setFormat(rank_id, self.getFormat(rank_id))
+            else:
+                tensor.setFormat(rank_id, "C")
+
 
         return tensor
 
