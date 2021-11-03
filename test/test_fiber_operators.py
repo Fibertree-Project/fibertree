@@ -80,65 +80,33 @@ class TestFiberOperators(unittest.TestCase):
         self.assertEqual(
             Metrics.dump(),
             {"Rank Unknown": {
-                "metadata_read_tensor0": 3,
-                "metadata_read_tensor1": 4,
-                "data_read_tensor0": 1,
-                "data_read_tensor1": 1,
+                "coordinate_read_tensor0": 3,
+                "coordinate_read_tensor1": 4,
                 "successful_intersect": 1,
-                "attempt_intersect": 4
+                "attempt_intersect": 4,
+                "payload_read_tensor0": 1,
+                "payload_read_tensor1": 1
             }}
         )
 
-
-    def test_and_metrics_1d_2d_tensor(self):
-        """Test metrics collected during Fiber.__and__ on a 1D and 2D tensor"""
+    def test_and_metrics_tensor(self):
+        """Test metrics collected during Fiber.__and__ on unowned fibers"""
         A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 0, 6])
-        a_k = A_K.getRoot()
-
-        B_KM = Tensor.fromUncompressed(
-                rank_ids=["K", "M"],
-                root=[[1], [0], [3], [0], [5], [0]]
-        )
-        b_k = B_KM.getRoot()
-
-        Metrics.beginCollect()
-        _ = a_k & b_k
-        Metrics.endCollect()
-
-        self.assertEqual(
-            Metrics.dump(),
-            {"Rank K": {
-                "metadata_read_tensor0": 3,
-                "metadata_read_tensor1": 4,
-                "data_read_tensor0": 1,
-                "successful_intersect": 1,
-                "attempt_intersect": 4
-            }}
-        )
-
-
-    def test_and_metrics_2d_1d_tensor(self):
-        """Test metrics collected during Fiber.__and__ on a 2D and 1D tensor"""
-        A_KM = Tensor.fromUncompressed(
-                rank_ids=["K", "M"],
-                root=[[1], [0], [0], [4], [0], [6]])
-        a_k = A_KM.getRoot()
-
         B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
-        b_k = B_K.getRoot()
 
         Metrics.beginCollect()
-        _ = a_k & b_k
+        _ = A_K.getRoot() & B_K.getRoot()
         Metrics.endCollect()
 
         self.assertEqual(
             Metrics.dump(),
             {"Rank K": {
-                "metadata_read_tensor0": 3,
-                "metadata_read_tensor1": 4,
-                "data_read_tensor1": 1,
+                "coordinate_read_tensor0": 3,
+                "coordinate_read_tensor1": 4,
                 "successful_intersect": 1,
-                "attempt_intersect": 4
+                "attempt_intersect": 4,
+                "payload_read_tensor0": 1,
+                "payload_read_tensor1": 1
             }}
         )
 
@@ -185,6 +153,51 @@ class TestFiberOperators(unittest.TestCase):
         for k, _ in a_k & b_k:
             inds.append(k)
         self.assertEqual(inds, [0, 1, 2, 3, 4])
+
+    def test_lshift_metrics_fiber(self):
+        """Test metrics collection on Fiber.__lshift__ from a fiber"""
+        a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
+
+        Metrics.beginCollect()
+        _ = z_m << a_m
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank Unknown": {
+                "coordinate_read_tensor1": 4,
+                "payload_read_tensor1": 3,
+                "coord_payload_insert_tensor0": 1,
+                "coordinate_read_tensor0": 1,
+                "payload_read_tensor0": 1,
+                "coord_payload_append_tensor0": 1
+            }}
+        )
+
+    def test_lshift_metrics_tensor(self):
+        """Test metrics collection on Fiber.__lshift__ from a tensor"""
+        A_M = Tensor.fromUncompressed(rank_ids=["M"], root=[1, 0, 3, 4, 0])
+        a_m = A_M.getRoot()
+
+        Z_M = Tensor.fromUncompressed(rank_ids=["M"], root=[0, 2, 3, 0, 0])
+        z_m = Z_M.getRoot()
+
+        Metrics.beginCollect()
+        _ = z_m << a_m
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank M": {
+                "coordinate_read_tensor1": 4,
+                "payload_read_tensor1": 3,
+                "coord_payload_insert_tensor0": 1,
+                "coordinate_read_tensor0": 1,
+                "payload_read_tensor0": 1,
+                "coord_payload_append_tensor0": 1
+            }}
+        )
 
     def test_lshift_with_format(self):
         """Test that Fiber.__lshift__ obeys the specified format"""
