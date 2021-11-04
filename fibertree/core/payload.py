@@ -398,7 +398,8 @@ class Payload:
             ans = self.value + other
 
         # Collect metrics
-        Metrics.inc("Compute", "payload_add", 1)
+        if Metrics.isCollecting():
+            Metrics.incCount("Compute", "payload_add", 1)
 
         return Payload(ans)
 
@@ -408,7 +409,8 @@ class Payload:
         assert not isinstance(other, Payload)
 
         # Collect metrics
-        Metrics.inc("Compute", "payload_add", 1)
+        if Metrics.isCollecting():
+            Metrics.incCount("Compute", "payload_add", 1)
 
         return Payload(other + self.value)
 
@@ -421,8 +423,9 @@ class Payload:
             self.value = self.value + other
 
         # Collect metrics
-        Metrics.inc("Compute", "payload_add", 1)
-        Metrics.inc("Compute", "data_update", 1)
+        if Metrics.isCollecting():
+            Metrics.incCount("Compute", "payload_add", 1)
+            Metrics.incCount("Compute", "data_update", 1)
 
         return self
 
@@ -515,7 +518,8 @@ class Payload:
             ans = self.value * other
 
         # Collect metrics
-        Metrics.inc("Compute", "payload_mul", 1)
+        if Metrics.isCollecting():
+            Metrics.incCount("Compute", "payload_mul", 1)
 
         return Payload(ans)
 
@@ -535,7 +539,8 @@ class Payload:
         assert not isinstance(other, Payload)
 
         # Collect metrics
-        Metrics.inc("Compute", "payload_mul", 1)
+        if Metrics.isCollecting():
+            Metrics.incCount("Compute", "payload_mul", 1)
 
         return Payload(other * self.value)
 
@@ -549,8 +554,9 @@ class Payload:
             self.value = self.value * other
 
         # Collect metrics
-        Metrics.inc("Compute", "payload_mul", 1)
-        Metrics.inc("Compute", "data_update", 1)
+        if Metrics.isCollecting():
+            Metrics.incCount("Compute", "payload_mul", 1)
+            Metrics.incCount("Compute", "data_update", 1)
 
         return self
 

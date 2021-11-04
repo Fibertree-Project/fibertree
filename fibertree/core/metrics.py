@@ -26,6 +26,7 @@ class Metrics:
     """
     # Create a class instance variable for the metrics collection
     collecting = False
+    iteration = 0
     metrics = []
 
     def __init__(self):
@@ -48,8 +49,9 @@ class Metrics:
         None
 
         """
-        cls.metrics.append({})
         cls.collecting = True
+        cls.iteration = 0
+        cls.metrics.append({})
 
     @classmethod
     def dump(cls):
@@ -89,18 +91,35 @@ class Metrics:
         None
 
         """
+
         cls.collecting = False
 
+
     @classmethod
-    def inc(cls, line, metric, inc):
-        """Increment a metric during collection
+    def getIter(cls):
+        """Get the inner loop iteration number
 
-        Increment the given metric associated with the given line of code by
-        the specified amount. If the line or metric is not already being
-        tracked, they are first added to the dictionary of metrics.
+        Parameters
+        ----------
 
-        If metrics collection is off, this function returns without modifying
-        anything.
+        None
+
+        Returns
+        -------
+
+        None
+
+        """
+        return cls.iteration
+
+
+    @classmethod
+    def incCount(cls, line, metric, inc):
+        """Increment a count metric during collection
+
+        Increment the given count metric associated with the given line of
+        code by the specified amount. If the line or metric is not already
+        being tracked, they are first added to the dictionary of metrics.
 
         Parameters
         ----------
@@ -121,9 +140,6 @@ class Metrics:
 
         """
 
-        if not cls.collecting:
-            return
-
         line = line.strip()
 
         if line not in cls.metrics[-1]:
@@ -133,6 +149,24 @@ class Metrics:
             cls.metrics[-1][line][metric] = 0
 
         cls.metrics[-1][line][metric] += inc
+
+
+    @classmethod
+    def incIter(cls):
+        """Increment the iteration number by one
+
+        Parameters
+        ----------
+
+        None
+
+        Returns
+        -------
+
+        None
+
+        """
+        cls.iteration += 1
 
 
     @classmethod

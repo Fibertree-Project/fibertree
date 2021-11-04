@@ -475,6 +475,7 @@ class Fiber:
         """
 
         self._clearSavedPosStats()
+        self._clearReuseStats()
 
 
 #
@@ -1536,6 +1537,21 @@ class Fiber:
 
         self._saved_count = 0
         self._saved_dist = 0
+
+    def _addUse(self, coord, iteration):
+        """_addUse"""
+        if coord in self._last_use.keys():
+            self._reuses[coord].append(iteration - self._last_use[coord])
+            self._last_use[coord] = iteration
+        else:
+            self._reuses[coord] = []
+            self._last_use[coord] = iteration
+
+
+    def _clearReuseStats(self):
+        """_clearReuseStats"""
+        self._last_use = {}
+        self._reuses = {}
 
     #
     # Computed attribute acccessors
@@ -3446,6 +3462,45 @@ class Fiber:
         return result
 
 
+#
+# Private functions for used in merge methods
+#
+    @staticmethod
+    def _get_next(iter):
+        """get_next"""
+
+        try:
+            coord, payload = next(iter)
+        except StopIteration:
+            return (None, None)
+
+        return CoordPayload(coord, payload)
+
+    @staticmethod
+    def _get_next_nonempty(iter):
+        """get_next_nonempty"""
+
+        (coord, payload) = Fiber._get_next(iter)
+
+        while Payload.isEmpty(payload):
+            (coord, payload) = Fiber._get_next(iter)
+
+        return CoordPayload(coord, payload)
+
+    @staticmethod
+    def _flatten(tuples):
+        """Flatten an arbitrarily nested tuple """
+        flattened = []
+        frontier = [tuples]
+        while len(frontier) > 0:
+            elem = frontier.pop()
+            if not isinstance(elem, tuple):
+                flattened.append(elem)
+            else:
+                for inner in elem:
+                    frontier.append(inner)
+
+        return flattened
 
 #
 # Merge methods
@@ -3484,8 +3539,9 @@ class Fiber:
 
         Returns
         --------
-        result: Fiber
-            A fiber created according to the intersection rules
+        result: generator
+            A generator yielding the coordinate-payload pairs according to the
+            intersection rules
 
         Note
         ----
@@ -3494,90 +3550,97 @@ class Fiber:
 
         """
 
-        def get_next(iter):
-            """get_next"""
-
-            try:
-                coord, payload = next(iter)
-            except StopIteration:
-                return (None, None)
-
-            return CoordPayload(coord, payload)
-
-
-        def get_next_nonempty(iter):
-            """get_next_nonempty"""
-
-            (coord, payload) = get_next(iter)
-
-            while Payload.isEmpty(payload):
-                (coord, payload) = get_next(iter)
-
-            return CoordPayload(coord, payload)
-
         assert self._ordered and self._unique
-
 
         a_fiber = self
         b_fiber = other
 
-        z_coords = []
-        z_payloads = []
-
         # Get the format of a
-        if self.getOwner() is None:
+        if not isinstance(a_fiber, Fiber) or a_fiber.getOwner() is None:
             fmt = "C"
         else:
-            fmt = self.getOwner().getFormat()
+            fmt = a_fiber.getOwner().getFormat()
 
         # Get the iterator over a
         if fmt == "C":
-            a = self.__iter__()
-            next_a = lambda: get_next_nonempty(a)
+            a = a_fiber.__iter__()
+            next_a = lambda: Fiber._get_next_nonempty(a)
         elif fmt == "U":
-            a = self.iterShape()
-            next_a = lambda: get_next(a)
+            a = a_fiber.iterShape()
+            next_a = lambda: Fiber._get_next(a)
         else:
             raise ValueError("Unknown format")
 
         # Get the format of b
-        if other.getOwner() is None:
+        if not isinstance(b_fiber, Fiber) or b_fiber.getOwner() is None:
             fmt = "C"
         else:
-            fmt = other.getOwner().getFormat()
+            fmt = b_fiber.getOwner().getFormat()
 
         # Get the iterator over b
         if fmt == "C":
-            b = other.__iter__()
-            next_b = lambda: get_next_nonempty(b)
+            b = b_fiber.__iter__()
+            next_b = lambda: Fiber._get_next_nonempty(b)
         elif fmt == "U":
-            b = other.iterShape()
-            next_b = lambda: get_next(b)
+            b = b_fiber.iterShape()
+            next_b = lambda: Fiber._get_next(b)
         else:
             raise ValueError("Unknown format")
 
         a_coord, a_payload = next_a()
         b_coord, b_payload = next_b()
 
-        if self.getOwner() is None:
+        if a_fiber.getOwner() is None:
             line = "Rank Unknown"
         else:
-            line = "Rank " + self.getOwner().getId()
+            line = "Rank " + a_fiber.getOwner().getId()
 
-        Metrics.inc(line, "coordinate_read_tensor0", 1)
-        Metrics.inc(line, "coordinate_read_tensor1", 1)
+        is_inner = None
+        is_collecting = Metrics.isCollecting()
+
+        if is_collecting:
+            Metrics.incCount(line, "coordinate_read_tensor0", 1)
+            Metrics.incCount(line, "coordinate_read_tensor1", 1)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
-                z_coords.append(a_coord)
-                z_payloads.append((a_payload, b_payload))
 
-                Metrics.inc(line, "successful_intersect", 1)
-                Metrics.inc(line, "attempt_intersect", 1)
-                Metrics.inc(line, "payload_read_tensor0", 1)
-                Metrics.inc(line, "coordinate_read_tensor0", 1)
-                Metrics.inc(line, "payload_read_tensor1", 1)
-                Metrics.inc(line, "coordinate_read_tensor1", 1)
+                if is_collecting:
+                    # Increment the count metrics
+                    Metrics.incCount(line, "attempt_intersect", 1)
+                    Metrics.incCount(line, "successful_intersect", 1)
+                    Metrics.incCount(line, "payload_read_tensor0", 1)
+                    Metrics.incCount(line, "payload_read_tensor1", 1)
+
+                    start_iter = Metrics.getIter()
+
+                    # If we are collecting metrics and this is our first time
+                    # through the loop, check if it is the inner loop
+                    if is_inner == None:
+                        a_flattened = Fiber._flatten(a_payload)
+                        b_flattened = Fiber._flatten(b_payload)
+
+                        if any(isinstance(p, Fiber) for p in a_flattened) or \
+                                any(isinstance(p, Fiber) for p in b_flattened):
+                            is_inner = False
+                        else:
+                            is_inner = True
+
+                    # If we have reached the inner loop, increment the
+                    # iteration count
+                    if is_inner:
+                        Metrics.incIter()
+
+                yield a_coord, (a_payload, b_payload)
+
+                if is_collecting:
+                    Metrics.incCount(line, "coordinate_read_tensor0", 1)
+                    Metrics.incCount(line, "coordinate_read_tensor1", 1)
+
+                    # Track all reuses of the element
+                    for i in range(start_iter, Metrics.getIter()):
+                        a_fiber._addUse(a_coord, i)
+                        b_fiber._addUse(b_coord, i)
 
                 a_coord, a_payload = next_a()
                 b_coord, b_payload = next_b()
@@ -3587,24 +3650,22 @@ class Fiber:
             if a_coord < b_coord:
                 a_coord, a_payload = next_a()
 
-                Metrics.inc(line, "coordinate_read_tensor0", 1)
-                Metrics.inc(line, "attempt_intersect", 1)
+                if is_collecting:
+                    Metrics.incCount(line, "attempt_intersect", 1)
+                    Metrics.incCount(line, "coordinate_read_tensor0", 1)
 
                 continue
 
             if a_coord > b_coord:
                 b_coord, b_payload = next_b()
 
-                Metrics.inc(line, "coordinate_read_tensor1", 1)
-                Metrics.inc(line, "attempt_intersect", 1)
+                if is_collecting:
+                    Metrics.incCount(line, "attempt_intersect", 1)
+                    Metrics.incCount(line, "coordinate_read_tensor1", 1)
 
                 continue
 
-        result = Fiber(z_coords, z_payloads)
-        result._setDefault((a_fiber.getDefault(), b_fiber.getDefault()))
-
-        return result
-
+        return
 
     def __or__(self, other):
         """__or__
@@ -3652,26 +3713,6 @@ class Fiber:
         """
 
 
-        def get_next(iter):
-            """get_next"""
-
-            try:
-                coord, payload = next(iter)
-            except StopIteration:
-                return (None, None)
-
-            return CoordPayload(coord, payload)
-
-        def get_next_nonempty(iter):
-            """get_next_nonempty"""
-
-            (coord, payload) = get_next(iter)
-
-            while Payload.isEmpty(payload):
-                (coord, payload) = get_next(iter)
-
-            return CoordPayload(coord, payload)
-
         assert self._ordered and self._unique
 
         a_fiber = self
@@ -3683,8 +3724,8 @@ class Fiber:
         z_coords = []
         z_payloads = []
 
-        a_coord, a_payload = get_next_nonempty(a)
-        b_coord, b_payload = get_next_nonempty(b)
+        a_coord, a_payload = Fiber._get_next_nonempty(a)
+        b_coord, b_payload = Fiber._get_next_nonempty(b)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
@@ -3692,8 +3733,8 @@ class Fiber:
 
                 z_payloads.append(("AB", a_payload, b_payload))
 
-                a_coord, a_payload = get_next_nonempty(a)
-                b_coord, b_payload = get_next_nonempty(b)
+                a_coord, a_payload = Fiber._get_next_nonempty(a)
+                b_coord, b_payload = Fiber._get_next_nonempty(b)
                 continue
 
             if a_coord < b_coord:
@@ -3702,7 +3743,7 @@ class Fiber:
                 b_default = b_fiber._createDefault()
                 z_payloads.append(("A", a_payload, b_default))
 
-                a_coord, a_payload = get_next_nonempty(a)
+                a_coord, a_payload = Fiber._get_next_nonempty(a)
                 continue
 
             if a_coord > b_coord:
@@ -3711,7 +3752,7 @@ class Fiber:
                 a_default = a_fiber._createDefault()
                 z_payloads.append(("B", a_default, b_payload))
 
-                b_coord, b_payload = get_next_nonempty(b)
+                b_coord, b_payload = Fiber._get_next_nonempty(b)
                 continue
 
         while a_coord is not None:
@@ -3720,7 +3761,7 @@ class Fiber:
             b_default = b_fiber._createDefault()
             z_payloads.append(("A", a_payload, b_default))
 
-            a_coord, a_payload = get_next_nonempty(a)
+            a_coord, a_payload = Fiber._get_next_nonempty(a)
 
         while b_coord is not None:
             z_coords.append(b_coord)
@@ -3728,7 +3769,7 @@ class Fiber:
             a_default = a_fiber._createDefault()
             z_payloads.append(("B", a_default, b_payload))
 
-            b_coord, b_payload = get_next_nonempty(b)
+            b_coord, b_payload = Fiber._get_next_nonempty(b)
 
         result = Fiber(z_coords, z_payloads)
         result._setDefault(("", a_fiber.getDefault(), b_fiber.getDefault()))
@@ -3781,26 +3822,6 @@ class Fiber:
 
         """
 
-
-        def get_next(iter):
-            """get_next"""
-
-            try:
-                coord, payload = next(iter)
-            except StopIteration:
-                return (None, None)
-            return CoordPayload(coord, payload)
-
-        def get_next_nonempty(iter):
-            """get_next_nonempty"""
-
-            (coord, payload) = get_next(iter)
-
-            while Payload.isEmpty(payload):
-                (coord, payload) = get_next(iter)
-
-            return CoordPayload(coord, payload)
-
         assert self._ordered and self._unique
 
         a_fiber = self
@@ -3812,13 +3833,13 @@ class Fiber:
         z_coords = []
         z_payloads = []
 
-        a_coord, a_payload = get_next_nonempty(a)
-        b_coord, b_payload = get_next_nonempty(b)
+        a_coord, a_payload = Fiber._get_next_nonempty(a)
+        b_coord, b_payload = Fiber._get_next_nonempty(b)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
-                a_coord, a_payload = get_next_nonempty(a)
-                b_coord, b_payload = get_next_nonempty(b)
+                a_coord, a_payload = Fiber._get_next_nonempty(a)
+                b_coord, b_payload = Fiber._get_next_nonempty(b)
                 continue
 
             if a_coord < b_coord:
@@ -3827,7 +3848,7 @@ class Fiber:
                 b_default = b_fiber._createDefault()
                 z_payloads.append(("A", a_payload, b_default))
 
-                a_coord, a_payload = get_next_nonempty(a)
+                a_coord, a_payload = Fiber._get_next_nonempty(a)
                 continue
 
             if a_coord > b_coord:
@@ -3836,7 +3857,7 @@ class Fiber:
                 a_default = a_fiber._createDefault()
                 z_payloads.append(("B", a_default, b_payload))
 
-                b_coord, b_payload = get_next_nonempty(b)
+                b_coord, b_payload = Fiber._get_next_nonempty(b)
                 continue
 
         while a_coord is not None:
@@ -3845,7 +3866,7 @@ class Fiber:
             b_default = b_fiber._createDefault()
             z_payloads.append(("A", a_payload, b_default))
 
-            a_coord, a_payload = get_next_nonempty(a)
+            a_coord, a_payload = Fiber._get_next_nonempty(a)
 
         while b_coord is not None:
             z_coords.append(b_coord)
@@ -3853,7 +3874,7 @@ class Fiber:
             a_default = a_fiber._createDefault()
             z_payloads.append(("B", a_default, b_payload))
 
-            b_coord, b_payload = get_next_nonempty(b)
+            b_coord, b_payload = Fiber._get_next_nonempty(b)
 
         result = Fiber(z_coords, z_payloads)
         result._setDefault(("", a_fiber.getDefault(), b_fiber.getDefault()))
@@ -3897,37 +3918,18 @@ class Fiber:
 
         Returns
         --------
-        result: Fiber
-            A fiber created according to the assignment rules
+        result: generator
+            A generator yielding the coordinate-payload pairs according to the
+            assignment rules
 
 
         Notes
         ------
 
-        An explcit zero in the input will NOT generate a corresponding
+        An explicit zero in the input will NOT generate a corresponding
         coordinate in the output!
 
         """
-
-        def get_next(iter):
-            """get_next"""
-
-            try:
-                coord, payload = next(iter)
-            except StopIteration:
-                return (None, None)
-
-            return CoordPayload(coord, payload)
-
-        def get_next_nonempty(iter):
-            """get_next_nonempty"""
-
-            (coord, payload) = get_next(iter)
-
-            while Payload.isEmpty(payload):
-                (coord, payload) = get_next(iter)
-
-            return CoordPayload(coord, payload)
 
         a_fiber = self
         b_fiber = other
@@ -3935,7 +3937,7 @@ class Fiber:
         # "a" is self!
 
         # Get the format of b
-        if other.getOwner() is None:
+        if not isinstance(other, Fiber) or other.getOwner() is None:
             fmt = "C"
         else:
             fmt = other.getOwner().getFormat()
@@ -3943,10 +3945,10 @@ class Fiber:
         # Get the iterator over b
         if fmt == "C":
             b = other.__iter__()
-            next_b = lambda: get_next_nonempty(b)
+            next_b = lambda: Fiber._get_next_nonempty(b)
         elif fmt == "U":
             b = other.iterShape()
-            next_b = lambda: get_next(b)
+            next_b = lambda: Fiber._get_next(b)
         else:
             raise ValueError("Unknown format")
 
@@ -3963,7 +3965,10 @@ class Fiber:
         else:
             line = "Rank " + self.getOwner().getId()
 
-        Metrics.inc(line, "coordinate_read_tensor1", 1)
+        is_collecting = Metrics.isCollecting()
+
+        if is_collecting:
+            Metrics.incCount(line, "coordinate_read_tensor1", 1)
 
         while b_coord is not None:
             z_coords.append(b_coord)
@@ -3977,31 +3982,30 @@ class Fiber:
 
             b_coord, b_payload = next_b()
 
-            Metrics.inc(line, "coordinate_read_tensor1", 1)
-            Metrics.inc(line, "payload_read_tensor1", 1)
+            if is_collecting:
+                Metrics.incCount(line, "coordinate_read_tensor1", 1)
+                Metrics.incCount(line, "payload_read_tensor1", 1)
 
-        #
-        # Collect z_payloads allowing for repeated coordinates
-        #
+        # Add coordinates/paylaods to a_fiber where necessary
         for b_coord, a_payload, b_payload in zip(z_coords, z_a_payloads, z_b_payloads):
 
             if a_payload is None:
-                if self.maxCoord() is None or self.maxCoord() < b_coord:
-                    Metrics.inc(line, "coord_payload_append_tensor0", 1)
-                else:
-                    Metrics.inc(line, "coord_payload_insert_tensor0", 1)
+                if is_collecting:
+                    if self.maxCoord() is None or self.maxCoord() < b_coord:
+                        Metrics.incCount(line, "coord_payload_append_tensor0", 1)
+                    else:
+                        Metrics.incCount(line, "coord_payload_insert_tensor0", 1)
 
                 a_payload = self._create_payload(b_coord)
 
             else:
-                Metrics.inc(line, "coordinate_read_tensor0", 1)
-                Metrics.inc(line, "payload_read_tensor0", 1)
+                if is_collecting:
+                    Metrics.incCount(line, "coordinate_read_tensor0", 1)
+                    Metrics.incCount(line, "payload_read_tensor0", 1)
 
-            z_payloads.append((a_payload, b_payload))
+            yield b_coord, (a_payload, b_payload)
 
-        result = self._newFiber(z_coords, z_payloads)
-
-        return result
+        return
 
 
     def __sub__(self, other):
@@ -4051,25 +4055,6 @@ class Fiber:
         """
 
 
-        def get_next(iter):
-            """get_next"""
-
-            try:
-                coord, payload = next(iter)
-            except StopIteration:
-                return (None, None)
-            return CoordPayload(coord, payload)
-
-        def get_next_nonempty(iter):
-            """get_next_nonempty"""
-
-            (coord, payload) = get_next(iter)
-
-            while Payload.isEmpty(payload):
-                (coord, payload) = get_next(iter)
-
-            return CoordPayload(coord, payload)
-
         assert self._ordered and self._unique
 
         a_fiber = self
@@ -4081,31 +4066,31 @@ class Fiber:
         z_coords = []
         z_payloads = []
 
-        a_coord, a_payload = get_next(a)
-        b_coord, b_payload = get_next_nonempty(b)
+        a_coord, a_payload = Fiber._get_next(a)
+        b_coord, b_payload = Fiber._get_next_nonempty(b)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
-                a_coord, a_payload = get_next(a)
-                b_coord, b_payload = get_next_nonempty(b)
+                a_coord, a_payload = Fiber._get_next(a)
+                b_coord, b_payload = Fiber._get_next_nonempty(b)
                 continue
 
             if a_coord < b_coord:
                 z_coords.append(a_coord)
                 z_payloads.append(a_payload)
 
-                a_coord, a_payload = get_next(a)
+                a_coord, a_payload = Fiber._get_next(a)
                 continue
 
             if a_coord > b_coord:
-                b_coord, b_payload = get_next(b)
+                b_coord, b_payload = Fiber._get_next(b)
                 continue
 
         while a_coord is not None:
             z_coords.append(a_coord)
             z_payloads.append(a_payload)
 
-            a_coord, a_payload = get_next(a)
+            a_coord, a_payload = Fiber._get_next(a)
 
         result = Fiber(z_coords, z_payloads)
         result._setDefault(a_fiber.getDefault())

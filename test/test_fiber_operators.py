@@ -74,7 +74,8 @@ class TestFiberOperators(unittest.TestCase):
         b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 0])
 
         Metrics.beginCollect()
-        _ = a_k & b_k
+        for _ in a_k & b_k:
+            pass
         Metrics.endCollect()
 
         self.assertEqual(
@@ -95,7 +96,8 @@ class TestFiberOperators(unittest.TestCase):
         B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
 
         Metrics.beginCollect()
-        _ = A_K.getRoot() & B_K.getRoot()
+        for _ in A_K.getRoot() & B_K.getRoot():
+            pass
         Metrics.endCollect()
 
         self.assertEqual(
@@ -160,7 +162,8 @@ class TestFiberOperators(unittest.TestCase):
         z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
 
         Metrics.beginCollect()
-        _ = z_m << a_m
+        for _ in z_m << a_m:
+            pass
         Metrics.endCollect()
 
         self.assertEqual(
@@ -184,7 +187,8 @@ class TestFiberOperators(unittest.TestCase):
         z_m = Z_M.getRoot()
 
         Metrics.beginCollect()
-        _ = z_m << a_m
+        for _ in z_m << a_m:
+            pass
         Metrics.endCollect()
 
         self.assertEqual(

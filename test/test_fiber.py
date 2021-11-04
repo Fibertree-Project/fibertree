@@ -1251,12 +1251,11 @@ class TestFiber(unittest.TestCase):
 
         a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
         b = Fiber([0, 5, 9], [2, 7, 11])
-
-        ab_ref = Fiber([5, 9], [(6, 7), (10, 11)])
-
         ab = a & b
 
-        self.assertEqual(ab, ab_ref)
+        self.assertEqual(next(ab), (5, (6, 7)))
+        self.assertEqual(next(ab), (9, (10, 11)))
+        self.assertRaises(StopIteration, lambda: next(ab))
 
     def test_and_empty(self):
         """Intersection test - with explict zeros"""
@@ -1264,11 +1263,10 @@ class TestFiber(unittest.TestCase):
         a = Fiber([1, 5, 8, 9], [0, 6, 0, 10])
         b = Fiber([1, 5, 8, 9], [2, 0, 0, 11])
 
-        ab_ref = Fiber([9], [(10, 11)])
-
         ab = a & b
 
-        self.assertEqual(ab, ab_ref)
+        self.assertEqual(next(ab), (9, (10, 11)))
+        self.assertRaises(StopIteration, lambda: next(ab))
 
 
     def test_or(self):
@@ -1451,16 +1449,13 @@ class TestFiber(unittest.TestCase):
         # Note:
         #    coordinate 9 stays although a@9 is zero
         #    coordinate 14 does not appear since b@14 is 0
-
-        ab_ref = Fiber([1, 5, 8, 9],
-                       [(0, 2),
-                        (10, 6),
-                        (0, 9),
-                        (0, 10)])
-
         ab = a << b
+        self.assertEqual(next(ab), (1, (0, 2)))
+        self.assertEqual(next(ab), (5, (10, 6)))
+        self.assertEqual(next(ab), (8, (0, 9)))
+        self.assertEqual(next(ab), (9, (0, 10)))
+        self.assertRaises(StopIteration, lambda: next(ab))
 
-        self.assertEqual(ab, ab_ref)
 
     def test_flatten(self):
         """Test flattening/unflattening 1 level"""
