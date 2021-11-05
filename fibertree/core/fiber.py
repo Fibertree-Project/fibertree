@@ -1538,20 +1538,42 @@ class Fiber:
         self._saved_count = 0
         self._saved_dist = 0
 
-    def _addUse(self, coord, iteration):
+    def getUseStats(self):
+        """getUseStats
+
+        NDN: Add comment
+        """
+        reuses = []
+        for pay_reuses in self._reuses.values():
+            reuses += pay_reuses
+
+        if self._stationary > 0:
+            avg_stationary = self._stationary / (len(self._last_use) + len(reuses))
+        else:
+            avg_stationary = 0
+
+        if not Metrics.isCollecting():
+            self._clearReuseStats()
+
+        return reuses, avg_stationary
+
+
+    def _addUse(self, coord, start, end):
         """_addUse"""
         if coord in self._last_use.keys():
-            self._reuses[coord].append(iteration - self._last_use[coord])
-            self._last_use[coord] = iteration
+            self._reuses[coord].append(start - self._last_use[coord])
+            self._last_use[coord] = start
         else:
             self._reuses[coord] = []
-            self._last_use[coord] = iteration
+            self._last_use[coord] = start
 
+        self._stationary += end - start
 
     def _clearReuseStats(self):
         """_clearReuseStats"""
         self._last_use = {}
         self._reuses = {}
+        self._stationary = 0
 
     #
     # Computed attribute acccessors
@@ -3638,9 +3660,8 @@ class Fiber:
                     Metrics.incCount(line, "coordinate_read_tensor1", 1)
 
                     # Track all reuses of the element
-                    for i in range(start_iter, Metrics.getIter()):
-                        a_fiber._addUse(a_coord, i)
-                        b_fiber._addUse(b_coord, i)
+                    a_fiber._addUse(a_coord, start_iter, Metrics.getIter())
+                    b_fiber._addUse(b_coord, start_iter, Metrics.getIter())
 
                 a_coord, a_payload = next_a()
                 b_coord, b_payload = next_b()
@@ -3937,17 +3958,17 @@ class Fiber:
         # "a" is self!
 
         # Get the format of b
-        if not isinstance(other, Fiber) or other.getOwner() is None:
+        if not isinstance(b_fiber, Fiber) or b_fiber.getOwner() is None:
             fmt = "C"
         else:
-            fmt = other.getOwner().getFormat()
+            fmt = b_fiber.getOwner().getFormat()
 
         # Get the iterator over b
         if fmt == "C":
-            b = other.__iter__()
+            b = b_fiber.__iter__()
             next_b = lambda: Fiber._get_next_nonempty(b)
         elif fmt == "U":
-            b = other.iterShape()
+            b = b_fiber.iterShape()
             next_b = lambda: Fiber._get_next(b)
         else:
             raise ValueError("Unknown format")
@@ -3987,6 +4008,7 @@ class Fiber:
                 Metrics.incCount(line, "payload_read_tensor1", 1)
 
         # Add coordinates/paylaods to a_fiber where necessary
+        is_inner = None
         for b_coord, a_payload, b_payload in zip(z_coords, z_a_payloads, z_b_payloads):
 
             if a_payload is None:
@@ -3998,12 +4020,35 @@ class Fiber:
 
                 a_payload = self._create_payload(b_coord)
 
-            else:
-                if is_collecting:
-                    Metrics.incCount(line, "coordinate_read_tensor0", 1)
-                    Metrics.incCount(line, "payload_read_tensor0", 1)
+            elif is_collecting:
+                Metrics.incCount(line, "coordinate_read_tensor0", 1)
+                Metrics.incCount(line, "payload_read_tensor0", 1)
+
+            if is_collecting:
+                # If we are collecting metrics and this is our first time
+                # through the loop, check if it is the inner loop
+                if is_inner == None:
+                    a_flattened = Fiber._flatten(a_payload)
+                    b_flattened = Fiber._flatten(b_payload)
+
+                    if any(isinstance(p, Fiber) for p in a_flattened) or \
+                            any(isinstance(p, Fiber) for p in b_flattened):
+                        is_inner = False
+                    else:
+                        is_inner = True
+
+                start_iter = Metrics.getIter()
+
+                # If we have reached the inner loop, increment the
+                # iteration count
+                if is_inner:
+                    Metrics.incIter()
 
             yield b_coord, (a_payload, b_payload)
+
+            if is_collecting:
+                a_fiber._addUse(b_coord, start_iter, Metrics.getIter())
+                b_fiber._addUse(b_coord, start_iter, Metrics.getIter())
 
         return
 

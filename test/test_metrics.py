@@ -13,9 +13,14 @@ class TestMetrics(unittest.TestCase):
 
     def test_begin_collect(self):
         """Test that the beginCollect() method begins collection"""
+        # NDN: This is a hack and should be fixed
+        Metrics.collecting = False
+
         self.assertFalse(Metrics.isCollecting())
         Metrics.beginCollect()
         self.assertTrue(Metrics.isCollecting())
+
+        Metrics.endCollect()
 
     def test_end_collect(self):
         """Test that the endCollect() method ends collection"""
@@ -65,4 +70,5 @@ class TestMetrics(unittest.TestCase):
         Metrics.endCollect()
 
         Metrics.beginCollect()
+        Metrics.endCollect()
         self.assertEqual(Metrics.dump(), {})
