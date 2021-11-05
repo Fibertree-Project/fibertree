@@ -1540,6 +1540,35 @@ class Tensor:
         #
         return root
 
+#
+# Tensor-specific metrics access
+#
+    def getUseStats(self):
+        """getUseStats
+        NDN: add comment
+        """
+        reuses = {}
+        stationary = {}
+        for rank in self.ranks:
+            rank_name = "Rank " + rank.getId()
+            reuses[rank_name] = []
+            stationary[rank_name] = 0
+
+            for fiber in rank.getFibers():
+                freuse, fstat = fiber.getUseStats()
+                reuses[rank_name] += freuse
+                stationary[rank_name] += fstat
+
+        return reuses
+
+
+    def clearStats(self):
+        """clearStats
+        NDN: add comment
+        """
+        for rank in self.ranks:
+            for fiber in rank.getFibers():
+                fiber.clearStats()
 
 
 #

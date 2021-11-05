@@ -471,6 +471,8 @@ class Fiber:
         """Clear savedPos-related statistics
 
         See `Fiber.getSavedPos()` for more information.
+        NDN: Make sure this is actually the method that should be used
+        for clearing metrics
 
         """
 
@@ -1547,15 +1549,7 @@ class Fiber:
         for pay_reuses in self._reuses.values():
             reuses += pay_reuses
 
-        if self._stationary > 0:
-            avg_stationary = self._stationary / (len(self._last_use) + len(reuses))
-        else:
-            avg_stationary = 0
-
-        if not Metrics.isCollecting():
-            self._clearReuseStats()
-
-        return reuses, avg_stationary
+        return reuses, self._stationary
 
 
     def _addUse(self, coord, start, end):

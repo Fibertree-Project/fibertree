@@ -2,6 +2,7 @@ import unittest
 
 from fibertree import Payload
 from fibertree import Fiber
+from fibertree import Metrics
 from fibertree import Rank
 from fibertree import Tensor
 
@@ -684,6 +685,30 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(t4.getFormat("M"), "C")
         self.assertEqual(t4.getFormat("K.1"), "C")
         self.assertEqual(t4.getFormat("K.0"), "U")
+
+    def test_use_stats(self):
+        A_MK = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        B_NK = Tensor.fromYAMLfile("./data/test_tensor-2.yaml")
+        Z_MN = Tensor(rank_ids=["M", "N"])
+
+        a_m = A_MK.getRoot()
+        b_n = B_NK.getRoot()
+        z_m = Z_MN.getRoot()
+
+        Metrics.beginCollect()
+        for m, (z_n, a_k) in z_m << a_m:
+            for n, (z_ref, b_k) in z_n << b_n:
+                for k, (a_val, b_val) in a_k & b_k:
+                    z_ref += a_val * b_val
+        Metrics.endCollect()
+
+        self.assertEqual(A_MK.getUseStats(),
+            {'Rank M': [], 'Rank K': [2, 3, 2, 2, 1, 2, 2, 2, 1]})
+        self.assertEqual(B_NK.getUseStats(),
+            {'Rank N': [5, 5, 3, 6, 3, 5, 5, 3, 5],
+             'Rank K': [5, 8, 8, 9, 5, 8, 8, 8, 8, 8]})
+        self.assertEqual(Z_MN.getUseStats(),
+            {'Rank M': [], 'Rank N': []})
 
 if __name__ == '__main__':
     unittest.main()

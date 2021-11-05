@@ -1,0 +1,40 @@
+tensor:
+  name: test_tensor-2
+  rank_ids:
+  - N
+  - K
+  root:
+  - fiber:
+      coords:
+      - 0
+      - 1
+      - 4
+      payloads:
+      - fiber:
+          coords:
+          - 1
+          - 3
+          payloads:
+          - 102
+          - 104
+      - fiber:
+          coords:
+          - 0
+          - 1
+          - 2
+          - 3
+          payloads:
+          - 201
+          - 202
+          - 203
+          - 204
+      - fiber:
+          coords:
+          - 0
+          - 3
+          payloads:
+          - 501
+          - 504
+  shape:
+  - 5
+  - 4

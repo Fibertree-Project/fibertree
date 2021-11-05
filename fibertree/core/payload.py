@@ -425,7 +425,7 @@ class Payload:
         # Collect metrics
         if Metrics.isCollecting():
             Metrics.incCount("Compute", "payload_add", 1)
-            Metrics.incCount("Compute", "data_update", 1)
+            Metrics.incCount("Compute", "payload_update", 1)
 
         return self
 
@@ -556,7 +556,7 @@ class Payload:
         # Collect metrics
         if Metrics.isCollecting():
             Metrics.incCount("Compute", "payload_mul", 1)
-            Metrics.incCount("Compute", "data_update", 1)
+            Metrics.incCount("Compute", "payload_update", 1)
 
         return self
 

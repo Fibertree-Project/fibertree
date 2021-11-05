@@ -123,13 +123,13 @@ class TestFiberOperators(unittest.TestCase):
                 pass
         Metrics.endCollect()
 
-        reuses, avg_stat = a_k.getUseStats()
+        reuses, stat = a_k.getUseStats()
         self.assertEqual(reuses, [2] * 8)
-        self.assertEqual(avg_stat, 1)
+        self.assertEqual(stat, 10)
 
-        reuses, avg_stat = b_k.getUseStats()
+        reuses, stat = b_k.getUseStats()
         self.assertEqual(reuses, [2] * 8)
-        self.assertEqual(avg_stat, 1)
+        self.assertEqual(stat, 10)
 
     def test_and_use_stats_2D(self):
         """Test reuse statistics collected on a 2D fiber during Fiber.__and__"""
@@ -143,9 +143,9 @@ class TestFiberOperators(unittest.TestCase):
                     pass
         Metrics.endCollect()
 
-        reuses, avg_stat = a_j.getUseStats()
+        reuses, stat = a_j.getUseStats()
         self.assertEqual(reuses, [2, 3])
-        self.assertEqual(avg_stat, 0.8)
+        self.assertEqual(stat, 4)
 
 
     def test_and_with_format(self):
@@ -250,13 +250,13 @@ class TestFiberOperators(unittest.TestCase):
                 pass
         Metrics.endCollect()
 
-        reuses, avg_stat = a_m.getUseStats()
+        reuses, stat = a_m.getUseStats()
         self.assertEqual(reuses, [3] * 12)
-        self.assertEqual(avg_stat, 1)
+        self.assertEqual(stat, 15)
 
-        reuses, avg_stat = z_m.getUseStats()
+        reuses, stat = z_m.getUseStats()
         self.assertEqual(reuses, [3] * 12)
-        self.assertEqual(avg_stat, 1)
+        self.assertEqual(stat, 15)
 
     def test_lshift_use_stats_2D(self):
         """Test reuse statistics collected on a 2D fiber during Fiber.__lshift__"""
@@ -270,9 +270,9 @@ class TestFiberOperators(unittest.TestCase):
                     pass
         Metrics.endCollect()
 
-        reuses, avg_stat = z_m.getUseStats()
+        reuses, stat = z_m.getUseStats()
         self.assertEqual(reuses, [4, 6])
-        self.assertEqual(avg_stat, 1.8)
+        self.assertEqual(stat, 9)
 
     def test_lshift_with_format(self):
         """Test that Fiber.__lshift__ obeys the specified format"""

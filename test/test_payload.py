@@ -53,7 +53,7 @@ class TestPayload(unittest.TestCase):
 
         a += b
         self.assertEqual(Metrics.dump(), {
-            "Compute": {"payload_add": 4, "data_update": 1}})
+            "Compute": {"payload_add": 4, "payload_update": 1}})
 
         Metrics.endCollect()
 
@@ -112,7 +112,7 @@ class TestPayload(unittest.TestCase):
 
         a *= b
         self.assertEqual(Metrics.dump(), {
-            "Compute": {"payload_mul": 4, "data_update": 1}})
+            "Compute": {"payload_mul": 4, "payload_update": 1}})
 
         Metrics.endCollect()
 
