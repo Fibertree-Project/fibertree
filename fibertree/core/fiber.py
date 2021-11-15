@@ -1545,29 +1545,28 @@ class Fiber:
 
         NDN: Add comment
         """
-        reuses = []
-        for pay_reuses in self._reuses.values():
-            reuses += pay_reuses
+        uses = {}
+        for coord in self._first_use.keys():
+            uses[coord] = (self._first_use[coord], self._reuses[coord])
+        return uses
 
-        return reuses, self._stationary
 
-
-    def _addUse(self, coord, start, end):
+    def _addUse(self, coord, start):
         """_addUse"""
-        if coord in self._last_use.keys():
+        if coord in self._first_use.keys():
             self._reuses[coord].append(start - self._last_use[coord])
             self._last_use[coord] = start
         else:
             self._reuses[coord] = []
+            self._first_use[coord] = start
             self._last_use[coord] = start
 
-        self._stationary += end - start
 
     def _clearReuseStats(self):
         """_clearReuseStats"""
+        self._first_use = {}
         self._last_use = {}
         self._reuses = {}
-        self._stationary = 0
 
     #
     # Computed attribute acccessors
@@ -3654,8 +3653,8 @@ class Fiber:
                     Metrics.incCount(line, "coordinate_read_tensor1", 1)
 
                     # Track all reuses of the element
-                    a_fiber._addUse(a_coord, start_iter, Metrics.getIter())
-                    b_fiber._addUse(b_coord, start_iter, Metrics.getIter())
+                    a_fiber._addUse(a_coord, start_iter)
+                    b_fiber._addUse(b_coord, start_iter)
 
                 a_coord, a_payload = next_a()
                 b_coord, b_payload = next_b()
@@ -4041,8 +4040,8 @@ class Fiber:
             yield b_coord, (a_payload, b_payload)
 
             if is_collecting:
-                a_fiber._addUse(b_coord, start_iter, Metrics.getIter())
-                b_fiber._addUse(b_coord, start_iter, Metrics.getIter())
+                a_fiber._addUse(b_coord, start_iter)
+                b_fiber._addUse(b_coord, start_iter)
 
         return
 
