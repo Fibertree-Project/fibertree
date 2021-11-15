@@ -26,14 +26,14 @@ class Metrics:
     """
     # Create a class instance variable for the metrics collection
     collecting = False
-    iteration = 0
+    iteration = []
     metrics = []
 
     def __init__(self):
         raise NotImplementedError
 
     @classmethod
-    def beginCollect(cls):
+    def beginCollect(cls, num_loops):
         """Begin metrics collection
 
         Start collecting metrics during future HFA program execution.
@@ -41,7 +41,8 @@ class Metrics:
         Parameters
         ----------
 
-        None
+        num_loops: int
+            The number of loop nests in the kernel
 
         Returns
         -------
@@ -50,8 +51,30 @@ class Metrics:
 
         """
         cls.collecting = True
-        cls.iteration = 0
+        cls.iteration = [0] * num_loops
+        cls.line_order = {}
         cls.metrics.append({})
+
+    @classmethod
+    def clrIter(cls, line):
+        """Clear the given line's iteration counter
+
+        Parameters
+        ----------
+
+        line: string
+            The name of the line number this metric is associated with
+
+        Returns
+        -------
+
+        None
+
+        NDN: Test
+
+        """
+        cls.iteration[cls.line_order[line]] = 0
+
 
     @classmethod
     def dump(cls):
@@ -110,7 +133,7 @@ class Metrics:
         None
 
         """
-        return cls.iteration
+        return tuple(cls.iteration)
 
 
     @classmethod
@@ -152,13 +175,14 @@ class Metrics:
 
 
     @classmethod
-    def incIter(cls):
-        """Increment the iteration number by one
+    def incIter(cls, line):
+        """Increment the given line's iteration number by one
 
         Parameters
         ----------
 
-        None
+        line: string
+            The name of the line number this metric is associated with
 
         Returns
         -------
@@ -166,8 +190,10 @@ class Metrics:
         None
 
         """
-        cls.iteration += 1
+        if line not in cls.line_order.keys():
+            cls.line_order[line] = len(cls.line_order)
 
+        cls.iteration[cls.line_order[line]] += 1
 
     @classmethod
     def isCollecting(cls):

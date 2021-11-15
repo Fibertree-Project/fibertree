@@ -1554,7 +1554,8 @@ class Fiber:
     def _addUse(self, coord, start):
         """_addUse"""
         if coord in self._first_use.keys():
-            self._reuses[coord].append(start - self._last_use[coord])
+            dist = tuple((s - f for s, f in zip(start, self._first_use[coord])))
+            self._reuses[coord].append(dist)
             self._last_use[coord] = start
         else:
             self._reuses[coord] = []
@@ -3627,8 +3628,6 @@ class Fiber:
                     Metrics.incCount(line, "payload_read_tensor0", 1)
                     Metrics.incCount(line, "payload_read_tensor1", 1)
 
-                    start_iter = Metrics.getIter()
-
                     # If we are collecting metrics and this is our first time
                     # through the loop, check if it is the inner loop
                     if is_inner == None:
@@ -3641,10 +3640,6 @@ class Fiber:
                         else:
                             is_inner = True
 
-                    # If we have reached the inner loop, increment the
-                    # iteration count
-                    if is_inner:
-                        Metrics.incIter()
 
                 yield a_coord, (a_payload, b_payload)
 
@@ -3653,6 +3648,9 @@ class Fiber:
                     Metrics.incCount(line, "coordinate_read_tensor1", 1)
 
                     # Track all reuses of the element
+                    start_iter = Metrics.getIter()
+                    Metrics.incIter(line)
+
                     a_fiber._addUse(a_coord, start_iter)
                     b_fiber._addUse(b_coord, start_iter)
 
@@ -3678,6 +3676,9 @@ class Fiber:
                     Metrics.incCount(line, "coordinate_read_tensor1", 1)
 
                 continue
+
+        if is_collecting:
+            Metrics.clrIter(line)
 
         return
 
@@ -4031,17 +4032,16 @@ class Fiber:
                         is_inner = True
 
                 start_iter = Metrics.getIter()
-
-                # If we have reached the inner loop, increment the
-                # iteration count
-                if is_inner:
-                    Metrics.incIter()
+                Metrics.incIter(line)
 
             yield b_coord, (a_payload, b_payload)
 
             if is_collecting:
                 a_fiber._addUse(b_coord, start_iter)
                 b_fiber._addUse(b_coord, start_iter)
+
+        if is_collecting:
+            Metrics.clrIter(line)
 
         return
 
