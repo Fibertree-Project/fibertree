@@ -191,7 +191,7 @@ class Metrics:
 
         """
         if line not in cls.line_order.keys():
-            cls.line_order[line] = len(cls.line_order)
+            cls.line_order[line] = len(cls.iteration) - len(cls.line_order) - 1
 
         cls.iteration[cls.line_order[line]] += 1
 

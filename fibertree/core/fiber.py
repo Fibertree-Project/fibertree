@@ -4031,12 +4031,12 @@ class Fiber:
                     else:
                         is_inner = True
 
-                start_iter = Metrics.getIter()
-                Metrics.incIter(line)
-
             yield b_coord, (a_payload, b_payload)
 
             if is_collecting:
+                start_iter = Metrics.getIter()
+                Metrics.incIter(line)
+
                 a_fiber._addUse(b_coord, start_iter)
                 b_fiber._addUse(b_coord, start_iter)
 
