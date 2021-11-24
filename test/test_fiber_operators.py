@@ -73,7 +73,7 @@ class TestFiberOperators(unittest.TestCase):
         a_k = Fiber.fromUncompressed([1, 0, 0, 4, 0, 6])
         b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 0])
 
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
@@ -95,7 +95,7 @@ class TestFiberOperators(unittest.TestCase):
         A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 0, 6])
         B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
 
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
         for _ in A_K.getRoot() & B_K.getRoot():
             pass
         Metrics.endCollect()
@@ -117,35 +117,36 @@ class TestFiberOperators(unittest.TestCase):
         a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 6])
         b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 0])
 
-        Metrics.beginCollect()
-        for _ in range(5):
+        Metrics.beginCollect(2)
+        for _ in range(3):
             for _ in a_k & b_k:
                 pass
+            Metrics.incIter("M")
         Metrics.endCollect()
 
-        reuses, stat = a_k.getUseStats()
-        self.assertEqual(reuses, [2] * 8)
-        self.assertEqual(stat, 10)
+        reuses = a_k.getUseStats()
+        correct = {0: ((0, 0), [(1, 0), (2, 0)]), 4: ((0, 1), [(1, 0), (2, 0)])}
+        self.assertEqual(reuses, correct)
 
-        reuses, stat = b_k.getUseStats()
-        self.assertEqual(reuses, [2] * 8)
-        self.assertEqual(stat, 10)
+        reuses = b_k.getUseStats()
+        self.assertEqual(reuses, correct)
 
     def test_and_use_stats_2D(self):
         """Test reuse statistics collected on a 2D fiber during Fiber.__and__"""
-        a_j = Fiber.fromUncompressed([[1, 0, 3], [0, 0, 6], [0, 8, 9]])
-        b_i = Fiber.fromUncompressed([[[0, 2, 3], [0, 0, 0], [7, 8, 0]], [[1, 0, 0], [4, 5, 6], [7, 0, 0]]])
+        a_j = Tensor.fromUncompressed(rank_ids=["J", "K"], root=[[1, 0, 3], [0, 0, 6], [0, 8, 9]]).getRoot()
+        b_i = Tensor.fromUncompressed(rank_ids=["I", "J", "K"], root=[[[0, 2, 3], [0, 0, 0], [7, 8, 0]], [[1, 0, 0], [4, 5, 6], [7, 0, 0]]]).getRoot()
 
-        Metrics.beginCollect()
+        Metrics.beginCollect(3)
         for _, b_j in b_i:
-            for j, (a_k, b_k) in a_j & b_j:
+            for _, (a_k, b_k) in a_j & b_j:
                 for _ in a_k & b_k:
                     pass
+            Metrics.incIter("I")
         Metrics.endCollect()
 
-        reuses, stat = a_j.getUseStats()
-        self.assertEqual(reuses, [2, 3])
-        self.assertEqual(stat, 4)
+        reuses = a_j.getUseStats()
+        correct = {0: ((0, 0, 0), [(1, 0, 0)]), 2: ((0, 1, 0), [(1, 1, 0)]), 1: ((1, 1, 0), [])}
+        self.assertEqual(reuses, correct)
 
 
     def test_and_with_format(self):
@@ -197,7 +198,7 @@ class TestFiberOperators(unittest.TestCase):
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
         z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
 
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
         for _ in z_m << a_m:
             pass
         Metrics.endCollect()
@@ -222,7 +223,7 @@ class TestFiberOperators(unittest.TestCase):
         Z_M = Tensor.fromUncompressed(rank_ids=["M"], root=[0, 2, 3, 0, 0])
         z_m = Z_M.getRoot()
 
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
         for _ in z_m << a_m:
             pass
         Metrics.endCollect()
@@ -244,35 +245,36 @@ class TestFiberOperators(unittest.TestCase):
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
         z_m = Fiber()
 
-        Metrics.beginCollect()
-        for _ in range(5):
+        Metrics.beginCollect(2)
+        for _ in range(3):
             for _ in z_m << a_m:
                 pass
+            Metrics.incIter("N")
         Metrics.endCollect()
 
-        reuses, stat = a_m.getUseStats()
-        self.assertEqual(reuses, [3] * 12)
-        self.assertEqual(stat, 15)
+        reuses = a_m.getUseStats()
+        correct = {0: ((0, 0), [(1, 0), (2, 0)]), 2: ((0, 1), [(1, 0), (2, 0)]), 3: ((0, 2), [(1, 0), (2, 0)])}
+        self.assertEqual(reuses, correct)
 
-        reuses, stat = z_m.getUseStats()
-        self.assertEqual(reuses, [3] * 12)
-        self.assertEqual(stat, 15)
+        reuses = z_m.getUseStats()
+        self.assertEqual(reuses, correct)
 
     def test_lshift_use_stats_2D(self):
         """Test reuse statistics collected on a 2D fiber during Fiber.__lshift__"""
         a_j = Fiber.fromUncompressed([[[1, 0, 3], [0, 0, 0], [7, 8, 0]], [[1, 2, 3], [0, 0, 6], [0, 8, 0]]])
         z_m = Tensor(rank_ids=["M", "N"]).getRoot()
 
-        Metrics.beginCollect()
+        Metrics.beginCollect(3)
         for _, a_m in a_j:
             for m, (z_n, a_n) in z_m << a_m:
                 for _ in z_n << a_n:
                     pass
+            Metrics.incIter("J")
         Metrics.endCollect()
 
-        reuses, stat = z_m.getUseStats()
-        self.assertEqual(reuses, [4, 6])
-        self.assertEqual(stat, 9)
+        reuses = z_m.getUseStats()
+        correct = {0: ((0, 0, 0), [(1, 0, 0)]), 2: ((0, 1, 0), [(1, 1, 0)]), 1: ((1, 1, 0), [])}
+        self.assertEqual(reuses, correct)
 
     def test_lshift_with_format(self):
         """Test that Fiber.__lshift__ obeys the specified format"""

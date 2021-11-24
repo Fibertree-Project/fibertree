@@ -14,17 +14,17 @@ class TestMetrics(unittest.TestCase):
     def test_begin_collect(self):
         """Test that the beginCollect() method begins collection"""
         # NDN: This is a hack and should be fixed
-        Metrics.collecting = False
+        # Metrics.collecting = False
 
         self.assertFalse(Metrics.isCollecting())
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
         self.assertTrue(Metrics.isCollecting())
 
         Metrics.endCollect()
 
     def test_end_collect(self):
         """Test that the endCollect() method ends collection"""
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
 
         self.assertTrue(Metrics.isCollecting())
         Metrics.endCollect()
@@ -32,15 +32,15 @@ class TestMetrics(unittest.TestCase):
 
     def test_empty_dump(self):
         """Test that if no metrics have been collected, the dump is empty"""
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
         Metrics.endCollect()
 
         self.assertEqual(Metrics.dump(), {})
 
-    def test_inc(self):
+    def test_inc_count(self):
         """Test that inc updates the correct line/metric and adds new entries
         to the metrics dictionary if the line/metric do not already exist"""
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
         Metrics.incCount("Line 1", "Metric 1", 5)
         self.assertEqual(Metrics.dump(), {"Line 1": {"Metric 1": 5}})
 
@@ -63,12 +63,30 @@ class TestMetrics(unittest.TestCase):
 
         Metrics.endCollect()
 
+    def test_inc_iter(self):
+        """Test that the iterator increments correctly"""
+        Metrics.beginCollect(2)
+        self.assertEqual(Metrics.getIter(), (0, 0))
+
+        Metrics.incIter("M")
+        self.assertEqual(Metrics.getIter(), (0, 1))
+
+        Metrics.incIter("N")
+        Metrics.incIter("N")
+        Metrics.incIter("N")
+        self.assertEqual(Metrics.getIter(), (3, 1))
+
+        Metrics.clrIter("M")
+        self.assertEqual(Metrics.getIter(), (3, 0))
+
+        Metrics.endCollect()
+
     def test_new_collection(self):
         """Test that a beginCollect() restarts collection"""
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
         Metrics.incCount("Line 1", "Metric 1", 5)
         Metrics.endCollect()
 
-        Metrics.beginCollect()
+        Metrics.beginCollect(1)
         Metrics.endCollect()
         self.assertEqual(Metrics.dump(), {})
