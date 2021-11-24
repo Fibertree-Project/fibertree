@@ -4048,7 +4048,8 @@ class Fiber:
                 Metrics.incIter(line)
 
                 a_fiber._addUse(b_coord, start_iter)
-                b_fiber._addUse(b_coord, start_iter)
+                if isinstance(b_fiber, Fiber):
+                    b_fiber._addUse(b_coord, start_iter)
 
         if is_collecting:
             Metrics.clrIter(line)
