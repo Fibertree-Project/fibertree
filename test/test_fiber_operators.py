@@ -82,11 +82,35 @@ class TestFiberOperators(unittest.TestCase):
             Metrics.dump(),
             {"Rank Unknown": {
                 "coordinate_read_tensor0": 3,
-                "coordinate_read_tensor1": 4,
+                "coordinate_read_tensor1": 3,
                 "successful_intersect": 1,
-                "attempt_intersect": 4,
+                "unsuccessful_intersect": 3,
                 "payload_read_tensor0": 1,
-                "payload_read_tensor1": 1
+                "payload_read_tensor1": 1,
+                "diff_last_coord": 1
+            }}
+        )
+
+    def test_and_metrics_fiber_same_end(self):
+        """Test metrics collected during Fiber.__and__ on unowned fibers"""
+        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 0, 6])
+        b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 6])
+
+        Metrics.beginCollect(1)
+        for _ in a_k & b_k:
+            pass
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank Unknown": {
+                "coordinate_read_tensor0": 3,
+                "coordinate_read_tensor1": 4,
+                "successful_intersect": 2,
+                "unsuccessful_intersect": 3,
+                "payload_read_tensor0": 2,
+                "payload_read_tensor1": 2,
+                "same_last_coord": 1
             }}
         )
 
@@ -104,11 +128,12 @@ class TestFiberOperators(unittest.TestCase):
             Metrics.dump(),
             {"Rank K": {
                 "coordinate_read_tensor0": 3,
-                "coordinate_read_tensor1": 4,
+                "coordinate_read_tensor1": 3,
                 "successful_intersect": 1,
-                "attempt_intersect": 4,
+                "unsuccessful_intersect": 3,
                 "payload_read_tensor0": 1,
-                "payload_read_tensor1": 1
+                "payload_read_tensor1": 1,
+                "diff_last_coord": 1
             }}
         )
 
@@ -206,7 +231,7 @@ class TestFiberOperators(unittest.TestCase):
         self.assertEqual(
             Metrics.dump(),
             {"Rank Unknown": {
-                "coordinate_read_tensor1": 4,
+                "coordinate_read_tensor1": 3,
                 "payload_read_tensor1": 3,
                 "coord_payload_insert_tensor0": 1,
                 "coordinate_read_tensor0": 1,
@@ -231,7 +256,7 @@ class TestFiberOperators(unittest.TestCase):
         self.assertEqual(
             Metrics.dump(),
             {"Rank M": {
-                "coordinate_read_tensor1": 4,
+                "coordinate_read_tensor1": 3,
                 "payload_read_tensor1": 3,
                 "coord_payload_insert_tensor0": 1,
                 "coordinate_read_tensor0": 1,

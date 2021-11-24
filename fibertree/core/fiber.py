@@ -3623,7 +3623,6 @@ class Fiber:
 
                 if is_collecting:
                     # Increment the count metrics
-                    Metrics.incCount(line, "attempt_intersect", 1)
                     Metrics.incCount(line, "successful_intersect", 1)
                     Metrics.incCount(line, "payload_read_tensor0", 1)
                     Metrics.incCount(line, "payload_read_tensor1", 1)
@@ -3644,9 +3643,6 @@ class Fiber:
                 yield a_coord, (a_payload, b_payload)
 
                 if is_collecting:
-                    Metrics.incCount(line, "coordinate_read_tensor0", 1)
-                    Metrics.incCount(line, "coordinate_read_tensor1", 1)
-
                     # Track all reuses of the element
                     start_iter = Metrics.getIter()
                     Metrics.incIter(line)
@@ -3654,8 +3650,16 @@ class Fiber:
                     a_fiber._addUse(a_coord, start_iter)
                     b_fiber._addUse(b_coord, start_iter)
 
+
                 a_coord, a_payload = next_a()
                 b_coord, b_payload = next_b()
+
+                if is_collecting:
+                    if a_coord is not None:
+                        Metrics.incCount(line, "coordinate_read_tensor0", 1)
+
+                    if b_coord is not None:
+                        Metrics.incCount(line, "coordinate_read_tensor1", 1)
 
                 continue
 
@@ -3663,8 +3667,10 @@ class Fiber:
                 a_coord, a_payload = next_a()
 
                 if is_collecting:
-                    Metrics.incCount(line, "attempt_intersect", 1)
-                    Metrics.incCount(line, "coordinate_read_tensor0", 1)
+                    Metrics.incCount(line, "unsuccessful_intersect", 1)
+
+                    if a_coord is not None:
+                        Metrics.incCount(line, "coordinate_read_tensor0", 1)
 
                 continue
 
@@ -3672,13 +3678,20 @@ class Fiber:
                 b_coord, b_payload = next_b()
 
                 if is_collecting:
-                    Metrics.incCount(line, "attempt_intersect", 1)
-                    Metrics.incCount(line, "coordinate_read_tensor1", 1)
+                    Metrics.incCount(line, "unsuccessful_intersect", 1)
+
+                    if b_coord is not None:
+                        Metrics.incCount(line, "coordinate_read_tensor1", 1)
 
                 continue
 
         if is_collecting:
             Metrics.clrIter(line)
+
+            if a_coord is None and b_coord is None:
+                Metrics.incCount(line, "same_last_coord", 1)
+            else:
+                Metrics.incCount(line, "diff_last_coord", 1)
 
         return
 
@@ -3982,10 +3995,11 @@ class Fiber:
 
         is_collecting = Metrics.isCollecting()
 
-        if is_collecting:
-            Metrics.incCount(line, "coordinate_read_tensor1", 1)
-
         while b_coord is not None:
+            if is_collecting:
+                Metrics.incCount(line, "coordinate_read_tensor1", 1)
+                Metrics.incCount(line, "payload_read_tensor1", 1)
+
             z_coords.append(b_coord)
 
             # TBD: Optimize with co-iteration...
@@ -3996,10 +4010,6 @@ class Fiber:
             z_b_payloads.append(b_payload)
 
             b_coord, b_payload = next_b()
-
-            if is_collecting:
-                Metrics.incCount(line, "coordinate_read_tensor1", 1)
-                Metrics.incCount(line, "payload_read_tensor1", 1)
 
         # Add coordinates/paylaods to a_fiber where necessary
         is_inner = None

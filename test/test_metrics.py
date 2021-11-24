@@ -81,6 +81,18 @@ class TestMetrics(unittest.TestCase):
 
         Metrics.endCollect()
 
+    def test_clr_iter_without_inc(self):
+        """Test that clear functions correctly even if the corresponding
+        iterator has not yet been incremented"""
+        Metrics.beginCollect(2)
+
+        Metrics.clrIter("M")
+        Metrics.incIter("N")
+
+        self.assertEqual(Metrics.getIter(), (1, 0))
+
+        Metrics.endCollect()
+
     def test_new_collection(self):
         """Test that a beginCollect() restarts collection"""
         Metrics.beginCollect(1)
