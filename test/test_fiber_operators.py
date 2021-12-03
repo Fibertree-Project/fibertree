@@ -84,7 +84,8 @@ class TestFiberOperators(unittest.TestCase):
                 "coordinate_read_tensor0": 3,
                 "coordinate_read_tensor1": 3,
                 "successful_intersect": 1,
-                "unsuccessful_intersect": 3,
+                "unsuccessful_intersect_tensor0": 1,
+                "unsuccessful_intersect_tensor1": 2,
                 "payload_read_tensor0": 1,
                 "payload_read_tensor1": 1,
                 "diff_last_coord": 1
@@ -107,7 +108,8 @@ class TestFiberOperators(unittest.TestCase):
                 "coordinate_read_tensor0": 3,
                 "coordinate_read_tensor1": 4,
                 "successful_intersect": 2,
-                "unsuccessful_intersect": 3,
+                "unsuccessful_intersect_tensor0": 1,
+                "unsuccessful_intersect_tensor1": 2,
                 "payload_read_tensor0": 2,
                 "payload_read_tensor1": 2,
                 "same_last_coord": 1
@@ -130,7 +132,8 @@ class TestFiberOperators(unittest.TestCase):
                 "coordinate_read_tensor0": 3,
                 "coordinate_read_tensor1": 3,
                 "successful_intersect": 1,
-                "unsuccessful_intersect": 3,
+                "unsuccessful_intersect_tensor0": 1,
+                "unsuccessful_intersect_tensor1": 2,
                 "payload_read_tensor0": 1,
                 "payload_read_tensor1": 1,
                 "diff_last_coord": 1

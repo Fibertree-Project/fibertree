@@ -3667,7 +3667,7 @@ class Fiber:
                 a_coord, a_payload = next_a()
 
                 if is_collecting:
-                    Metrics.incCount(line, "unsuccessful_intersect", 1)
+                    Metrics.incCount(line, "unsuccessful_intersect_tensor0", 1)
 
                     if a_coord is not None:
                         Metrics.incCount(line, "coordinate_read_tensor0", 1)
@@ -3678,7 +3678,7 @@ class Fiber:
                 b_coord, b_payload = next_b()
 
                 if is_collecting:
-                    Metrics.incCount(line, "unsuccessful_intersect", 1)
+                    Metrics.incCount(line, "unsuccessful_intersect_tensor1", 1)
 
                     if b_coord is not None:
                         Metrics.incCount(line, "coordinate_read_tensor1", 1)
