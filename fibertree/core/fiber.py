@@ -3617,6 +3617,8 @@ class Fiber:
         if is_collecting:
             Metrics.incCount(line, "coordinate_read_tensor0", 1)
             Metrics.incCount(line, "coordinate_read_tensor1", 1)
+            Metrics.incCount(line, "unsuccessful_intersect_tensor0", 0)
+            Metrics.incCount(line, "unsuccessful_intersect_tensor1", 0)
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
