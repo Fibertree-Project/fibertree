@@ -1,3 +1,4 @@
+#cython: language_level=3
 """CoordPayload
 
 A class used to represent an **element** of a fiber, i.e., a

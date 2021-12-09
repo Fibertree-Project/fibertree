@@ -1,3 +1,4 @@
+#cython: language_level=3
 class Metrics:
     """A globally available class for tracking metrics.
 

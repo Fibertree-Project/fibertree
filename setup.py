@@ -1,4 +1,7 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+from setuptools.extension import Extension
+from Cython.Build import cythonize
+import os
 
 def readme():
       with open('README.md') as f:
@@ -7,6 +10,23 @@ def readme():
 with open("requirements.txt", "r") as fh:
    requirements = fh.readlines()
 
+fibertree_sources = ['fibertree/__init__.py']
+fibertree_core = []
+
+for py_core_f in os.listdir("./fibertree/core"):
+      if py_core_f.endswith(".py"):
+            print(py_core_f)
+            fibertree_core.append('fibertree/core/'+py_core_f)
+
+
+extensions=[Extension('fibertree', fibertree_sources),
+            Extension('fibertree.core', fibertree_core)
+           ]
+#            Extension('fibertree.graphics',fibertree_graphics),
+#            Extension('fibertree.notebook',fibertree_notebook),
+#            Extension('fibertree.codec', fibertree_codec),
+#            Extension('fibertree.codec.formats', fibertree_formats)
+#           ]
 
 setup(name='fiber-tree',
       version='0.1',
@@ -19,7 +39,7 @@ setup(name='fiber-tree',
         'Topic :: Scientific/Engineering',
       ],
       keywords='tensors',
-      url='https://github.com/Fibertree-Project/fibertree',
+      url='https://github.com/FPSG-UIUC/fibertree/',
       author='Joel S. Emer',
       author_email='jsemer@mit.edu',
       license='MIT',
@@ -29,6 +49,8 @@ setup(name='fiber-tree',
                 'fibertree.notebook',
                 'fibertree.codec',
                 'fibertree.codec.formats'],
+      ext_modules=cythonize(extensions),
       install_requires=[req for req in requirements if req[:2] != "# "],
       include_package_data=True,
-      zip_safe=False)
+      zip_safe=False,
+)
