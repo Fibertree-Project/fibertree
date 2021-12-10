@@ -1,7 +1,15 @@
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
-from Cython.Build import cythonize
+#from Cython.Build import cythonize
 import os
+
+try:
+    from Cython.Build import cythonize
+except ImportError:
+    # create closure for deferred import
+    def cythonize (*args, ** kwargs ):
+        from Cython.Build import cythonize
+        return cythonize(*args, ** kwargs)
 
 def readme():
       with open('README.md') as f:
@@ -12,16 +20,27 @@ with open("requirements.txt", "r") as fh:
 
 fibertree_sources = ['fibertree/__init__.py']
 fibertree_core = []
+#fibertree_core_src = []
+fibertree_core_pkg = []
+
+extensions = []
 
 for py_core_f in os.listdir("./fibertree/core"):
       if py_core_f.endswith(".py"):
-            print(py_core_f)
+            print("    Processing: ", py_core_f)
             fibertree_core.append('fibertree/core/'+py_core_f)
 
+            py_core = os.path.splitext(py_core_f)[0]
+            fibertree_core_pkg.append('fibertree.core.'+py_core)
 
-extensions=[Extension('fibertree', fibertree_sources),
-            Extension('fibertree.core', fibertree_core)
-           ]
+            extensions.append(Extension('fibertree.core.'+py_core, 
+                                        sources=['fibertree/core/'+py_core_f]
+                                       )
+                             )
+            
+#extensions=[#Extension('fibertree', sources=fibertree_sources),
+#            Extension('fibertree.core', sources=fibertree_core)
+#           ]
 #            Extension('fibertree.graphics',fibertree_graphics),
 #            Extension('fibertree.notebook',fibertree_notebook),
 #            Extension('fibertree.codec', fibertree_codec),
@@ -43,13 +62,13 @@ setup(name='fiber-tree',
       author='Joel S. Emer',
       author_email='jsemer@mit.edu',
       license='MIT',
+      ext_modules=cythonize(extensions, compiler_directives={'language_level' : "3"}),
       packages=['fibertree',
                 'fibertree.core',
                 'fibertree.graphics',
                 'fibertree.notebook',
                 'fibertree.codec',
                 'fibertree.codec.formats'],
-      ext_modules=cythonize(extensions),
       install_requires=[req for req in requirements if req[:2] != "# "],
       include_package_data=True,
       zip_safe=False,
