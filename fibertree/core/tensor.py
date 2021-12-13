@@ -1,3 +1,4 @@
+#cython: language_level=3
 """Tensor
 
 A class used to implement the a tensor based on the **fibertree**

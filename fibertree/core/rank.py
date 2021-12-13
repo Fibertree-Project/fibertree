@@ -1,3 +1,4 @@
+#cython: language_level=3
 """Rank
 
 A class used to implement a rank (or dimension) of a tensor.

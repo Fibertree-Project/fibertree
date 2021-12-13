@@ -22,6 +22,11 @@ To install from the remote git repository, run the following:
   % python3 -m pip install git+https://github.com/Fibertree-Project/fibertree
 ```
 
+To install with Cython (`fibertree.core` in Cython, remaining files in Python):
+```
+ python setup.py build_ext --inplace
+```
+
 
 Explore Jupyter Notebooks
 =========================

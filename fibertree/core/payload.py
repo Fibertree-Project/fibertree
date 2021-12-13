@@ -1,3 +1,4 @@
+#cython: language_level=3
 """Payload
 
 A class implementing a **boxed** value to use as a payload

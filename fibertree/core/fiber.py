@@ -1,3 +1,4 @@
+#cython: language_level=3
 """Fiber
 
 A class used to implement the fibers (or the entire **fibertree**) of
