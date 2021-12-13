@@ -4056,7 +4056,7 @@ class Fiber:
 
         for coord, payload in a_to_insert:
             if (isinstance(payload, Fiber) and len(payload) > 0) or \
-                    (payload != self.getDefault()):
+                    (not isinstance(payload, Fiber) and payload != self.getDefault()):
                 self._create_payload(coord, payload)
 
         return
