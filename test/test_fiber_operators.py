@@ -70,8 +70,8 @@ class TestFiberOperators(unittest.TestCase):
 
     def test_and_metrics_fiber(self):
         """Test metrics collected during Fiber.__and__ on unowned fibers"""
-        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 0, 6])
-        b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 0])
+        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 0, 7])
+        b_k = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6, 0])
 
         Metrics.beginCollect(1)
         for _ in a_k & b_k:
@@ -81,11 +81,12 @@ class TestFiberOperators(unittest.TestCase):
         self.assertEqual(
             Metrics.dump(),
             {"Rank Unknown": {
-                "coordinate_read_tensor0": 3,
-                "coordinate_read_tensor1": 3,
+                "coordinate_read_tensor0": 4,
+                "coordinate_read_tensor1": 4,
                 "successful_intersect": 1,
-                "unsuccessful_intersect_tensor0": 1,
-                "unsuccessful_intersect_tensor1": 2,
+                "unsuccessful_intersect_tensor0": 2,
+                "unsuccessful_intersect_tensor1": 3,
+                "skipped_intersect": 2,
                 "payload_read_tensor0": 1,
                 "payload_read_tensor1": 1,
                 "diff_last_coord": 1
@@ -110,6 +111,7 @@ class TestFiberOperators(unittest.TestCase):
                 "successful_intersect": 2,
                 "unsuccessful_intersect_tensor0": 1,
                 "unsuccessful_intersect_tensor1": 2,
+                "skipped_intersect": 0,
                 "payload_read_tensor0": 2,
                 "payload_read_tensor1": 2,
                 "same_last_coord": 1
@@ -134,6 +136,7 @@ class TestFiberOperators(unittest.TestCase):
                 "successful_intersect": 1,
                 "unsuccessful_intersect_tensor0": 1,
                 "unsuccessful_intersect_tensor1": 2,
+                "skipped_intersect": 0,
                 "payload_read_tensor0": 1,
                 "payload_read_tensor1": 1,
                 "diff_last_coord": 1
@@ -330,6 +333,7 @@ class TestFiberOperators(unittest.TestCase):
         for m, _ in z_m << a_m:
             inds.append(m)
         self.assertEqual(inds, [0,  1, 2, 3, 4])
+
 
     def test_mul_int(self):
         """Test __mul__ integers"""

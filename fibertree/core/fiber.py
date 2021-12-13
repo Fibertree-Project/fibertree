@@ -728,7 +728,7 @@ class Fiber:
         return payload
 
 
-    def _create_payload(self, coord):
+    def _create_payload(self, coord, payload=None):
         """Create a payload in the fiber at coord
 
         Optionally insert into the owners rank.
@@ -738,7 +738,8 @@ class Fiber:
         # Create a payload at coord
         # Iemporary value (should be None)
 
-        payload = self._createDefault()
+        if payload is None:
+            payload = self._createDefault()
 
         assert Payload.is_payload(payload)
 
@@ -3611,7 +3612,6 @@ class Fiber:
         else:
             line = "Rank " + a_fiber.getOwner().getId()
 
-        is_inner = None
         is_collecting = Metrics.isCollecting()
 
         if is_collecting:
@@ -3619,6 +3619,9 @@ class Fiber:
             Metrics.incCount(line, "coordinate_read_tensor1", 1)
             Metrics.incCount(line, "unsuccessful_intersect_tensor0", 0)
             Metrics.incCount(line, "unsuccessful_intersect_tensor1", 0)
+            Metrics.incCount(line, "skipped_intersect", 0)
+
+            skip = None
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
@@ -3631,16 +3634,6 @@ class Fiber:
 
                     # If we are collecting metrics and this is our first time
                     # through the loop, check if it is the inner loop
-                    if is_inner == None:
-                        a_flattened = Fiber._flatten(a_payload)
-                        b_flattened = Fiber._flatten(b_payload)
-
-                        if any(isinstance(p, Fiber) for p in a_flattened) or \
-                                any(isinstance(p, Fiber) for p in b_flattened):
-                            is_inner = False
-                        else:
-                            is_inner = True
-
 
                 yield a_coord, (a_payload, b_payload)
 
@@ -3671,9 +3664,16 @@ class Fiber:
                 if is_collecting:
                     Metrics.incCount(line, "unsuccessful_intersect_tensor0", 1)
 
+                    if skip == "A":
+                        Metrics.incCount(line, "skipped_intersect", 1)
+
                     if a_coord is not None:
                         Metrics.incCount(line, "coordinate_read_tensor0", 1)
 
+                        if a_coord < b_coord:
+                            skip = "A"
+                        else:
+                            skip = None
                 continue
 
             if a_coord > b_coord:
@@ -3682,8 +3682,16 @@ class Fiber:
                 if is_collecting:
                     Metrics.incCount(line, "unsuccessful_intersect_tensor1", 1)
 
+                    if skip == "B":
+                        Metrics.incCount(line, "skipped_intersect", 1)
+
                     if b_coord is not None:
                         Metrics.incCount(line, "coordinate_read_tensor1", 1)
+
+                        if b_coord < a_coord:
+                            skip = "B"
+                        else:
+                            skip = None
 
                 continue
 
@@ -4013,8 +4021,8 @@ class Fiber:
 
             b_coord, b_payload = next_b()
 
-        # Add coordinates/paylaods to a_fiber where necessary
-        is_inner = None
+        # Add coordinates/payloads to a_fiber where necessary
+        a_to_insert = []
         for b_coord, a_payload, b_payload in zip(z_coords, z_a_payloads, z_b_payloads):
 
             if a_payload is None:
@@ -4024,24 +4032,13 @@ class Fiber:
                     else:
                         Metrics.incCount(line, "coord_payload_insert_tensor0", 1)
 
-                a_payload = self._create_payload(b_coord)
+                # Do not actually insert the payload into the tensor
+                a_payload = self._createDefault()
+                a_to_insert.append((b_coord, a_payload))
 
             elif is_collecting:
                 Metrics.incCount(line, "coordinate_read_tensor0", 1)
                 Metrics.incCount(line, "payload_read_tensor0", 1)
-
-            if is_collecting:
-                # If we are collecting metrics and this is our first time
-                # through the loop, check if it is the inner loop
-                if is_inner == None:
-                    a_flattened = Fiber._flatten(a_payload)
-                    b_flattened = Fiber._flatten(b_payload)
-
-                    if any(isinstance(p, Fiber) for p in a_flattened) or \
-                            any(isinstance(p, Fiber) for p in b_flattened):
-                        is_inner = False
-                    else:
-                        is_inner = True
 
             yield b_coord, (a_payload, b_payload)
 
@@ -4055,6 +4052,11 @@ class Fiber:
 
         if is_collecting:
             Metrics.clrIter(line)
+
+        for coord, payload in a_to_insert:
+            if (isinstance(payload, Fiber) and len(payload) > 0) or \
+                    (payload != self.getDefault()):
+                self._create_payload(coord, payload)
 
         return
 
