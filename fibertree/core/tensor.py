@@ -683,8 +683,8 @@ class Tensor:
         #
         # TBD: This is broken if Fibers are wrapped in a Payload
         #
-        # assert (isinstance(root, Payload) or
-        #         root == self.ranks[0].getFibers()[0])
+        assert (isinstance(root, Payload) or
+                root == self.ranks[0].getFibers()[0])
 
         return root
 
