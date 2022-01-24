@@ -20,7 +20,7 @@ from .metrics import Metrics
 #
 # Set up logging
 #
-module_logger = logging.getLogger('fibertree.core.fiber')
+# module_logger = logging.getLogger('fibertree.core.fiber')
 
 
 #
