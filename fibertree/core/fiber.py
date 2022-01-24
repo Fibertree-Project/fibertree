@@ -4024,6 +4024,7 @@ class Fiber:
 
         # Add coordinates/payloads to a_fiber where necessary
         a_to_insert = []
+        maybe_insert = False
         for b_coord, a_payload, b_payload in zip(z_coords, z_a_payloads, z_b_payloads):
 
             if a_payload is None:
@@ -4035,13 +4036,22 @@ class Fiber:
 
                 # Do not actually insert the payload into the tensor
                 a_payload = self._createDefault()
-                a_to_insert.append((b_coord, a_payload))
-
+                maybe_insert = True
             elif is_collecting:
                 Metrics.incCount(line, "coordinate_read_tensor0", 1)
                 Metrics.incCount(line, "payload_read_tensor0", 1)
+                maybe_insert = False
+
+            else:
+                maybe_insert = False
+
 
             yield b_coord, (a_payload, b_payload)
+
+            # Only plan to insert the payload if it is non-zero
+            if maybe_insert and ((isinstance(a_payload, Fiber) and len(a_payload) > 0) or \
+                    (not isinstance(a_payload, Fiber) and a_payload != self.getDefault())):
+                a_to_insert.append((b_coord, a_payload))
 
             if is_collecting:
                 start_iter = Metrics.getIter()
@@ -4055,9 +4065,7 @@ class Fiber:
             Metrics.clrIter(line)
 
         for coord, payload in a_to_insert:
-            if (isinstance(payload, Fiber) and len(payload) > 0) or \
-                    (not isinstance(payload, Fiber) and payload != self.getDefault()):
-                self._create_payload(coord, payload)
+            self._create_payload(coord, payload)
 
         return
 
