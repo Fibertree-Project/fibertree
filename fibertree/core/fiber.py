@@ -20,7 +20,7 @@ from .metrics import Metrics
 #
 # Set up logging
 #
-# module_logger = logging.getLogger('fibertree.core.fiber')
+module_logger = logging.getLogger('fibertree.core.fiber')
 
 
 #
@@ -167,7 +167,7 @@ class Fiber:
         #
         # Set up logging
         #
-        self.logger = logging.getLogger('fibertree.core.fiber')
+        # self.logger = logging.getLogger('fibertree.core.fiber')
 
         #
         # Collect attributes
@@ -2113,7 +2113,7 @@ class Fiber:
                 #
                 # Resort the coords/payloads
                 #
-                self.logger.debug("Fiber.updateCoords() - sort needed")
+                # self.logger.debug("Fiber.updateCoords() - sort needed")
 
                 zipped_cp = zip(self.coords, self.payloads)
                 sorted_cp = sorted(zipped_cp)

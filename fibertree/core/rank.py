@@ -84,7 +84,7 @@ class Rank:
         #
         # Set up logging
         #
-        self.logger = logging.getLogger('fibertree.core.rank')
+        # self.logger = logging.getLogger('fibertree.core.rank')
 
         self._id = id
 

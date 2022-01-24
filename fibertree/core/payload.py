@@ -113,7 +113,7 @@ class Payload:
         #
         # Set up logging
         #
-        self.logger = logging.getLogger('fibertree.core.payload')
+        # self.logger = logging.getLogger('fibertree.core.payload')
 
         self.value = value
 

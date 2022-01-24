@@ -96,7 +96,7 @@ class CoordPayload():
         #
         # Set up logging
         #
-        self.logger = logging.getLogger('fibertree.core.coord_payload')
+        # self.logger = logging.getLogger('fibertree.core.coord_payload')
 
 
         self.coord = coord

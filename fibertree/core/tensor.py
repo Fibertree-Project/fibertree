@@ -124,7 +124,7 @@ class Tensor:
         #
         # Set up logging
         #
-        self.logger = logging.getLogger('fibertree.core.tensor')
+        # self.logger = logging.getLogger('fibertree.core.tensor')
 
         self.yamlfile = yamlfile
 
