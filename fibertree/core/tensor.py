@@ -432,7 +432,7 @@ class Tensor:
         # If provided, set leaf rank with a non-zero default
         #
         if default != 0:
-            self.ranks[-1].setDefault(default)
+            self.ranks[-1].setDefault(lambda: deepcopy(default))
 
 
     def syncRankInfo(self, ranks):
@@ -816,7 +816,7 @@ class Tensor:
         #
         # Set default for leaf rank
         #
-        self.ranks[-1].setDefault(value)
+        self.ranks[-1].setDefault(lambda: deepcopy(value))
 
         return self
 

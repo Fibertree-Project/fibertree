@@ -298,13 +298,13 @@ class Rank:
     #
     # Default payload methods
     #
-    def setDefault(self, value):
+    def setDefault(self, func):
         """Set the default payload value for fibers in this rank.
 
         Parameters
         ----------
-        value: value
-            A value to use as the payload value for fibers in this rank
+        func: () -> Payload
+            A functor for constructing the payload value for fibers in this rank
 
         Returns
         -------
@@ -323,7 +323,9 @@ class Rank:
         """
 
         self._default_is_set = True
-        self._default = Payload.maybe_box(value)
+
+        # self._default = Payload.maybe_box(value)
+        self._default_cons = func
 
         return self
 
@@ -358,7 +360,8 @@ class Rank:
         #
         # Return a copy of the default
         #
-        return deepcopy(self._default)
+        # return deepcopy(self._default)
+        return self._default_cons()
 
     def setFormat(self, fmt):
         """Set the format for this rank
@@ -500,9 +503,9 @@ class Rank:
         self.next_rank = next_rank
 
         if next_rank is None:
-            self.setDefault(0)
+            self.setDefault(lambda: 0)
         else:
-            self.setDefault(Fiber)
+            self.setDefault(lambda: Fiber())
 
 
     def getNextRank(self):
