@@ -21,6 +21,15 @@ class TestRank(unittest.TestCase):
 
         self.assertRaises(AssertionError, lambda: rank.setFormat("G"))
 
+    def test_set_collecting(self):
+        rank = Rank("K")
+        self.assertFalse(rank.getCollecting())
+
+        rank.setCollecting(True)
+        self.assertTrue(rank.getCollecting())
+
+        self.assertRaises(AssertionError, lambda: rank.setCollecting("foo"))
+
 if __name__ == '__main__':
     unittest.main()
 

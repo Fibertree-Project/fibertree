@@ -101,6 +101,8 @@ class Rank:
 
         self.setFormat(fmt)
 
+        self.setCollecting(False)
+
 #
 # Accessor methods
 #
@@ -406,6 +408,54 @@ class Rank:
 
         """
         return self.fmt
+
+    def setCollecting(self, collecting):
+        """Set  whether the trace of uses should be collected for this rank
+
+        Parameters
+        ----------
+
+        collecting: bool
+            True if use statistiscs should be collected
+
+
+        Returns
+        -------
+        None
+
+
+        Raises
+        ------
+
+        AssertionError
+            collecting not a bool
+
+        """
+        assert isinstance(collecting, bool)
+        self.collecting = collecting
+
+    def getCollecting(self):
+        """Get whether the trace of uses should be collected for this rank
+
+        Parameters
+        ----------
+        None
+
+
+        Returns
+        -------
+
+        collecting: bool
+            True if use statistiscs should be collected
+
+
+        Raises
+        ------
+        None
+
+        """
+        return self.collecting
+
 
 #
 # Fundamental methods

@@ -686,10 +686,33 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(t4.getFormat("K.1"), "C")
         self.assertEqual(t4.getFormat("K.0"), "U")
 
+    def test_get_set_collecting(self):
+        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+
+        self.assertFalse(t.getCollecting("M"))
+        self.assertFalse(t.getCollecting("K"))
+
+        t.setCollecting("K", True)
+
+        self.assertFalse(t.getCollecting("M"))
+        self.assertTrue(t.getCollecting("K"))
+
+        self.assertRaises(ValueError, lambda: t.getCollecting("N"))
+        self.assertRaises(ValueError, lambda: t.setCollecting("N", "C"))
+        self.assertRaises(AssertionError, lambda: t.setCollecting("M", "G"))
+
     def test_use_stats(self):
         A_MK = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
         B_NK = Tensor.fromYAMLfile("./data/test_tensor-2.yaml")
         Z_MN = Tensor(rank_ids=["M", "N"])
+
+        A_MK.setCollecting("M", True)
+        A_MK.setCollecting("K", True)
+
+        B_NK.setCollecting("K", True)
+
+        Z_MN.setCollecting("N", True)
+
 
         a_m = A_MK.getRoot()
         b_n = B_NK.getRoot()
@@ -705,10 +728,10 @@ class TestTensor(unittest.TestCase):
         reuses = {'Rank M': {(): {1: ((0, 0, 0), []), 2: ((1, 0, 0), []), 4: ((2, 0, 0), []), 6: ((3, 0, 0), [])}}, 'Rank K': {(1,): {1: ((0, 0, 0), [(0, 1, 1)]), 0: ((0, 1, 0), [(0, 1, 0)]), 2: ((0, 1, 2), [])}, (2,): {1: ((1, 0, 0), [(0, 1, 0)]), 3: ((1, 0, 1), [(0, 1, 0), (0, 2, -1)])}, (4,): {0: ((2, 1, 0), [(0, 1, 0)]), 2: ((2, 1, 1), [])}, (6,): {1: ((3, 0, 0), [(0, 1, 0)]), 3: ((3, 0, 1), [(0, 1, 0), (0, 2, -1)])}}}
         self.assertEqual(A_MK.getUseStats(), reuses)
 
-        reuses = {'Rank N': {(): {0: ((0, 0, 0), [(1, 0, 0), (2, 0, 0), (3, 0, 0)]), 1: ((0, 1, 0), [(1, 0, 0), (2, 0, 0), (3, 0, 0)]), 4: ((0, 2, 0), [(1, 0, 0), (2, 0, 0), (3, 0, 0)])}}, 'Rank K': {(0,): {1: ((0, 0, 0), [(1, 0, 0), (3, 0, 0)]), 3: ((1, 0, 1), [(2, 0, 0)])}, (1,): {0: ((0, 1, 0), [(2, 0, 0)]), 1: ((0, 1, 1), [(1, 0, -1), (3, 0, -1)]), 2: ((0, 1, 2), [(2, 0, -1)]), 3: ((1, 1, 1), [(2, 0, 0)])}, (4,): {0: ((0, 2, 0), [(2, 0, 0)]), 3: ((1, 2, 0), [(2, 0, 0)])}}}
+        reuses = {'Rank N': {}, 'Rank K': {(0,): {1: ((0, 0, 0), [(1, 0, 0), (3, 0, 0)]), 3: ((1, 0, 1), [(2, 0, 0)])}, (1,): {0: ((0, 1, 0), [(2, 0, 0)]), 1: ((0, 1, 1), [(1, 0, -1), (3, 0, -1)]), 2: ((0, 1, 2), [(2, 0, -1)]), 3: ((1, 1, 1), [(2, 0, 0)])}, (4,): {0: ((0, 2, 0), [(2, 0, 0)]), 3: ((1, 2, 0), [(2, 0, 0)])}}}
         self.assertEqual(B_NK.getUseStats(), reuses)
 
-        reuses = {'Rank M': {(): {1: ((0, 0, 0), []), 2: ((1, 0, 0), []), 4: ((2, 0, 0), []), 6: ((3, 0, 0), [])}}, 'Rank N': {(1,): {0: ((0, 0, 0), []), 1: ((0, 1, 0), []), 4: ((0, 2, 0), [])}, (2,): {0: ((1, 0, 0), []), 1: ((1, 1, 0), []), 4: ((1, 2, 0), [])},(4,): {0: ((2, 0, 0), []), 1: ((2, 1, 0), []), 4: ((2, 2, 0), [])}, (6,): {0: ((3, 0, 0), []), 1: ((3, 1, 0), []), 4: ((3,2, 0), [])}}}
+        reuses = {'Rank M': {}, 'Rank N': {(1,): {0: ((0, 0, 0), []), 1: ((0, 1, 0), []), 4: ((0, 2, 0), [])}, (2,): {0: ((1, 0, 0), []), 1: ((1, 1, 0), []), 4: ((1, 2, 0), [])},(4,): {0: ((2, 0, 0), []), 1: ((2, 1, 0), []), 4: ((2, 2, 0), [])}, (6,): {0: ((3, 0, 0), []), 1: ((3, 1, 0), []), 4: ((3,2, 0), [])}}}
         self.assertEqual(Z_MN.getUseStats(), reuses)
 
 if __name__ == '__main__':

@@ -963,6 +963,72 @@ class Tensor:
         rank_ids = self.getRankIds()
         return self.ranks[rank_ids.index(rank_id)].getFormat()
 
+    def setCollecting(self, rank_id, collecting):
+        """Set whether metrics are being collected for the given rank
+
+        Sets whether metrics are being collected of the rank specified by the
+        `rank_id` to the given value
+
+        Parameters
+        ----------
+
+        rank_id: string
+            The ID of the rank to modify
+
+        collecting: bool
+            True if use statistiscs should be collected
+
+
+        Returns
+        -------
+        None
+
+
+        Raises
+        ------
+
+        ValueError
+            rank_id is not a named rank in the tensor
+
+        AssertionError
+            collecting not a bool
+
+
+        """
+
+        rank_ids = self.getRankIds()
+        self.ranks[rank_ids.index(rank_id)].setCollecting(collecting)
+
+    def getCollecting(self, rank_id):
+        """Get whether metrics are being collected for the given rank
+
+        Gets whether metrics are being collected for the rank specified by
+        the `rank_id`
+
+        Parameters
+        ----------
+
+        rank_id: string
+            The ID of the rank to modify
+
+
+        Returns
+        -------
+
+        collecting: bool
+            True if use statistiscs should be collected
+
+
+        Raises
+        ------
+
+        ValueError
+            rank_id is not a named rank in the tensor
+        """
+
+        rank_ids = self.getRankIds()
+        return self.ranks[rank_ids.index(rank_id)].getCollecting()
+
 #
 #  Comparison operations
 #
@@ -1559,7 +1625,8 @@ class Tensor:
         reuses = {"Rank " + rank_id: {} for rank_id in self.getRankIds()}
 
         # Add the root fiber
-        addFiber(self.getRoot(), (), reuses)
+        if self.getCollecting(self.getRankIds()[0]):
+            addFiber(self.getRoot(), (), reuses)
 
         # Add all children fibers
         while len(iter_stack) > 0:

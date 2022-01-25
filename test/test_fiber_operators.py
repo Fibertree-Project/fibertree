@@ -164,8 +164,13 @@ class TestFiberOperators(unittest.TestCase):
 
     def test_and_use_stats_2D(self):
         """Test reuse statistics collected on a 2D fiber during Fiber.__and__"""
-        a_j = Tensor.fromUncompressed(rank_ids=["J", "K"], root=[[1, 0, 3], [0, 0, 6], [0, 8, 9]]).getRoot()
-        b_i = Tensor.fromUncompressed(rank_ids=["I", "J", "K"], root=[[[0, 2, 3], [0, 0, 0], [7, 8, 0]], [[1, 0, 0], [4, 5, 6], [7, 0, 0]]]).getRoot()
+        A_JK = Tensor.fromUncompressed(rank_ids=["J", "K"], root=[[1, 0, 3], [0, 0, 6], [0, 8, 9]])
+        B_IJK = Tensor.fromUncompressed(rank_ids=["I", "J", "K"], root=[[[0, 2, 3], [0, 0, 0], [7, 8, 0]], [[1, 0, 0], [4, 5, 6], [7, 0, 0]]])
+
+        A_JK.setCollecting("J", True)
+
+        a_j = A_JK.getRoot()
+        b_i = B_IJK.getRoot()
 
         Metrics.beginCollect(3)
         for _, b_j in b_i:
@@ -293,7 +298,12 @@ class TestFiberOperators(unittest.TestCase):
     def test_lshift_use_stats_2D(self):
         """Test reuse statistics collected on a 2D fiber during Fiber.__lshift__"""
         a_j = Fiber.fromUncompressed([[[1, 0, 3], [0, 0, 0], [7, 8, 0]], [[1, 2, 3], [0, 0, 6], [0, 8, 0]]])
-        z_m = Tensor(rank_ids=["M", "N"]).getRoot()
+        Z_MN = Tensor(rank_ids=["M", "N"])
+
+        Z_MN.setCollecting("M", True)
+        Z_MN.setCollecting("N", True)
+
+        z_m = Z_MN.getRoot()
 
         Metrics.beginCollect(3)
         for _, a_m in a_j:

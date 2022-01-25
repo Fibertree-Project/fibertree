@@ -3624,6 +3624,9 @@ class Fiber:
 
             skip = None
 
+        a_collecting = a_fiber.getOwner() is None or a_fiber.getOwner().getCollecting()
+        b_collecting = b_fiber.getOwner() is None or b_fiber.getOwner().getCollecting()
+
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
 
@@ -3643,8 +3646,11 @@ class Fiber:
                     start_iter = Metrics.getIter()
                     Metrics.incIter(line)
 
-                    a_fiber._addUse(a_coord, start_iter)
-                    b_fiber._addUse(b_coord, start_iter)
+                    if a_collecting:
+                        a_fiber._addUse(a_coord, start_iter)
+
+                    if b_collecting:
+                        b_fiber._addUse(b_coord, start_iter)
 
 
                 a_coord, a_payload = next_a()
@@ -4025,6 +4031,10 @@ class Fiber:
         # Add coordinates/payloads to a_fiber where necessary
         a_to_insert = []
         maybe_insert = False
+        a_collecting = a_fiber.getOwner() is None or a_fiber.getOwner().getCollecting()
+        b_collecting = isinstance(b_fiber, Fiber) and \
+            (b_fiber.getOwner() is None or b_fiber.getOwner().getCollecting())
+
         for b_coord, a_payload, b_payload in zip(z_coords, z_a_payloads, z_b_payloads):
 
             if a_payload is None:
@@ -4057,8 +4067,10 @@ class Fiber:
                 start_iter = Metrics.getIter()
                 Metrics.incIter(line)
 
-                a_fiber._addUse(b_coord, start_iter)
-                if isinstance(b_fiber, Fiber):
+                if a_collecting:
+                    a_fiber._addUse(b_coord, start_iter)
+
+                if b_collecting:
                     b_fiber._addUse(b_coord, start_iter)
 
         if is_collecting:
