@@ -21,6 +21,12 @@ class TestFiber(unittest.TestCase):
 
         a = Fiber([], [])
 
+    def test_default_eager(self):
+        """Create a 1d fiber, built eagerly"""
+
+        a = Fiber([2, 4, 6], [3, 5, 7])
+        self.assertFalse(a.isLazy())
+
     def test_comparison_eq_ne(self):
 
         a = Fiber([2, 4, 6], [3, 5, 7])
@@ -226,6 +232,20 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(c, c_ref)
 
+
+    def test_getCoords_eager_only(self):
+        """Cannot get coordinates for a lazy fiber"""
+
+        c_ref = [2, 4, 6]
+        p_ref = [3, 5, 7]
+
+        a = Fiber(c_ref, p_ref)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.getCoords()
+
+
     def test_getPayloads(self):
         """Extract payloads"""
 
@@ -238,6 +258,18 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(p, p_ref)
 
+    def test_getPayloads_eager_only(self):
+        """Extract payloads"""
+
+        c_ref = [2, 4, 6]
+        p_ref = [3, 5, 7]
+
+        a = Fiber(c_ref, p_ref)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.getPayloads()
+
     def test_isempty_1D(self):
         """Test for empty fiber"""
 
@@ -249,6 +281,17 @@ class TestFiber(unittest.TestCase):
 
         c = Fiber([0, 1], [0, 1])
         self.assertFalse(c.isEmpty())
+
+
+    def test_isempty_eager_only(self):
+        """Test for empty fiber only in eager mode"""
+
+        a = Fiber([], [])
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.isEmpty()
+
 
     def test_isempty_2D(self):
         """Test for empty fiber"""
@@ -285,6 +328,15 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(ne, ne_ref)
 
+    def test_nonempty_eager_only(self):
+        """Get non-empty elements only in eager mode"""
+
+        a = Fiber([], [])
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.nonEmpty()
+
     def test_setDefault(self):
         """Test setting defaults - unimplemented"""
 
@@ -308,6 +360,17 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(a.minCoord(), c_min)
 
+    def test_minCoord_eager_only(self):
+        """Find minimum coordinate only works in eager mode"""
+
+        c_ref = [2, 4, 6]
+        p_ref = [3, 5, 7]
+
+        a = Fiber(c_ref, p_ref)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.minCoord()
 
     def test_maxCoord(self):
         """Find minimum coordinate"""
@@ -321,6 +384,18 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(a.maxCoord(), c_max)
 
+
+    def test_maxCoord_eager_only(self):
+        """Find maximum coordinate only works in eager mode"""
+
+        c_ref = [2, 4, 6]
+        p_ref = [3, 5, 7]
+
+        a = Fiber(c_ref, p_ref)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.minCoord()
 
     def test_minmaxCoord_empty(self):
 
@@ -338,6 +413,16 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.countValues(), 6)
 
 
+    def test_count_values_eager_only(self):
+        """Count values in a 2-D fiber"""
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.countValues()
+
+
     def test_values_with_zero(self):
         """Count values in a 1-D fiber with an explict zero"""
 
@@ -346,19 +431,17 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.countValues(), 2)
 
 
-    def test_iter(self):
-        """Test iteration over a fiber"""
+    def test_iterOccupancy(self):
+        """Test iteration over non-default elements of a fiber"""
 
         c0 = [1, 8, 9]
-        p0 = [2, 0, 10]
+        p0 = [2, 7, 10]
 
         a = Fiber(c0, p0)
 
-        i = 0
-        for (c, p) in a:
+        for i, (c, p) in enumerate(a.iterOccupancy()):
             self.assertEqual(c, c0[i])
             self.assertEqual(p, p0[i])
-            i += 1
 
 
     def test_iterShape(self):
@@ -372,17 +455,16 @@ class TestFiber(unittest.TestCase):
 
         a = Fiber(c0, p0)
 
-        i = 0
-        for (c, p) in a.iterShape():
+        for i, (c, p) in enumerate(a.iterShape()):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
                 self.assertIsInstance(p, Payload)
-            i += 1
 
         with self.subTest(test="Test fiber internals"):
             self.assertEqual(a.coords, c0)
             self.assertEqual(a.payloads, p0)
+
 
     def test_iterShapeRef(self):
         """Test iteration over a fiber's shape with allocation"""
@@ -395,19 +477,100 @@ class TestFiber(unittest.TestCase):
 
         a = Fiber(c0, p0)
 
-        i = 0
-        for (c, p) in a.iterShapeRef():
+        for i, (c, p) in enumerate(a.iterShapeRef()):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
                 self.assertIsInstance(p, Payload)
-            i += 1
 
         with self.subTest(test="Test fiber internals"):
             self.assertEqual(a.coords, c0_ans)
             self.assertEqual(a.payloads, p0_ans)
 
 
+    def test_iter_no_fmt(self):
+        """Test iteration over a fiber (default: iterOccupancy)"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+
+        for i, (c, p) in enumerate(a):
+            self.assertEqual(c, c0[i])
+            self.assertEqual(p, p0[i])
+
+
+    def test_iter_compressed(self):
+        """Test iteration over a fiber (default: iterOccupancy)"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+        t = Tensor.fromFiber(rank_ids=["K"], fiber=a)
+        t.setFormat("K", "C")
+
+        for i, (c, p) in enumerate(a):
+            self.assertEqual(c, c0[i])
+            self.assertEqual(p, p0[i])
+
+
+    def test_iter_uncompressed(self):
+        """Test iteration over a fiber (default: iterOccupancy)"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+        t = Tensor.fromFiber(rank_ids=["K"], fiber=a)
+        t.setFormat("K", "U")
+
+        c1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p1 = [0, 2, 0, 0, 0, 0, 0, 0, 7, 10]
+
+        for i, (c, p) in enumerate(a):
+            self.assertEqual(c, c1[i])
+            self.assertEqual(p, p1[i])
+
+
+    def test_reversed_eager_only(self):
+        """ Iterate reversed through eager fibers only """
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a[::-1]
+
+
+    def test_clear(self):
+        """ Test clear """
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+        a.clear()
+
+        b = Fiber()
+
+        self.assertEqual(a, b)
+
+    def test_clear_lazy(self):
+        """ Test clear does not care if lazy"""
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+        a.clear()
+
+        b = Fiber()
+
+        self.assertEqual(a, b)
+        self.assertFalse(a.isLazy())
 
     def test_getitem_simple(self):
         """Get item - simple"""
@@ -434,6 +597,18 @@ class TestFiber(unittest.TestCase):
         (coord3, payload3) = a[-1]
         self.assertEqual(coord3, 8)
         self.assertEqual(payload3, 9)
+
+    def test_getitem_eager_only(self):
+        """Get item - eager mode only"""
+
+        c_ref = [2, 4, 6, 8]
+        p_ref = [3, 5, 7, 9]
+
+        a = Fiber(c_ref, p_ref)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a[0]
 
 
     def test_getitem_slice(self):
@@ -522,6 +697,15 @@ class TestFiber(unittest.TestCase):
                 self.assertEqual(a.coord, ans_c[i])
                 self.assertEqual(a.payload, ans_p[j])
 
+    def test_setitem_eager_only(self):
+        """test_setitem - eager mode only"""
+
+        f = Fiber([0,2,3], [1,0,4])
+        f._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f[0] = (1, 3)
+
 
     def test_setitem_coordpayload(self):
         """test_setitem_coordpayload"""
@@ -590,11 +774,21 @@ class TestFiber(unittest.TestCase):
 
 
     def test_len(self):
-        """Find lenght of a fiber"""
+        """Find length of a fiber"""
 
         a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
 
         self.assertEqual(len(a), 2)
+
+
+    def test_len_eager_only(self):
+        """Find length of a fiber only when we are in eager mode"""
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            len(a)
 
 
     def test_getPayload(self):
@@ -620,6 +814,18 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(a.getPayload(test[i], allocate=False, default=-1),
                              answer_default[i])
 
+    def test_getPayload_eager_only(self):
+        """Can only access coordinates by payload in eager mode"""
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.getPayload(3)
+
+
     def test_getPayloadRef_update(self):
         """Update payload references"""
 
@@ -641,6 +847,16 @@ class TestFiber(unittest.TestCase):
             x <<= update[i]
             self.assertEqual(a.getPayload(test[i]), answer[i])
 
+    def test_getPayloadRef_eager_only(self):
+        """Can only access coordinates by payload in eager mode"""
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.getPayloadRef(3)
 
     def test_getPayload_2(self):
         """Access payloads - multilevel"""
@@ -863,6 +1079,19 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(c, ans[i])
 
 
+    def test_getRange_eager_only(self):
+        """getRange only works on eagerly built fibers"""
+
+        coords = [2, 4, 6, 8, 9, 12, 15, 16, 17, 20 ]
+        payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]
+
+        a = Fiber(coords, payloads)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.getRange(4, 2)
+
+
     def test_getRange_flattened(self):
         """getRange flattened coordinates"""
 
@@ -939,6 +1168,18 @@ class TestFiber(unittest.TestCase):
         self.assertIsNone(retval)
         self.assertEqual(a, aa_ref)
 
+    def test_append_eager_only(self):
+        """Append element at end of fiber"""
+
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.append(7, 10)
+
     def test_append_empty(self):
         """Append to empty fiber"""
 
@@ -984,6 +1225,23 @@ class TestFiber(unittest.TestCase):
 
         self.assertIsNone(retval)
         self.assertEqual(a, ae_ref)
+
+    def test_extend_eager_only(self):
+        """Extend fiber only in eager mode"""
+
+        a_coords = [2, 4, 6]
+        a_payloads = [3, 5, 7]
+
+        a = Fiber(a_coords, a_payloads)
+        a._setIsLazy(True)
+
+        b_coords = [7, 10, 12]
+        b_payloads = [4, 6, 8]
+
+        b = Fiber(b_coords, b_payloads)
+
+        with self.assertRaises(AssertionError):
+            a.extend(b)
 
 
     def test_extend_assert(self):
@@ -1107,6 +1365,18 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(ap, ap_ref)
 
 
+    def test_project_eager_only(self):
+        """Test projections"""
+
+        c = [0, 1, 10, 20]
+        p = [1, 2, 11, 21]
+        a = Fiber(c, p)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            ap = a.project(lambda c: c + 1)
+
+
     def test_prune(self):
         """Test pruning a fiber"""
 
@@ -1144,6 +1414,33 @@ class TestFiber(unittest.TestCase):
         #
         f6 = f.prune(lambda n, c, p: True if p < 10 else None)
         self.assertEqual(f6, fl2_ref)
+
+
+    def test_prune_eager_only(self):
+        """Test pruning a fiber only works in lazy mode"""
+
+        f = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f.prune(lambda n, c, p: n < 2)
+
+    def test_getPosition_eager_only(self):
+        """getPosition only works in eager mode"""
+        f = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f.getPosition(4)
+
+
+    def test_getPositionRef_eager_only(self):
+        """getPositionRef only works in eager mode"""
+        f = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f.getPositionRef(4)
 
 
     def test_upzip(self):
@@ -1186,6 +1483,23 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(f, flat_split)
 
+
+    def test_updateCoords_eager_only(self):
+        """Update coords only for eager mode"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+        f._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f.updateCoords(lambda i, c, p: c + 1)
+
+
     def test_updateCoords_reversed(self):
         """Update coords - where coordinates need to be reversed"""
 
@@ -1202,6 +1516,23 @@ class TestFiber(unittest.TestCase):
         f.updateCoords(lambda i, c, p: 100-c)
 
         self.assertEqual(f, f_ans)
+
+
+    def test_updatePayloads_eager_only(self):
+        """Update payloads only for eager mode"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+        f._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f.updatePayloads(lambda p: p + 1)
+
 
     def test_add(self):
         """Add fibers"""

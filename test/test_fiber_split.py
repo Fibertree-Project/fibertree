@@ -352,7 +352,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -363,7 +363,7 @@ class TestFiberSplit(unittest.TestCase):
                 [1, 9],
                 [10, 12, 31, 41] ]
 
-        pss = [ [0],
+        pss = [ [1],
                 [10, 20],
                 [ 100, 120, 310, 410 ] ]
 

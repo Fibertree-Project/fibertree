@@ -260,6 +260,10 @@ class Fiber:
         #
         self.clearStats()
 
+        #
+        # By default, Fibers are eager
+        #
+        self._setIsLazy(False)
 
     @classmethod
     def fromCoordPayloadList(cls, *cp, **kwargs):
@@ -499,6 +503,7 @@ class Fiber:
         `Fiber.coords` class instance variable directly.
 
         """
+        assert not self.isLazy()
 
         return self.coords
 
@@ -517,6 +522,7 @@ class Fiber:
         `Fiber.payloads` class instance variable directly.
 
         """
+        assert not self.isLazy()
 
         return self.payloads
 
@@ -533,7 +539,6 @@ class Fiber:
         Note: this attribute cannot be changed after fiber creation.
 
         """
-
         return self._ordered
 
 
@@ -614,6 +619,7 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
         assert default is None or not allocate
         assert start_pos is None or len(coords) == 1
 
@@ -694,6 +700,7 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
         assert start_pos is None or len(coords) == 1
 
         # TBD: Actually optimize the search
@@ -812,6 +819,7 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
         assert not (size is None and end_coord is None)
         assert size is not None or end_coord is not None
         assert self._ordered
@@ -910,6 +918,8 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
+
         start_pos = Payload.get(start_pos)
 
         if start_pos is not None:
@@ -1002,6 +1012,8 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
+
         # TBD: Actually optimize the search
 
         start_pos = Payload.get(start_pos)
@@ -1050,6 +1062,8 @@ class Fiber:
         None
 
         """
+
+        assert not self.isLazy()
 
         start_pos = Payload.get(start_pos)
 
@@ -1111,6 +1125,8 @@ class Fiber:
         Add support for **shortcuts**.
 
         """
+
+        assert not self.isLazy()
 
         if trans_fn is None:
             # Default trans_fn is identify function (inefficient but easy)
@@ -1593,6 +1609,8 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
+
         # TBD: Should check that the candidate is not an explicit zero
 
         if len(self.coords) == 0:
@@ -1618,6 +1636,8 @@ class Fiber:
         This is only meaningful for coordinates that have an lexographical order.
 
         """
+
+        assert not self.isLazy()
 
         #
         # If _max_coord is set we assume it is correct
@@ -1669,6 +1689,8 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
+
         count = 0
         for p in self.payloads:
             if Payload.contains(p, Fiber):
@@ -1678,6 +1700,41 @@ class Fiber:
 
         return count
 
+#
+# Manage eager vs lazy iteration
+    def _setIsLazy(self, is_lazy):
+        """Set whether or not this fiber is lazily built
+
+        Parameters
+        ----------
+        is_lazy: bool
+            True if this fiber is lazily built
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Mutator should only be used internally
+
+        """
+        self._is_lazy = is_lazy
+
+    def isLazy(self):
+        """Return true if this fiber is lazily built
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        is_lazy: bool
+            True if this fiber is lazily built
+
+        """
+        return self._is_lazy
 #
 # Position based methods
 #
@@ -1709,6 +1766,8 @@ class Fiber:
             Invalid key type
 
         """
+
+        assert not self.isLazy()
 
         if not isinstance(keys, tuple):
             # Keys is a single value for 1-D access
@@ -1801,6 +1860,8 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
+
         position = key
 
         #
@@ -1836,6 +1897,8 @@ class Fiber:
     def __len__(self):
         """__len__"""
 
+        assert not self.isLazy()
+
         return len(self.coords)
 
 
@@ -1859,6 +1922,7 @@ class Fiber:
         Need to check for **default** values that are not zero
 
         """
+        assert not self.isLazy()
 
         return all(map(Payload.isEmpty, self.payloads))
 
@@ -1877,6 +1941,9 @@ class Fiber:
             Copy of original fiber with only non-empty elements
 
         """
+
+        assert not self.isLazy()
+
         coords = []
         payloads = []
 
@@ -1896,16 +1963,42 @@ class Fiber:
 
     def __iter__(self):
         """__iter__"""
+        if self.getOwner() is None:
+            fmt = "C"
+        else:
+            fmt = self.getOwner().getFormat()
 
-        for i in range(len(self.coords)):
-            yield CoordPayload(self.coords[i], self.payloads[i])
+        if fmt == "C":
+            return self.iterOccupancy()
+        elif fmt == "U":
+            return self.iterShape()
+        else:
+            raise ValueError("Unknown format")
+
 
     def __reversed__(self):
         """Return reversed fiber"""
 
+        assert not self.isLazy()
+
         for coord, payload in zip(reversed(self.coords),
                                   reversed(self.payloads)):
             yield CoordPayload(coord, payload)
+
+
+    def iterOccupancy(self):
+        """Iterate over non-default elements of the fiber
+
+        Iterate over every non-default payload in the shape, returning a
+        CoordPayload for each one
+
+        Parameters
+        ----------
+        None
+        """
+        for coord, payload in zip(self.coords, self.payloads):
+            if not Payload.isEmpty(payload):
+                yield CoordPayload(coord, payload)
 
 
     def iterShape(self):
@@ -1943,7 +2036,6 @@ class Fiber:
             p = self.getPayloadRef(c)
             yield CoordPayload(c, p)
 
-
 #
 # Core methods
 #
@@ -1959,6 +2051,9 @@ class Fiber:
 
         self.coords.clear()
         self.payloads.clear()
+
+        # No longer lazy
+        self._setIsLazy(False)
 
 
     def payload(self, coord):
@@ -1992,6 +2087,8 @@ class Fiber:
         The payload will be optionally be **boxed**.
 
         """
+
+        assert not self.isLazy()
 
         if self._ordered:
             assert self.maxCoord() is None or self.maxCoord() < coord, \
@@ -2028,6 +2125,8 @@ class Fiber:
         The "unique" property is not checked for "unordered" fibers.
 
         """
+
+        assert not self.isLazy()
 
         assert Payload.contains(other, Fiber), \
             "Fibers can only be extended with another fiber"
@@ -2088,6 +2187,9 @@ class Fiber:
         The "unique" property is not checked.
 
         """
+
+        assert not self.isLazy()
+
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
@@ -2155,6 +2257,9 @@ class Fiber:
         TBD: currently nothing
 
         """
+
+        assert not self.isLazy()
+
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
@@ -3573,37 +3678,13 @@ class Fiber:
         a_fiber = self
         b_fiber = other
 
-        # Get the format of a
-        if not isinstance(a_fiber, Fiber) or a_fiber.getOwner() is None:
-            fmt = "C"
-        else:
-            fmt = a_fiber.getOwner().getFormat()
+        # Get the iterators
+        a = a_fiber.__iter__()
+        next_a = lambda: Fiber._get_next(a)
 
-        # Get the iterator over a
-        if fmt == "C":
-            a = a_fiber.__iter__()
-            next_a = lambda: Fiber._get_next_nonempty(a)
-        elif fmt == "U":
-            a = a_fiber.iterShape()
-            next_a = lambda: Fiber._get_next(a)
-        else:
-            raise ValueError("Unknown format")
+        b = b_fiber.__iter__()
+        next_b = lambda: Fiber._get_next(b)
 
-        # Get the format of b
-        if not isinstance(b_fiber, Fiber) or b_fiber.getOwner() is None:
-            fmt = "C"
-        else:
-            fmt = b_fiber.getOwner().getFormat()
-
-        # Get the iterator over b
-        if fmt == "C":
-            b = b_fiber.__iter__()
-            next_b = lambda: Fiber._get_next_nonempty(b)
-        elif fmt == "U":
-            b = b_fiber.iterShape()
-            next_b = lambda: Fiber._get_next(b)
-        else:
-            raise ValueError("Unknown format")
 
         a_coord, a_payload = next_a()
         b_coord, b_payload = next_b()
@@ -3979,23 +4060,8 @@ class Fiber:
         a_fiber = self
         b_fiber = other
 
-        # "a" is self!
-
-        # Get the format of b
-        if not isinstance(b_fiber, Fiber) or b_fiber.getOwner() is None:
-            fmt = "C"
-        else:
-            fmt = b_fiber.getOwner().getFormat()
-
-        # Get the iterator over b
-        if fmt == "C":
-            b = b_fiber.__iter__()
-            next_b = lambda: Fiber._get_next_nonempty(b)
-        elif fmt == "U":
-            b = b_fiber.iterShape()
-            next_b = lambda: Fiber._get_next(b)
-        else:
-            raise ValueError("Unknown format")
+        b = b_fiber.__iter__()
+        next_b = lambda: Fiber._get_next(b)
 
         z_coords = []
         z_a_payloads = []
