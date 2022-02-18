@@ -54,12 +54,25 @@ class TestFiberInfixSplit(unittest.TestCase):
                                    [2, 6, 5, 9, 2, 5])])
 
         f = self.input[0]
-        
+
         for p in range(2,6):
             with self.subTest(test=p):
                 ans = f / p
                 self.assertEqual(ans, self.ans[p])
 
+    def test_split_uniform_eager_only(self):
+        """Test that the uniform split allows eager mode only"""
+        f = self.input[0]
+        f._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f / 2
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(2)
+
+        with self.assertRaises(AssertionError):
+            f.splitNonUniform([0, 10, 20, 30, 40])
 
     def test_split_equal(self):
         """Test splitUniform"""
@@ -99,7 +112,7 @@ class TestFiberInfixSplit(unittest.TestCase):
                                    [6, 4, 1, 6]),
                              Fiber([40, 43, 46, 47],
                                    [2, 6, 5, 9]),
-                             Fiber([48, 49],                     
+                             Fiber([48, 49],
                                    [2, 5])])
         f = self.input[0]
 
@@ -107,6 +120,20 @@ class TestFiberInfixSplit(unittest.TestCase):
             with self.subTest(test=p):
                 ans = f // p
                 self.assertEqual(ans, self.ans[p])
+
+    def test_split_equal_eager_only(self):
+        """Test that the equal split allows eager mode only"""
+        f = self.input[0]
+        f._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f // 2
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual(2)
+
+        with self.assertRaises(AssertionError):
+            f.splitUnEqual([4, 3, 2, 3, 6])
 
 if __name__ == '__main__':
     unittest.main()

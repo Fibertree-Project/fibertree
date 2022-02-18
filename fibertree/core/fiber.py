@@ -2294,6 +2294,8 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
+
         coords_a = list(self.coords)
         coords_b = list(self.coords)
 
@@ -2324,7 +2326,6 @@ class Fiber:
             The shape of the current fiber or the entire tree
 
         """
-
         owner = self.getOwner()
 
         shape = None
@@ -2353,6 +2354,9 @@ class Fiber:
         Traverse a fiber tree to estimate its shape
 
         """
+
+        assert not self.isLazy()
+
         shape = self._calcShape(all_ranks=all_ranks)
 
         #
@@ -2479,6 +2483,8 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
+
         owner = self.getOwner()
 
         if owner is not None:
@@ -2540,6 +2546,7 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
         assert self._ordered and self._unique
 
         if shape is None:
@@ -2620,6 +2627,7 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
         assert Payload.contains(other, Fiber)
         assert self._unique
 
@@ -2692,6 +2700,8 @@ class Fiber:
         `self` and `other`.
 
         """
+
+        assert not self.isLazy()
 
         coords = []
         payloads = []
@@ -2775,6 +2785,8 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
+
         #
         # If `other` is a fiber add each element of `other` to `self`
         #
@@ -2831,6 +2843,8 @@ class Fiber:
         activity in a program's flow.
 
         """
+
+        assert not self.isLazy()
 
         coords = []
         payloads = []
@@ -2904,6 +2918,7 @@ class Fiber:
         activity in a program's flow.
 
         """
+        assert not self.isLazy()
 
         #
         # If `other` is a fiber, elementwise multiply `other` by `self`
@@ -2969,6 +2984,7 @@ class Fiber:
 
         Is there a reasonable semantic if `partitions` is a fiber
         """
+        assert not self.isLazy()
 
         shape = self.getShape(all_ranks=False)
 
@@ -3014,7 +3030,7 @@ class Fiber:
 
         Is there a reasonable semantic if `partitions` is a fiber
         """
-
+        assert not self.isLazy()
 
         occupancy = len(self.coords)
 
@@ -3053,6 +3069,8 @@ class Fiber:
         pieces of the returned tensor.
 
         """
+
+        assert not self.isLazy()
 
         class _SplitterUniform():
 
@@ -3122,6 +3140,7 @@ class Fiber:
         pieces of the returned tensor.
 
         """
+        assert not self.isLazy()
 
         class _SplitterNonUniform():
 
@@ -3195,6 +3214,7 @@ class Fiber:
         pieces of the returned tensor.
 
         """
+        assert not self.isLazy()
 
         class _SplitterEqual():
 
@@ -3264,6 +3284,7 @@ class Fiber:
         pieces of the returned tensor.
 
         """
+        assert not self.isLazy()
 
         class _SplitterUnEqual():
 
@@ -3420,6 +3441,7 @@ class Fiber:
 
         """
 
+        assert not self.isLazy() and not other.isLazy()
         assert Payload.contains(other, Fiber), \
             "Fiber concatenation must involve two fibers"
 
@@ -4269,6 +4291,7 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
         assert self._ordered and self._unique
 
         #
@@ -4338,6 +4361,7 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
         assert self._ordered and self._unique
 
         #
@@ -4502,6 +4526,7 @@ class Fiber:
 
         """
 
+        assert not self.isLazy()
         assert isinstance(self.coords[0], tuple)
         assert self._ordered and self._unique
 
@@ -4711,6 +4736,8 @@ class Fiber:
                 indent=0):
         """__str__"""
 
+        assert not self.isLazy()
+
         def format_coord(coord):
             """Return "coord" properly formatted with "coord_fmt" """
 
@@ -4800,6 +4827,8 @@ class Fiber:
 
     def __repr__(self):
         """__repr__"""
+
+        assert not self.isLazy()
 
         # TBD: Owner is not properly reflected in representation
 
@@ -4901,6 +4930,7 @@ class Fiber:
 
     def fiber2dict(self):
         """Return dictionary with fiber information"""
+        assert not self.isLazy()
 
         f = {'fiber':
              {'coords': self.coords,

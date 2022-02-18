@@ -101,7 +101,7 @@ class TestFiberPrint(unittest.TestCase):
                  "              ... ])"
 
         self.assertEqual(sn, sn_ref)
-        
+
         # Format with newline and no cutoff
 
         sns = f"{a:n*}"
@@ -168,7 +168,31 @@ class TestFiberPrint(unittest.TestCase):
         sr_ref = "Fiber([(0, 2), (1, 5)], [Fiber([2, 4, 6, 8], [3, 5, 7, 9]), Fiber([3, 5, 7], [4, 6, 8])])"
         self.assertEqual(sr, sr_ref)
 
+    def test_print_eager_only(self):
+        """Test str format only works in eager mode"""
 
+        c = [2, 4, 6, 8]
+        p = [3, 5, 7, 9]
+
+        a = Fiber(c, p)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            ss = f"{a:n*}"
+
+        with self.assertRaises(AssertionError):
+            repr(a)
+
+    def test_fiber2dict_eager_only(self):
+        """Test that fiber2dict requires eager mode"""
+        c = [2, 4, 6, 8]
+        p = [3, 5, 7, 9]
+
+        a = Fiber(c, p)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.fiber2dict()
 
 
 if __name__ == '__main__':

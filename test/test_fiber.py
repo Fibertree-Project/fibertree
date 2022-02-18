@@ -1050,6 +1050,18 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(a, b)
 
+    def test_ilshift_eager_only(self):
+        """<<= infix operator eager mode only"""
+
+        coords = [2, 4, 6, 8, 9, 12, 15, 16, 17, 20 ]
+        payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]
+
+        a = Fiber(coords, payloads)
+        b = Fiber()
+        b._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            b <<= a
 
     def test_getRange(self):
         """getRange"""
@@ -1263,6 +1275,24 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             a.extend(1)
 
+    def test_concat_eager_only(self):
+        """Concat should force both fibers to be eager"""
+        a_coords = [2, 4, 6]
+        a_payloads = [3, 5, 7]
+        a = Fiber(a_coords, a_payloads)
+
+        b_coords = [6, 10, 12]
+        b_payloads = [4, 6, 8]
+        b = Fiber(b_coords, b_payloads)
+
+        a._setIsLazy(True)
+        with self.assertRaises(AssertionError):
+            a.concat(b)
+
+        a._setIsLazy(False)
+        b._setIsLazy(True)
+        with self.assertRaises(AssertionError):
+            a.concat(b)
 
 #    def test_insert(self):
 #        """Insert payload at coordinates 0, 3, 7"""
@@ -1305,6 +1335,15 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(s, [0])
 
+    def test_estimateShape_eager_only(self):
+        """Test determining shape of a fiber, eager mode only"""
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.estimateShape()
+
     def test_rankids(self):
         """Test finding rankids of a fiber"""
 
@@ -1313,6 +1352,14 @@ class TestFiber(unittest.TestCase):
         r = a.getRankIds()
 
         self.assertEqual(r, ["X.1", "X.0"])
+
+    def test_getDepth_eager_only(self):
+        """Test getDepth for eager only"""
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.getDepth()
 
     def test_uncompress(self):
         """Test uncompress"""
@@ -1330,6 +1377,14 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(uncompressed, uncompressed_ref)
 
+    def test_uncompress_eager_only(self):
+        """Test uncompress, eager mode only"""
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.uncompress()
 
     def test_uncompress_default(self):
         """Test uncompress with non-zero default"""
@@ -1461,6 +1516,17 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a, a_ref)
         self.assertEqual(b, b_ref)
 
+    def test_unzip_eager_only(self):
+        """Test unzipping only works for eager Fibers"""
+        c = [0, 1, 10, 20]
+        p_ab = [(0, 1), (1, 2), (10, 11), (20, 21)]
+
+        ab = Fiber(c, p_ab)
+        ab._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            ab.unzip()
+
     def test_updateCoords(self):
         """Update coords"""
 
@@ -1575,6 +1641,21 @@ class TestFiber(unittest.TestCase):
         a += b
 
         self.assertEqual(a, ae_ref)
+
+    def test_iadd_eager_only(self):
+        """iadd fibers, eager mode only"""
+
+        a_coords = [2, 4, 6]
+        a_payloads = [3, 5, 7]
+        a = Fiber(a_coords, a_payloads)
+        a._setIsLazy(True)
+
+        b_coords = [7, 10, 12]
+        b_payloads = [4, 6, 8]
+        b = Fiber(b_coords, b_payloads)
+
+        with self.assertRaises(AssertionError):
+            a += b
 
 
     def test_and(self):

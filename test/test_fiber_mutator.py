@@ -16,6 +16,14 @@ class TestFiberMutator(unittest.TestCase):
         with self.assertRaises(AssertionError):
             z_m.swapRanks()
 
+    def test_swapRanks_eager_only(self):
+        """Test that swapRanks works in eager mode only"""
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            a.swapRanks()
+
     def test_split_uniform_below(self):
         """Test splitUniformBelow"""
 

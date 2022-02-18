@@ -67,6 +67,15 @@ class TestFiberOperators(unittest.TestCase):
             f_in += g_in
             self.assertEqual(fg_ref, f_in)
 
+    def test_add_eager_only(self):
+        """Test __add__ for eager only"""
+
+        f_in = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6])
+        f_in._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f_in + 1
+
 
     def test_and_metrics_fiber(self):
         """Test metrics collected during Fiber.__and__ on unowned fibers"""
@@ -383,6 +392,22 @@ class TestFiberOperators(unittest.TestCase):
             # f_in gets clobbered!
             f_in *= two
             self.assertEqual(f_ref, f_in)
+
+    def test_mul_eager_only(self):
+        """Test __mul__ eager mode only"""
+        f_in = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6])
+        f_in._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f_in * 2
+
+    def test_imul_eager_only(self):
+        """Test __imul__ eager mode only"""
+        f_in = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6])
+        f_in._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f_in *= 2
 
 if __name__ == '__main__':
     unittest.main()
