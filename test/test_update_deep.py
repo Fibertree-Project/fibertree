@@ -73,7 +73,7 @@ class TestFiberTensorUpdateDeep(unittest.TestCase):
         depth = 2
         rankid = "W"
 
-        update = lambda p: p+1
+        update = lambda i, c, p: p+1
 
         t1 = t.updatePayloads(update, depth=depth)
         t2 = t.updatePayloads(update, rankid=rankid)

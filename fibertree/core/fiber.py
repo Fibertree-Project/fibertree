@@ -2301,8 +2301,8 @@ class Fiber:
                 p.updatePayloads(func, depth=depth - 1)
         else:
             # Update my payloads
-            for i in range(len(self.payloads)):
-                self.payloads[i] = func(self.payloads[i])
+            for i, (c, p) in enumerate(zip(self.coords, self.payloads)):
+                self.payloads[i] = func(i, c, p)
 
         return None
 
@@ -3126,7 +3126,7 @@ class Fiber:
 
         if depth > 0:
             split_fiber = deepcopy(self)
-            update_lambda = lambda p: p.splitUniform(step, partitions, relativeCoords)
+            update_lambda = lambda i, c, p: p.splitUniform(step, partitions, relativeCoords)
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
@@ -3203,7 +3203,7 @@ class Fiber:
 
         if depth > 0:
             split_fiber = deepcopy(self)
-            update_lambda = lambda p: p.splitNonUniform(splits, partitions, relativeCoords)
+            update_lambda = lambda i, c, p: p.splitNonUniform(splits, partitions, relativeCoords)
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
@@ -3268,7 +3268,7 @@ class Fiber:
 
         if depth > 0:
             split_fiber = deepcopy(self)
-            update_lambda = lambda p: p.splitEqual(step, partitions, relativeCoords)
+            update_lambda = lambda i, c, p: p.splitEqual(step, partitions, relativeCoords)
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
@@ -3341,7 +3341,7 @@ class Fiber:
 
         if depth > 0:
             split_fiber = deepcopy(self)
-            update_lambda = lambda p: p.splitUnEqual(sizes, partitions, relativeCoords)
+            update_lambda = lambda i, c, p: p.splitUnEqual(sizes, partitions, relativeCoords)
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
@@ -3729,123 +3729,130 @@ class Fiber:
 
         assert self._ordered and self._unique
 
-        a_fiber = self
-        b_fiber = other
 
-        # Get the iterators
-        a = a_fiber.__iter__()
-        next_a = lambda: Fiber._get_next(a)
+        def iterator(a_fiber, b_fiber):
+            """
+            Iterator simulating the intersection operator
+            """
 
-        b = b_fiber.__iter__()
-        next_b = lambda: Fiber._get_next(b)
+            # Get the iterators
+            a = a_fiber.__iter__()
+            next_a = lambda: Fiber._get_next(a)
 
-
-        a_coord, a_payload = next_a()
-        b_coord, b_payload = next_b()
-
-        if a_fiber.getOwner() is None:
-            line = "Rank Unknown"
-        else:
-            line = "Rank " + a_fiber.getOwner().getId()
-
-        is_collecting = Metrics.isCollecting()
-
-        if is_collecting:
-            Metrics.incCount(line, "coordinate_read_tensor0", 1)
-            Metrics.incCount(line, "coordinate_read_tensor1", 1)
-            Metrics.incCount(line, "unsuccessful_intersect_tensor0", 0)
-            Metrics.incCount(line, "unsuccessful_intersect_tensor1", 0)
-            Metrics.incCount(line, "skipped_intersect", 0)
-
-            skip = None
-
-        a_collecting = a_fiber.getOwner() is not None and a_fiber.getOwner().getCollecting()
-        b_collecting = b_fiber.getOwner() is not None and b_fiber.getOwner().getCollecting()
-
-        while not (a_coord is None or b_coord is None):
-            if a_coord == b_coord:
-
-                if is_collecting:
-                    # Increment the count metrics
-                    Metrics.incCount(line, "successful_intersect", 1)
-                    Metrics.incCount(line, "payload_read_tensor0", 1)
-                    Metrics.incCount(line, "payload_read_tensor1", 1)
-
-                    # If we are collecting metrics and this is our first time
-                    # through the loop, check if it is the inner loop
-
-                yield a_coord, (a_payload, b_payload)
-
-                if is_collecting:
-                    # Track all reuses of the element
-                    start_iter = Metrics.getIter()
-                    Metrics.incIter(line)
-
-                    if a_collecting:
-                        a_fiber._addUse(a_coord, start_iter)
-
-                    if b_collecting:
-                        b_fiber._addUse(b_coord, start_iter)
+            b = b_fiber.__iter__()
+            next_b = lambda: Fiber._get_next(b)
 
 
-                a_coord, a_payload = next_a()
-                b_coord, b_payload = next_b()
+            a_coord, a_payload = next_a()
+            b_coord, b_payload = next_b()
 
-                if is_collecting:
-                    if a_coord is not None:
-                        Metrics.incCount(line, "coordinate_read_tensor0", 1)
-
-                    if b_coord is not None:
-                        Metrics.incCount(line, "coordinate_read_tensor1", 1)
-
-                continue
-
-            if a_coord < b_coord:
-                a_coord, a_payload = next_a()
-
-                if is_collecting:
-                    Metrics.incCount(line, "unsuccessful_intersect_tensor0", 1)
-
-                    if skip == "A":
-                        Metrics.incCount(line, "skipped_intersect", 1)
-
-                    if a_coord is not None:
-                        Metrics.incCount(line, "coordinate_read_tensor0", 1)
-
-                        if a_coord < b_coord:
-                            skip = "A"
-                        else:
-                            skip = None
-                continue
-
-            if a_coord > b_coord:
-                b_coord, b_payload = next_b()
-
-                if is_collecting:
-                    Metrics.incCount(line, "unsuccessful_intersect_tensor1", 1)
-
-                    if skip == "B":
-                        Metrics.incCount(line, "skipped_intersect", 1)
-
-                    if b_coord is not None:
-                        Metrics.incCount(line, "coordinate_read_tensor1", 1)
-
-                        if b_coord < a_coord:
-                            skip = "B"
-                        else:
-                            skip = None
-
-                continue
-
-        if is_collecting:
-            Metrics.clrIter(line)
-
-            if a_coord is None and b_coord is None:
-                Metrics.incCount(line, "same_last_coord", 1)
+            if a_fiber.getOwner() is None:
+                line = "Rank Unknown"
             else:
-                Metrics.incCount(line, "diff_last_coord", 1)
+                line = "Rank " + a_fiber.getOwner().getId()
 
-        return
+            is_collecting = Metrics.isCollecting()
+
+            if is_collecting:
+                Metrics.incCount(line, "coordinate_read_tensor0", 1)
+                Metrics.incCount(line, "coordinate_read_tensor1", 1)
+                Metrics.incCount(line, "unsuccessful_intersect_tensor0", 0)
+                Metrics.incCount(line, "unsuccessful_intersect_tensor1", 0)
+                Metrics.incCount(line, "skipped_intersect", 0)
+
+                skip = None
+
+            a_collecting = a_fiber.getOwner() is not None \
+                and a_fiber.getOwner().getCollecting()
+            b_collecting = b_fiber.getOwner() is not None \
+                and b_fiber.getOwner().getCollecting()
+
+            while not (a_coord is None or b_coord is None):
+                if a_coord == b_coord:
+
+                    if is_collecting:
+                        # Increment the count metrics
+                        Metrics.incCount(line, "successful_intersect", 1)
+                        Metrics.incCount(line, "payload_read_tensor0", 1)
+                        Metrics.incCount(line, "payload_read_tensor1", 1)
+
+                        # If we are collecting metrics and this is our first time
+                        # through the loop, check if it is the inner loop
+
+                    yield a_coord, (a_payload, b_payload)
+
+                    if is_collecting:
+                        # Track all reuses of the element
+                        start_iter = Metrics.getIter()
+                        Metrics.incIter(line)
+
+                        if a_collecting:
+                            a_fiber._addUse(a_coord, start_iter)
+
+                        if b_collecting:
+                            b_fiber._addUse(b_coord, start_iter)
+
+
+                    a_coord, a_payload = next_a()
+                    b_coord, b_payload = next_b()
+
+                    if is_collecting:
+                        if a_coord is not None:
+                            Metrics.incCount(line, "coordinate_read_tensor0", 1)
+
+                        if b_coord is not None:
+                            Metrics.incCount(line, "coordinate_read_tensor1", 1)
+
+                    continue
+
+                if a_coord < b_coord:
+                    a_coord, a_payload = next_a()
+
+                    if is_collecting:
+                        Metrics.incCount(line, "unsuccessful_intersect_tensor0", 1)
+
+                        if skip == "A":
+                            Metrics.incCount(line, "skipped_intersect", 1)
+
+                        if a_coord is not None:
+                            Metrics.incCount(line, "coordinate_read_tensor0", 1)
+
+                            if a_coord < b_coord:
+                                skip = "A"
+                            else:
+                                skip = None
+                    continue
+
+                if a_coord > b_coord:
+                    b_coord, b_payload = next_b()
+
+                    if is_collecting:
+                        Metrics.incCount(line, "unsuccessful_intersect_tensor1", 1)
+
+                        if skip == "B":
+                            Metrics.incCount(line, "skipped_intersect", 1)
+
+                        if b_coord is not None:
+                            Metrics.incCount(line, "coordinate_read_tensor1", 1)
+
+                            if b_coord < a_coord:
+                                skip = "B"
+                            else:
+                                skip = None
+
+                    continue
+
+            if is_collecting:
+                Metrics.clrIter(line)
+
+                if a_coord is None and b_coord is None:
+                    Metrics.incCount(line, "same_last_coord", 1)
+                else:
+                    Metrics.incCount(line, "diff_last_coord", 1)
+
+            return
+
+        return Fiber.fromIterator(iterator(self, other))
 
     def __or__(self, other):
         """__or__
@@ -4111,96 +4118,73 @@ class Fiber:
 
         """
 
-        a_fiber = self
-        b_fiber = other
+        def iterator(a_fiber, b_fiber):
+            """
+            Iterator simulating the populate operator
+            """
 
-        b = b_fiber.__iter__()
-        next_b = lambda: Fiber._get_next(b)
-
-        z_coords = []
-        z_a_payloads = []
-        z_b_payloads = []
-        z_payloads = []
-
-
-        b_coord, b_payload = next_b()
-
-        if self.getOwner() is None:
-            line = "Rank Unknown"
-        else:
-            line = "Rank " + self.getOwner().getId()
-
-        is_collecting = Metrics.isCollecting()
-
-        while b_coord is not None:
-            if is_collecting:
-                Metrics.incCount(line, "coordinate_read_tensor1", 1)
-                Metrics.incCount(line, "payload_read_tensor1", 1)
-
-            z_coords.append(b_coord)
-
-            # TBD: Optimize with co-iteration...
-
-            a_payload = self.getPayload(b_coord, allocate=False)
-
-            z_a_payloads.append(a_payload)
-            z_b_payloads.append(b_payload)
-
-            b_coord, b_payload = next_b()
-
-        # Add coordinates/payloads to a_fiber where necessary
-        a_to_insert = []
-        maybe_insert = False
-        a_collecting = a_fiber.getOwner() is None or a_fiber.getOwner().getCollecting()
-        b_collecting = isinstance(b_fiber, Fiber) and \
-            (b_fiber.getOwner() is None or b_fiber.getOwner().getCollecting())
-
-        for b_coord, a_payload, b_payload in zip(z_coords, z_a_payloads, z_b_payloads):
-
-            if a_payload is None:
-                if is_collecting:
-                    if self.maxCoord() is None or self.maxCoord() < b_coord:
-                        Metrics.incCount(line, "coord_payload_append_tensor0", 1)
-                    else:
-                        Metrics.incCount(line, "coord_payload_insert_tensor0", 1)
-
-                # Do not actually insert the payload into the tensor
-                a_payload = self._createDefault()
-                maybe_insert = True
-            elif is_collecting:
-                Metrics.incCount(line, "coordinate_read_tensor0", 1)
-                Metrics.incCount(line, "payload_read_tensor0", 1)
-                maybe_insert = False
-
+            if a_fiber.getOwner() is None:
+                line = "Rank Unknown"
             else:
-                maybe_insert = False
+                line = "Rank " + a_fiber.getOwner().getId()
+
+            is_collecting = Metrics.isCollecting()
+
+            # Add coordinates/payloads to a_fiber where necessary
+            maybe_insert = False
+            a_collecting = a_fiber.getOwner() is None or a_fiber.getOwner().getCollecting()
+            b_collecting = isinstance(b_fiber, Fiber) and \
+                (b_fiber.getOwner() is None or b_fiber.getOwner().getCollecting())
+
+            for b_coord, b_payload in b_fiber:
+                a_payload = self.getPayload(b_coord, allocate=False)
+
+                if is_collecting:
+                    Metrics.incCount(line, "coordinate_read_tensor1", 1)
+                    Metrics.incCount(line, "payload_read_tensor1", 1)
+
+                if a_payload is None:
+                    if is_collecting:
+                        if self.maxCoord() is None or self.maxCoord() < b_coord:
+                            Metrics.incCount(line, "coord_payload_append_tensor0", 1)
+                        else:
+                            Metrics.incCount(line, "coord_payload_insert_tensor0", 1)
+
+                    # Do not actually insert the payload into the tensor
+                    a_payload = self._createDefault()
+                    maybe_insert = True
+                elif is_collecting:
+                    Metrics.incCount(line, "coordinate_read_tensor0", 1)
+                    Metrics.incCount(line, "payload_read_tensor0", 1)
+                    maybe_insert = False
+
+                else:
+                    maybe_insert = False
 
 
-            yield b_coord, (a_payload, b_payload)
+                yield b_coord, (a_payload, b_payload)
 
-            # Only plan to insert the payload if it is non-zero
-            if maybe_insert and ((isinstance(a_payload, Fiber) and len(a_payload) > 0) or \
-                    (not isinstance(a_payload, Fiber) and a_payload != self.getDefault())):
-                a_to_insert.append((b_coord, a_payload))
+                # Only plan to insert the payload if it is non-zero
+                if maybe_insert and ((isinstance(a_payload, Fiber) and len(a_payload) > 0) or \
+                        (not isinstance(a_payload, Fiber) and a_payload != self.getDefault())):
+                    self._create_payload(b_coord, a_payload)
+
+                if is_collecting:
+                    start_iter = Metrics.getIter()
+                    Metrics.incIter(line)
+
+                    if a_collecting:
+                        a_fiber._addUse(b_coord, start_iter)
+
+                    if b_collecting:
+                        b_fiber._addUse(b_coord, start_iter)
 
             if is_collecting:
-                start_iter = Metrics.getIter()
-                Metrics.incIter(line)
+                Metrics.clrIter(line)
 
-                if a_collecting:
-                    a_fiber._addUse(b_coord, start_iter)
+            return
 
-                if b_collecting:
-                    b_fiber._addUse(b_coord, start_iter)
-
-        if is_collecting:
-            Metrics.clrIter(line)
-
-        for coord, payload in a_to_insert:
-            self._create_payload(coord, payload)
-
-        return
-
+        return Fiber.fromIterator(iterator(self, other))
 
     def __sub__(self, other):
         """__sub__
@@ -4660,7 +4644,7 @@ class Fiber:
 
         """
 
-        update_lambda = lambda p: func(p, *args, **kwargs)
+        update_lambda = lambda i, c, p: func(p, *args, **kwargs)
         return self.updatePayloads(update_lambda, depth=depth)
 
 

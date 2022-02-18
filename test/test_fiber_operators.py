@@ -154,8 +154,13 @@ class TestFiberOperators(unittest.TestCase):
 
     def test_and_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__and__"""
-        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 6])
-        b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 0])
+        A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 5, 6])
+        A_K.setCollecting("K", True)
+        a_k = A_K.getRoot()
+
+        B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
+        B_K.setCollecting("K", True)
+        b_k = B_K.getRoot()
 
         Metrics.beginCollect(2)
         for _ in range(3):
