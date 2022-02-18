@@ -82,7 +82,7 @@ class TestFiberOperators(unittest.TestCase):
         a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 0, 7])
         b_k = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6, 0])
 
-        Metrics.beginCollect(1)
+        Metrics.beginCollect(["K"])
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
@@ -107,7 +107,7 @@ class TestFiberOperators(unittest.TestCase):
         a_k = Fiber.fromUncompressed([1, 0, 0, 4, 0, 6])
         b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 6])
 
-        Metrics.beginCollect(1)
+        Metrics.beginCollect(["K"])
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
@@ -132,7 +132,7 @@ class TestFiberOperators(unittest.TestCase):
         A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 0, 6])
         B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
 
-        Metrics.beginCollect(1)
+        Metrics.beginCollect(["K"])
         for _ in A_K.getRoot() & B_K.getRoot():
             pass
         Metrics.endCollect()
@@ -162,7 +162,7 @@ class TestFiberOperators(unittest.TestCase):
         B_K.setCollecting("K", True)
         b_k = B_K.getRoot()
 
-        Metrics.beginCollect(2)
+        Metrics.beginCollect(["M", "K"])
         for _ in range(3):
             for _ in a_k & b_k:
                 pass
@@ -186,7 +186,7 @@ class TestFiberOperators(unittest.TestCase):
         a_j = A_JK.getRoot()
         b_i = B_IJK.getRoot()
 
-        Metrics.beginCollect(3)
+        Metrics.beginCollect(["I", "J", "K"])
         for _, b_j in b_i:
             for _, (a_k, b_k) in a_j & b_j:
                 for _ in a_k & b_k:
@@ -248,7 +248,7 @@ class TestFiberOperators(unittest.TestCase):
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
         z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
 
-        Metrics.beginCollect(1)
+        Metrics.beginCollect(["M"])
         for _ in z_m << a_m:
             pass
         Metrics.endCollect()
@@ -273,7 +273,7 @@ class TestFiberOperators(unittest.TestCase):
         Z_M = Tensor.fromUncompressed(rank_ids=["M"], root=[0, 2, 3, 0, 0])
         z_m = Z_M.getRoot()
 
-        Metrics.beginCollect(1)
+        Metrics.beginCollect(["M"])
         for _ in z_m << a_m:
             pass
         Metrics.endCollect()
@@ -295,7 +295,7 @@ class TestFiberOperators(unittest.TestCase):
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
         z_m = Fiber()
 
-        Metrics.beginCollect(2)
+        Metrics.beginCollect(["N", "M"])
         for _ in range(3):
             for _ in z_m << a_m:
                 pass
@@ -319,7 +319,7 @@ class TestFiberOperators(unittest.TestCase):
 
         z_m = Z_MN.getRoot()
 
-        Metrics.beginCollect(3)
+        Metrics.beginCollect(["J", "M", "N"])
         for _, a_m in a_j:
             for m, (z_n, a_n) in z_m << a_m:
                 for _ in z_n << a_n:

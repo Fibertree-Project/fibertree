@@ -718,7 +718,7 @@ class TestTensor(unittest.TestCase):
         b_n = B_NK.getRoot()
         z_m = Z_MN.getRoot()
 
-        Metrics.beginCollect(3)
+        Metrics.beginCollect(["M", "N", "K"])
         for m, (z_n, a_k) in z_m << a_m:
             for n, (z_ref, b_k) in z_n << b_n:
                 for k, (a_val, b_val) in a_k & b_k:

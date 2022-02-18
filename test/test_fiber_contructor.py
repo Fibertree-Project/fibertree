@@ -170,6 +170,7 @@ class TestConstructor(unittest.TestCase):
         for p1, p2 in zip(f, ff):
             self.assertEqual(p1, p2)
 
+        self.assertEqual(len(f), 3)
 
     @staticmethod
     def makeTest(f, a):

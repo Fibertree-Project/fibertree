@@ -34,7 +34,7 @@ class Metrics:
         raise NotImplementedError
 
     @classmethod
-    def beginCollect(cls, num_loops):
+    def beginCollect(cls, loop_order):
         """Begin metrics collection
 
         Start collecting metrics during future HFA program execution.
@@ -42,8 +42,8 @@ class Metrics:
         Parameters
         ----------
 
-        num_loops: int
-            The number of loop nests in the kernel
+        loop_order: [str]
+            The order of ranks in the loop order
 
         Returns
         -------
@@ -52,8 +52,8 @@ class Metrics:
 
         """
         cls.collecting = True
-        cls.iteration = [0] * num_loops
-        cls.line_order = {}
+        cls.iteration = [0] * len(loop_order)
+        cls.line_order = {r: i for i, r in enumerate(loop_order)}
         cls.metrics.append({})
 
     @classmethod

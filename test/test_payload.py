@@ -41,7 +41,7 @@ class TestPayload(unittest.TestCase):
         a = Payload(av)
         b = Payload(bv)
 
-        Metrics.beginCollect(1)
+        Metrics.beginCollect(["K"])
         _ = a + b
         self.assertEqual(Metrics.dump(), {"Compute": {"payload_add": 1}})
 
@@ -100,7 +100,7 @@ class TestPayload(unittest.TestCase):
         a = Payload(av)
         b = Payload(bv)
 
-        Metrics.beginCollect(1)
+        Metrics.beginCollect(["K"])
         _ = a * b
         self.assertEqual(Metrics.dump(), {"Compute": {"payload_mul": 1}})
 
