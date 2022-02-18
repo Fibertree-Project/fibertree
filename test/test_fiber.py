@@ -465,6 +465,17 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(a.coords, c0)
             self.assertEqual(a.payloads, p0)
 
+    def test_iterShape_eager_only(self):
+        """Test iterShape only works in eager mode"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            next(a.iterShape())
+
 
     def test_iterShapeRef(self):
         """Test iteration over a fiber's shape with allocation"""
@@ -487,6 +498,16 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(a.coords, c0_ans)
             self.assertEqual(a.payloads, p0_ans)
 
+    def test_iterShapeRef_eager_only(self):
+        """Test iterShapeRef only works in eager mode"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            next(a.iterShapeRef())
 
     def test_iter_no_fmt(self):
         """Test iteration over a fiber (default: iterOccupancy)"""
@@ -1904,6 +1925,40 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(fu, f)
 
+    def test_flatten_unflatten_eager_only(self):
+        """Test flattening/unflattening, eager only"""
+
+        u_t = [[[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 2, 3, 4],
+                [1, 2, 0, 4]],
+               [[0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]],
+               [[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 0, 0, 0],
+                [1, 2, 0, 4]]]
+
+        f = Fiber.fromUncompressed(u_t)
+        f._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            f.flattenRanks()
+
+        ff = Fiber([(0, 0), (0, 1), (0, 2), (0, 3), (2, 0), (2, 1), (2, 3)],
+                    [Fiber([0, 1, 2], [1, 2, 3]),
+                     Fiber([0, 2, 3], [1, 3, 4]),
+                     Fiber([1, 2, 3], [2, 3, 4]),
+                     Fiber([0, 1, 3], [1, 2, 4]),
+                     Fiber([0, 1, 2], [1, 2, 3]),
+                     Fiber([0, 2, 3], [1, 3, 4]),
+                     Fiber([0, 1, 3], [1, 2, 4])])
+        ff._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            ff.unflattenRanks()
 
     def test_flatten_levels_2(self):
         """Test flattening/unflattening 2 levels"""

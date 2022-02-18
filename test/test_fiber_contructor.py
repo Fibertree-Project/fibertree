@@ -1,4 +1,5 @@
 import unittest
+from fibertree import CoordPayload
 from fibertree import Payload
 from fibertree import Fiber
 from fibertree import Tensor
@@ -147,12 +148,27 @@ class TestConstructor(unittest.TestCase):
                      Fiber([2], [2])])
 
         attr = [[Fiber, 0], 2, None, [3, 3]]
-   
+
         f = Fiber.fromRandom([3, 3], [1.0, 0.3], 4, 10)
         f_attr = self.attributes(f)
 
         self.assertEqual(f, ans)
         self.assertEqual(f_attr, attr)
+
+    def test_fromIterator(self):
+        """Test fromIterator"""
+        c = [2, 4, 6]
+        p = [3, 5, 7]
+
+        def iterator(coords, payloads):
+            for coord, payload in zip(coords, payloads):
+                yield CoordPayload(coord, payload)
+
+        f = Fiber.fromIterator(iterator(c, p))
+        ff = Fiber(c, p)
+
+        for p1, p2 in zip(f, ff):
+            self.assertEqual(p1, p2)
 
 
     @staticmethod
@@ -178,7 +194,7 @@ class TestConstructor(unittest.TestCase):
             defaults.append(ff.getDefault())
             ff = (ff.payloads or [Fiber([],[])])[0]
 
-        
+
         attributes = [ defaults,
                        f.getDepth(),
                        f.getOwner(),

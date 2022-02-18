@@ -264,6 +264,7 @@ class Fiber:
         # By default, Fibers are eager
         #
         self._setIsLazy(False)
+        self.iter = None
 
     @classmethod
     def fromCoordPayloadList(cls, *cp, **kwargs):
@@ -464,6 +465,26 @@ class Fiber:
                 payloads.append(payload)
 
         f = Fiber(coords, payloads)
+
+        return f
+
+    @classmethod
+    def fromIterator(cls, iter_,  **kwargs):
+        """
+        Create a lazy fiber using an iterator (elements are only filled when
+        accessed)
+
+        Parameters
+        -----------
+
+        iter_: Iterator
+            Iterator that returns the elements of the fiber as CoordPayloads
+
+        """
+        f = cls(**kwargs)
+
+        f.iter = iter_
+        f._setIsLazy(True)
 
         return f
 
@@ -1996,9 +2017,17 @@ class Fiber:
         ----------
         None
         """
-        for coord, payload in zip(self.coords, self.payloads):
-            if not Payload.isEmpty(payload):
+        if self.isLazy():
+            for coord, payload in self.iter:
+                self.coords.append(coord)
+                self.payloads.append(payload)
                 yield CoordPayload(coord, payload)
+            self._setIsLazy(False)
+
+        else:
+            for coord, payload in zip(self.coords, self.payloads):
+                if not Payload.isEmpty(payload):
+                    yield CoordPayload(coord, payload)
 
 
     def iterShape(self):
@@ -2013,6 +2042,7 @@ class Fiber:
         None
 
         """
+        assert not self.isLazy()
 
         for c in range(self.getShape(all_ranks=False)):
             p = self.getPayload(c)
@@ -2031,6 +2061,8 @@ class Fiber:
         None
 
         """
+
+        assert not self.isLazy()
 
         for c in range(self.getShape(all_ranks=False)):
             p = self.getPayloadRef(c)
@@ -3727,8 +3759,8 @@ class Fiber:
 
             skip = None
 
-        a_collecting = a_fiber.getOwner() is None or a_fiber.getOwner().getCollecting()
-        b_collecting = b_fiber.getOwner() is None or b_fiber.getOwner().getCollecting()
+        a_collecting = a_fiber.getOwner() is not None and a_fiber.getOwner().getCollecting()
+        b_collecting = b_fiber.getOwner() is not None and b_fiber.getOwner().getCollecting()
 
         while not (a_coord is None or b_coord is None):
             if a_coord == b_coord:
