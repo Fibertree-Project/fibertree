@@ -34,6 +34,30 @@ class TestUnionIntersect(unittest.TestCase):
                                                                    [1, 2, 3, 4]])
         self.input["b2_m"] = self.input["b2_MK"].getRoot()
 
+    def test_intersection(self):
+        """Test the intersection() function"""
+        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 5])
+        b_k = Fiber.fromUncompressed([0, 6, 7, 0, 8])
+        c_k = Fiber.fromUncompressed([10, 0, 9, 0, 12])
+
+        cc = [2, 4]
+        cp = [(3, 7, 9), (5, 8, 12)]
+        for i, (c, p) in enumerate(Fiber.intersection(a_k, b_k, c_k)):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
+    def test_union(self):
+        """Test the union() function"""
+        a_k = Fiber.fromUncompressed([1, 0, 3, 0, 0])
+        b_k = Fiber.fromUncompressed([0, 6, 7, 0, 8])
+        c_k = Fiber.fromUncompressed([10, 0, 9, 0, 12])
+
+        cc = [0, 1, 2, 4]
+        cp = [("AC", 1, 0, 10), ("B", 0, 6, 0), ("ABC", 3, 7, 9), ("BC", 0, 8, 12)]
+        for i, (c, p) in enumerate(Fiber.union(a_k, b_k, c_k)):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
 
     def test_union_2x_1d(self):
         """Test union 2-way for 1d fibers"""
@@ -53,23 +77,19 @@ class TestUnionIntersect(unittest.TestCase):
 
         for test, z_m in enumerate([z_m1, z_m2]):
             with self.subTest(test=test):
-                # Check for right answer
-                self.assertEqual(z_m, ans)
+                for c, p in z_m:
+                    # Check that the data is correct
+                    self.assertEqual(ans.getPayload(c), p)
 
-                # Check that payloads are of correct type
-                self.assertIsInstance(z_m[0].payload.value[1], Payload)
-                self.assertIsInstance(z_m[2].payload.value[1], Payload)
-                self.assertIsInstance(z_m[3].payload.value[2], Payload)
+                    # Check that payloads are of correct type
+                    _, a_val, b_val = p
+                    self.assertIsInstance(a_val, Payload)
+                    self.assertIsInstance(b_val, Payload)
 
                 # Check that default was set properly
                 z_m_default=z_m.getDefault()
                 self.assertEqual(z_m_default, Payload(('', 0, 0)))
                 self.assertIsInstance(z_m_default, Payload)
-
-                # Check final shape is correct
-                z_m_shape = z_m.getShape()
-                self.assertEqual(z_m_shape, [7])
-
 
     def test_union_2x_2d(self):
         """Test union 2-way for 2d fibers"""
@@ -96,24 +116,19 @@ class TestUnionIntersect(unittest.TestCase):
 
         for test, z_m in enumerate([z_m1, z_m2]):
             with self.subTest(test=test):
-                # Check for right answer
-                self.assertEqual(z_m, ans)
+                for c, p in z_m:
+                    # Check that the data is correct
+                    self.assertEqual(ans.getPayload(c), p)
 
-                # Check that payloads are of correct type
-                self.assertIsInstance(z_m[0].payload.value[1], Fiber)
-                self.assertIsInstance(z_m[0].payload.value[2], Fiber)
-                self.assertIsInstance(z_m[2].payload.value[1], Fiber)
-                self.assertIsInstance(z_m[3].payload.value[2], Fiber)
+                    # Check that payloads are of correct type
+                    _, a_val, b_val = p
+                    self.assertIsInstance(a_val, Fiber)
+                    self.assertIsInstance(b_val, Fiber)
 
                 # Check that default was set properly
                 z_m_default=z_m.getDefault()
                 self.assertEqual(z_m_default, Payload(('', Fiber, Fiber)))
                 self.assertIsInstance(z_m_default, Payload)
-
-                # Check final shape is correct (note it is 1-D)
-                z_m_shape = z_m.getShape()
-                self.assertEqual(z_m_shape, [5])
-
 
     def test_union_2x_1d2d(self):
         """Test union 2-way for 1d/2d fibers"""
@@ -133,24 +148,19 @@ class TestUnionIntersect(unittest.TestCase):
 
         for test, z_m in enumerate([z_m1, z_m2]):
             with self.subTest(test=test):
-                # Check for right answer
-                self.assertEqual(z_m, ans)
-                
-                # Check that payloads are of correct type
-                self.assertIsInstance(z_m[0].payload.value[1], Payload)
-                self.assertIsInstance(z_m[0].payload.value[2], Fiber)
-                self.assertIsInstance(z_m[2].payload.value[1], Payload)
-                self.assertIsInstance(z_m[3].payload.value[2], Fiber)
+                for c, p in z_m:
+                    # Check that the data is correct
+                    self.assertEqual(ans.getPayload(c), p)
+
+                    # Check that payloads are of correct type
+                    _, a_val, b_val = p
+                    self.assertIsInstance(a_val, Payload)
+                    self.assertIsInstance(b_val, Fiber)
 
                 # Check that default was set properly
                 z_m_default=z_m.getDefault()
                 self.assertEqual(z_m_default, Payload(('', 0, Fiber)))
                 self.assertIsInstance(z_m_default, Payload)
-
-                # Check final shape is correct (note it is 1-D)
-                z_m_shape = z_m.getShape()
-                self.assertEqual(z_m_shape, [7])
-
 
     def test_union_3x_1d(self):
         """Test union 3-way for 1d fibers"""
@@ -171,25 +181,21 @@ class TestUnionIntersect(unittest.TestCase):
 
         for test, z_m in enumerate([z_m1]):
             with self.subTest(test=test):
-                # Check for right answer
-                self.assertEqual(z_m, ans)
+                for c, p in z_m:
+                    # Check that the data is correct
+                    self.assertEqual(ans.getPayload(c), p)
 
-                # Check that payloads are of correct type
-                self.assertIsInstance(z_m[0].payload.value[1], Payload)
-                self.assertIsInstance(z_m[0].payload.value[2], Payload)
-                self.assertIsInstance(z_m[0].payload.value[3], Payload)
-                self.assertIsInstance(z_m[1].payload.value[1], Payload)
-                self.assertIsInstance(z_m[1].payload.value[2], Payload)
+                    # Check that payloads are of correct type
+                    _, a_val, b_val, c_val = p
+                    self.assertIsInstance(a_val, Payload)
+                    self.assertIsInstance(b_val, Payload)
+                    self.assertIsInstance(c_val, Payload)
 
                 # Check that default was set properly
                 z_m_default=z_m.getDefault()
                 self.assertEqual(z_m_default, Payload(('', 0, 0, 0)))
                 self.assertIsInstance(z_m_default, Payload)
 
-                # Check final shape is correct (note it is 1-D)
-                z_m_shape = z_m.getShape()
-                self.assertEqual(z_m_shape, [7])
-        
 
 if __name__ == '__main__':
     unittest.main()

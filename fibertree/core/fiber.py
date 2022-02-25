@@ -2022,7 +2022,6 @@ class Fiber:
                 self.coords.append(coord)
                 self.payloads.append(payload)
                 yield CoordPayload(coord, payload)
-            self._setIsLazy(False)
 
         else:
             for coord, payload in zip(self.coords, self.payloads):
@@ -3525,38 +3524,18 @@ class Fiber:
         for arg in args[2:]:
             nested_result = nested_result & arg
 
-        c_result = []
-        p_result = []
-
-        for c_nested, p_nested in nested_result:
-            #
-            # Add coordinate
-            #
-            c_result.append(c_nested)
-
-            #
-            # Get out payload value
-            #
-            p_nested = Payload.get(p_nested)
-
-            #
-            # Create flattened payload
-            #
-            p = ()
-            while isinstance(p_nested, tuple):
-                p = (p_nested[1],) + p
-                p_nested = p_nested[0]
-                p_nested = Payload.get(p_nested)
+        # Lazy implementation
+        def iterator(nested):
+            for c, np in nested:
+                p = []
+                while isinstance(np, tuple):
+                    p.append(np[1])
+                    np = np[0]
+                p.append(np)
+                yield CoordPayload(c, tuple(reversed(p)))
 
 
-            p = (Payload.maybe_box(p_nested),) + p
-
-            p_result.append(Payload(p))
-
-        result = Fiber(coords=c_result, payloads=p_result)
-        result._setDefault(tuple([arg.getDefault() for arg in args]))
-
-        return result
+        return Fiber.fromIterator(iterator(nested_result))
 
     @staticmethod
     def union(*args):
@@ -3595,48 +3574,33 @@ class Fiber:
         for arg in args[2:]:
             nested_result = nested_result | arg
 
-        c_result = []
-        p_result = []
+        # Lazy implementation
+        def iterator(nested, num_args):
+            for c, np in nested:
+                p = [None] * (num_args + 1)
 
-        for c_nested, p_nested in nested_result:
-            #
-            # Add coordinate
-            #
-            c_result.append(c_nested)
+                # This is the mask
+                p[0] = ""
+                for i in range(num_args - 1, 0, -1):
+                    if isinstance(np, Payload):
+                        np = np.v()
 
-            #
-            # Get out payload value
-            #
-            p_nested = p_nested.value
+                    ab_mask = np[0]
+                    if "B" in ab_mask:
+                        p[0] = chr(ord("A") + i) + p[0]
 
-            #
-            # Create flattened payload
-            #
-            p = ()
-            mask=""
-            mask_num = ord("A")+len(args)
+                    p[i + 1] = np[2]
+                    np = np[1]
 
-            while isinstance(p_nested, tuple):
-                mask_num -= 1
-                ab_mask = p_nested[0]
+                if "A" in ab_mask:
+                    p[0] = "A" + p[0]
 
-                if "B" in ab_mask:
-                    mask = chr(mask_num) + mask
+                p[1] = np
+                yield CoordPayload(c, tuple(p))
 
-                p = (p_nested[2],) + p
-                p_nested = Payload.get(p_nested[1])
-
-            if "A" in ab_mask:
-                mask = "A" + mask
-
-            p = (mask, Payload.maybe_box(p_nested),) + p
-
-            p_result.append(Payload(p))
-
-        result = Fiber(coords=c_result, payloads=p_result)
-        result._setDefault(tuple([""]+[arg.getDefault() for arg in args]))
-
-        return result
+        fiber = Fiber.fromIterator(iterator(nested_result, len(args)))
+        fiber._setDefault(tuple([""]+[arg.getDefault() for arg in args]))
+        return fiber
 
 
 #
@@ -4752,7 +4716,8 @@ class Fiber:
                 indent=0):
         """__str__"""
 
-        assert not self.isLazy()
+        if self.isLazy():
+            return "(Fiber, fromIterator)"
 
         def format_coord(coord):
             """Return "coord" properly formatted with "coord_fmt" """
