@@ -1146,42 +1146,34 @@ class Fiber:
         Add support for **shortcuts**.
 
         """
-
-        assert not self.isLazy()
-
         if trans_fn is None:
             # Default trans_fn is identify function (inefficient but easy)
             trans_fn = lambda x: x
 
+
         # Invariant: trans_fn is order preserving, but we check for reversals
 
-        if interval is None:
-            # All coordinates are legal
+        if trans_fn(0) > trans_fn(1):
+            # Note that we cannot reverse lazy fibers
+            assert not self.isLazy()
+            cps = list(zip(self.coords, self.payloads))
+            fiber = Fiber.fromIterator(reversed(cps))
 
-            coords = [trans_fn(c) for c in self.coords]
-            payloads = self.payloads
         else:
-            # Only pass coordinates in [ interval[0], interval[1] )
+            fiber = self
 
-            min = interval[0]
-            max = interval[1]
 
-            coords = []
-            payloads = []
+        def project_iterator(fiber, trans_fn, interval):
+            for old_c, p in fiber:
+                c = trans_fn(old_c)
+                if interval is None or (c >= interval[0] and c < interval[1]):
+                    yield c, p
 
-            for c, p in zip(self.coords, self.payloads):
-                new_c = trans_fn(c)
-                if new_c >= min and new_c < max:
-                    coords.append(new_c)
-                    payloads.append(p)
+        result = Fiber.fromIterator(project_iterator(fiber, trans_fn, interval))
+        result.setDefault(self.getDefault())
 
-            # Note: This reversal implies a complex read order
+        return result
 
-            if len(coords) > 1 and coords[1] < coords[0]:
-                coords.reverse()
-                payloads.reverse()
-
-        return self._newFiber(coords, payloads)
 
 #
 # Deprecated coordinate-based methods
@@ -3618,17 +3610,6 @@ class Fiber:
         return CoordPayload(coord, payload)
 
     @staticmethod
-    def _get_next_nonempty(iter):
-        """get_next_nonempty"""
-
-        (coord, payload) = Fiber._get_next(iter)
-
-        while Payload.isEmpty(payload):
-            (coord, payload) = Fiber._get_next(iter)
-
-        return CoordPayload(coord, payload)
-
-    @staticmethod
     def _flatten(tuples):
         """Flatten an arbitrarily nested tuple """
         flattened = []
@@ -3701,14 +3682,12 @@ class Fiber:
 
             # Get the iterators
             a = a_fiber.__iter__()
-            next_a = lambda: Fiber._get_next(a)
-
             b = b_fiber.__iter__()
             next_b = lambda: Fiber._get_next(b)
 
 
-            a_coord, a_payload = next_a()
-            b_coord, b_payload = next_b()
+            a_coord, a_payload = Fiber._get_next(a)
+            b_coord, b_payload = Fiber._get_next(b)
 
             if a_fiber.getOwner() is None:
                 line = "Rank Unknown"
@@ -3757,8 +3736,8 @@ class Fiber:
                             b_fiber._addUse(b_coord, start_iter)
 
 
-                    a_coord, a_payload = next_a()
-                    b_coord, b_payload = next_b()
+                    a_coord, a_payload = Fiber._get_next(a)
+                    b_coord, b_payload = Fiber._get_next(b)
 
                     if is_collecting:
                         if a_coord is not None:
@@ -3770,7 +3749,7 @@ class Fiber:
                     continue
 
                 if a_coord < b_coord:
-                    a_coord, a_payload = next_a()
+                    a_coord, a_payload = Fiber._get_next(a)
 
                     if is_collecting:
                         Metrics.incCount(line, "unsuccessful_intersect_tensor0", 1)
@@ -3788,7 +3767,7 @@ class Fiber:
                     continue
 
                 if a_coord > b_coord:
-                    b_coord, b_payload = next_b()
+                    b_coord, b_payload = Fiber._get_next(b)
 
                     if is_collecting:
                         Metrics.incCount(line, "unsuccessful_intersect_tensor1", 1)
@@ -3866,64 +3845,43 @@ class Fiber:
 
         assert self._ordered and self._unique
 
-        a_fiber = self
-        b_fiber = other
+        def iterator(a_fiber, b_fiber):
+            a = a_fiber.__iter__()
+            b = b_fiber.__iter__()
 
-        a = self.__iter__()
-        b = other.__iter__()
+            a_coord, a_payload = Fiber._get_next(a)
+            b_coord, b_payload = Fiber._get_next(b)
 
-        z_coords = []
-        z_payloads = []
+            while a_coord is not None and b_coord is not None:
+                if a_coord == b_coord:
+                    yield a_coord, ("AB", a_payload, b_payload)
 
-        a_coord, a_payload = Fiber._get_next_nonempty(a)
-        b_coord, b_payload = Fiber._get_next_nonempty(b)
+                    a_coord, a_payload = Fiber._get_next(a)
+                    b_coord, b_payload = Fiber._get_next(b)
 
-        while not (a_coord is None or b_coord is None):
-            if a_coord == b_coord:
-                z_coords.append(a_coord)
+                elif a_coord < b_coord:
+                    b_default = b_fiber._createDefault()
+                    yield a_coord, ("A", a_payload, b_default)
+                    a_coord, a_payload = Fiber._get_next(a)
 
-                z_payloads.append(("AB", a_payload, b_payload))
+                # a_coord > b_coord
+                else:
+                    a_default = a_fiber._createDefault()
+                    yield b_coord, ("B", a_default, b_payload)
+                    b_coord, b_payload = Fiber._get_next(b)
 
-                a_coord, a_payload = Fiber._get_next_nonempty(a)
-                b_coord, b_payload = Fiber._get_next_nonempty(b)
-                continue
-
-            if a_coord < b_coord:
-                z_coords.append(a_coord)
-
+            while a_coord is not None:
                 b_default = b_fiber._createDefault()
-                z_payloads.append(("A", a_payload, b_default))
+                yield a_coord, ("A", a_payload, b_default)
+                a_coord, a_payload = Fiber._get_next(a)
 
-                a_coord, a_payload = Fiber._get_next_nonempty(a)
-                continue
+            while b_coord is not None:
+                    a_default = a_fiber._createDefault()
+                    yield b_coord, ("B", a_default, b_payload)
+                    b_coord, b_payload = Fiber._get_next(b)
 
-            if a_coord > b_coord:
-                z_coords.append(b_coord)
-
-                a_default = a_fiber._createDefault()
-                z_payloads.append(("B", a_default, b_payload))
-
-                b_coord, b_payload = Fiber._get_next_nonempty(b)
-                continue
-
-        while a_coord is not None:
-            z_coords.append(a_coord)
-
-            b_default = b_fiber._createDefault()
-            z_payloads.append(("A", a_payload, b_default))
-
-            a_coord, a_payload = Fiber._get_next_nonempty(a)
-
-        while b_coord is not None:
-            z_coords.append(b_coord)
-
-            a_default = a_fiber._createDefault()
-            z_payloads.append(("B", a_default, b_payload))
-
-            b_coord, b_payload = Fiber._get_next_nonempty(b)
-
-        result = Fiber(z_coords, z_payloads)
-        result._setDefault(("", a_fiber.getDefault(), b_fiber.getDefault()))
+        result = Fiber.fromIterator(iterator(self, other))
+        result._setDefault(("", self.getDefault(), other.getDefault()))
 
         return result
 
@@ -3975,60 +3933,41 @@ class Fiber:
 
         assert self._ordered and self._unique
 
-        a_fiber = self
-        b_fiber = other
+        def iterator(a_fiber, b_fiber):
+            a = a_fiber.__iter__()
+            b = b_fiber.__iter__()
 
-        a = self.__iter__()
-        b = other.__iter__()
+            a_coord, a_payload = Fiber._get_next(a)
+            b_coord, b_payload = Fiber._get_next(b)
 
-        z_coords = []
-        z_payloads = []
+            while a_coord is not None and b_coord is not None:
+                if a_coord == b_coord:
+                    a_coord, a_payload = Fiber._get_next(a)
+                    b_coord, b_payload = Fiber._get_next(b)
 
-        a_coord, a_payload = Fiber._get_next_nonempty(a)
-        b_coord, b_payload = Fiber._get_next_nonempty(b)
+                elif a_coord < b_coord:
+                    b_default = b_fiber._createDefault()
+                    yield a_coord, ("A", a_payload, b_default)
+                    a_coord, a_payload = Fiber._get_next(a)
 
-        while not (a_coord is None or b_coord is None):
-            if a_coord == b_coord:
-                a_coord, a_payload = Fiber._get_next_nonempty(a)
-                b_coord, b_payload = Fiber._get_next_nonempty(b)
-                continue
+                # a_coord > b_coord
+                else:
+                    a_default = a_fiber._createDefault()
+                    yield b_coord, ("B", a_default, b_payload)
+                    b_coord, b_payload = Fiber._get_next(b)
 
-            if a_coord < b_coord:
-                z_coords.append(a_coord)
-
+            while a_coord is not None:
                 b_default = b_fiber._createDefault()
-                z_payloads.append(("A", a_payload, b_default))
+                yield a_coord, ("A", a_payload, b_default)
+                a_coord, a_payload = Fiber._get_next(a)
 
-                a_coord, a_payload = Fiber._get_next_nonempty(a)
-                continue
-
-            if a_coord > b_coord:
-                z_coords.append(b_coord)
-
+            while b_coord is not None:
                 a_default = a_fiber._createDefault()
-                z_payloads.append(("B", a_default, b_payload))
+                yield b_coord, ("B", a_default, b_payload)
+                b_coord, b_payload = Fiber._get_next(b)
 
-                b_coord, b_payload = Fiber._get_next_nonempty(b)
-                continue
-
-        while a_coord is not None:
-            z_coords.append(a_coord)
-
-            b_default = b_fiber._createDefault()
-            z_payloads.append(("A", a_payload, b_default))
-
-            a_coord, a_payload = Fiber._get_next_nonempty(a)
-
-        while b_coord is not None:
-            z_coords.append(b_coord)
-
-            a_default = a_fiber._createDefault()
-            z_payloads.append(("B", a_default, b_payload))
-
-            b_coord, b_payload = Fiber._get_next_nonempty(b)
-
-        result = Fiber(z_coords, z_payloads)
-        result._setDefault(("", a_fiber.getDefault(), b_fiber.getDefault()))
+        result = Fiber.fromIterator(iterator(self, other))
+        result._setDefault(("", self.getDefault(), other.getDefault()))
 
         return result
 
@@ -4199,43 +4138,32 @@ class Fiber:
 
         assert self._ordered and self._unique
 
-        a_fiber = self
-        b_fiber = other
-
-        a = self.__iter__()
-        b = other.__iter__()
-
-        z_coords = []
-        z_payloads = []
-
-        a_coord, a_payload = Fiber._get_next(a)
-        b_coord, b_payload = Fiber._get_next_nonempty(b)
-
-        while not (a_coord is None or b_coord is None):
-            if a_coord == b_coord:
-                a_coord, a_payload = Fiber._get_next(a)
-                b_coord, b_payload = Fiber._get_next_nonempty(b)
-                continue
-
-            if a_coord < b_coord:
-                z_coords.append(a_coord)
-                z_payloads.append(a_payload)
-
-                a_coord, a_payload = Fiber._get_next(a)
-                continue
-
-            if a_coord > b_coord:
-                b_coord, b_payload = Fiber._get_next(b)
-                continue
-
-        while a_coord is not None:
-            z_coords.append(a_coord)
-            z_payloads.append(a_payload)
+        def iterator(a_fiber, b_fiber):
+            a = a_fiber.__iter__()
+            b = b_fiber.__iter__()
 
             a_coord, a_payload = Fiber._get_next(a)
+            b_coord, b_payload = Fiber._get_next(b)
 
-        result = Fiber(z_coords, z_payloads)
-        result._setDefault(a_fiber.getDefault())
+            while a_coord is not None and b_coord is not None:
+                if a_coord == b_coord:
+                    a_coord, a_payload = Fiber._get_next(a)
+                    b_coord, b_payload = Fiber._get_next(b)
+
+                elif a_coord < b_coord:
+                    yield a_coord, a_payload
+                    a_coord, a_payload = Fiber._get_next(a)
+
+                # a_coord > b_coord:
+                else:
+                    b_coord, b_payload = Fiber._get_next(b)
+
+            while a_coord is not None:
+                yield a_coord, a_payload
+                a_coord, a_payload = Fiber._get_next(a)
+
+        result = Fiber.fromIterator(iterator(self, other))
+        result._setDefault(self.getDefault())
 
         return result
 

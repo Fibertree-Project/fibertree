@@ -1441,8 +1441,8 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(ap, ap_ref)
 
 
-    def test_project_eager_only(self):
-        """Test projections"""
+    def test_project_reverse_eager_only(self):
+        """Test projections, eager only if reversed"""
 
         c = [0, 1, 10, 20]
         p = [1, 2, 11, 21]
@@ -1450,7 +1450,7 @@ class TestFiber(unittest.TestCase):
         a._setIsLazy(True)
 
         with self.assertRaises(AssertionError):
-            ap = a.project(lambda c: c + 1)
+            ap = a.project(lambda c: 50 - c)
 
 
     def test_prune(self):
