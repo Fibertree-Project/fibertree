@@ -861,12 +861,12 @@ class Fiber:
 
         # Invariant: trans_fn is order preserving, but we check for reversals
 
-        min = start_coord
+        min_ = start_coord
 
         if size is not None:
-            max = start_coord + size
+            max_ = start_coord + size
         else:
-            max = end_coord
+            max_ = end_coord
 
         coords = []
         payloads = []
@@ -879,9 +879,9 @@ class Fiber:
             c = self.coords[pos]
             p = self.payloads[pos]
             new_c = trans_fn(c)
-            if new_c >= max:
+            if new_c >= max_:
                 break
-            if new_c >= min:
+            if new_c >= min_:
 
                 # For statistics
                 if first_pos is None:
@@ -1117,7 +1117,7 @@ class Fiber:
             fiber coordinate.
 
         interval: tuple, default=None (all coordinates)
-            Restict projection to this range of original coordinates
+            Restict projection to this range of new coordinates
 
         Returns
         -------
@@ -1170,7 +1170,7 @@ class Fiber:
                     yield c, p
 
         result = Fiber.fromIterator(project_iterator(fiber, trans_fn, interval))
-        result.setDefault(self.getDefault())
+        result._setDefault(self.getDefault())
 
         return result
 
@@ -4020,6 +4020,7 @@ class Fiber:
         coordinate in the output!
 
         """
+        assert not self.isLazy()
 
         def iterator(a_fiber, b_fiber):
             """

@@ -243,6 +243,15 @@ class TestFiberOperators(unittest.TestCase):
             inds.append(k)
         self.assertEqual(inds, [0, 1, 2, 3, 4])
 
+    def test_lshift_eager_only(self):
+        """Test metrics collection on Fiber.__lshift__ from a fiber"""
+        a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
+        z_m._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            z_m << a_m
+
     def test_lshift_metrics_fiber(self):
         """Test metrics collection on Fiber.__lshift__ from a fiber"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
