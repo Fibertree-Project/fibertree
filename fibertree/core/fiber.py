@@ -14,8 +14,9 @@ import yaml
 import random
 
 from .coord_payload import CoordPayload
-from .payload import Payload
 from .metrics import Metrics
+from .payload import Payload
+from .rank_attrs import RankAttrs
 
 #
 # Set up logging
@@ -162,7 +163,8 @@ class Fiber:
                  initial=None,
                  max_coord=None,
                  ordered=True,
-                 unique=True):
+                 unique=True,
+                 rank_attrs=None):
 
         #
         # Set up logging
@@ -265,6 +267,11 @@ class Fiber:
         #
         self._setIsLazy(False)
         self.iter = None
+
+        #
+        # Save the rank attributes if specified explicitly
+        #
+        self._rank_attrs = rank_attrs
 
     @classmethod
     def fromCoordPayloadList(cls, *cp, **kwargs):
@@ -1262,6 +1269,41 @@ class Fiber:
         """
 
         return self._owner
+
+    def setRankAttrs(self, attrs):
+        """
+        If the fiber does not have an owning rank, it can still have rank attributes
+
+        Parameters
+        ----------
+        attrs: RankAttrs
+            Rank attributes
+
+        Returns
+        -------
+        None
+        """
+        assert isinstance(attrs, RankAttrs)
+        self._rank_attrs = attrs
+
+    def getRankAttrs(self):
+        """
+        If the fiber does not have an owning rank, it can still have rank attributes
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        attrs: Optional[RankAttrs]
+            Rank attributes if set
+
+        """
+        if self.getOwner():
+            return self.getOwner().getAttrs()
+
+        return self._rank_attrs
 
 
     #

@@ -7,10 +7,9 @@ A class used to implement a rank (or dimension) of a tensor.
 
 import logging
 
-from copy import deepcopy
-
 from .fiber import Fiber
 from .payload import Payload
+from .rank_attrs import RankAttrs
 
 #
 # Set up logging
@@ -85,23 +84,11 @@ class Rank:
         # Set up logging
         #
         # self.logger = logging.getLogger('fibertree.core.rank')
-
-        self._id = id
-
-        if shape is None:
-            self._estimated_shape = True
-            self._shape = 0
-        else:
-            self._estimated_shape = False
-            self._shape = shape
+        self._attrs = RankAttrs(id, shape, fmt)
 
         self.setNextRank(next_rank)
 
         self.fibers = []
-
-        self.setFormat(fmt)
-
-        self.setCollecting(False)
 
 #
 # Accessor methods
@@ -124,7 +111,7 @@ class Rank:
 
         """
 
-        return self._id
+        return self._attrs.getId()
 
 
     def getRankIds(self, all_ranks=True):
@@ -151,7 +138,7 @@ class Rank:
 
         """
 
-        rankids = [self._id]
+        rankids = [self.getId()]
 
         if all_ranks and self.next_rank is not None:
             rankids.extend(self.next_rank.getRankIds(all_ranks=True))
@@ -173,11 +160,11 @@ class Rank:
         Returns
         -------
         self: rank
-            Returns `self1 so method can be used in a chain
+            Returns `self` so method can be used in a chain
 
         """
 
-        self._id = rank_id
+        self._attrs.setId(rank_id)
         return self
 
 
@@ -186,7 +173,7 @@ class Rank:
 
         Rank._deprecated("Use of Rank.getName() is deprecated - use Rank.getId()")
 
-        return self._id
+        return self._attrs.getId()
 
 
     def getShape(self, all_ranks=True, authoritative=False):
@@ -222,33 +209,33 @@ class Rank:
             #
             # Handle case where user just wants shape of this rank
             #
-            if authoritative and self._estimated_shape:
+            if authoritative and self._attrs.getEstimatedShape():
                 #
                 # We do not know the shape authoritatively
                 #
                 return None
 
-            if self._shape == 0:
+            if self._attrs.getShape() == 0:
                 #
                 # We do not actually know the shape
                 #
                 return 0
 
-            return self._shape
+            return self._attrs.getShape()
 
         #
         # Get shape of all ranks
         #
-        if authoritative and self._estimated_shape:
+        if authoritative and self._attrs.getEstimatedShape():
             #
             # This will cause the final return to be None
             #
             return None
 
-        if self._shape == 0 and len(self.fibers) > 0:
+        if self._attrs.getShape() == 0 and len(self.fibers) > 0:
             shape = [max([f.estimateShape(all_ranks=False) for f in self.fibers])]
         else:
-            shape = [self._shape]
+            shape = [self._attrs.getShape()]
 
         if self.next_rank is not None:
             rest_of_shape = self.next_rank.getShape(all_ranks=True, authoritative=authoritative)
@@ -324,8 +311,7 @@ class Rank:
 
         """
 
-        self._default_is_set = True
-        self._default = Payload.maybe_box(value)
+        self._attrs.setDefault(value)
 
         return self
 
@@ -345,22 +331,12 @@ class Rank:
 
         Raises
         ------
-        None
-
-        Notes
-        -----
-
-        We `deepcopy()` the return value so that everyone has their
-        own unique **boxed** value
+        AssertionError
+            Raised if default is not set
 
         """
 
-        assert self._default_is_set
-
-        #
-        # Return a copy of the default
-        #
-        return deepcopy(self._default)
+        return self._attrs.getDefault()
 
     def setFormat(self, fmt):
         """Set the format for this rank
@@ -375,8 +351,9 @@ class Rank:
 
         Returns
         -------
-        None
 
+        self: Rank
+           So method can be used in a chain
 
         Raises
         ------
@@ -385,8 +362,10 @@ class Rank:
             Illegal format
 
         """
-        assert fmt == "C" or fmt == "U"
-        self.fmt = fmt
+
+        self._attrs.setFormat(fmt)
+
+        return self
 
     def getFormat(self):
         """Get the format of this rank
@@ -407,7 +386,7 @@ class Rank:
         None
 
         """
-        return self.fmt
+        return self._attrs.getFormat()
 
     def setCollecting(self, collecting):
         """Set  whether the trace of uses should be collected for this rank
@@ -421,8 +400,9 @@ class Rank:
 
         Returns
         -------
-        None
 
+        self: Rank
+           So method can be used in a chain
 
         Raises
         ------
@@ -431,8 +411,8 @@ class Rank:
             collecting not a bool
 
         """
-        assert isinstance(collecting, bool)
-        self.collecting = collecting
+        self._attrs.setCollecting(collecting)
+        return self
 
     def getCollecting(self):
         """Get whether the trace of uses should be collected for this rank
@@ -454,7 +434,22 @@ class Rank:
         None
 
         """
-        return self.collecting
+        return self._attrs.getCollecting()
+
+    def getAttrs(self):
+        """
+        Get the rank attributes
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        attrs: RankAttrs
+            Rank attributes
+        """
+        return self._attrs
 
 
 #
@@ -491,7 +486,7 @@ class Rank:
         #
         fiber = Payload.get(fiber)
 
-        if self._estimated_shape:
+        if self._attrs.getEstimatedShape():
             #
             # Get shape from fiber and see it is larger that current shape
             # making sure we don't get info from a prior owning rank
@@ -500,7 +495,7 @@ class Rank:
             # change estimated_shape to True
             #
             fiber.setOwner(None)
-            self._shape = max(self._shape, fiber.getShape(all_ranks=False))
+            self._attrs.setShape(max(self._attrs.getShape(), fiber.getShape(all_ranks=False)))
 
         #
         # Set this rank as owner of the fiber
@@ -579,7 +574,7 @@ class Rank:
         """__str__"""
 
         string = indent * ' '
-        string += f"Rank: {self._id} "
+        string += f"Rank: {self._attrs.getId()} "
 
         next_indent = len(string)
 
@@ -592,7 +587,7 @@ class Rank:
     def __repr__(self):
         """__repr__"""
 
-        string = "R(%s)/[" % self._id
+        string = "R(%s)/[" % self._attrs.getId()
         string += ", ".join([x.__repr__() for x in self.fibers])
         string += "]"
         return string

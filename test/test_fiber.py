@@ -1374,6 +1374,23 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(r, ["X.1", "X.0"])
 
+    def test_rank_attrs(self):
+        """Test getting and setting rank attributes"""
+        attrs = RankAttrs("K", shape=20)
+        attrs.setFormat("U").setDefault(3).setId("M").setCollecting(True)
+        f = Fiber(rank_attrs=attrs)
+
+        self.assertEqual(f.getRankAttrs(), attrs)
+
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+        t = Tensor.fromFiber(rank_ids=["K"], fiber=a)
+
+        attrs = RankAttrs("K").setShape(10).setDefault(0)
+        self.assertEqual(a.getRankAttrs(), attrs)
+
     def test_getDepth_eager_only(self):
         """Test getDepth for eager only"""
         a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
