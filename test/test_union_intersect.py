@@ -37,20 +37,31 @@ class TestUnionIntersect(unittest.TestCase):
     def test_intersection(self):
         """Test the intersection() function"""
         a_k = Fiber.fromUncompressed([1, 0, 3, 4, 5])
+        a_k.getRankAttrs().setId("K")
         b_k = Fiber.fromUncompressed([0, 6, 7, 0, 8])
+        b_k.getRankAttrs().setId("K")
         c_k = Fiber.fromUncompressed([10, 0, 9, 0, 12])
+        c_k.getRankAttrs().setId("K")
 
+        # Check the elements
         cc = [2, 4]
         cp = [(3, 7, 9), (5, 8, 12)]
         for i, (c, p) in enumerate(Fiber.intersection(a_k, b_k, c_k)):
             self.assertEqual(cc[i], c)
             self.assertEqual(cp[i], p)
 
+        # Check the rank ID
+        id_ = Fiber.intersection(a_k, b_k, c_k).getRankAttrs().getId()
+        self.assertEqual(id_, "K")
+
     def test_union(self):
         """Test the union() function"""
         a_k = Fiber.fromUncompressed([1, 0, 3, 0, 0])
+        a_k.getRankAttrs().setId("K")
         b_k = Fiber.fromUncompressed([0, 6, 7, 0, 8])
+        b_k.getRankAttrs().setId("K")
         c_k = Fiber.fromUncompressed([10, 0, 9, 0, 12])
+        c_k.getRankAttrs().setId("K")
 
         cc = [0, 1, 2, 4]
         cp = [("AC", 1, 0, 10), ("B", 0, 6, 0), ("ABC", 3, 7, 9), ("BC", 0, 8, 12)]
@@ -58,6 +69,9 @@ class TestUnionIntersect(unittest.TestCase):
             self.assertEqual(cc[i], c)
             self.assertEqual(cp[i], p)
 
+        # Check the rank ID
+        id_ = Fiber.union(a_k, b_k, c_k).getRankAttrs().getId()
+        self.assertEqual(id_, "K")
 
     def test_union_2x_1d(self):
         """Test union 2-way for 1d fibers"""
