@@ -9,6 +9,32 @@ from .coord_payload import CoordPayload
 from .metrics import Metrics
 from .payload import Payload
 
+def __iter__(self):
+    """__iter__"""
+    if self.getOwner() is not None:
+        fmt = self.getOwner().getFormat()
+    elif self.getRankAttrs() is not None:
+        fmt = self.getRankAttrs().getFormat()
+    else:
+        fmt = "C"
+
+    if fmt == "C":
+        return self.iterOccupancy()
+    elif fmt == "U":
+        return self.iterShape()
+    else:
+        raise ValueError("Unknown format")
+
+
+def __reversed__(self):
+    """Return reversed fiber"""
+
+    assert not self.isLazy()
+
+    for coord, payload in zip(reversed(self.coords),
+                              reversed(self.payloads)):
+        yield CoordPayload(coord, payload)
+
 def iterOccupancy(self, tick=False):
     """Iterate over non-default elements of the fiber
 

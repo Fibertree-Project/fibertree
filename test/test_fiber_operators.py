@@ -302,7 +302,9 @@ class TestFiberOperators(unittest.TestCase):
     def test_lshift_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__lshift__"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        a_m.getRankAttrs().setCollecting(True)
         z_m = Fiber()
+        z_m.getRankAttrs().setCollecting(True)
 
         Metrics.beginCollect(["N", "M"])
         for _ in range(3):

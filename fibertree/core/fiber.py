@@ -228,12 +228,24 @@ class Fiber:
         self._checkUnique()
 
         #
+        # Owner rank... set later when fiber is appended to a rank
+        #
+        self.setOwner(None)
+
+        # Create a rank_attrs
+        if rank_attrs is not None:
+            self.setRankAttrs(rank_attrs)
+        else:
+            self.setRankAttrs(RankAttrs())
+
+        #
         # Set a specific contstant value for the shape of this fiber
         #
         # Note1: this value is overridden by the owning rank's shape
         # Note2: no checks are done to see if this value is violated
         #
-        self._shape = shape
+        self.getRankAttrs().setShape(shape)
+
         #
         # Set a specific constant value to the maximum legal coordinate
         #
@@ -243,14 +255,9 @@ class Fiber:
         if max_coord is not None:
             Fiber._deprecated("Explicitly setting a fiber's max_coord is deprecated")
         #
-        # Owner rank... set later when fiber is appended to a rank
-        #
-        self.setOwner(None)
-
-        #
         # Create default value
         #
-        self._default = Payload.maybe_box(default)
+        self.getRankAttrs().setDefault(Payload.maybe_box(default))
 
         #
         # Initialize "saved position"
@@ -267,11 +274,6 @@ class Fiber:
         #
         self._setIsLazy(False)
         self.iter = None
-
-        #
-        # Save the rank attributes if specified explicitly
-        #
-        self._rank_attrs = rank_attrs
 
     @classmethod
     def fromCoordPayloadList(cls, *cp, **kwargs):
@@ -1328,9 +1330,6 @@ class Fiber:
             owner.setDefault(default)
             return
 
-        if self.getRankAttrs() is None:
-            self.setRankAttrs(RankAttrs("Unknown"))
-
         self.getRankAttrs().setDefault(default)
 
 
@@ -1362,23 +1361,15 @@ class Fiber:
         if owner is not None:
             return owner.getDefault()
 
-        if self.getRankAttrs() is not None:
-            return self.getRankAttrs().getDefault()
-
         #
         # For unowned fibers, try to guess a default value
         #
-        # Note: the payload being a Fiber overwrides self._default
+        # Note: the payload being a Fiber overrides the rank attribute
         #
         if len(self.payloads) > 0 and Payload.contains(self.payloads[0], Fiber):
             return Fiber
 
-        if self._default != 0:
-            return deepcopy(self._default)
-
-        return Payload(0)
-
-
+        return self.getRankAttrs().getDefault()
 
     def _createDefault(self, addtorank=True):
         """_createDefault
@@ -2021,35 +2012,11 @@ class Fiber:
 #
 # Iterator methods
 #
-
-    def __iter__(self):
-        """__iter__"""
-        if self.getOwner() is None:
-            fmt = "C"
-        else:
-            fmt = self.getOwner().getFormat()
-
-        if fmt == "C":
-            return self.iterOccupancy()
-        elif fmt == "U":
-            return self.iterShape()
-        else:
-            raise ValueError("Unknown format")
-
-
-    def __reversed__(self):
-        """Return reversed fiber"""
-
-        assert not self.isLazy()
-
-        for coord, payload in zip(reversed(self.coords),
-                                  reversed(self.payloads)):
-            yield CoordPayload(coord, payload)
-
-
-    from .iterator import iterOccupancy
-    from .iterator import iterShape
-    from .iterator import iterShapeRef
+    from .iterators import __iter__
+    from .iterators import __reversed__
+    from .iterators import iterOccupancy
+    from .iterators import iterShape
+    from .iterators import iterShapeRef
 
 #
 # Core methods
@@ -2343,20 +2310,18 @@ class Fiber:
         """
         owner = self.getOwner()
 
-        shape = None
-
+        # If we have an owner, we can just use that value
         if owner is not None:
             shape = owner.getShape(all_ranks=all_ranks)
+
+        else:
+            shape = self.getRankAttrs().getShape()
 
         if shape is not None:
             return shape
 
-        if self._shape is not None:
-            return self._shape
-
         #
-        # Backup for cases where there is no  owner
-        # or owner didn't know shape
+        # Backup for cases where there is no  owner or shape was unknown
         #
         shape = self.estimateShape(all_ranks=all_ranks)
 
@@ -2472,6 +2437,11 @@ class Fiber:
         #
 
         rankids = [f"X.{d}" for d in reversed(range(self.getDepth()))]
+
+
+        rank_id = self.getRankAttrs().getId()
+        if rank_id != "Unknown":
+            rankids[0] = rank_id
 
         return rankids
 
@@ -3681,11 +3651,7 @@ class Fiber:
             a_coord, a_payload = Fiber._get_next(a)
             b_coord, b_payload = Fiber._get_next(b)
 
-            if a_fiber.getOwner() is None:
-                line = "Rank Unknown"
-            else:
-                line = "Rank " + a_fiber.getOwner().getId()
-
+            line = "Rank " + a_fiber.getRankAttrs().getId()
             is_collecting = Metrics.isCollecting()
 
             if is_collecting:
@@ -3697,10 +3663,8 @@ class Fiber:
 
                 skip = None
 
-            a_collecting = a_fiber.getOwner() is not None \
-                and a_fiber.getOwner().getCollecting()
-            b_collecting = b_fiber.getOwner() is not None \
-                and b_fiber.getOwner().getCollecting()
+            a_collecting = a_fiber.getRankAttrs().getCollecting()
+            b_collecting = b_fiber.getRankAttrs().getCollecting()
 
             while not (a_coord is None or b_coord is None):
                 if a_coord == b_coord:
@@ -4019,18 +3983,14 @@ class Fiber:
             Iterator simulating the populate operator
             """
 
-            if a_fiber.getOwner() is None:
-                line = "Rank Unknown"
-            else:
-                line = "Rank " + a_fiber.getOwner().getId()
+            line = "Rank " + a_fiber.getRankAttrs().getId()
 
             is_collecting = Metrics.isCollecting()
 
             # Add coordinates/payloads to a_fiber where necessary
             maybe_insert = False
-            a_collecting = a_fiber.getOwner() is None or a_fiber.getOwner().getCollecting()
-            b_collecting = isinstance(b_fiber, Fiber) and \
-                (b_fiber.getOwner() is None or b_fiber.getOwner().getCollecting())
+            a_collecting = a_fiber.getRankAttrs().getCollecting()
+            b_collecting = b_fiber.getRankAttrs().getCollecting()
 
             for b_coord, b_payload in b_fiber:
                 a_payload = self.getPayload(b_coord, allocate=False)
@@ -4867,10 +4827,10 @@ class Fiber:
             unique = self._unique
 
         if default is None:
-            default = self._default
+            default = self.getRankAttrs().getDefault()
 
         if shape is None:
-            default = self._shape
+            shape = self.getRankAttrs().getShape()
 
         return Fiber(coords=coords,
                      payloads=payloads,

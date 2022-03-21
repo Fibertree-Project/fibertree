@@ -51,9 +51,6 @@ class TestRankAttrs(unittest.TestCase):
         attrs.setShape(100)
         self.assertEqual(attrs.getShape(), 100)
 
-        with self.assertRaises(AssertionError):
-            attrs.setShape("foo")
-
     def test_estim_shape(self):
         """Test that the estimated shape is set correctly"""
         attrs = RankAttrs("K")

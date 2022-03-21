@@ -51,7 +51,7 @@ class RankAttrs:
 
     """
 
-    def __init__(self, rank_id, shape=None, fmt="C"):
+    def __init__(self, rank_id="Unknown", shape=None, fmt="C"):
         """__init__"""
 
         self.setId(rank_id)
@@ -307,9 +307,7 @@ class RankAttrs:
             shape not an int
 
         """
-        assert isinstance(shape, int)
         self._shape = shape
-
         return self
 
     def getShape(self):

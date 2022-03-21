@@ -646,7 +646,6 @@ class Tensor:
 
         self._addFiber(root)
 
-
     def _addFiber(self, fiber, level=0):
         """Recursively fill in ranks from "fiber"."""
 

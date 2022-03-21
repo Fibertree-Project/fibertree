@@ -17,7 +17,7 @@ class TestTensorTransform(unittest.TestCase):
 
         self.assertEqual(a_out, a_verify)
         self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N"])
-        self.assertEqual(a_out.getShape(), [16, 20, 10])
+        self.assertEqual(a_out.getShape(), [20, 20, 10])
 
     def test_splitUniform_0(self):
         """ Test splitUniform - depth=0 """
@@ -34,8 +34,7 @@ class TestTensorTransform(unittest.TestCase):
 
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
-                self.assertEqual(a_out.getShape(), [26, 41, 42, 10])
-
+                self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
 
 
     def test_splitUniform_1(self):
@@ -53,7 +52,7 @@ class TestTensorTransform(unittest.TestCase):
 
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
-                self.assertEqual(a_out.getShape(), [41, 31, 42, 10])
+                self.assertEqual(a_out.getShape(), [41, 42, 42, 10])
 
 
     def test_splitUniform_2(self):
@@ -70,7 +69,7 @@ class TestTensorTransform(unittest.TestCase):
 
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
-                self.assertEqual(a_out.getShape(), [41, 42, 9, 10])
+                self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
 
     def test_splitNonUniform_0(self):
@@ -88,7 +87,7 @@ class TestTensorTransform(unittest.TestCase):
 
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
-                self.assertEqual(a_out.getShape(), [36, 41, 42, 10])
+                self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
 
 
     def test_splitNonUniform_1(self):
@@ -106,7 +105,7 @@ class TestTensorTransform(unittest.TestCase):
 
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
-                self.assertEqual(a_out.getShape(), [41, 26, 42, 10])
+                self.assertEqual(a_out.getShape(), [41, 42, 42, 10])
 
 
     def test_splitNonUniform_2(self):
@@ -124,7 +123,7 @@ class TestTensorTransform(unittest.TestCase):
 
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
-                self.assertEqual(a_out.getShape(), [41, 42, 5, 10])
+                self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
     def test_floordiv(self):
         """ Test /, the __floordiv__ operator """
@@ -135,7 +134,7 @@ class TestTensorTransform(unittest.TestCase):
 
         self.assertEqual(a_out, a_verify)
         self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N"])
-        self.assertEqual(a_out.getShape(), [17, 20, 10])
+        self.assertEqual(a_out.getShape(), [20, 20, 10])
 
     def test_splitEqual_0(self):
         """ Test splitEqual - depth=0 """
@@ -170,7 +169,7 @@ class TestTensorTransform(unittest.TestCase):
 
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N.1", "N.0", "K"])
-                self.assertEqual(a_out.getShape(), [41, 34, 42, 10])
+                self.assertEqual(a_out.getShape(), [41, 42, 42, 10])
 
 
     def test_splitEqual_2(self):
@@ -244,7 +243,7 @@ class TestTensorTransform(unittest.TestCase):
 
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
-                self.assertEqual(a_out.getShape(), [41, 42, 9, 10])
+                self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
 
     def test_swapRanks_0(self):
