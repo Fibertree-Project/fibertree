@@ -1321,14 +1321,17 @@ class Fiber:
         """_setDefault - internal use version"""
 
         owner = self.getOwner()
-
         #
         # Try to set default at owning rank, otherwise hold value locally
         #
         if owner is not None:
             owner.setDefault(default)
-        else:
-            self._default = Payload.maybe_box(default)
+            return
+
+        if self.getRankAttrs() is None:
+            self.setRankAttrs(RankAttrs("Unknown"))
+
+        self.getRankAttrs().setDefault(default)
 
 
     def getDefault(self):
@@ -1358,6 +1361,9 @@ class Fiber:
 
         if owner is not None:
             return owner.getDefault()
+
+        if self.getRankAttrs() is not None:
+            return self.getRankAttrs().getDefault()
 
         #
         # For unowned fibers, try to guess a default value
@@ -2041,65 +2047,9 @@ class Fiber:
             yield CoordPayload(coord, payload)
 
 
-    def iterOccupancy(self):
-        """Iterate over non-default elements of the fiber
-
-        Iterate over every non-default payload in the shape, returning a
-        CoordPayload for each one
-
-        Parameters
-        ----------
-        None
-        """
-        if self.isLazy():
-            for coord, payload in self.iter:
-                self.coords.append(coord)
-                self.payloads.append(payload)
-                yield CoordPayload(coord, payload)
-
-        else:
-            for coord, payload in zip(self.coords, self.payloads):
-                if not Payload.isEmpty(payload):
-                    yield CoordPayload(coord, payload)
-
-
-    def iterShape(self):
-        """Iterate over fiber shape
-
-        Iterate over every coordinate in the shape, returning a
-        CoordPayload for each one, with a **default** value for
-        empty payloads.
-
-        Parameters
-        ----------
-        None
-
-        """
-        assert not self.isLazy()
-
-        for c in range(self.getShape(all_ranks=False)):
-            p = self.getPayload(c)
-            yield CoordPayload(c, p)
-
-
-    def iterShapeRef(self):
-        """Iterate over fiber shape
-
-        Iterate over every coordinate in the shape, returning a
-        CoordPayload for each one, and creating elements for empty
-        payloads.
-
-        Parameters
-        ----------
-        None
-
-        """
-
-        assert not self.isLazy()
-
-        for c in range(self.getShape(all_ranks=False)):
-            p = self.getPayloadRef(c)
-            yield CoordPayload(c, p)
+    from .iterator import iterOccupancy
+    from .iterator import iterShape
+    from .iterator import iterShapeRef
 
 #
 # Core methods
