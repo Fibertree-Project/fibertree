@@ -9,7 +9,7 @@ from .coord_payload import CoordPayload
 from .metrics import Metrics
 from .payload import Payload
 
-def __iter__(self):
+def __iter__(self, tick=True):
     """__iter__"""
     if self.getOwner() is not None:
         fmt = self.getOwner().getFormat()
@@ -19,9 +19,9 @@ def __iter__(self):
         fmt = "C"
 
     if fmt == "C":
-        return self.iterOccupancy()
+        return self.iterOccupancy(tick)
     elif fmt == "U":
-        return self.iterShape()
+        return self.iterShape(tick)
     else:
         raise ValueError("Unknown format")
 
@@ -35,7 +35,7 @@ def __reversed__(self):
                               reversed(self.payloads)):
         yield CoordPayload(coord, payload)
 
-def iterOccupancy(self, tick=False):
+def iterOccupancy(self, tick=True):
     """Iterate over non-default elements of the fiber
 
     Iterate over every non-default payload in the shape, returning a
@@ -67,7 +67,7 @@ def iterOccupancy(self, tick=False):
     if is_collecting and tick:
         Metrics.clrIter(line)
 
-def iterShape(self, tick=False):
+def iterShape(self, tick=True):
     """Iterate over fiber shape
 
     Iterate over every coordinate in the shape, returning a
@@ -93,7 +93,7 @@ def iterShape(self, tick=False):
     if is_collecting and tick:
         Metrics.clrIter(line)
 
-def iterShapeRef(self, tick=False):
+def iterShapeRef(self, tick=True):
     """Iterate over fiber shape
 
     Iterate over every coordinate in the shape, returning a
@@ -133,11 +133,7 @@ def _prep_metrics_inc(fiber):
         The name of the line number to increment over
     """
     is_collecting = Metrics.isCollecting()
-
-    if fiber.getOwner() is None:
-        line = "Rank Unknown"
-    else:
-        line = "Rank " + str(fiber.getOwner().getId())
+    line = str(fiber.getRankAttrs().getId())
 
     return is_collecting, line
 
@@ -329,8 +325,8 @@ def __and__(self, other):
         """
 
         # Get the iterators
-        a = a_fiber.__iter__()
-        b = b_fiber.__iter__()
+        a = a_fiber.__iter__(tick=False)
+        b = b_fiber.__iter__(tick=False)
         next_b = lambda: _get_next(b)
 
 
@@ -361,16 +357,12 @@ def __and__(self, other):
                     Metrics.incCount(line, "payload_read_tensor0", 1)
                     Metrics.incCount(line, "payload_read_tensor1", 1)
 
-                    # If we are collecting metrics and this is our first time
-                    # through the loop, check if it is the inner loop
+                    # Track all reuses of the element
+                    start_iter = Metrics.getIter()
 
                 yield a_coord, (a_payload, b_payload)
 
                 if is_collecting:
-                    # Track all reuses of the element
-                    start_iter = Metrics.getIter()
-                    Metrics.incIter(line)
-
                     if a_collecting:
                         a_fiber._addUse(a_coord, start_iter)
 
@@ -428,8 +420,6 @@ def __and__(self, other):
                 continue
 
         if is_collecting:
-            Metrics.clrIter(line)
-
             if a_coord is None and b_coord is None:
                 Metrics.incCount(line, "same_last_coord", 1)
             else:
@@ -682,12 +672,14 @@ def __lshift__(self, other):
         a_collecting = a_fiber.getRankAttrs().getCollecting()
         b_collecting = b_fiber.getRankAttrs().getCollecting()
 
-        for b_coord, b_payload in b_fiber:
+        b = b_fiber.__iter__(tick=False)
+        for b_coord, b_payload in b:
             a_payload = self.getPayload(b_coord, allocate=False)
 
             if is_collecting:
                 Metrics.incCount(line, "coordinate_read_tensor1", 1)
                 Metrics.incCount(line, "payload_read_tensor1", 1)
+                start_iter = Metrics.getIter()
 
             if a_payload is None:
                 if is_collecting:
@@ -718,17 +710,11 @@ def __lshift__(self, other):
                 self._create_payload(b_coord, a_payload)
 
             if is_collecting:
-                start_iter = Metrics.getIter()
-                Metrics.incIter(line)
-
                 if a_collecting:
                     a_fiber._addUse(b_coord, start_iter)
 
                 if b_collecting:
                     b_fiber._addUse(b_coord, start_iter)
-
-        if is_collecting:
-            Metrics.clrIter(line)
 
         return
 

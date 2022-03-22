@@ -2,11 +2,15 @@ import unittest
 from fibertree import Payload
 from fibertree import Fiber
 from fibertree import Tensor
+from fibertree import Metrics
 
 
 class TestUnionIntersect(unittest.TestCase):
 
     def setUp(self):
+        # Make sure that no metrics are being collected, unless explicitly
+        # desired by the test
+        Metrics.endCollect()
 
         self.input = {}
 

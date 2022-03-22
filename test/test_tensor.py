@@ -9,6 +9,11 @@ from fibertree import Tensor
 
 class TestTensor(unittest.TestCase):
 
+    def setUp(self):
+        # Make sure that no metrics are being collected, unless explicitly
+        # desired by the test
+        Metrics.endCollect()
+
     def test_constructor_empty(self):
         """Test construction of empty tensor"""
 

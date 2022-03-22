@@ -2,11 +2,17 @@ import unittest
 
 from fibertree import Payload
 from fibertree import Fiber
+from fibertree import Metrics
 from fibertree import Rank
 from fibertree import Tensor
 
 
 class TestTensorTransform(unittest.TestCase):
+
+    def setUp(self):
+        # Make sure that no metrics are being collected, unless explicitly
+        # desired by the test
+        Metrics.endCollect()
 
     def test_truediv(self):
         """ Test /, the __truediv__ operator """

@@ -10,6 +10,11 @@ from fibertree import Tensor
 class TestFiberOperators(unittest.TestCase):
     """ Tests of fiber operators """
 
+    def setUp(self):
+        # Make sure that no metrics are being collected, unless explicitly
+        # desired by the test
+        Metrics.endCollect()
+
     def test_add_int(self):
         """Test __add__ integers"""
 
@@ -208,7 +213,6 @@ class TestFiberOperators(unittest.TestCase):
             for _, (a_k, b_k) in a_j & b_j:
                 for _ in a_k & b_k:
                     pass
-            Metrics.incIter("I")
         Metrics.endCollect()
 
         reuses = a_j.getUseStats()
@@ -334,9 +338,11 @@ class TestFiberOperators(unittest.TestCase):
     def test_lshift_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__lshift__"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        a_m.getRankAttrs().setId("M")
         a_m.getRankAttrs().setCollecting(True)
 
         z_m = Fiber()
+        z_m.getRankAttrs().setId("M")
         z_m.getRankAttrs().setCollecting(True)
 
         Metrics.beginCollect(["N", "M"])

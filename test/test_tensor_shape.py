@@ -4,11 +4,17 @@ import unittest
 
 from fibertree import Payload
 from fibertree import Fiber
+from fibertree import Metrics
 from fibertree import Rank
 from fibertree import Tensor
 
 
 class TestTensorShape(unittest.TestCase):
+
+    def setUp(self):
+        # Make sure that no metrics are being collected, unless explicitly
+        # desired by the test
+        Metrics.endCollect()
 
     def test_shape_empty(self):
         """Test shape of empty tensor"""
@@ -32,7 +38,7 @@ class TestTensorShape(unittest.TestCase):
 
         self.assertEqual(t.getRankIds(), [])
         self.assertEqual(t.getShape(), [])
-        
+
     def test_shape_new(self):
         """Test shape of a tensor from a file"""
 
@@ -104,7 +110,7 @@ class TestTensorShape(unittest.TestCase):
             self.assertEqual(t1.getShape(["K"], authoritative=True), [4])
             self.assertEqual(t1.getShape("M", authoritative=True), 7)
             self.assertEqual(t1.getShape("K", authoritative=True), 4)
-           
+
 
     def test_shape_fromUncompressed_2D_A2(self):
         """Test shape of a tensor from 2D nested lists (tensor A, multiletter ranks_ids)"""
@@ -203,7 +209,7 @@ class TestTensorShape(unittest.TestCase):
             self.assertIsNone(t1.getShape(["K"], authoritative=True))
             self.assertIsNone(t1.getShape("M", authoritative=True))
             self.assertIsNone(t1.getShape("K", authoritative=True))
-           
+
 
     def test_shape_fromFiber_authoritative(self):
         """Test shape of a tensor from a fiber with authoritative shape"""
@@ -267,7 +273,7 @@ class TestTensorShape(unittest.TestCase):
 
         self.assertEqual(rank_ids3, rank_ids_new)
 
-        
+
 if __name__ == '__main__':
     unittest.main()
 
