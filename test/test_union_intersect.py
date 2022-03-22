@@ -58,6 +58,29 @@ class TestUnionIntersect(unittest.TestCase):
         id_ = Fiber.intersection(a_k, b_k, c_k).getRankAttrs().getId()
         self.assertEqual(id_, "K")
 
+    def test_intersection_metrics(self):
+        """Test metrics collection on the intersection() function"""
+        a_k = self._set_attrs(Fiber.fromUncompressed([1, 0, 3, 4, 5]))
+        b_k = self._set_attrs(Fiber.fromUncompressed([0, 6, 7, 0, 8]))
+        c_k = self._set_attrs(Fiber.fromUncompressed([10, 0, 9, 0, 12]))
+
+        Metrics.beginCollect(["M", "K"])
+        for _ in range(3):
+            for _ in Fiber.intersection(a_k, b_k, c_k):
+                pass
+            Metrics.incIter("M")
+        Metrics.endCollect()
+
+        reuses = {2: ((0, 0), [(1, 0), (2, 0)]), 4: ((0, 1), [(1, 0), (2, 0)])}
+        self.assertEqual(a_k.getUseStats(), reuses)
+        self.assertEqual(b_k.getUseStats(), reuses)
+        self.assertEqual(c_k.getUseStats(), reuses)
+
+    def _set_attrs(self, fiber):
+        """Set rank ID and collecting"""
+        fiber.getRankAttrs().setId("K").setCollecting(True)
+        return fiber
+
     def test_union(self):
         """Test the union() function"""
         a_k = Fiber.fromUncompressed([1, 0, 3, 0, 0])

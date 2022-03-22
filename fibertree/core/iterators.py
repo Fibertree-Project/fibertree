@@ -178,7 +178,7 @@ def intersection(*args):
 
     # Lazy implementation
     def iterator(nested):
-        for c, np in nested:
+        for c, np in nested.__iter__(tick=False):
             p = []
             while isinstance(np, tuple):
                 p.append(np[1])
@@ -323,7 +323,6 @@ def __and__(self, other):
         """
         Iterator simulating the intersection operator
         """
-
         # Get the iterators
         a = a_fiber.__iter__(tick=False)
         b = b_fiber.__iter__(tick=False)
