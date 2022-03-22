@@ -105,6 +105,10 @@ class TestUnionIntersect(unittest.TestCase):
                 self.assertEqual(z_m_default, Payload(('', 0, 0)))
                 self.assertIsInstance(z_m_default, Payload)
 
+                # Check the rank ID
+                id_ = z_m.getRankAttrs().getId()
+                self.assertEqual(id_, "M")
+
     def test_union_2x_2d(self):
         """Test union 2-way for 2d fibers"""
 
@@ -144,6 +148,10 @@ class TestUnionIntersect(unittest.TestCase):
                 self.assertEqual(z_m_default, Payload(('', Fiber, Fiber)))
                 self.assertIsInstance(z_m_default, Payload)
 
+                # Check the rank ID
+                id_ = z_m.getRankAttrs().getId()
+                self.assertEqual(id_, "M")
+
     def test_union_2x_1d2d(self):
         """Test union 2-way for 1d/2d fibers"""
 
@@ -175,6 +183,10 @@ class TestUnionIntersect(unittest.TestCase):
                 z_m_default=z_m.getDefault()
                 self.assertEqual(z_m_default, Payload(('', 0, Fiber)))
                 self.assertIsInstance(z_m_default, Payload)
+
+                # Check the rank ID
+                id_ = z_m.getRankAttrs().getId()
+                self.assertEqual(id_, "M")
 
     def test_union_3x_1d(self):
         """Test union 3-way for 1d fibers"""
@@ -209,6 +221,10 @@ class TestUnionIntersect(unittest.TestCase):
                 z_m_default=z_m.getDefault()
                 self.assertEqual(z_m_default, Payload(('', 0, 0, 0)))
                 self.assertIsInstance(z_m_default, Payload)
+
+                # Check the rank ID
+                id_ = z_m.getRankAttrs().getId()
+                self.assertEqual(id_, "M")
 
 
 if __name__ == '__main__':

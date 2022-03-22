@@ -437,7 +437,9 @@ def __and__(self, other):
 
         return
 
-    return self.fromIterator(iterator(self, other))
+    fiber = self.fromIterator(iterator(self, other))
+    fiber.getRankAttrs().setId(self.getRankAttrs().getId())
+    return fiber
 
 def __or__(self, other):
     """__or__
@@ -524,6 +526,7 @@ def __or__(self, other):
 
     result = self.fromIterator(iterator(self, other))
     result._setDefault(("", self.getDefault(), other.getDefault()))
+    result.getRankAttrs().setId(self.getRankAttrs().getId())
 
     return result
 
@@ -610,6 +613,7 @@ def __xor__(self, other):
 
     result = self.fromIterator(iterator(self, other))
     result._setDefault(("", self.getDefault(), other.getDefault()))
+    result.getRankAttrs().setId(self.getRankAttrs().getId())
 
     return result
 
@@ -728,7 +732,9 @@ def __lshift__(self, other):
 
         return
 
-    return self.fromIterator(iterator(self, other))
+    fiber = self.fromIterator(iterator(self, other))
+    fiber.getRankAttrs().setId(self.getRankAttrs().getId())
+    return fiber
 
 def __sub__(self, other):
     """__sub__
@@ -805,6 +811,7 @@ def __sub__(self, other):
 
     result = self.fromIterator(iterator(self, other))
     result._setDefault(self.getDefault())
+    result.getRankAttrs().setId(self.getRankAttrs().getId())
 
     return result
 

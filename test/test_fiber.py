@@ -1802,7 +1802,9 @@ class TestFiber(unittest.TestCase):
         """Xor test"""
 
         a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
+        a.getRankAttrs().setId("K")
         b = Fiber([0, 5, 9], [2, 7, 11])
+        b.getRankAttrs().setId("K")
 
         ab_ref = Fiber([0, 1, 8],
                        [("B", 0, 2),
@@ -1812,6 +1814,8 @@ class TestFiber(unittest.TestCase):
         ab = a ^ b
 
         self.assertEqual(ab, ab_ref)
+        self.assertEqual(ab.getRankAttrs().getId(), "K")
+
 
     def test_xor_2d(self):
         """Union test 2d"""

@@ -76,6 +76,23 @@ class TestFiberOperators(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f_in + 1
 
+    def test_and_fiber(self):
+        """Test __and__ fiber"""
+        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 0, 7])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([9, 2, 3, 8, 0, 6, 0])
+        b_k.getRankAttrs().setId("K")
+
+        cc = [0, 3]
+        cp = [(1, 9), (4, 8)]
+        for i, (c, p) in enumerate(a_k & b_k):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
+        # Check the rank ID
+        id_ = (a_k & b_k).getRankAttrs().getId()
+        self.assertEqual(id_, "K")
+
 
     def test_and_metrics_fiber(self):
         """Test metrics collected during Fiber.__and__ on unowned fibers"""
@@ -243,6 +260,21 @@ class TestFiberOperators(unittest.TestCase):
             inds.append(k)
         self.assertEqual(inds, [0, 1, 2, 3, 4])
 
+    def test_lshift(self):
+        """Test Fiber.__lshift__"""
+        a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        a_m.getRankAttrs().setId("M")
+        z_m = Fiber()
+        z_m.getRankAttrs().setId("M")
+
+        for _, (z_ref, a_val) in z_m << a_m:
+            z_ref += a_val
+
+        self.assertEqual(z_m, a_m)
+
+        id_ = (z_m << a_m).getRankAttrs().getId()
+        self.assertEqual(id_, "M")
+
     def test_lshift_eager_only(self):
         """Test metrics collection on Fiber.__lshift__ from a fiber"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
@@ -369,6 +401,22 @@ class TestFiberOperators(unittest.TestCase):
         for m, _ in z_m << a_m:
             inds.append(m)
         self.assertEqual(inds, [0,  1, 2, 3, 4])
+
+    def test_sub(self):
+        """Test Fiber.__sub__"""
+        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([0, 2, 3, 0, 0])
+        b_k.getRankAttrs().setId("K")
+
+        cc = [0, 3]
+        cp = [1, 4]
+        for i, (c, p) in enumerate(a_k - b_k):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
+        id_ = (a_k - b_k).getRankAttrs().getId()
+        self.assertEqual(id_, "K")
 
 
     def test_mul_int(self):
