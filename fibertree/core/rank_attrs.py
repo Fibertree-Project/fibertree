@@ -34,7 +34,7 @@ class RankAttrs:
     Constructor
     -----------
 
-    The `Rank` constructor creates an empty rank.
+    The `RankAttrs` constructor creates an empty rank attributes.
 
     Parameters
     -----------

@@ -860,68 +860,6 @@ class Fiber:
 
         return self.project(trans_fn=trans_fn, interval=[start_coord, end_coord], start_pos=start_pos)
 
-#         if trans_fn is None:
-#             # Default trans_fn is identify function (inefficient but easy)
-#             trans_fn = lambda x: x
-#
-#         start_pos = Payload.get(start_pos)
-#
-#         if start_pos is not None:
-#             assert start_pos < len(self.coords)
-#             assert start_pos == 0 or self.coords[start_pos - 1] < start_coord
-#
-#             range_start = start_pos
-#         else:
-#             range_start = 0
-#
-#         # Invariant: trans_fn is order preserving, but we check for reversals
-#
-#         min_ = start_coord
-#
-#         if size is not None:
-#             max_ = start_coord + size
-#         else:
-#             max_ = end_coord
-#
-#         coords = []
-#         payloads = []
-#
-#         # Start at start_pos (if any)
-#
-#         first_pos = None
-#
-#         for pos in range(range_start, len(self.coords)):
-#             c = self.coords[pos]
-#             p = self.payloads[pos]
-#             new_c = trans_fn(c)
-#             if new_c >= max_:
-#                 break
-#             if new_c >= min_:
-#
-#                 # For statistics
-#                 if first_pos is None:
-#                     first_pos = pos
-#
-#                 coords.append(new_c)
-#                 payloads.append(p)
-#
-#
-#         # Note: This reversal implies a complex read order
-#
-#         if len(coords) > 1 and coords[1] < coords[0]:
-#             coords.reverse()
-#             payloads.reverse()
-#
-#         if start_pos is not None:
-#             if first_pos is None:
-#                 self.setSavedPos(pos)
-#             else:
-#                 self.setSavedPos(pos, distance=first_pos - start_pos)
-#
-#
-#         return self._newFiber(coords, payloads)
-
-
     def prune(self, trans_fn=None, start_pos=None):
         """Create a new fiber by pruning the elements of an existing fiber
 
@@ -1154,11 +1092,6 @@ class Fiber:
         largely does not check that the `trans_fn` maintains those
         attributes. Although it does a crude check to see if the
         coordinates seem to have been reversed.
-
-        TBD
-        ----
-
-        Add support for **shortcuts**.
 
         """
         if trans_fn is None:

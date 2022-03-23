@@ -443,6 +443,17 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(c, c0[i])
             self.assertEqual(p, p0[i])
 
+    def test_iterOccupancy_start_pos_eager_only(self):
+        """Test iterOccupancy start_pos only works with eager fibers"""
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            for _ in a.iterOccupancy(start_pos=5):
+                pass
 
     def test_iterOccupancy_start_pos(self):
         """Test iteration over non-default elements of a fiber with the
@@ -1488,6 +1499,16 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             ap = a.project(lambda c: 50 - c)
 
+    def test_project_start_pos_eager_only(self):
+        """Test projections, eager only if start_pos"""
+
+        c = [0, 1, 10, 20]
+        p = [1, 2, 11, 21]
+        a = Fiber(c, p)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            ap = a.project(lambda c: 10 + c, start_pos=2)
 
     def test_prune(self):
         """Test pruning a fiber"""
