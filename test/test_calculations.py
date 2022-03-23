@@ -9,7 +9,7 @@ class TestCalculations(unittest.TestCase):
         """Traverse a tensor"""
 
         a = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
-        
+
         a_m = a.getRoot()
 
         sum = 0
@@ -109,7 +109,7 @@ class TestCalculations(unittest.TestCase):
                 o_q_ref += w_val * i_val
 
         o_ref = Tensor.fromYAMLfile("./data/conv-output-a.yaml")
-        
+
         self.assertEqual(o, o_ref)
 
     def test_conv1d_is(self):
@@ -132,7 +132,7 @@ class TestCalculations(unittest.TestCase):
                 o_q_ref += w_val * i_val
 
         o_ref = Tensor.fromYAMLfile("./data/conv-output-a.yaml")
-        
+
         self.assertEqual(o, o_ref)
 
     def test_conv1d_os(self):
@@ -157,10 +157,10 @@ class TestCalculations(unittest.TestCase):
                 o_q_ref += w_val * i_val
 
         o_ref = Tensor.fromYAMLfile("./data/conv-output-os-a.yaml")
-        
+
         self.assertEqual(o, o_ref)
-        
-        
+
+
 if __name__ == '__main__':
     unittest.main()
 

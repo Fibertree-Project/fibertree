@@ -855,66 +855,71 @@ class Fiber:
         assert size is not None or end_coord is not None
         assert self._ordered
 
-        if trans_fn is None:
-            # Default trans_fn is identify function (inefficient but easy)
-            trans_fn = lambda x: x
+        if end_coord is None:
+            end_coord = start_coord + size
 
-        start_pos = Payload.get(start_pos)
+        return self.project(trans_fn=trans_fn, interval=[start_coord, end_coord], start_pos=start_pos)
 
-        if start_pos is not None:
-            assert start_pos < len(self.coords)
-            assert start_pos == 0 or self.coords[start_pos - 1] < start_coord
-
-            range_start = start_pos
-        else:
-            range_start = 0
-
-        # Invariant: trans_fn is order preserving, but we check for reversals
-
-        min_ = start_coord
-
-        if size is not None:
-            max_ = start_coord + size
-        else:
-            max_ = end_coord
-
-        coords = []
-        payloads = []
-
-        # Start at start_pos (if any)
-
-        first_pos = None
-
-        for pos in range(range_start, len(self.coords)):
-            c = self.coords[pos]
-            p = self.payloads[pos]
-            new_c = trans_fn(c)
-            if new_c >= max_:
-                break
-            if new_c >= min_:
-
-                # For statistics
-                if first_pos is None:
-                    first_pos = pos
-
-                coords.append(new_c)
-                payloads.append(p)
-
-
-        # Note: This reversal implies a complex read order
-
-        if len(coords) > 1 and coords[1] < coords[0]:
-            coords.reverse()
-            payloads.reverse()
-
-        if start_pos is not None:
-            if first_pos is None:
-                self.setSavedPos(pos)
-            else:
-                self.setSavedPos(pos, distance=first_pos - start_pos)
-
-
-        return self._newFiber(coords, payloads)
+#         if trans_fn is None:
+#             # Default trans_fn is identify function (inefficient but easy)
+#             trans_fn = lambda x: x
+#
+#         start_pos = Payload.get(start_pos)
+#
+#         if start_pos is not None:
+#             assert start_pos < len(self.coords)
+#             assert start_pos == 0 or self.coords[start_pos - 1] < start_coord
+#
+#             range_start = start_pos
+#         else:
+#             range_start = 0
+#
+#         # Invariant: trans_fn is order preserving, but we check for reversals
+#
+#         min_ = start_coord
+#
+#         if size is not None:
+#             max_ = start_coord + size
+#         else:
+#             max_ = end_coord
+#
+#         coords = []
+#         payloads = []
+#
+#         # Start at start_pos (if any)
+#
+#         first_pos = None
+#
+#         for pos in range(range_start, len(self.coords)):
+#             c = self.coords[pos]
+#             p = self.payloads[pos]
+#             new_c = trans_fn(c)
+#             if new_c >= max_:
+#                 break
+#             if new_c >= min_:
+#
+#                 # For statistics
+#                 if first_pos is None:
+#                     first_pos = pos
+#
+#                 coords.append(new_c)
+#                 payloads.append(p)
+#
+#
+#         # Note: This reversal implies a complex read order
+#
+#         if len(coords) > 1 and coords[1] < coords[0]:
+#             coords.reverse()
+#             payloads.reverse()
+#
+#         if start_pos is not None:
+#             if first_pos is None:
+#                 self.setSavedPos(pos)
+#             else:
+#                 self.setSavedPos(pos, distance=first_pos - start_pos)
+#
+#
+#         return self._newFiber(coords, payloads)
 
 
     def prune(self, trans_fn=None, start_pos=None):
@@ -1112,7 +1117,7 @@ class Fiber:
         return index
 
 
-    def project(self, trans_fn=None, interval=None):
+    def project(self, trans_fn=None, interval=None, start_pos=None):
         """Create a new fiber with coordinates projected according to `trans_fn`
 
         This method creates a new fiber with the same payloads as the
@@ -1166,20 +1171,48 @@ class Fiber:
         if trans_fn(0) > trans_fn(1):
             # Note that we cannot reverse lazy fibers
             assert not self.isLazy()
-            cps = list(zip(self.coords, self.payloads))
-            fiber = Fiber.fromIterator(reversed(cps))
+
+            # Build an iterator over the reversed fiber
+            class reversed_iterator:
+                cps = list(zip(self.coords, self.payloads))
+
+                def __iter__(self):
+                    return reversed(self.cps)
+
+            fiber = Fiber.fromIterator(reversed_iterator)
 
         else:
             fiber = self
 
+        # If there is a start_pos, make sure it is in range
+        if start_pos is not None:
+            assert not fiber.isLazy()
 
-        def project_iterator(fiber, trans_fn, interval):
-            for old_c, p in fiber:
-                c = trans_fn(old_c)
-                if interval is None or (c >= interval[0] and c < interval[1]):
-                    yield c, p
+            start_pos = Payload.get(start_pos)
+            assert start_pos < len(fiber.coords)
 
-        result = Fiber.fromIterator(project_iterator(fiber, trans_fn, interval))
+            if interval is not None:
+                assert start_pos == 0 \
+                    or fiber.coords[start_pos - 1] < interval[0]
+
+        # Build the iterator
+        class project_iterator:
+            fbr = fiber
+            trans = lambda self, c: trans_fn(c)
+            interv = interval
+            start = start_pos
+
+            def __iter__(self):
+                for old_c, p in self.fbr.__iter__(start_pos=self.start):
+                    c = self.trans(old_c)
+                    if self.interv is not None and c >= self.interv[1]:
+                        break
+
+                    if self.interv is None \
+                        or (c >= self.interv[0] and c < self.interv[1]):
+                        yield c, p
+
+        result = Fiber.fromIterator(project_iterator)
         result._setDefault(self.getDefault())
 
         return result

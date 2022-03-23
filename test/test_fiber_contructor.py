@@ -160,11 +160,15 @@ class TestConstructor(unittest.TestCase):
         c = [2, 4, 6]
         p = [3, 5, 7]
 
-        def iterator(coords, payloads):
-            for coord, payload in zip(coords, payloads):
-                yield CoordPayload(coord, payload)
+        class iterator:
+            coords = c
+            payloads = p
 
-        f = Fiber.fromIterator(iterator(c, p))
+            def __iter__(self):
+                for coord, payload in zip(self.coords, self.payloads):
+                    yield CoordPayload(coord, payload)
+
+        f = Fiber.fromIterator(iterator)
         ff = Fiber(c, p)
 
         for p1, p2 in zip(f, ff):

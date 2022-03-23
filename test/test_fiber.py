@@ -444,6 +444,23 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(p, p0[i])
 
 
+    def test_iterOccupancy_start_pos(self):
+        """Test iteration over non-default elements of a fiber with the
+        start_pos parameter"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+
+        for i, (c, p) in enumerate(a.iterOccupancy(start_pos=1)):
+            self.assertEqual(c, c0[i + 1])
+            self.assertEqual(p, p0[i + 1])
+
+        self.assertEqual(a.getSavedPosStats(), (2, 1))
+        self.assertEqual(a.getSavedPos(), 2)
+
+
     def test_iterShape(self):
         """Test iteration over a fiber's shape"""
 
@@ -1169,12 +1186,14 @@ class TestFiber(unittest.TestCase):
                [5, 5, 5, 5, 5],
                [5, 5, 5, 5, 5]]
 
-        saved_pos_stats = (12,15)
+        saved_pos_stats = (62, 97)
 
         for i in range(len(startc)):
             for sp, aaa in zip(startp,ans[i]):
                 if aaa is not None:
-                    b = a.getRange(startc[i], size[i], start_pos=sp)
+                    for _ in a.getRange(startc[i], size[i], start_pos=sp):
+                        pass
+
                     self.assertEqual(a.getSavedPos(), aaa),
                 else:
                     with self.assertRaises(AssertionError):
