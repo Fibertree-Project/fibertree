@@ -1549,15 +1549,6 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(f6, fl2_ref)
 
 
-    def test_prune_eager_only(self):
-        """Test pruning a fiber only works in lazy mode"""
-
-        f = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
-        f._setIsLazy(True)
-
-        with self.assertRaises(AssertionError):
-            f.prune(lambda n, c, p: n < 2)
-
     def test_getPosition_eager_only(self):
         """getPosition only works in eager mode"""
         f = Fiber([2, 4, 6, 8], [4, 8, 12, 16])

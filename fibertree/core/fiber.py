@@ -891,66 +891,27 @@ class Fiber:
             Fiber containing the pruned element of the input Fiber.
 
         """
-
-        assert not self.isLazy()
-
-        start_pos = Payload.get(start_pos)
-
+        # Check the start_pos
         if start_pos is not None:
+            assert not self.isLazy()
             assert start_pos < len(self.coords)
-            range_start = start_pos
-        else:
-            range_start = 0
 
-        coords = []
-        payloads = []
+        # Build the iterator
+        class prune_iterator:
+            fiber = self
+            trans = lambda self, i, c, p: trans_fn(i, c, p)
+            start = start_pos
 
-        # Start at start_pos (if any)
+            def __iter__(self):
+                for i, (c, p) in enumerate(self.fiber.__iter__(start_pos=self.start)):
+                    if self.trans(i, c, p):
+                        yield c, p
 
-        first_pos = None
-        end_pos_offset = 1
+        result = Fiber.fromIterator(prune_iterator)
+        result._setDefault(self.getDefault())
 
-        #
-        # Traverse positions in fiber starting at range_start
-        #
-        for pos in range(range_start, len(self.coords)):
-            c = self.coords[pos]
-            p = self.payloads[pos]
+        return result
 
-            #
-            # Call pruning function
-            #
-            status = trans_fn(pos, c, p)
-
-            #
-            # End processing if status is None
-            #
-            if status is None:
-                end_pos_offset = 0
-                break
-
-            #
-            # Include element if status is True
-            #
-            if status:
-                if first_pos is None:
-                    first_pos = pos
-
-                coords.append(c)
-                payloads.append(p)
-
-        #
-        # Record start_pos information
-        #
-        if start_pos is not None:
-            if first_pos is None:
-                self.setSavedPos(pos + end_pos_offset)
-            else:
-                self.setSavedPos(pos + end_pos_offset,
-                                 distance=first_pos - start_pos)
-
-
-        return self._newFiber(coords, payloads)
 
 
     def getPosition(self, coord, start_pos=None):
