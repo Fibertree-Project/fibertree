@@ -903,12 +903,24 @@ class Fiber:
             start = start_pos
 
             def __iter__(self):
-                for i, (c, p) in enumerate(self.fiber.__iter__(start_pos=self.start)):
+                line = "Rank " + self.fiber.getRankAttrs().getId()
+                is_collecting = Metrics.isCollecting() and \
+                    self.fiber.getRankAttrs().getCollecting()
+
+                fiter = self.fiber.__iter__(tick=False, start_pos=self.start)
+                for i, (c, p) in enumerate(fiter):
                     if self.trans(i, c, p):
+                        if is_collecting:
+                            start_iter = Metrics.getIter()
+
                         yield c, p
+
+                        if is_collecting:
+                            self.fiber._addUse(c, start_iter)
 
         result = Fiber.fromIterator(prune_iterator)
         result._setDefault(self.getDefault())
+        result.getRankAttrs().setId(self.getRankAttrs().getId())
 
         return result
 
@@ -1097,17 +1109,29 @@ class Fiber:
             start = start_pos
 
             def __iter__(self):
-                for old_c, p in self.fbr.__iter__(start_pos=self.start):
+                line = "Rank " + self.fbr.getRankAttrs().getId()
+                is_collecting = Metrics.isCollecting() and \
+                    self.fbr.getRankAttrs().getCollecting()
+
+                fiter = self.fbr.__iter__(tick=False, start_pos=self.start)
+                for old_c, p in fiter:
                     c = self.trans(old_c)
                     if self.interv is not None and c >= self.interv[1]:
                         break
 
                     if self.interv is None \
-                        or (c >= self.interv[0] and c < self.interv[1]):
+                            or (c >= self.interv[0] and c < self.interv[1]):
+                        if is_collecting:
+                            start_iter = Metrics.getIter()
+
                         yield c, p
+
+                        if is_collecting:
+                            self.fbr._addUse(old_c, start_iter)
 
         result = Fiber.fromIterator(project_iterator)
         result._setDefault(self.getDefault())
+        result.getRankAttrs().setId(self.getRankAttrs().getId())
 
         return result
 

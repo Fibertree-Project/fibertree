@@ -1510,6 +1510,23 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             ap = a.project(lambda c: 10 + c, start_pos=2)
 
+    def test_project_use_stats(self):
+        """Test that use stats are tracked correctly after project"""
+        f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f_k.getRankAttrs().setCollecting(True)
+        f_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect(["J", "K"])
+        for _ in range(3):
+            for _ in f_k.project(lambda c: + 1):
+                pass
+            Metrics.incIter("J")
+        Metrics.endCollect()
+
+        reuses = f_k.getUseStats()
+        correct = {2: ((0, 0), [(1, 0), (2, 0)]), 4: ((0, 1), [(1, 0), (2, 0)]), 6: ((0, 2), [(1, 0), (2, 0)]), 8: ((0, 3), [(1, 0), (2, 0)])}
+        self.assertEqual(reuses, correct)
+
     def test_prune(self):
         """Test pruning a fiber"""
 
@@ -1548,6 +1565,22 @@ class TestFiber(unittest.TestCase):
         f6 = f.prune(lambda n, c, p: True if p < 10 else None)
         self.assertEqual(f6, fl2_ref)
 
+    def test_prune_use_stats(self):
+        """Test that use stats are tracked correctly after prune"""
+        f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f_k.getRankAttrs().setCollecting(True)
+        f_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect(["J", "K"])
+        for _ in range(3):
+            for _ in f_k.prune(lambda i, c, p: i % 2 == 0):
+                pass
+            Metrics.incIter("J")
+        Metrics.endCollect()
+
+        reuses = f_k.getUseStats()
+        correct = {2: ((0, 0), [(1, 0), (2, 0)]), 6: ((0, 1), [(1, 0), (2, 0)])}
+        self.assertEqual(reuses, correct)
 
     def test_getPosition_eager_only(self):
         """getPosition only works in eager mode"""
