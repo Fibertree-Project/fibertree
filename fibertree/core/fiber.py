@@ -3329,7 +3329,7 @@ class Fiber:
             done = True
 
             pos = self.getSavedPos()
-            for c, p in self.__iter__(start_pos=pos):
+            for c, p in self.iterOccupancy(start_pos=pos):
                 group = splitter.getGroup(self.getSavedPos(), c)
 
                 # End the old partition
