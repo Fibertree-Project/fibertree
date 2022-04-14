@@ -22,7 +22,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -36,7 +36,7 @@ class TestFiberSplit(unittest.TestCase):
               [ 31 ],
               [ 41 ] ]
 
-        pss = [ [ 0, 10, 20 ],
+        pss = [ [ 1, 10, 20 ],
                 [ 100, 120 ],
                 [ 310 ],
                 [ 410 ] ]
@@ -67,7 +67,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -90,7 +90,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -104,7 +104,7 @@ class TestFiberSplit(unittest.TestCase):
               [ 1 ],
               [ 1 ] ]
 
-        pss = [ [ 0, 10, 20 ],
+        pss = [ [ 1, 10, 20 ],
                 [ 100, 120 ],
                 [ 310 ],
                 [ 410 ] ]
@@ -135,7 +135,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -166,7 +166,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -177,7 +177,7 @@ class TestFiberSplit(unittest.TestCase):
               [ 12 ],
               [ 31, 41 ] ]
 
-        pss = [ [ 0, 10, 20, 100 ],
+        pss = [ [ 1, 10, 20, 100 ],
                 [ 120 ],
                 [ 310, 410 ] ]
 
@@ -206,7 +206,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -246,7 +246,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -278,7 +278,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -290,7 +290,7 @@ class TestFiberSplit(unittest.TestCase):
                 [12, 31 ],
                 [41 ] ]
 
-        pss = [ [0, 10 ],
+        pss = [ [1, 10 ],
                 [20, 100 ],
                 [120, 310 ],
                 [410 ] ]
@@ -320,7 +320,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -393,7 +393,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -416,7 +416,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create the fiber to be split
         #
         c = [0, 1, 9, 10, 12, 31, 41]
-        p = [ 0, 10, 20, 100, 120, 310, 410 ]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
 
@@ -424,7 +424,7 @@ class TestFiberSplit(unittest.TestCase):
         # Create list of reference fibers after the split
         #
         a_coords = [0, 12]
-        a1 = Fiber([0, 1], [0, 10])
+        a1 = Fiber([0, 1], [1, 10])
         a2 = Fiber([12, 31], [120, 310])
         a = Fiber(coords=a_coords, payloads=[a1, a2])
 

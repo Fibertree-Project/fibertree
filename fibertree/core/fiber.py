@@ -3013,18 +3013,9 @@ class Fiber:
 
             def __init__(self, step):
                 self.step = step
-                self.cur_group = 0
 
-            def nextGroup(self, i, c):
-                count = 0
-                last_group = self.cur_group
-
-                while c >= self.cur_group:
-                    count += 1
-                    last_group = self.cur_group
-                    self.cur_group += self.step
-
-                return count, last_group
+            def getGroup(self, i, c):
+                return c // self.step * self.step
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3087,21 +3078,28 @@ class Fiber:
                 else:
                     self.splits = splits.copy()
 
-                self.cur_split = self.splits.pop(0)
+                self.ind = 0
 
-            def nextGroup(self, i, c):
-                count = 0
-                last_group = self.cur_split
+            def getGroup(self, i, c):
+                def this_part(j):
+                    return c >= self.splits[j] and \
+                        (j + 1 == len(self.splits) or c < self.splits[j + 1])
 
-                while c >= self.cur_split:
-                    count += 1
-                    last_group = self.cur_split
-                    if self.splits:
-                        self.cur_split = self.splits.pop(0)
-                    else:
-                        self.cur_split = float("inf")
+                if c >= self.splits[self.ind]:
+                    # Search forwards
+                    while not this_part(self.ind):
+                        self.ind += 1
 
-                return count, last_group
+                    return self.splits[self.ind]
+
+                # Otherwise, search backwards
+                while not this_part(self.ind):
+                    if self.ind == 0:
+                        return None
+
+                    self.ind -= 1
+
+                return self.splits[self.ind]
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3157,16 +3155,17 @@ class Fiber:
 
             def __init__(self, step):
                 self.step = step
-                self.cur_count = 0
+                self.coords = []
 
-            def nextGroup(self, i, c):
-                count = 0
+            def getGroup(self, i, c):
+                part = i // self.step
+                assert part <= len(self.coords)
 
-                while i >= self.cur_count:
-                    count += 1
-                    self.cur_count += self.step
+                if part == len(self.coords):
+                    self.coords.append(c)
 
-                return count, c
+                return self.coords[part]
+
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3226,20 +3225,36 @@ class Fiber:
         class _SplitterUnEqual():
 
             def __init__(self, sizes):
-                self.sizes = sizes.copy()
-                self.cur_count = -1
+                self.sizes = [sum(sizes[:i]) for i in range(len(sizes))]
+                self.sizes.append(sum(sizes))
+                self.coords = []
+                self.ind = 0
 
-            def nextGroup(self, i, c):
-                count = 0
+            def getGroup(self, i, c):
+                def this_part(j):
+                    return i >= self.sizes[j] and \
+                        (j + 1 == len(self.sizes) or i < self.sizes[j + 1])
 
-                while i > self.cur_count:
-                    count += 1
-                    if self.sizes:
-                        self.cur_count += self.sizes.pop(0)
-                    else:
-                        self.cur_count = float("inf")
+                if i >= self.sizes[self.ind]:
+                    # Search forwards
+                    while not this_part(self.ind):
+                        self.ind += 1
 
-                return count, c
+                    # Get the corresponding coordinate
+                    assert self.ind <= len(self.coords)
+                    if self.ind == len(self.coords):
+                        self.coords.append(c)
+
+                    return self.coords[self.ind]
+
+                # Otherwise, search backwards
+                while not this_part(self.ind):
+                    self.ind -= 1
+                    assert self.ind >= 0
+
+                assert self.ind < len(self.coords)
+
+                return self.coords[self.ind]
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3301,39 +3316,83 @@ class Fiber:
             rank1_fiber_payloads.append([])
 
         cur_coords = None
+        cur_payloads = None
         rank1_count = -1
 
         # Split apart the fiber into groups according to "splitter"
 
-        for i0, (c0, p0) in enumerate(zip(self.coords, self.payloads)):
-            # Check if we need to start a new rank0 fiber
-            count, next_rank1_coord = splitter.nextGroup(i0, c0)
-            if (count > 0):
-                rank1_count += count
+        done = False
+        rank1_coord = None
 
-                # Old style: upper rank's coordinates were a dense range
-                # rank1_coord = rank1_count
+        self.setSavedPos(0)
+        while not done and len(self) > 0:
+            done = True
 
-                # New style: upper rank's coordinates are first coordinate of group
-                rank1_coord = next_rank1_coord
-                rank0_offset = rank1_coord
+            pos = self.getSavedPos()
+            for c, p in self.__iter__(start_pos=pos):
+                group = splitter.getGroup(self.getSavedPos(), c)
 
-                rank0_fiber_group.append(rank1_coord)
+                # End the old partition
+                if group != rank1_coord:
+                    rank1_coord = group
+                    cur_coords = None
+                    cur_payloads = None
 
-                cur_coords = []
-                rank0_fiber_coords.append(cur_coords)
+                    done = False
+                    break
 
-                cur_payloads = []
-                rank0_fiber_payloads.append(cur_payloads)
+                if group is None:
+                    continue
 
-            # May not be in a group yet
-            if cur_coords is not None:
+                # Start a new partition if necessary
+                if cur_coords is None:
+                    rank0_offset = rank1_coord
+                    rank0_fiber_group.append(rank1_coord)
+
+                    cur_coords = []
+                    rank0_fiber_coords.append(cur_coords)
+
+                    cur_payloads = []
+                    rank0_fiber_payloads.append(cur_payloads)
+
+
+                # Add this coordinate/payload to the relevant partition
                 if relativeCoords:
-                    cur_coords.append(c0 - rank0_offset)
+                    cur_coords.append(c - rank0_offset)
                 else:
-                    cur_coords.append(c0)
+                    cur_coords.append(c)
 
-                cur_payloads.append(p0)
+                cur_payloads.append(p)
+
+        # for i0, (c0, p0) in enumerate(zip(self.coords, self.payloads)):
+        #     # Check if we need to start a new rank0 fiber
+        #     count, next_rank1_coord = splitter.nextGroup(i0, c0)
+        #     if (count > 0):
+        #         rank1_count += count
+
+        #         # Old style: upper rank's coordinates were a dense range
+        #         # rank1_coord = rank1_count
+
+        #         # New style: upper rank's coordinates are first coordinate of group
+        #         rank1_coord = next_rank1_coord
+        #         rank0_offset = rank1_coord
+
+        #         rank0_fiber_group.append(rank1_coord)
+
+        #         cur_coords = []
+        #         rank0_fiber_coords.append(cur_coords)
+
+        #         cur_payloads = []
+        #         rank0_fiber_payloads.append(cur_payloads)
+
+        #     # May not be in a group yet
+        #     if cur_coords is not None:
+        #         if relativeCoords:
+        #             cur_coords.append(c0 - rank0_offset)
+        #         else:
+        #             cur_coords.append(c0)
+
+        #         cur_payloads.append(p0)
 
 
         # Deal the split fibers out to the partitions
