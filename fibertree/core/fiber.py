@@ -3011,11 +3011,14 @@ class Fiber:
 
         class _SplitterUniform():
 
-            def __init__(self, step):
+            def __init__(self, fiber, step):
+                self.fiber = fiber
                 self.step = step
 
-            def getGroup(self, i, c):
-                return c // self.step * self.step
+            def __iter__(self):
+                for i, (c, p) in enumerate(self.fiber.iterOccupancy()):
+                    part = c // self.step * self.step
+                    yield part, c, p
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3026,7 +3029,7 @@ class Fiber:
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
-        splitter = _SplitterUniform(step)
+        splitter = _SplitterUniform(self, step)
 
         return self._splitGeneric(splitter,
                                   partitions,
@@ -3072,34 +3075,26 @@ class Fiber:
 
         class _SplitterNonUniform():
 
-            def __init__(self, splits):
+            def __init__(self, fiber, splits):
+                self.fiber = fiber
+
                 if Payload.contains(splits, Fiber):
                     self.splits = splits.coords.copy()
                 else:
                     self.splits = splits.copy()
 
+                # If it is less than the first coordinate, there is no partition,
+                # If it is after the last coordinate, it is in the last partition
+                self.splits.insert(0, None)
+                self.splits.append(float("inf"))
                 self.ind = 0
 
-            def getGroup(self, i, c):
-                def this_part(j):
-                    return c >= self.splits[j] and \
-                        (j + 1 == len(self.splits) or c < self.splits[j + 1])
-
-                if c >= self.splits[self.ind]:
-                    # Search forwards
-                    while not this_part(self.ind):
+            def __iter__(self):
+                for i, (c, p) in enumerate(self.fiber.iterOccupancy()):
+                    while c >= self.splits[self.ind + 1]:
                         self.ind += 1
 
-                    return self.splits[self.ind]
-
-                # Otherwise, search backwards
-                while not this_part(self.ind):
-                    if self.ind == 0:
-                        return None
-
-                    self.ind -= 1
-
-                return self.splits[self.ind]
+                    yield self.splits[self.ind], c, p
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3110,7 +3105,7 @@ class Fiber:
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
-        splitter = _SplitterNonUniform(splits)
+        splitter = _SplitterNonUniform(self, splits)
 
         return self._splitGeneric(splitter,
                                   partitions,
@@ -3153,18 +3148,21 @@ class Fiber:
 
         class _SplitterEqual():
 
-            def __init__(self, step):
+            def __init__(self, fiber, step):
+                self.fiber = fiber
                 self.step = step
-                self.coords = []
 
-            def getGroup(self, i, c):
-                part = i // self.step
-                assert part <= len(self.coords)
+                self.coord = None
+                self.part = None
 
-                if part == len(self.coords):
-                    self.coords.append(c)
+            def __iter__(self):
+                for i, (c, p) in enumerate(self.fiber.iterOccupancy()):
+                    part = i // self.step * self.step
+                    if self.part != part:
+                        self.part = part
+                        self.coord = c
 
-                return self.coords[part]
+                    yield self.coord, c, p
 
 
         if rankid is not None:
@@ -3176,7 +3174,7 @@ class Fiber:
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
-        splitter = _SplitterEqual(step)
+        splitter = _SplitterEqual(self, step)
 
         return self._splitGeneric(splitter,
                                   partitions,
@@ -3224,37 +3222,29 @@ class Fiber:
 
         class _SplitterUnEqual():
 
-            def __init__(self, sizes):
-                self.sizes = [sum(sizes[:i]) for i in range(len(sizes))]
-                self.sizes.append(sum(sizes))
-                self.coords = []
+            def __init__(self, fiber, sizes):
+                self.fiber = fiber
+                self.sizes = sizes
+                self.sizes.append(float("inf"))
+
+                self.coord = None
+                self.count = 0
                 self.ind = 0
 
-            def getGroup(self, i, c):
-                def this_part(j):
-                    return i >= self.sizes[j] and \
-                        (j + 1 == len(self.sizes) or i < self.sizes[j + 1])
+            def __iter__(self):
+                for i, (c, p) in enumerate(self.fiber.iterOccupancy()):
+                    # If this is the first payload in the partition, save the coordinate
+                    if self.count == 0:
+                        self.coord = c
 
-                if i >= self.sizes[self.ind]:
-                    # Search forwards
-                    while not this_part(self.ind):
+                    yield self.coord, c, p
+
+                    # If this is the last payload in the partition, end the partition
+                    self.count += 1
+                    if self.count == self.sizes[self.ind]:
+                        self.count = 0
                         self.ind += 1
 
-                    # Get the corresponding coordinate
-                    assert self.ind <= len(self.coords)
-                    if self.ind == len(self.coords):
-                        self.coords.append(c)
-
-                    return self.coords[self.ind]
-
-                # Otherwise, search backwards
-                while not this_part(self.ind):
-                    self.ind -= 1
-                    assert self.ind >= 0
-
-                assert self.ind < len(self.coords)
-
-                return self.coords[self.ind]
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3265,7 +3255,7 @@ class Fiber:
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
-        splitter = _SplitterUnEqual(sizes)
+        splitter = _SplitterUnEqual(self, sizes)
 
         return self._splitGeneric(splitter,
                                   partitions,
@@ -3317,82 +3307,41 @@ class Fiber:
 
         cur_coords = None
         cur_payloads = None
-        rank1_count = -1
 
         # Split apart the fiber into groups according to "splitter"
 
-        done = False
         rank1_coord = None
 
-        self.setSavedPos(0)
-        while not done and len(self) > 0:
-            done = True
+        for part, c, p in splitter:
+            # End the old partition
+            if part != rank1_coord:
+                rank1_coord = part
+                cur_coords = None
+                cur_payloads = None
 
-            pos = self.getSavedPos()
-            for c, p in self.iterOccupancy(start_pos=pos):
-                group = splitter.getGroup(self.getSavedPos(), c)
+            if part is None:
+                continue
 
-                # End the old partition
-                if group != rank1_coord:
-                    rank1_coord = group
-                    cur_coords = None
-                    cur_payloads = None
+            # Start a new partition if necessary
+            if cur_coords is None:
+                rank0_offset = rank1_coord
+                rank0_fiber_group.append(rank1_coord)
 
-                    done = False
-                    break
+                cur_coords = []
+                rank0_fiber_coords.append(cur_coords)
 
-                if group is None:
-                    continue
-
-                # Start a new partition if necessary
-                if cur_coords is None:
-                    rank0_offset = rank1_coord
-                    rank0_fiber_group.append(rank1_coord)
-
-                    cur_coords = []
-                    rank0_fiber_coords.append(cur_coords)
-
-                    cur_payloads = []
-                    rank0_fiber_payloads.append(cur_payloads)
+                cur_payloads = []
+                rank0_fiber_payloads.append(cur_payloads)
 
 
-                # Add this coordinate/payload to the relevant partition
-                if relativeCoords:
-                    cur_coords.append(c - rank0_offset)
-                else:
-                    cur_coords.append(c)
+            # Add this coordinate/payload to the relevant partition
+            if relativeCoords:
+                cur_coords.append(c - rank0_offset)
+            else:
+                cur_coords.append(c)
 
-                cur_payloads.append(p)
+            cur_payloads.append(p)
 
-        # for i0, (c0, p0) in enumerate(zip(self.coords, self.payloads)):
-        #     # Check if we need to start a new rank0 fiber
-        #     count, next_rank1_coord = splitter.nextGroup(i0, c0)
-        #     if (count > 0):
-        #         rank1_count += count
-
-        #         # Old style: upper rank's coordinates were a dense range
-        #         # rank1_coord = rank1_count
-
-        #         # New style: upper rank's coordinates are first coordinate of group
-        #         rank1_coord = next_rank1_coord
-        #         rank0_offset = rank1_coord
-
-        #         rank0_fiber_group.append(rank1_coord)
-
-        #         cur_coords = []
-        #         rank0_fiber_coords.append(cur_coords)
-
-        #         cur_payloads = []
-        #         rank0_fiber_payloads.append(cur_payloads)
-
-        #     # May not be in a group yet
-        #     if cur_coords is not None:
-        #         if relativeCoords:
-        #             cur_coords.append(c0 - rank0_offset)
-        #         else:
-        #             cur_coords.append(c0)
-
-        #         cur_payloads.append(p0)
 
 
         # Deal the split fibers out to the partitions

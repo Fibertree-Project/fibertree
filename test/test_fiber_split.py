@@ -150,6 +150,46 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(split.flattenRanks(style="relative"), f)
 
+    # def test_split_uniform_halo(self):
+    #     """splitUniform with halo"""
+    #     # Original Fiber
+    #     c = [0, 1, 8, 9, 12, 15, 17, 24]
+    #     p = [1, 2, 3, 4,  5,  6,  7,  8]
+    #     f = Fiber(c, p)
+
+    #     #
+    #     # Create list of reference fibers after the split
+    #     #
+    #     split_ref_coords = [0, 8, 16, 24]
+
+    #     css = [ [ 0, 1, 8, 9 ],
+    #           [ 8, 9, 12, 15, 17 ],
+    #           [ 17, 24 ],
+    #           [ 24 ] ]
+
+    #     pss = [ [ 1, 2, 3, 4 ],
+    #           [ 3, 4, 5, 6, 7 ],
+    #           [ 7, 8 ],
+    #           [ 8 ] ]
+
+    #     split_ref_payloads = []
+
+    #     for (cs, ps) in zip(css, pss):
+    #         split_ref_payloads.append(Fiber(cs, ps))
+
+    #     #
+    #     # Do the split
+    #     #
+    #     coords = 8
+    #     split = f.splitUniform(coords, halo=2)
+
+    #     #
+    #     # Check the split
+    #     #
+    #     for i, (sc, sp)  in enumerate(split):
+    #         self.assertEqual(sc, split_ref_coords[i])
+    #         self.assertEqual(sp, split_ref_payloads[i])
+
     def test_split_nonuniform_empty(self):
         """Test splitNonUniform on empty fiber"""
         empty = Fiber()
