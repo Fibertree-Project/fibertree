@@ -2974,7 +2974,7 @@ class Fiber:
         return self.splitEqual ((occupancy+partitions-1)//partitions)
 
 
-    def splitUniform(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None):
+    def splitUniform(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None, halo=0):
         """Split a fiber uniformly in coordinate space
 
         Parameters
@@ -2994,6 +2994,9 @@ class Fiber:
             The name of a rank, i.e., a rankid, at which to perform
             the split, overrides the `depth` argument.
 
+        halo: integer
+            The size of the halo after the partition
+
         Returns
         -------
         split_fiber: Fiber
@@ -3008,17 +3011,44 @@ class Fiber:
         """
 
         assert not self.isLazy()
+        assert halo <= step
 
         class _SplitterUniform():
 
-            def __init__(self, fiber, step):
+            def __init__(self, fiber, step, halo):
                 self.fiber = fiber
                 self.step = step
+                self.halo = halo
+
+                self.halo_elems = None
+                self.last_part = 0
 
             def __iter__(self):
-                for i, (c, p) in enumerate(self.fiber.iterOccupancy()):
+                if len(self.fiber) == 0:
+                    start = None
+                else:
+                    start = 0
+
+                for i, (c, p) in enumerate(self.fiber.iterOccupancy(start_pos=start)):
                     part = c // self.step * self.step
+
+                    # If we are about to end an old part, start the halo
+                    if part != self.last_part:
+                        # The halo needs to be in the previous partition
+                        halo_part = part - self.step
+
+                        # Iterate until we reach the end of the halo
+                        pos = self.fiber.getSavedPos()
+                        for hc, hp in self.fiber.iterOccupancy(start_pos=pos):
+                            if hc - part >= self.halo:
+                                break
+
+                            yield halo_part, hc, hp
+
                     yield part, c, p
+
+                    # Set the last_part
+                    self.last_part = part
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3029,7 +3059,7 @@ class Fiber:
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
-        splitter = _SplitterUniform(self, step)
+        splitter = _SplitterUniform(self, step, halo)
 
         return self._splitGeneric(splitter,
                                   partitions,
@@ -3112,7 +3142,7 @@ class Fiber:
                                   relativeCoords=relativeCoords)
 
 
-    def splitEqual(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None):
+    def splitEqual(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None, halo=0):
         """Split a fiber equally in postion space
 
         Parameters
@@ -3132,6 +3162,11 @@ class Fiber:
             The name of a rank, i.e., a rankid, at which to perform
             the split, overrides the `depth` argument.
 
+        halo: integer
+            The size of the halo (in coordinates) after the partition
+            Note: The current implementation performs a splitEqual pre-halo in
+            order to keep consistent semantics whether or not halo=0
+
         Returns
         -------
         split_fiber: Fiber
@@ -3145,21 +3180,40 @@ class Fiber:
 
         """
         assert not self.isLazy()
+        assert halo <= step
 
         class _SplitterEqual():
 
-            def __init__(self, fiber, step):
+            def __init__(self, fiber, step, halo):
                 self.fiber = fiber
                 self.step = step
+                self.halo = halo
 
                 self.coord = None
                 self.part = None
 
             def __iter__(self):
-                for i, (c, p) in enumerate(self.fiber.iterOccupancy()):
-                    part = i // self.step * self.step
-                    if self.part != part:
-                        self.part = part
+                if len(self.fiber) == 0:
+                    start = None
+                else:
+                    start = 0
+
+                for i, (c, p) in enumerate(self.fiber.iterOccupancy(start_pos=start)):
+                    # The first partition is labeled by the first coordinate
+                    if i == 0:
+                        self.coord = c
+
+                    # Otherwise, if we are about to start a new partition,
+                    # then we need to build the halo first
+                    elif i % self.step == 0:
+                        pos = self.fiber.getSavedPos()
+                        for hc, hp in self.fiber.iterOccupancy(start_pos=pos):
+                            if hc - c >= self.halo:
+                                break
+
+                            yield self.coord, hc, hp
+
+                        # Now start the new partition
                         self.coord = c
 
                     yield self.coord, c, p
@@ -3174,7 +3228,7 @@ class Fiber:
             split_fiber.updatePayloads(update_lambda, depth=depth-1)
             return split_fiber
 
-        splitter = _SplitterEqual(self, step)
+        splitter = _SplitterEqual(self, step, halo)
 
         return self._splitGeneric(splitter,
                                   partitions,
