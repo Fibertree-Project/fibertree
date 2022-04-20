@@ -174,6 +174,27 @@ class TestConstructor(unittest.TestCase):
         for p1, p2 in zip(f, ff):
             self.assertEqual(p1, p2)
 
+    def test_fromLazy(self):
+        """Test fromLazy"""
+        c = [2, 4, 6]
+        p = [3, 5, 7]
+
+        class iterator:
+            coords = c
+            payloads = p
+
+            def __iter__(self):
+                for coord, payload in zip(self.coords, self.payloads):
+                    yield CoordPayload(coord, payload)
+
+        lazy = Fiber.fromIterator(iterator)
+        eager = Fiber.fromLazy(lazy)
+
+        self.assertEqual(eager.getCoords(), c)
+        self.assertEqual(eager.getPayloads(), p)
+        self.assertFalse(eager.isLazy())
+
+
     @staticmethod
     def makeTest(f, a):
         """Make a check for a test"""

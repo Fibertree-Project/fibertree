@@ -498,6 +498,28 @@ class Fiber:
 
         return f
 
+    @classmethod
+    def fromLazy(cls, fiber, **kwargs):
+        """
+        Create an eager fiber from a lazy fiber
+
+        WARNING: does not correctly maintain links for lazy fibers created
+        with the populate (<<) operator
+
+        Parameters
+        ----------
+
+        fiber: Fiber
+            The lazy fiber to build from
+        """
+
+        f_out = cls(**kwargs)
+
+        for c, (f_ref, f_val) in f_out << fiber:
+            f_ref <<= f_val
+
+        return f_out
+
 
 #
 # Stats-related methods
