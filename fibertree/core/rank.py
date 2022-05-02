@@ -217,9 +217,9 @@ class Rank:
 
             if self._attrs.getShape() == 0:
                 #
-                # We do not actually know the shape
+                # We do not actually know the shape, but we can estimate it
                 #
-                return 0
+                return max([f.estimateShape(all_ranks=False) for f in self.fibers])
 
             return self._attrs.getShape()
 
