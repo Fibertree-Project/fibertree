@@ -728,6 +728,7 @@ def __lshift__(self, other):
                     # Do not actually insert the payload into the tensor
                     a_payload = self.a_fiber._createDefault()
                     maybe_insert = True
+
                 elif is_collecting:
                     Metrics.incCount(line, "coordinate_read_tensor0", 1)
                     Metrics.incCount(line, "payload_read_tensor0", 1)

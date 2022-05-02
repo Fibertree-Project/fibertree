@@ -22,6 +22,8 @@ fibertree_sources = ['fibertree/__init__.py']
 fibertree_core = []
 #fibertree_core_src = []
 fibertree_core_pkg = []
+fibertree_model = []
+fibertree_model_pkg = []
 
 extensions = []
 
@@ -33,11 +35,23 @@ for py_core_f in os.listdir("./fibertree/core"):
             py_core = os.path.splitext(py_core_f)[0]
             fibertree_core_pkg.append('fibertree.core.'+py_core)
 
-            extensions.append(Extension('fibertree.core.'+py_core, 
+            extensions.append(Extension('fibertree.core.'+py_core,
                                         sources=['fibertree/core/'+py_core_f]
                                        )
                              )
-            
+for py_model_f in os.listdir("./fibertree/model"):
+      if py_model_f.endswith(".py"):
+            print("    Processing: ", py_model_f)
+            fibertree_model.append('fibertree/model/'+py_model_f)
+
+            py_model = os.path.splitext(py_model_f)[0]
+            fibertree_model_pkg.append('fibertree.model.'+py_model)
+
+            extensions.append(Extension('fibertree.model.'+py_model,
+                                        sources=['fibertree/model/'+py_model_f]
+                                       )
+                             )
+
 #extensions=[#Extension('fibertree', sources=fibertree_sources),
 #            Extension('fibertree.core', sources=fibertree_core)
 #           ]

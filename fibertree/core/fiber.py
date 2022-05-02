@@ -2225,7 +2225,8 @@ class Fiber:
                 p.updatePayloads(func, depth=depth - 1)
         else:
             # Update my payloads
-            for i, (c, p) in enumerate(zip(self.coords, self.payloads)):
+            for c, p in self.iterOccupancy(start_pos=0):
+                i = self.getSavedPos()
                 self.payloads[i] = func(i, c, p)
 
         return None
