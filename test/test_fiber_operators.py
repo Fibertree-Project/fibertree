@@ -280,13 +280,29 @@ class TestFiberOperators(unittest.TestCase):
         self.assertEqual(id_, "M")
 
     def test_lshift_eager_only(self):
-        """Test metrics collection on Fiber.__lshift__ from a fiber"""
+        """Test that we can only populate eager fibers"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
         z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
         z_m._setIsLazy(True)
 
         with self.assertRaises(AssertionError):
             z_m << a_m
+
+    def test_lshift_skip_empty(self):
+        """Test that lshift does not insert empty fibers"""
+        z_m = Tensor(rank_ids=["M", "N"]).getRoot()
+        a_m = Fiber.fromUncompressed([1, 2])
+        b_n = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+
+        for m, (z_n, a_val) in z_m << a_m:
+            if m != 0:
+                continue
+
+            for _, (z_ref, b_val) in z_n << b_n:
+                z_ref += b_val
+
+        for z_n in z_m.payloads:
+            self.assertGreater(len(z_n), 0)
 
     def test_lshift_metrics_fiber(self):
         """Test metrics collection on Fiber.__lshift__ from a fiber"""

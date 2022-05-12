@@ -3034,6 +3034,7 @@ class Fiber:
         """
 
         assert not self.isLazy()
+        assert isinstance(halo, int) and isinstance(step, int)
         assert halo <= step
 
         class _SplitterUniform():
@@ -3051,6 +3052,8 @@ class Fiber:
                     start = None
                 else:
                     start = 0
+                    assert isinstance(self.fiber.coords[0], int)
+
 
                 for i, (c, p) in enumerate(self.fiber.iterOccupancy(start_pos=start)):
                     part = c // self.step * self.step
@@ -3203,6 +3206,7 @@ class Fiber:
 
         """
         assert not self.isLazy()
+        assert isinstance(halo, int) and isinstance(step, int)
         assert halo <= step
 
         class _SplitterEqual():
@@ -3231,6 +3235,11 @@ class Fiber:
                     elif i % self.step == 0:
                         pos = self.fiber.getSavedPos()
                         for hc, hp in self.fiber.iterOccupancy(start_pos=pos):
+                            # No halo allowed for tuple coordinates
+                            if isinstance(hc, tuple):
+                                assert self.halo == 0
+                                break
+
                             if hc - c >= self.halo:
                                 break
 

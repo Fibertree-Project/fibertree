@@ -59,6 +59,21 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sc, split_ref_coords[i])
             self.assertEqual(sp, split_ref_payloads[i])
 
+    def test_split_uniform_on_int_coords_only(self):
+        """Test that splitUnform works on integer coordinates only"""
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+        f = f.splitUniform(5)
+        f = f.flattenRanks(style="tuple")
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform((1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(5)
+
 
     def test_split_uniform_then_flatten(self):
         """Test that flattenRanks() can undo splitUniform"""
@@ -364,6 +379,39 @@ class TestFiberSplit(unittest.TestCase):
         for i, (sc, sp)  in enumerate(split):
             self.assertEqual(sc, css[i][0])
             self.assertEqual(sp, split_ref[i])
+
+    def test_split_equal_int_step_halo_only(self):
+        """Test that splitEqual only works on an integer step, integer halo, and no halo with tuple coordinates"""
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+        f = f.splitUniform(5)
+        f = f.flattenRanks(style="tuple")
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual((1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual(5, halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual(5, halo=3)
+
+    def test_split_equal_tuple_coords(self):
+        """Test that splitEqual works with tuple coordinates"""
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+        f = f.splitUniform(5)
+        f = f.flattenRanks(style="tuple")
+
+        split = f.splitEqual(3)
+
+        corr = Fiber([(0, 0), (10, 10), (40, 41)], [Fiber([(0, 0), (0, 1), (5, 9)], [1, 10, 20]), Fiber([(10, 10), (10, 12), (30, 31)], [100, 120, 310]), Fiber([(40, 41)], [410])])
+
+        self.assertEqual(split, corr)
 
     def test_split_equal_halo(self):
         """splitEqual with halo"""
