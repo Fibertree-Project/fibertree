@@ -6,3 +6,4 @@ Pillow
 numpy
 ipywidgets
 tqdm
+Cython
