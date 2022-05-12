@@ -741,9 +741,9 @@ def __lshift__(self, other):
                 yield b_coord, (a_payload, b_payload)
 
                 # Only plan to insert the payload if it is non-zero
-                if maybe_insert and ((isinstance(a_payload, type(self)) \
+                if maybe_insert and ((isinstance(a_payload, type(self.a_fiber)) \
                             and len(a_payload) > 0) \
-                        or (not isinstance(a_payload, type(self)) \
+                        or (not isinstance(a_payload, type(self.a_fiber)) \
                             and a_payload != self.a_fiber.getDefault())):
                     self.a_fiber._create_payload(b_coord, a_payload)
 
