@@ -5,6 +5,8 @@ A module storing the implementations of all of the iterators of the Fiber class
 
 """
 
+import bisect
+
 from .coord_payload import CoordPayload
 from .metrics import Metrics
 from .payload import Payload
@@ -704,7 +706,7 @@ def __lshift__(self, other):
             is_collecting = Metrics.isCollecting()
 
             # Add coordinates/payloads to a_fiber where necessary
-            maybe_insert = False
+            maybe_remove = False
             a_collecting = self.a_fiber.getRankAttrs().getCollecting()
             b_collecting = self.b_fiber.getRankAttrs().getCollecting()
 
@@ -726,26 +728,32 @@ def __lshift__(self, other):
                             Metrics.incCount(line, "coord_payload_insert_tensor0", 1)
 
                     # Do not actually insert the payload into the tensor
-                    a_payload = self.a_fiber._createDefault()
-                    maybe_insert = True
+                    a_payload = self.a_fiber._create_payload(b_coord)
+                    maybe_remove = True
 
                 elif is_collecting:
                     Metrics.incCount(line, "coordinate_read_tensor0", 1)
                     Metrics.incCount(line, "payload_read_tensor0", 1)
-                    maybe_insert = False
+                    maybe_remove = False
 
                 else:
-                    maybe_insert = False
+                    maybe_remove = False
 
 
                 yield b_coord, (a_payload, b_payload)
 
-                # Only plan to insert the payload if it is non-zero
-                if maybe_insert and ((isinstance(a_payload, type(self.a_fiber)) \
-                            and len(a_payload) > 0) \
-                        or (not isinstance(a_payload, type(self.a_fiber)) \
-                            and a_payload != self.a_fiber.getDefault())):
-                    self.a_fiber._create_payload(b_coord, a_payload)
+                # If this was never updated, remove it
+                if maybe_remove and (isinstance(a_payload, type(self.a_fiber)) and len(a_payload) == 0) or \
+                        (not isinstance(a_payload, type(self.a_fiber)) and a_payload == self.a_fiber.getDefault()):
+                    # Clear the fiber
+                    index = bisect.bisect_left(self.a_fiber.coords, b_coord)
+                    del self.a_fiber.coords[index]
+                    del self.a_fiber.payloads[index]
+
+                    # Remove the payload from its owning rank (if relevant)
+                    if self.a_fiber.getOwner() is not None and \
+                            self.a_fiber.getOwner().getNextRank() is not None:
+                        self.a_fiber.getOwner().getNextRank().pop()
 
                 if is_collecting:
                     if a_collecting:

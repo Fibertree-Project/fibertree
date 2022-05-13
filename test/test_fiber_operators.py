@@ -304,6 +304,12 @@ class TestFiberOperators(unittest.TestCase):
         for z_n in z_m.payloads:
             self.assertGreater(len(z_n), 0)
 
+        for fiber in z_m.getOwner().getFibers():
+            self.assertGreater(len(fiber), 0)
+
+        for fiber in z_m.getOwner().getNextRank().getFibers():
+            self.assertGreater(len(fiber), 0)
+
     def test_lshift_metrics_fiber(self):
         """Test metrics collection on Fiber.__lshift__ from a fiber"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])

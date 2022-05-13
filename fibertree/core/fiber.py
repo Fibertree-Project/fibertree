@@ -9,6 +9,7 @@ a tensor.
 import logging
 
 from functools import partialmethod
+import bisect
 from copy import deepcopy
 import yaml
 import random
@@ -760,20 +761,12 @@ class Fiber:
 
         start_pos = Payload.get(start_pos)
 
-        try:
-            #
-            # Try to find the index for the first coordinate in the "point"
-            # and get the payload at that index
-            #
-            index = self.coords.index(coords[0])
+        # Get the payload for the particular index
+        index = bisect.bisect_left(self.coords, coords[0])
+        if index < len(self.coords) and self.coords[index] == coords[0]:
             payload = self.payloads[index]
-        except Exception:
-            #
-            # Coordinate didn't exist so create a payload
-            # at that coordinate then the index will exist
-            #
+        else:
             payload = self._create_payload(coords[0])
-            index = self.coords.index(coords[0])
 
         if len(coords) > 1:
             # Recurse to the next level's fiber
@@ -804,15 +797,9 @@ class Fiber:
 
         assert Payload.is_payload(payload)
 
-        try:
-            index = next(x for x, val in enumerate(self.coords) if val > coord)
-            self.coords.insert(index, coord)
-            self.payloads.insert(index, payload)
-        except StopIteration:
-            index = len(self.coords)
-            self.coords.append(coord)
-            self.payloads.append(payload)
-
+        index = bisect.bisect_left(self.coords, coord)
+        self.coords.insert(index, coord)
+        self.payloads.insert(index, payload)
 
         #
         # Get the payload out of the payloads array
@@ -823,6 +810,9 @@ class Fiber:
         assert Payload.is_payload(payload)
 
         return payload
+
+    def _deletePayload(self, coord):
+        """Remove a payload """
 
 
     def getRange(self,

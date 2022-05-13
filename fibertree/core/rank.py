@@ -517,6 +517,25 @@ class Rank:
         #
         self.fibers.append(fiber)
 
+    def pop(self):
+        """
+        Remove the most-recently added fiber
+
+        Parameters
+        ----------
+
+        None
+
+        Returns
+        _______
+
+        fiber: Fiber
+            The popped Fiber
+        """
+        fiber = self.fibers.pop()
+        fiber.setOwner(None)
+        return fiber
+
 #
 # Linked list methods
 #
