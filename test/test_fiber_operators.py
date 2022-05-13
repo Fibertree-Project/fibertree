@@ -310,6 +310,24 @@ class TestFiberOperators(unittest.TestCase):
         for fiber in z_m.getOwner().getNextRank().getFibers():
             self.assertGreater(len(fiber), 0)
 
+    def test_lshift_catch_pop_wrong(self):
+        """Test that lshift catches if the wrong fiber is popped off"""
+        z_m = Tensor(rank_ids=["M", "N"]).getRoot()
+        a_m = Fiber.fromUncompressed([1, 2])
+
+        # Start the iterator
+        iter_ = (z_m << a_m).__iter__()
+        next(iter_)
+
+        # Incorrectly change the rank
+        z_m.getOwner().getNextRank().append(Fiber())
+
+        with self.assertRaises(AssertionError):
+            next(iter_)
+
+
+
+
     def test_lshift_metrics_fiber(self):
         """Test metrics collection on Fiber.__lshift__ from a fiber"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])

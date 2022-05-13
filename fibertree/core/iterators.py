@@ -739,7 +739,6 @@ def __lshift__(self, other):
                 else:
                     maybe_remove = False
 
-
                 yield b_coord, (a_payload, b_payload)
 
                 # If this was never updated, remove it
@@ -753,7 +752,11 @@ def __lshift__(self, other):
                     # Remove the payload from its owning rank (if relevant)
                     if self.a_fiber.getOwner() is not None and \
                             self.a_fiber.getOwner().getNextRank() is not None:
-                        self.a_fiber.getOwner().getNextRank().pop()
+                        popped = self.a_fiber.getOwner().getNextRank().pop()
+
+                        # Make sure that the rank was not modified in the
+                        # middle and we actually popped off the correct fiber
+                        assert id(a_payload) == id(popped)
 
                 if is_collecting:
                     if a_collecting:
