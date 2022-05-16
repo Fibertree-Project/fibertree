@@ -681,32 +681,18 @@ class Fiber:
 
         # TBD: Actually optimize the search
 
-        try:
-            index = self.coords.index(coords[0])
+        index = bisect.bisect_left(self.coords, coords[0])
+        const_used = False
+
+        if index < len(self.coords) and self.coords[index] == coords[0]:
             payload = self.payloads[index]
-        except Exception:
-            #
-            # The requested coordinate did not exist
-            #
-            # If we are allocating missing elements or
-            # are not at the last coordinate in the given coord list
-            # create a default value to return (or recurse into),
-            # but do not change anything in the actual fiber.
-            #
-            # Otherwise return the provided default.
-            #
-            # TBD: We (arbitarily) record we found it at the final
-            #      index, this may not work for the next
-            #      shortcut-based lookup
-            #
-            index = len(self.coords)
+        elif allocate:
+            payload = self._createDefault(addtorank=False)
+        else:
+            payload = Payload.maybe_box(default)
+            const_used = True
 
-            if allocate or len(coords) > 1:
-                payload = self._createDefault(addtorank=False)
-            else:
-                payload = Payload.maybe_box(default)
-
-        if len(coords) > 1:
+        if not const_used and len(coords) > 1:
             assert Payload.contains(payload, Fiber), \
                 "getPayload too many coordinates"
 
@@ -977,9 +963,8 @@ class Fiber:
 
         start_pos = Payload.get(start_pos)
 
-        try:
-            index = self.coords.index(coord)
-        except Exception:
+        index = bisect.bisect_left(self.coords, coord)
+        if coord != self.coords[index]:
             index = None
 
         if start_pos is not None and index is not None:
@@ -1028,11 +1013,9 @@ class Fiber:
 
         # TBD: Actually optimize the search
 
-        try:
-            index = self.coords.index(coord)
-        except Exception:
+        index = bisect.bisect_left(self.coords, coord)
+        if coord != self.coords[index]:
             self._create_payload(coord)
-            index = len(self.payloads) - 1  # TODO: This is wrong...
 
         if start_pos is not None and index is not None:
             self.setSavedPos(index, distance=index - start_pos)
@@ -3034,9 +3017,6 @@ class Fiber:
                 self.step = step
                 self.halo = halo
 
-                self.halo_elems = None
-                self.last_part = 0
-
             def __iter__(self):
                 if len(self.fiber) == 0:
                     start = None
@@ -3044,12 +3024,12 @@ class Fiber:
                     start = 0
                     assert isinstance(self.fiber.coords[0], int)
 
-
+                last_part = 0
                 for i, (c, p) in enumerate(self.fiber.iterOccupancy(start_pos=start)):
                     part = c // self.step * self.step
 
                     # If we are about to end an old part, start the halo
-                    if part != self.last_part:
+                    if part != last_part:
                         # The halo needs to be in the previous partition
                         halo_part = part - self.step
 
@@ -3064,7 +3044,7 @@ class Fiber:
                     yield part, c, p
 
                     # Set the last_part
-                    self.last_part = part
+                    last_part = part
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)

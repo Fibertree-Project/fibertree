@@ -993,12 +993,12 @@ class TestFiber(unittest.TestCase):
         test = [0, 4, 6, 3, 6]
         start_pos = [0, 0, 1, 1, Payload(2)]
 
-        answer_saved_pos = [3, 1, 2, 3, 2]
-        answer_saved_stats = [(1, 3),
-                              (2, 4),
-                              (3, 5),
-                              (4, 7),
-                              (5, 7)]
+        answer_saved_pos = [0, 1, 2, 1, 2]
+        answer_saved_stats = [(1, 0),
+                              (2, 1),
+                              (3, 2),
+                              (4, 2),
+                              (5, 2)]
 
 
         for i in range(len(test)):
@@ -1590,6 +1590,12 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f.getPosition(4)
 
+    def test_getPosition(self):
+        """Basic getPosition test"""
+        f = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+
+        self.assertEqual(f.getPosition(4), 1)
+        self.assertEqual(f.getPosition(5), None)
 
     def test_getPositionRef_eager_only(self):
         """getPositionRef only works in eager mode"""
@@ -1599,6 +1605,15 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f.getPositionRef(4)
 
+    def test_getPositionRef(self):
+        """Basic getPositionRef test"""
+        f = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+
+        self.assertEqual(f.getPositionRef(4), 1)
+        self.assertEqual(f.getPositionRef(5), 2)
+
+        corr = Fiber([2, 4, 5, 6, 8], [4, 8, 0, 12, 16])
+        self.assertEqual(f, corr)
 
     def test_upzip(self):
         """Test unzipping a fiber"""
