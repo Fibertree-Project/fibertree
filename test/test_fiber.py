@@ -709,7 +709,7 @@ class TestFiber(unittest.TestCase):
         c1 = [4, 8]
         p1 = [3, 7]
 
-        for i, (c, p) in enumerate(a.iterRange((2, 9))):
+        for i, (c, p) in enumerate(a.iterRange(2, 9)):
             self.assertEqual(c, c1[i])
             self.assertEqual(p, p1[i])
 
@@ -722,7 +722,7 @@ class TestFiber(unittest.TestCase):
         a._setIsLazy(True)
 
         with self.assertRaises(AssertionError):
-            for _ in a.iterRange((2, 9), start_pos=5):
+            for _ in a.iterRange(2, 9, start_pos=5):
                 pass
 
     def test_iterRange_start_pos(self):
@@ -737,7 +737,7 @@ class TestFiber(unittest.TestCase):
         c0_ans = [5, 8]
         p0_ans = [6, 7]
 
-        for i, (c, p) in enumerate(a.iterRange((2, 9), start_pos=2)):
+        for i, (c, p) in enumerate(a.iterRange(2, 9, start_pos=2)):
             self.assertEqual(c, c0_ans[i])
             self.assertEqual(p, p0_ans[i])
 
@@ -769,7 +769,7 @@ class TestFiber(unittest.TestCase):
         for i in range(len(startc)):
             class test_iterator:
                 def __iter__(self):
-                    return a.iterRange((startc[i], end_coord[i]))
+                    return a.iterRange(startc[i], end_coord[i])
 
             c = Fiber.fromIterator(test_iterator)
             self.assertEqual(c, ans[i])
@@ -786,7 +786,7 @@ class TestFiber(unittest.TestCase):
 
         a = Fiber(c0, p0)
 
-        for i, (c, p) in enumerate(a.iterRangeShape((2, 9))):
+        for i, (c, p) in enumerate(a.iterRangeShape(2, 9)):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
@@ -805,7 +805,7 @@ class TestFiber(unittest.TestCase):
         a._setIsLazy(True)
 
         with self.assertRaises(AssertionError):
-            next(a.iterRangeShape((2, 9)))
+            next(a.iterRangeShape(2, 9))
 
 
     def test_iterRangeShapeRef(self):
@@ -820,7 +820,7 @@ class TestFiber(unittest.TestCase):
 
         a = Fiber(c0, p0)
 
-        for i, (c, p) in enumerate(a.iterRangeShapeRef((2, 9))):
+        for i, (c, p) in enumerate(a.iterRangeShapeRef(2, 9)):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
@@ -842,7 +842,7 @@ class TestFiber(unittest.TestCase):
         a._setIsLazy(True)
 
         with self.assertRaises(AssertionError):
-            next(a.iterRangeShapeRef((2, 9)))
+            next(a.iterRangeShapeRef(2, 9))
 
     def test_iter_no_fmt(self):
         """Test iteration over a fiber (default: iterOccupancy)"""

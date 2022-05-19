@@ -52,7 +52,7 @@ def iterOccupancy(self, tick=True, start_pos=None):
         Saved position to start iteration
 
     """
-    return self.iterRange((None, None), tick=tick, start_pos=start_pos)
+    return self.iterRange(None, None, tick=tick, start_pos=start_pos)
 
 def iterShape(self, tick=True):
     """Iterate over fiber shape
@@ -67,7 +67,7 @@ def iterShape(self, tick=True):
         True if this iterator should tick the metrics counter
 
     """
-    return self.iterRangeShape((0, self.getShape(all_ranks=False)), tick=tick)
+    return self.iterRangeShape(0, self.getShape(all_ranks=False), tick=tick)
 
 def iterShapeRef(self, tick=True):
     """Iterate over fiber shape
@@ -82,7 +82,7 @@ def iterShapeRef(self, tick=True):
         True if this iterator should tick the metrics counter
 
     """
-    return self.iterRangeShapeRef((0, self.getShape(all_ranks=False)), tick=tick)
+    return self.iterRangeShapeRef(0, self.getShape(all_ranks=False), tick=tick)
 
 def iterActive(self, tick=True, start_pos=None):
     """Iterate over the non-default elements within the fiber's active range
@@ -92,7 +92,7 @@ def iterActive(self, tick=True, start_pos=None):
     tick: bool
         True if this iterator should tick the metrics counter
     """
-    return self.iterRange(self.getActive(), tick=tick, start_pos=start_pos)
+    return self.iterRange(*self.getActive(), tick=tick, start_pos=start_pos)
 
 def iterActiveShape(self, tick=True):
     """Iterate over the fiber's active range, including default elements
@@ -102,7 +102,7 @@ def iterActiveShape(self, tick=True):
     tick: bool
         True if this iterator should tick the metrics counter
     """
-    return self.iterRangeShape(self.getActive(), tick=tick)
+    return self.iterRangeShape(*self.getActive(), tick=tick)
 
 def iterActiveShapeRef(self, tick=True):
     """Iterate over the fiber's active range, creating default elements if they
@@ -113,16 +113,19 @@ def iterActiveShapeRef(self, tick=True):
     tick: bool
         True if this iterator should tick the metrics counter
     """
-    return self.iterRangeShapeRef(self.getActive(), tick=tick)
+    return self.iterRangeShapeRef(*self.getActive(), tick=tick)
 
-def iterRange(self, range_, tick=True, start_pos=None):
+def iterRange(self, start, end, tick=True, start_pos=None):
     """
     Iterate over the non-default elements within the given range
 
     Parameters
     ----------
-    range_: Tuple[Optional[int], Optional[int]]
-        Range to iterate over: [start, end); None value implies no bound
+    start: Optional[int]
+        Beginning of range (inclusive); None implies no bound
+
+    end: Optional[int]
+        End of range (exclusive); None implies no bound
 
     tick: bool
         True if this iterator should tick the metrics counter
@@ -152,11 +155,11 @@ def iterRange(self, range_, tick=True, start_pos=None):
 
     for j, (coord, payload) in enumerate(iter_):
         # If we are outside the range, stop
-        if range_[1] is not None and coord >= range_[1]:
+        if end is not None and coord >= end:
             break
 
         # If we are within the range, emit the non-default elements
-        elif range_[0] is None or coord >= range_[0]:
+        elif start is None or coord >= start:
             if not Payload.isEmpty(payload):
                 if start_pos is not None:
                     self.setSavedPos(i + j, distance=j)
@@ -172,13 +175,16 @@ def iterRange(self, range_, tick=True, start_pos=None):
     if is_collecting and tick:
         Metrics.clrIter(line)
 
-def iterRangeShape(self, range_, tick=True):
+def iterRangeShape(self, start, end, tick=True):
     """Iterate over the given range, including default elements
 
     Parameters
     ----------
-    range_: Tuple[int, int]
-        Range to iterate over: [start, end)
+    start: int
+        Beginning of range (inclusive)
+
+    end: int
+        End of range (exclusive)
 
     tick: bool
         True if this iterator should tick the metrics counter
@@ -187,7 +193,7 @@ def iterRangeShape(self, range_, tick=True):
 
     is_collecting, line = _prep_metrics_inc(self)
 
-    for c in range(*range_):
+    for c in range(start, end):
         p = self.getPayload(c)
         yield CoordPayload(c, p)
 
@@ -197,22 +203,22 @@ def iterRangeShape(self, range_, tick=True):
     if is_collecting and tick:
         Metrics.clrIter(line)
 
-def iterRangeShapeRef(self, range_, tick=True):
+def iterRangeShapeRef(self, start, end, tick=True):
     """Iterate over the given range, including default elements
 
     Parameters
     ----------
-    range_: Tuple[int, int]
-        Range to iterate over: [start, end)
+    start: int
+        Beginning of range (inclusive)
 
-    tick: bool
-        True if this iterator should tick the metrics counter
+    end: int
+        End of range (exclusive)
     """
     assert not self.isLazy()
 
     is_collecting, line = _prep_metrics_inc(self)
 
-    for c in range(*range_):
+    for c in range(start, end):
         p = self.getPayloadRef(c)
         yield CoordPayload(c, p)
 
