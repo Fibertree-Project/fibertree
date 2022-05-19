@@ -103,7 +103,7 @@ class Fiber:
     - A **savedPos**, which is a value stored by certain methods that
       records a postion in a fiber that can be used in the future as a
       **shortcut** to accelerate a search in the fiber by another
-      method. See `Fiber.getRange()` for an example of a method that
+      method. See `Fiber.iterShape()` for an example of a method that
       both saves and can use these **shortcuts**.
 
     Constructor
@@ -855,6 +855,7 @@ class Fiber:
 
 
         """
+        Fiber._deprecated("Fiber.getRange() is deprecated use Fiber.iterRange())")
 
         assert not self.isLazy()
         assert not (size is None and end_coord is None)

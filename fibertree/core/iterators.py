@@ -52,40 +52,7 @@ def iterOccupancy(self, tick=True, start_pos=None):
         Saved position to start iteration
 
     """
-    # Cannot save a position of a lazy fiber
-    assert not self.isLazy() or start_pos is None
-
-    is_collecting, line = _prep_metrics_inc(self)
-
-    if self.isLazy():
-        for coord, payload in self.iter():
-            yield CoordPayload(coord, payload)
-
-            if is_collecting and tick:
-                Metrics.incIter(line)
-
-    else:
-        # Set i: the starting position
-        start_pos = Payload.get(start_pos)
-        if start_pos is not None:
-            assert start_pos < len(self.coords)
-            i = start_pos
-        else:
-            i = 0
-
-        # Iterate, saving the position if desired
-        for j, (c, p) in enumerate(zip(self.coords[i:], self.payloads[i:])):
-            if not Payload.isEmpty(p):
-                if start_pos is not None:
-                    self.setSavedPos(i + j, distance=j)
-
-                yield CoordPayload(c, p)
-
-                if is_collecting and tick:
-                    Metrics.incIter(line)
-
-    if is_collecting and tick:
-        Metrics.clrIter(line)
+    return self.iterRange((None, None), tick=tick, start_pos=start_pos)
 
 def iterShape(self, tick=True):
     """Iterate over fiber shape
@@ -100,19 +67,7 @@ def iterShape(self, tick=True):
         True if this iterator should tick the metrics counter
 
     """
-    assert not self.isLazy()
-
-    is_collecting, line = _prep_metrics_inc(self)
-
-    for c in range(self.getShape(all_ranks=False)):
-        p = self.getPayload(c)
-        yield CoordPayload(c, p)
-
-        if is_collecting and tick:
-            Metrics.incIter(line)
-
-    if is_collecting and tick:
-        Metrics.clrIter(line)
+    return self.iterRangeShape((0, self.getShape(all_ranks=False)), tick=tick)
 
 def iterShapeRef(self, tick=True):
     """Iterate over fiber shape
@@ -127,20 +82,9 @@ def iterShapeRef(self, tick=True):
         True if this iterator should tick the metrics counter
 
     """
+    return self.iterRangeShapeRef((0, self.getShape(all_ranks=False)), tick=tick)
 
-    is_collecting, line = _prep_metrics_inc(self)
-
-    for c in range(self.getShape(all_ranks=False)):
-        p = self.getPayloadRef(c)
-        yield CoordPayload(c, p)
-
-        if is_collecting and tick:
-            Metrics.incIter(line)
-
-    if is_collecting and tick:
-        Metrics.clrIter(line)
-
-def iterActive(self, tick=True):
+def iterActive(self, tick=True, start_pos=None):
     """Iterate over the non-default elements within the fiber's active range
 
     Parameters
@@ -148,7 +92,7 @@ def iterActive(self, tick=True):
     tick: bool
         True if this iterator should tick the metrics counter
     """
-    return self.iterRange(self.getActive(), tick=tick)
+    return self.iterRange(self.getActive(), tick=tick, start_pos=start_pos)
 
 def iterActiveShape(self, tick=True):
     """Iterate over the fiber's active range, including default elements
@@ -171,34 +115,59 @@ def iterActiveShapeRef(self, tick=True):
     """
     return self.iterRangeShapeRef(self.getActive(), tick=tick)
 
-def iterRange(self, range_, tick=True):
+def iterRange(self, range_, tick=True, start_pos=None):
     """
     Iterate over the non-default elements within the given range
 
     Parameters
     ----------
-    range_: Tuple[int, int]
-        Range to iterate over: [start, end)
+    range_: Tuple[Optional[int], Optional[int]]
+        Range to iterate over: [start, end); None value implies no bound
 
     tick: bool
         True if this iterator should tick the metrics counter
+
+    start_pos: Optional[int]
+        Saved position to start iteration
+
     """
+    # Cannot save a position of a lazy fiber
+    assert not self.isLazy() or start_pos is None
+
+    # Get the iterator
     if self.isLazy():
         iter_ = self.iter()
     else:
-        iter_ = zip(self.coords, self.payloads)
+        # Set i: the starting position
+        start_pos = Payload.get(start_pos)
+        if start_pos is not None:
+            assert start_pos < len(self.coords)
+            i = start_pos
+        else:
+            i = 0
+
+        iter_ = zip(self.coords[i:], self.payloads[i:])
 
     is_collecting, line = _prep_metrics_inc(self)
 
-    for coord, payload in iter_:
-        if coord >= range_[1]:
+    for j, (coord, payload) in enumerate(iter_):
+        # If we are outside the range, stop
+        if range_[1] is not None and coord >= range_[1]:
             break
 
-        elif coord > range_[0]:
-            yield CoordPayload(coord, payload)
+        # If we are within the range, emit the non-default elements
+        elif range_[0] is None or coord >= range_[0]:
+            if not Payload.isEmpty(payload):
+                if start_pos is not None:
+                    self.setSavedPos(i + j, distance=j)
 
-            if is_collecting and tick:
-                Metrics.incIter(line)
+                yield CoordPayload(coord, payload)
+
+                if is_collecting and tick:
+                    Metrics.incIter(line)
+
+        # Otherwise continue iterating untile we find the beginning of the
+        # range
 
     if is_collecting and tick:
         Metrics.clrIter(line)

@@ -599,6 +599,37 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(c, c1[i])
             self.assertEqual(p, p1[i])
 
+    def test_iterActive_start_pos_eager_only(self):
+        """Test iterActive start_pos only works with eager fibers"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 7, 10]
+
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            for _ in a.iterActive(start_pos=5):
+                pass
+
+    def test_iterActive_start_pos(self):
+        """Test iteration over non-default elements of a fiber with the
+        start_pos parameter"""
+
+        c0 = [1, 4, 5, 8, 9]
+        p0 = [2, 3, 6, 7, 10]
+
+        a = Fiber(c0, p0, active_range=(2, 9))
+
+        c0_ans = [5, 8]
+        p0_ans = [6, 7]
+
+        for i, (c, p) in enumerate(a.iterActive(start_pos=2)):
+            self.assertEqual(c, c0_ans[i])
+            self.assertEqual(p, p0_ans[i])
+
+        self.assertEqual(a.getSavedPosStats(), (2, 1))
+        self.assertEqual(a.getSavedPos(), 3)
+
     def test_iterActiveShape(self):
         """Test iteration over the coordinates within the active shape"""
 
@@ -681,6 +712,68 @@ class TestFiber(unittest.TestCase):
         for i, (c, p) in enumerate(a.iterRange((2, 9))):
             self.assertEqual(c, c1[i])
             self.assertEqual(p, p1[i])
+
+    def test_iterRange_start_pos_eager_only(self):
+        """Test iterRange start_pos only works with eager fibers"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 7, 10]
+
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            for _ in a.iterRange((2, 9), start_pos=5):
+                pass
+
+    def test_iterRange_start_pos(self):
+        """Test iteration over non-default elements of a fiber with the
+        start_pos parameter"""
+
+        c0 = [1, 4, 5, 8, 9]
+        p0 = [2, 3, 6, 7, 10]
+
+        a = Fiber(c0, p0)
+
+        c0_ans = [5, 8]
+        p0_ans = [6, 7]
+
+        for i, (c, p) in enumerate(a.iterRange((2, 9), start_pos=2)):
+            self.assertEqual(c, c0_ans[i])
+            self.assertEqual(p, p0_ans[i])
+
+        self.assertEqual(a.getSavedPosStats(), (2, 1))
+        self.assertEqual(a.getSavedPos(), 3)
+
+    def test_iterRange_flattened(self):
+        """iterRange flattened coordinates"""
+
+        coords = [(0, 2), (0, 4), (0, 6), (0, 8), (0, 9),
+                  (1, 2), (1, 5), (1, 6), (1, 7),
+                  (2, 0)]
+
+        payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]
+
+        a = Fiber(coords, payloads)
+
+        startc = [(0, 4), (0, 3), (0, 5), (1, 3) , (0, 9), (1, 5)]
+        end_coord = [(0, 6),(0, 6), (0, 9), (1, 5), (1, 3), (1, 8)]
+
+        ans = [Fiber(coords[1:2], payloads[1:2]),
+               Fiber(coords[1:2], payloads[1:2]),
+               Fiber(coords[2:4], payloads[2:4]),
+               Fiber([], []),
+               Fiber(coords[4:6], payloads[4:6]),
+               Fiber(coords[6:9], payloads[6:9]),
+        ]
+
+        for i in range(len(startc)):
+            class test_iterator:
+                def __iter__(self):
+                    return a.iterRange((startc[i], end_coord[i]))
+
+            c = Fiber.fromIterator(test_iterator)
+            self.assertEqual(c, ans[i])
+
 
     def test_iterRangeShape(self):
         """Test iteration over the coordinates within the given range"""
@@ -1337,107 +1430,6 @@ class TestFiber(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             b <<= a
-
-    def test_getRange(self):
-        """getRange"""
-
-        coords = [2, 4, 6, 8, 9, 12, 15, 16, 17, 20 ]
-        payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]
-
-        a = Fiber(coords, payloads)
-
-        startc = [4, 3, 5, 13, 9, 15]
-        size = [2, 3, 4, 2, 4, 3]
-        end_coord = [6, 6, 9, 15, 13, 18]
-
-        ans = [Fiber(coords[1:2], payloads[1:2]),
-               Fiber(coords[1:2], payloads[1:2]),
-               Fiber(coords[2:4], payloads[2:4]),
-               Fiber([], []),
-               Fiber(coords[4:6], payloads[4:6]),
-               Fiber(coords[6:9], payloads[6:9]),
-        ]
-
-        for i in range(len(startc)):
-            b = a.getRange(startc[i], size[i])
-            self.assertEqual(b, ans[i])
-
-            c = a.getRange(startc[i], end_coord=end_coord[i])
-            self.assertEqual(c, ans[i])
-
-
-    def test_getRange_eager_only(self):
-        """getRange only works on eagerly built fibers"""
-
-        coords = [2, 4, 6, 8, 9, 12, 15, 16, 17, 20 ]
-        payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]
-
-        a = Fiber(coords, payloads)
-        a._setIsLazy(True)
-
-        with self.assertRaises(AssertionError):
-            a.getRange(4, 2)
-
-
-    def test_getRange_flattened(self):
-        """getRange flattened coordinates"""
-
-        coords = [(0, 2), (0, 4), (0, 6), (0, 8), (0, 9),
-                  (1, 2), (1, 5), (1, 6), (1, 7),
-                  (2, 0)]
-
-        payloads = [3, 5, 7, 9, 10, 13, 16, 17, 18, 21]
-
-        a = Fiber(coords, payloads)
-
-        startc = [(0, 4), (0, 3), (0, 5), (1, 3) , (0, 9), (1, 5)]
-        end_coord = [(0, 6),(0, 6), (0, 9), (1, 5), (1, 3), (1, 8)]
-
-        ans = [Fiber(coords[1:2], payloads[1:2]),
-               Fiber(coords[1:2], payloads[1:2]),
-               Fiber(coords[2:4], payloads[2:4]),
-               Fiber([], []),
-               Fiber(coords[4:6], payloads[4:6]),
-               Fiber(coords[6:9], payloads[6:9]),
-        ]
-
-        for i in range(len(startc)):
-            c = a.getRange(startc[i], end_coord=end_coord[i])
-            self.assertEqual(c, ans[i])
-
-
-    def test_getRange_shortcut(self):
-        """getRange_shortcut"""
-
-        coords = [2, 4, 6, 8, 9, 12 ]
-        payloads = [3, 5, 7, 9, 10, 13]
-
-        a = Fiber(coords, payloads)
-
-        startc = [4, 3, 5, 13, 9]
-        size = [2, 3, 4, 2, 3]
-        startp = [0, 1, 2, 3, Payload(4)]
-        ans = [[ 2, 2, None, None, None],
-               [2, 2, None, None, None],
-               [4, 4, 4, None, None],
-               [5, 5, 5, 5, 5],
-               [5, 5, 5, 5, 5]]
-
-        saved_pos_stats = (62, 97)
-
-        for i in range(len(startc)):
-            for sp, aaa in zip(startp,ans[i]):
-                if aaa is not None:
-                    for _ in a.getRange(startc[i], size[i], start_pos=sp):
-                        pass
-
-                    self.assertEqual(a.getSavedPos(), aaa),
-                else:
-                    with self.assertRaises(AssertionError):
-                        b = a.getRange(startc[i], size[i], start_pos=sp)
-
-        self.assertEqual(a.getSavedPosStats(), saved_pos_stats)
-
 
     def test_append(self):
         """Append element at end of fiber"""
