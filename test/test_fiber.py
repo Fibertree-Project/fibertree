@@ -585,6 +585,184 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             next(a.iterShapeRef())
 
+    def test_iterActive(self):
+        """Test iteration over non-default elements of a fiber within the active range"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 7, 10]
+        a = Fiber(c0, p0, active_range=(2, 9))
+
+        c1 = [4, 8]
+        p1 = [3, 7]
+
+        for i, (c, p) in enumerate(a.iterActive()):
+            self.assertEqual(c, c1[i])
+            self.assertEqual(p, p1[i])
+
+    def test_iterActiveShape(self):
+        """Test iteration over the coordinates within the active shape"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+
+        c0_ans = [2, 3, 4, 5, 6, 7, 8]
+        p0_ans = [0, 0, 3, 0, 0, 0, 0]
+
+        a = Fiber(c0, p0, active_range=(2, 9))
+
+        for i, (c, p) in enumerate(a.iterActiveShape()):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0)
+            self.assertEqual(a.payloads, p0)
+
+    def test_iterActiveShape_eager_only(self):
+        """Test iterActiveShape only works in eager mode"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            next(a.iterActiveShape())
+
+
+    def test_iterActiveShapeRef(self):
+        """Test iteration over the coordinates within the fiber's active range,
+        creating a fiber if one does not exist"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+
+        c0_ans = [2, 3, 4, 5, 6, 7, 8]
+        p0_ans = [0, 0, 3, 0, 0, 0, 0]
+
+        a = Fiber(c0, p0, active_range=(2, 9))
+
+        for i, (c, p) in enumerate(a.iterActiveShapeRef()):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        c0_final = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p0_final = [2, 0, 0, 3, 0, 0, 0, 0, 10]
+
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0_final)
+            self.assertEqual(a.payloads, p0_final)
+
+    def test_iterActiveShapeRef_eager_only(self):
+        """Test iterActiveShapeRef only works in eager mode"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            next(a.iterActiveShapeRef())
+
+    def test_iterRange(self):
+        """Test iteration over non-default elements of a fiber within the given range"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 7, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [4, 8]
+        p1 = [3, 7]
+
+        for i, (c, p) in enumerate(a.iterRange((2, 9))):
+            self.assertEqual(c, c1[i])
+            self.assertEqual(p, p1[i])
+
+    def test_iterRangeShape(self):
+        """Test iteration over the coordinates within the given range"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+
+        c0_ans = [2, 3, 4, 5, 6, 7, 8]
+        p0_ans = [0, 0, 3, 0, 0, 0, 0]
+
+        a = Fiber(c0, p0)
+
+        for i, (c, p) in enumerate(a.iterRangeShape((2, 9))):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0)
+            self.assertEqual(a.payloads, p0)
+
+    def test_iterRangeShape_eager_only(self):
+        """Test iterRangeShape only works in eager mode"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            next(a.iterRangeShape((2, 9)))
+
+
+    def test_iterRangeShapeRef(self):
+        """Test iteration over the coordinates within the given range,
+        creating a fiber if one does not exist"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+
+        c0_ans = [2, 3, 4, 5, 6, 7, 8]
+        p0_ans = [0, 0, 3, 0, 0, 0, 0]
+
+        a = Fiber(c0, p0)
+
+        for i, (c, p) in enumerate(a.iterRangeShapeRef((2, 9))):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        c0_final = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p0_final = [2, 0, 0, 3, 0, 0, 0, 0, 10]
+
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0_final)
+            self.assertEqual(a.payloads, p0_final)
+
+    def test_iterRangeShapeRef_eager_only(self):
+        """Test iterRangeShapeRef only works in eager mode"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 0, 10]
+        a = Fiber(c0, p0)
+        a._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            next(a.iterRangeShapeRef((2, 9)))
+
+    def test_iter_no_fmt(self):
+        """Test iteration over a fiber (default: iterOccupancy)"""
+
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+
+        for i, (c, p) in enumerate(a):
+            self.assertEqual(c, c0[i])
+            self.assertEqual(p, p0[i])
+
     def test_iter_no_fmt(self):
         """Test iteration over a fiber (default: iterOccupancy)"""
 

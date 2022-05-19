@@ -2013,6 +2013,12 @@ class Fiber:
     from .iterators import iterOccupancy
     from .iterators import iterShape
     from .iterators import iterShapeRef
+    from .iterators import iterActive
+    from .iterators import iterActiveShape
+    from .iterators import iterActiveShapeRef
+    from .iterators import iterRange
+    from .iterators import iterRangeShape
+    from .iterators import iterRangeShapeRef
 
 #
 # Core methods

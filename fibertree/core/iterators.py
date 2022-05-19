@@ -45,7 +45,12 @@ def iterOccupancy(self, tick=True, start_pos=None):
 
     Parameters
     ----------
-    None
+    tick: bool
+        True if this iterator should tick the metrics counter
+
+    start_pos: Optional[int]
+        Saved position to start iteration
+
     """
     # Cannot save a position of a lazy fiber
     assert not self.isLazy() or start_pos is None
@@ -54,8 +59,6 @@ def iterOccupancy(self, tick=True, start_pos=None):
 
     if self.isLazy():
         for coord, payload in self.iter():
-            self.coords.append(coord)
-            self.payloads.append(payload)
             yield CoordPayload(coord, payload)
 
             if is_collecting and tick:
@@ -93,7 +96,8 @@ def iterShape(self, tick=True):
 
     Parameters
     ----------
-    None
+    tick: bool
+        True if this iterator should tick the metrics counter
 
     """
     assert not self.isLazy()
@@ -119,15 +123,127 @@ def iterShapeRef(self, tick=True):
 
     Parameters
     ----------
-    None
+    tick: bool
+        True if this iterator should tick the metrics counter
 
     """
-
-    assert not self.isLazy()
 
     is_collecting, line = _prep_metrics_inc(self)
 
     for c in range(self.getShape(all_ranks=False)):
+        p = self.getPayloadRef(c)
+        yield CoordPayload(c, p)
+
+        if is_collecting and tick:
+            Metrics.incIter(line)
+
+    if is_collecting and tick:
+        Metrics.clrIter(line)
+
+def iterActive(self, tick=True):
+    """Iterate over the non-default elements within the fiber's active range
+
+    Parameters
+    ----------
+    tick: bool
+        True if this iterator should tick the metrics counter
+    """
+    return self.iterRange(self.getActive(), tick=tick)
+
+def iterActiveShape(self, tick=True):
+    """Iterate over the fiber's active range, including default elements
+
+    Parameters
+    ----------
+    tick: bool
+        True if this iterator should tick the metrics counter
+    """
+    return self.iterRangeShape(self.getActive(), tick=tick)
+
+def iterActiveShapeRef(self, tick=True):
+    """Iterate over the fiber's active range, creating default elements if they
+    do not exist
+
+    Parameters
+    ----------
+    tick: bool
+        True if this iterator should tick the metrics counter
+    """
+    return self.iterRangeShapeRef(self.getActive(), tick=tick)
+
+def iterRange(self, range_, tick=True):
+    """
+    Iterate over the non-default elements within the given range
+
+    Parameters
+    ----------
+    range_: Tuple[int, int]
+        Range to iterate over: [start, end)
+
+    tick: bool
+        True if this iterator should tick the metrics counter
+    """
+    if self.isLazy():
+        iter_ = self.iter()
+    else:
+        iter_ = zip(self.coords, self.payloads)
+
+    is_collecting, line = _prep_metrics_inc(self)
+
+    for coord, payload in iter_:
+        if coord >= range_[1]:
+            break
+
+        elif coord > range_[0]:
+            yield CoordPayload(coord, payload)
+
+            if is_collecting and tick:
+                Metrics.incIter(line)
+
+    if is_collecting and tick:
+        Metrics.clrIter(line)
+
+def iterRangeShape(self, range_, tick=True):
+    """Iterate over the given range, including default elements
+
+    Parameters
+    ----------
+    range_: Tuple[int, int]
+        Range to iterate over: [start, end)
+
+    tick: bool
+        True if this iterator should tick the metrics counter
+    """
+    assert not self.isLazy()
+
+    is_collecting, line = _prep_metrics_inc(self)
+
+    for c in range(*range_):
+        p = self.getPayload(c)
+        yield CoordPayload(c, p)
+
+        if is_collecting and tick:
+            Metrics.incIter(line)
+
+    if is_collecting and tick:
+        Metrics.clrIter(line)
+
+def iterRangeShapeRef(self, range_, tick=True):
+    """Iterate over the given range, including default elements
+
+    Parameters
+    ----------
+    range_: Tuple[int, int]
+        Range to iterate over: [start, end)
+
+    tick: bool
+        True if this iterator should tick the metrics counter
+    """
+    assert not self.isLazy()
+
+    is_collecting, line = _prep_metrics_inc(self)
+
+    for c in range(*range_):
         p = self.getPayloadRef(c)
         yield CoordPayload(c, p)
 
