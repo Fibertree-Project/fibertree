@@ -347,6 +347,54 @@ class TestFiber(unittest.TestCase):
 
         pass
 
+    def test_rank_attrs(self):
+        """Test getting and setting rank attributes"""
+        # Set directly
+        f = Fiber()
+        attrs = RankAttrs("Unknown").setDefault(Payload(0))
+        self.assertEqual(f.getRankAttrs(), attrs)
+
+        attrs0 = RankAttrs("K", shape=20)
+        attrs0.setFormat("U").setDefault(3).setId("M").setCollecting(True)
+        f.setRankAttrs(attrs0)
+
+        attrs1 = RankAttrs("K", shape=20)
+        attrs1.setFormat("U").setDefault(3).setId("M").setCollecting(True)
+        self.assertEqual(f.getRankAttrs(), attrs1)
+
+        # Set via the constructor
+        f = Fiber(rank_attrs=attrs)
+        self.assertEqual(f.getRankAttrs(), attrs)
+
+        # Set via the rank
+        c0 = [1, 8, 9]
+        p0 = [2, 7, 10]
+
+        a = Fiber(c0, p0)
+        t = Tensor.fromFiber(rank_ids=["K"], fiber=a)
+
+        attrs = RankAttrs("K").setShape(10).setDefault(0)
+        self.assertEqual(a.getRankAttrs(), attrs)
+
+    def test_active_range(self):
+        """Test getting and setting the active range"""
+        # Test default
+        attrs = RankAttrs("K", shape=20)
+        f = Fiber(rank_attrs=attrs)
+        self.assertEqual(f.getActive(), (0, 20))
+
+        # Set range explicitly
+        f.setActive((3, 7))
+        self.assertEqual(f.getActive(), (3, 7))
+
+        # Reset active range
+        f.setActive(None)
+        self.assertEqual(f.getActive(), (0, 20))
+
+        # Set via the constructor
+        f = Fiber(active_range=(3, 7))
+        self.assertEqual(f.getActive(), (3, 7))
+
 
     def test_minCoord(self):
         """Find minimum coordinate"""
@@ -1403,23 +1451,6 @@ class TestFiber(unittest.TestCase):
         r = a.getRankIds()
 
         self.assertEqual(r, ["X.1", "X.0"])
-
-    def test_rank_attrs(self):
-        """Test getting and setting rank attributes"""
-        attrs = RankAttrs("K", shape=20)
-        attrs.setFormat("U").setDefault(3).setId("M").setCollecting(True)
-        f = Fiber(rank_attrs=attrs)
-
-        self.assertEqual(f.getRankAttrs(), attrs)
-
-        c0 = [1, 8, 9]
-        p0 = [2, 7, 10]
-
-        a = Fiber(c0, p0)
-        t = Tensor.fromFiber(rank_ids=["K"], fiber=a)
-
-        attrs = RankAttrs("K").setShape(10).setDefault(0)
-        self.assertEqual(a.getRankAttrs(), attrs)
 
     def test_getDepth_eager_only(self):
         """Test getDepth for eager only"""

@@ -166,7 +166,8 @@ class Fiber:
                  max_coord=None,
                  ordered=True,
                  unique=True,
-                 rank_attrs=None):
+                 rank_attrs=None,
+                 active_range=None):
 
         #
         # Set up logging
@@ -246,7 +247,8 @@ class Fiber:
         # Note1: this value is overridden by the owning rank's shape
         # Note2: no checks are done to see if this value is violated
         #
-        self.getRankAttrs().setShape(shape)
+        if shape is not None:
+            self.getRankAttrs().setShape(shape)
 
         #
         # Set a specific constant value to the maximum legal coordinate
@@ -256,6 +258,12 @@ class Fiber:
         self._max_coord = max_coord
         if max_coord is not None:
             Fiber._deprecated("Explicitly setting a fiber's max_coord is deprecated")
+
+        #
+        # Set the active range
+        #
+        self.setActive(active_range)
+
         #
         # Create default value
         #
@@ -1245,7 +1253,7 @@ class Fiber:
 
         Returns
         -------
-        attrs: Optional[RankAttrs]
+        attrs: RankAttrs
             Rank attributes if set
 
         """
@@ -1254,6 +1262,47 @@ class Fiber:
 
         return self._rank_attrs
 
+
+    def setActive(self, active_range):
+        """
+        Set the range of active coordinates for this rank
+
+        Parameters
+        ----------
+        active_range: Optional[Tuple[int, int]]
+            The range of active coordinates; None implies [0, shape)
+
+        Returns
+        -------
+        None
+        """
+        if active_range is not None:
+            assert isinstance(active_range, tuple)
+            assert len(active_range) == 2
+
+        self._active_range = active_range
+
+    def getActive(self):
+        """
+        Set the range of active coordinates for this rank
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        active_range: Tuple[int, int]
+            The range of active coordinates
+
+        """
+        if self._active_range:
+            return self._active_range
+
+        if self.getRankAttrs().getShape():
+            return (0, self.getRankAttrs().getShape())
+
+        return (0, self.estimateShape(all_ranks=False))
 
     #
     # Default payload methods

@@ -58,7 +58,7 @@ class RankAttrs:
 
         if shape is None:
             self._estimated_shape = True
-            self._shape = 0
+            self._shape = None
         else:
             self._estimated_shape = False
             self._shape = shape
@@ -291,13 +291,13 @@ class RankAttrs:
         Parameters
         ----------
 
-        shape: int
+        shape: Optional[int]
             Shape of the rank
 
         Returns
         -------
 
-        self: RankAttrs
+        self: Optional[RankAttrs]
            So method can be used in a chain
 
         Raises

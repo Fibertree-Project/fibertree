@@ -232,10 +232,12 @@ class Rank:
             #
             return None
 
-        if self._attrs.getShape() == 0 and len(self.fibers) > 0:
-            shape = [max([f.estimateShape(all_ranks=False) for f in self.fibers])]
-        else:
+        if self._attrs.getShape() is not None:
             shape = [self._attrs.getShape()]
+        elif len(self.fibers) == 0:
+            shape = [0]
+        else:
+            shape = [max([f.estimateShape(all_ranks=False) for f in self.fibers])]
 
         if self.next_rank is not None:
             rest_of_shape = self.next_rank.getShape(all_ranks=True, authoritative=authoritative)
@@ -495,7 +497,13 @@ class Rank:
             # change estimated_shape to True
             #
             fiber.setOwner(None)
-            self._attrs.setShape(max(self._attrs.getShape(), fiber.getShape(all_ranks=False)))
+
+            old = self._attrs.getShape()
+            new = fiber.getShape(all_ranks=False)
+            if old is None:
+                self._attrs.setShape(new)
+            else:
+                self._attrs.setShape(max(old, new))
 
         #
         # Set this rank as owner of the fiber
