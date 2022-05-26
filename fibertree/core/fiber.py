@@ -544,7 +544,6 @@ class Fiber:
         """
 
         self._clearSavedPosStats()
-        self._clearReuseStats()
 
 
 #
@@ -922,9 +921,6 @@ class Fiber:
 
                         yield c, p
 
-                        if is_collecting:
-                            self.fiber._addUse(c, start_iter)
-
         result = Fiber.fromIterator(prune_iterator)
         result._setDefault(self.getDefault())
         result.getRankAttrs().setId(self.getRankAttrs().getId())
@@ -1129,9 +1125,6 @@ class Fiber:
                             start_iter = Metrics.getIter()
 
                         yield c, p
-
-                        if is_collecting:
-                            self.fbr._addUse(old_c, start_iter)
 
         result = Fiber.fromIterator(project_iterator)
         result._setDefault(self.getDefault())
@@ -1606,35 +1599,6 @@ class Fiber:
 
         self._saved_count = 0
         self._saved_dist = 0
-
-    def getUseStats(self):
-        """getUseStats
-
-        NDN: Add comment
-        """
-        uses = {}
-        for coord in self._first_use.keys():
-            uses[coord] = (self._first_use[coord], self._reuses[coord])
-        return uses
-
-
-    def _addUse(self, coord, start):
-        """_addUse"""
-        if coord in self._first_use.keys():
-            dist = tuple((s - f for s, f in zip(start, self._first_use[coord])))
-            self._reuses[coord].append(dist)
-            self._last_use[coord] = start
-        else:
-            self._reuses[coord] = []
-            self._first_use[coord] = start
-            self._last_use[coord] = start
-
-
-    def _clearReuseStats(self):
-        """_clearReuseStats"""
-        self._first_use = {}
-        self._last_use = {}
-        self._reuses = {}
 
     #
     # Computed attribute acccessors

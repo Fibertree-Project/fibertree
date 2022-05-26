@@ -479,14 +479,6 @@ def __and__(self, other):
 
                     yield a_coord, (a_payload, b_payload)
 
-                    if is_collecting:
-                        if a_collecting:
-                            self.a_fiber._addUse(a_coord, start_iter)
-
-                        if b_collecting:
-                            self.b_fiber._addUse(b_coord, start_iter)
-
-
                     a_coord, a_payload = _get_next(a)
                     b_coord, b_payload = _get_next(b)
 
@@ -849,12 +841,6 @@ def __lshift__(self, other):
                         # middle and we actually popped off the correct fiber
                         assert id(a_payload) == id(popped)
 
-                if is_collecting:
-                    if a_collecting:
-                        self.a_fiber._addUse(b_coord, start_iter)
-
-                    if b_collecting:
-                        self.b_fiber._addUse(b_coord, start_iter)
 
             return
 

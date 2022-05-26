@@ -27,20 +27,64 @@ class Metrics:
     """
     # Create a class instance variable for the metrics collection
     collecting = False
-    iteration = []
-    metrics = []
+    iteration = None
+    line_order = None
+    metrics = None
+    num_cached_uses = 1000
+    point = None
+    prefix = None
+    trace = {}
 
     def __init__(self):
         raise NotImplementedError
 
     @classmethod
-    def beginCollect(cls, loop_order):
+    def addUse(cls, rank, coord):
+        """Add a use of all tensors at the given rank and coord
+
+        Parameters
+        ----------
+
+        rank: str
+            The name of the rank
+
+        coord: int
+            The coordinate at this rank
+
+        Returns
+        -------
+
+        None
+
+        """
+        i = cls.line_order[rank]
+        cls.point[i] = coord
+
+        if rank not in cls.trace.keys():
+            return
+
+        iteration = ",".join(str(j) for j in cls.iteration[:(i + 1)])
+        point = ",".join(str(j) for j in cls.point[:(i + 1)])
+
+        cls.trace[rank].append(iteration + "," + point + "\n")
+
+        if len(cls.trace[rank]) == cls.num_cached_uses:
+            with open(cls.prefix + "-" + rank + ".csv", "a") as f:
+               for trace in cls.trace[rank]:
+                    f.write(trace)
+            cls.trace[rank] = []
+
+    @classmethod
+    def beginCollect(cls, prefix, loop_order):
         """Begin metrics collection
 
         Start collecting metrics during future HFA program execution.
 
         Parameters
         ----------
+
+        prefix: str
+            The prefix to the files that will store the reuse statistics
 
         loop_order: [str]
             The order of ranks in the loop order
@@ -54,7 +98,11 @@ class Metrics:
         cls.collecting = True
         cls.iteration = [0] * len(loop_order)
         cls.line_order = {r: i for i, r in enumerate(loop_order)}
-        cls.metrics.append({})
+        cls.metrics = {}
+        cls.point = [0] * len(loop_order)
+        cls.prefix = prefix
+        cls.trace = {}
+
 
     @classmethod
     def clrIter(cls, line):
@@ -99,7 +147,7 @@ class Metrics:
             The dictionary of metrics collected
 
         """
-        return cls.metrics[-1]
+        return cls.metrics
 
     @classmethod
     def endCollect(cls):
@@ -118,9 +166,19 @@ class Metrics:
         None
 
         """
+        # Save the trace of uses
+        for rank in cls.trace.keys():
+            with open(cls.prefix + "-" + rank + ".csv", "a") as f:
+               for trace in cls.trace[rank]:
+                    f.write(trace)
 
+        # Clear all stats
         cls.collecting = False
-
+        cls.iteration = None
+        cls.line_order = None
+        cls.point = None
+        cls.prefix = None
+        cls.trace = {}
 
     @classmethod
     def getIter(cls):
@@ -169,13 +227,13 @@ class Metrics:
 
         line = line.strip()
 
-        if line not in cls.metrics[-1]:
-            cls.metrics[-1][line] = {}
+        if line not in cls.metrics:
+            cls.metrics[line] = {}
 
-        if metric not in cls.metrics[-1][line]:
-            cls.metrics[-1][line][metric] = 0
+        if metric not in cls.metrics[line]:
+            cls.metrics[line][metric] = 0
 
-        cls.metrics[-1][line][metric] += inc
+        cls.metrics[line][metric] += inc
 
 
     @classmethod
@@ -218,3 +276,43 @@ class Metrics:
         """
         return cls.collecting
 
+    @classmethod
+    def setNumCachedUses(cls, num_cached_uses):
+        """Set the number of uses that are saved to memory before the trace is
+        written to disk per rank
+
+        Parameters
+        ----------
+
+        num_cached_uses: int
+            Number of uses to cache
+
+        Returns
+        -------
+
+        None
+
+        """
+        cls.num_cached_uses = num_cached_uses
+
+    @classmethod
+    def traceRank(cls, rank):
+        """Set a rank to trace
+
+        Note must be called after Metrics.beginCollect()
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank to collect the trace of
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert rank in cls.line_order.keys()
+
+        cls.trace[rank] = []

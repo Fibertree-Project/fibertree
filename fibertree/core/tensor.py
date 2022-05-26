@@ -1606,49 +1606,6 @@ class Tensor:
         #
         return root
 
-#
-# Tensor-specific metrics access
-#
-    def getUseStats(self):
-        """getUseStats
-        NDN: add comment
-        """
-
-        def addFiber(fiber, loc, reuses):
-            rank_id = fiber.getOwner().getId()
-            reuses["Rank " + rank_id][loc] = fiber.getUseStats()
-
-        iter_stack = [self.getRoot().__iter__()]
-        fiber_stack = [self.getRoot()]
-        coord_stack = []
-        reuses = {"Rank " + rank_id: {} for rank_id in self.getRankIds()}
-
-        # Add the root fiber
-        if self.getCollecting(self.getRankIds()[0]):
-            addFiber(self.getRoot(), (), reuses)
-
-        # Add all children fibers
-        while len(iter_stack) > 0:
-            try:
-                coord, payload = next(iter_stack[-1])
-                if isinstance(payload, Fiber):
-                    loc = tuple(coord_stack + [coord])
-                    addFiber(payload, loc, reuses)
-
-                    iter_stack.append(payload.__iter__())
-                    fiber_stack.append(payload)
-                    coord_stack.append(coord)
-
-            except StopIteration:
-                iter_stack.pop()
-                fiber_stack.pop()
-
-                if len(iter_stack) > 0:
-                    coord_stack.pop()
-
-        return reuses
-
-
     def clearStats(self):
         """clearStats
         NDN: add comment
