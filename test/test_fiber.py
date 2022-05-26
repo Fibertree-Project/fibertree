@@ -1,8 +1,19 @@
+import os
 import unittest
 
 from fibertree import *
 
 class TestFiber(unittest.TestCase):
+
+    def setUp(self):
+        # Make sure that no metrics are being collected, unless explicitly
+        # desired by the test
+        Metrics.endCollect()
+
+        # Make sure we have a tmp directory to write to
+        if not os.path.exists("tmp"):
+            os.makedirs("tmp")
+
 
     def test_new_1d(self):
         """Create a 1d fiber"""
@@ -520,6 +531,31 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.getSavedPos(), 2)
 
 
+    def test_iterOccupancy_uses(self):
+        """Test that iterOccupancy emits the correct trace of uses"""
+        c0 = [1, 4, 5, 8, 9]
+        p0 = [2, 3, 6, 7, 10]
+        a_k = Fiber(c0, p0)
+        a_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_iterOccupancy_uses", ["K"])
+        Metrics.traceRank("K")
+        for _ in a_k.iterOccupancy():
+            pass
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K\n",
+            "0,1\n",
+            "1,4\n",
+            "2,5\n",
+            "3,8\n",
+            "4,9\n"
+        ]
+
+        with open("tmp/test_iterOccupancy_uses-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
     def test_iterShape(self):
         """Test iteration over a fiber's shape"""
 
@@ -630,6 +666,31 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.getSavedPosStats(), (2, 1))
         self.assertEqual(a.getSavedPos(), 3)
 
+
+    def test_iterActive_uses(self):
+        """Test that iterActive emits the correct trace of uses"""
+        c0 = [1, 4, 5, 8, 9]
+        p0 = [2, 3, 6, 7, 10]
+        a_k = Fiber(c0, p0, active_range=(2, 9))
+        a_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_iterActive_uses", ["K"])
+        Metrics.traceRank("K")
+        for _ in a_k.iterActive():
+            pass
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K\n",
+            "0,4\n",
+            "1,5\n",
+            "2,8\n"
+        ]
+
+        with open("tmp/test_iterActive_uses-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+
     def test_iterActiveShape(self):
         """Test iteration over the coordinates within the active shape"""
 
@@ -698,6 +759,7 @@ class TestFiber(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             next(a.iterActiveShapeRef())
+
 
     def test_iterRange(self):
         """Test iteration over non-default elements of a fiber within the given range"""
@@ -773,6 +835,29 @@ class TestFiber(unittest.TestCase):
 
             c = Fiber.fromIterator(test_iterator)
             self.assertEqual(c, ans[i])
+
+    def test_iterRange_uses(self):
+        """Test that iterRange emits the correct trace of uses"""
+        c0 = [1, 4, 5, 8, 9]
+        p0 = [2, 3, 6, 7, 10]
+        a_k = Fiber(c0, p0)
+        a_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_iterRange_uses", ["K"])
+        Metrics.traceRank("K")
+        for _ in a_k.iterRange(2, 9):
+            pass
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K\n",
+            "0,4\n",
+            "1,5\n",
+            "2,8\n"
+        ]
+
+        with open("tmp/test_iterRange_uses-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
 
     def test_iterRangeShape(self):

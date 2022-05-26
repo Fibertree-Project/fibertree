@@ -164,6 +164,9 @@ def iterRange(self, start, end, tick=True, start_pos=None):
                 if start_pos is not None:
                     self.setSavedPos(i + j, distance=j)
 
+                if is_collecting:
+                    Metrics.addUse(line, coord)
+
                 yield CoordPayload(coord, payload)
 
                 if is_collecting and tick:
@@ -533,6 +536,7 @@ def __and__(self, other):
                     Metrics.incCount(line, "same_last_coord", 1)
                 else:
                     Metrics.incCount(line, "diff_last_coord", 1)
+                    Metrics.removeUse(line[5:])
 
             return
 
