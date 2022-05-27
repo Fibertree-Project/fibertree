@@ -32,17 +32,6 @@ class TestRankAttrs(unittest.TestCase):
         with self.assertRaises(AssertionError):
             attrs.setFormat("K")
 
-    def test_collecting(self):
-        """Test get and set collecting"""
-        attrs = RankAttrs("K")
-        self.assertFalse(attrs.getCollecting())
-
-        attrs.setCollecting(True)
-        self.assertTrue(attrs.getCollecting())
-
-        with self.assertRaises(AssertionError):
-            attrs.setCollecting("foo")
-
     def test_shape(self):
         """Test get and set shape"""
         attrs = RankAttrs("K", 10)
@@ -62,10 +51,10 @@ class TestRankAttrs(unittest.TestCase):
     def test_eq(self):
         """Test =="""
         attrs1 = RankAttrs("K")
-        attrs1.setFormat("U").setDefault(3).setId("M").setShape(20).setCollecting(True)
+        attrs1.setFormat("U").setDefault(3).setId("M").setShape(20)
 
         attrs2 = RankAttrs("K")
-        attrs2.setFormat("U").setDefault(3).setId("M").setShape(20).setCollecting(True)
+        attrs2.setFormat("U").setDefault(3).setId("M").setShape(20)
 
         attrs3 = RankAttrs("K")
 
@@ -76,6 +65,6 @@ class TestRankAttrs(unittest.TestCase):
     def test_repr(self):
         """Test repr"""
         attrs = RankAttrs("K")
-        attrs.setFormat("U").setDefault(3).setId("M").setShape(20).setCollecting(True)
+        attrs.setFormat("U").setDefault(3).setId("M").setShape(20)
 
-        self.assertEqual(repr(attrs), "(RankAttrs, 'M', True, 20, 'U', True, Payload(3))")
+        self.assertEqual(repr(attrs), "(RankAttrs, 'M', True, 20, 'U', Payload(3))")

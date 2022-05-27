@@ -28,7 +28,6 @@ class Metrics:
     # Create a class instance variable for the metrics collection
     collecting = False
     iteration = None
-    last_iter = None
     line_order = None
     loop_order = None
     metrics = None
@@ -67,14 +66,6 @@ class Metrics:
         if rank not in cls.trace.keys():
             return
 
-        # Make sure that the most updated version of the point is being traced
-        # (for example, in cases where there are multiple iterators per rank)
-        if cls.iteration[:(i + 1)] == cls.last_iter[rank]:
-            cls.removeUse(rank)
-
-        cls.last_iter[rank] = cls.iteration[:(i + 1)]
-
-
         # Add the trace
         iteration = ",".join(str(j) for j in cls.iteration[:(i + 1)])
         point = ",".join(str(j) for j in cls.point[:(i + 1)])
@@ -82,9 +73,8 @@ class Metrics:
 
         # If we are at the limit of the number of cached uses, write the data
         # to disk
-        if len(cls.trace[rank]) == cls.num_cached_uses + 1:
-            cls._writeTrace(rank, cls.trace[rank][:-1])
-            cls.trace[rank] = [cls.trace[rank][-1]]
+        if len(cls.trace[rank]) == cls.num_cached_uses:
+            cls._writeTrace(rank)
 
     @classmethod
     def beginCollect(cls, prefix, loop_order):
@@ -109,7 +99,6 @@ class Metrics:
         """
         cls.collecting = True
         cls.iteration = [0] * len(loop_order)
-        cls.last_iter = {}
         cls.line_order = {r: i for i, r in enumerate(loop_order)}
         cls.loop_order = loop_order
         cls.metrics = {}
@@ -182,12 +171,11 @@ class Metrics:
         """
         # Save the trace of uses
         for rank in cls.trace.keys():
-            cls._writeTrace(rank, cls.trace[rank])
+            cls._writeTrace(rank)
 
         # Clear all info
         cls.collecting = False
         cls.iteration = None
-        cls.last_iter = None
         cls.line_order = None
         cls.loop_order = None
         cls.num_cached_uses = 1000
@@ -292,30 +280,6 @@ class Metrics:
         return cls.collecting
 
     @classmethod
-    def removeUse(cls, rank):
-        """
-        Remove the last use of a rank
-
-        Note: necessary in cases like intersection where a fiber coordinate may
-        be accessed earlier, but its payload was never accessed
-
-        Parameters
-        ----------
-
-        rank: str
-            The rank whose use to remove
-
-        Returns
-        -------
-
-        None
-
-        """
-        if rank in cls.trace.keys():
-            cls.last_iter[rank] = None
-            cls.trace[rank].pop()
-
-    @classmethod
     def setNumCachedUses(cls, num_cached_uses):
         """Set the number of uses that are saved to memory before the trace is
         written to disk per rank
@@ -364,11 +328,10 @@ class Metrics:
         with open(cls.prefix + "-" + rank + ".csv", "w") as f:
             f.write("")
 
-        cls.last_iter[rank] = None
         cls.trace[rank] = [pos + "," + coord + "\n"]
 
     @classmethod
-    def _writeTrace(cls, rank, trace):
+    def _writeTrace(cls, rank):
         """Write the trace to the file
 
         Parameters
@@ -377,9 +340,6 @@ class Metrics:
         rank: str
             The rank whose trace to write
 
-        trace: List[str]
-            The trace of uses
-
         Returns
         -------
 
@@ -387,5 +347,7 @@ class Metrics:
 
         """
         with open(cls.prefix + "-" + rank + ".csv", "a") as f:
-           for use in trace:
+           for use in cls.trace[rank]:
                 f.write(use)
+
+        cls.trace[rank] = []

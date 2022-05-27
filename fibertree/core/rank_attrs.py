@@ -65,8 +65,6 @@ class RankAttrs:
 
         self.setFormat(fmt)
 
-        self.setCollecting(False)
-
         self._default_is_set = False
         self._default = None
 
@@ -233,58 +231,6 @@ class RankAttrs:
         """
         return self._fmt
 
-    def setCollecting(self, collecting):
-        """Set  whether the trace of uses should be collected for this rank
-
-        Parameters
-        ----------
-
-        collecting: bool
-            True if use statistiscs should be collected
-
-
-        Returns
-        -------
-
-        self: RankAttrs
-           So method can be used in a chain
-
-
-        Raises
-        ------
-
-        AssertionError
-            collecting not a bool
-
-        """
-        assert isinstance(collecting, bool)
-        self._collecting = collecting
-
-        return self
-
-    def getCollecting(self):
-        """Get whether the trace of uses should be collected for this rank
-
-        Parameters
-        ----------
-        None
-
-
-        Returns
-        -------
-
-        collecting: bool
-            True if use statistiscs should be collected
-
-
-        Raises
-        ------
-        None
-
-        """
-        return self._collecting
-
-
     def setShape(self, shape):
         """Set the shape for this rank
 
@@ -353,8 +299,7 @@ class RankAttrs:
 
     def __key(self):
         """__key"""
-        return (self._id, self._estimated_shape, self._shape, self._fmt,
-            self._collecting, self._default)
+        return (self._id, self._estimated_shape, self._shape, self._fmt, self._default)
 
     def __eq__(self, other):
         """__eq__"""

@@ -1,4 +1,6 @@
+import os
 import unittest
+
 from fibertree import Payload
 from fibertree import Fiber
 from fibertree import Tensor
@@ -11,6 +13,10 @@ class TestUnionIntersect(unittest.TestCase):
         # Make sure that no metrics are being collected, unless explicitly
         # desired by the test
         Metrics.endCollect()
+
+        # Make sure we have a tmp directory to write to
+        if not os.path.exists("tmp"):
+            os.makedirs("tmp")
 
         self.input = {}
 
@@ -58,29 +64,36 @@ class TestUnionIntersect(unittest.TestCase):
         id_ = Fiber.intersection(a_k, b_k, c_k).getRankAttrs().getId()
         self.assertEqual(id_, "K")
 
-    # TODO: Fix test
-    # def test_intersection_metrics(self):
-    #     """Test metrics collection on the intersection() function"""
-    #     a_k = self._set_attrs(Fiber.fromUncompressed([1, 0, 3, 4, 5]))
-    #     b_k = self._set_attrs(Fiber.fromUncompressed([0, 6, 7, 0, 8]))
-    #     c_k = self._set_attrs(Fiber.fromUncompressed([10, 0, 9, 0, 12]))
+    def test_intersection_metrics(self):
+        """Test metrics collection on the intersection() function"""
+        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 5])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([0, 6, 7, 0, 8])
+        b_k.getRankAttrs().setId("K")
+        c_k = Fiber.fromUncompressed([10, 0, 9, 0, 12])
+        c_k.getRankAttrs().setId("K")
 
-    #     Metrics.beginCollect(["M", "K"])
-    #     for _ in range(3):
-    #         for _ in Fiber.intersection(a_k, b_k, c_k):
-    #             pass
-    #         Metrics.incIter("M")
-    #     Metrics.endCollect()
+        Metrics.beginCollect("tmp/test_intersection_metrics", ["M", "K"])
+        Metrics.traceRank("K")
+        for m in range(3):
+            Metrics.addUse("M", m + 1)
+            for _ in Fiber.intersection(a_k, b_k, c_k):
+                pass
+            Metrics.incIter("M")
+        Metrics.endCollect()
 
-    #     reuses = {2: ((0, 0), [(1, 0), (2, 0)]), 4: ((0, 1), [(1, 0), (2, 0)])}
-    #     self.assertEqual(a_k.getUseStats(), reuses)
-    #     self.assertEqual(b_k.getUseStats(), reuses)
-    #     self.assertEqual(c_k.getUseStats(), reuses)
+        corr = [
+            "M_pos,K_pos,M,K\n",
+            "0,0,1,2\n",
+            "0,1,1,4\n",
+            "1,0,2,2\n",
+            "1,1,2,4\n",
+            "2,0,3,2\n",
+            "2,1,3,4\n"
+        ]
 
-    def _set_attrs(self, fiber):
-        """Set rank ID and collecting"""
-        fiber.getRankAttrs().setId("K").setCollecting(True)
-        return fiber
+        with open("tmp/test_intersection_metrics-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
     def test_union(self):
         """Test the union() function"""

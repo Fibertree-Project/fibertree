@@ -22,21 +22,12 @@ class TestRank(unittest.TestCase):
 
         self.assertRaises(AssertionError, lambda: rank.setFormat("G"))
 
-    def test_set_collecting(self):
-        rank = Rank("K")
-        self.assertFalse(rank.getCollecting())
-
-        rank.setCollecting(True)
-        self.assertTrue(rank.getCollecting())
-
-        self.assertRaises(AssertionError, lambda: rank.setCollecting("foo"))
-
     def test_get_attrs(self):
         rank = Rank("K", shape=20)
-        rank.setFormat("U").setDefault(3).setId("M").setCollecting(True)
+        rank.setFormat("U").setDefault(3).setId("M")
 
         attrs = RankAttrs("K", shape=20)
-        attrs.setFormat("U").setDefault(3).setId("M").setCollecting(True)
+        attrs.setFormat("U").setDefault(3).setId("M")
 
         self.assertEqual(rank.getAttrs(), attrs)
 

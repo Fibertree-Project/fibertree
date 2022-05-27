@@ -691,21 +691,5 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(t4.getFormat("K.1"), "C")
         self.assertEqual(t4.getFormat("K.0"), "U")
 
-    def test_get_set_collecting(self):
-        t = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
-
-        self.assertFalse(t.getCollecting("M"))
-        self.assertFalse(t.getCollecting("K"))
-
-        t.setCollecting("K", True)
-
-        self.assertFalse(t.getCollecting("M"))
-        self.assertTrue(t.getCollecting("K"))
-
-        self.assertRaises(ValueError, lambda: t.getCollecting("N"))
-        self.assertRaises(ValueError, lambda: t.setCollecting("N", "C"))
-        self.assertRaises(AssertionError, lambda: t.setCollecting("M", "G"))
-
-
 if __name__ == '__main__':
     unittest.main()

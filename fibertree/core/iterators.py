@@ -164,7 +164,7 @@ def iterRange(self, start, end, tick=True, start_pos=None):
                 if start_pos is not None:
                     self.setSavedPos(i + j, distance=j)
 
-                if is_collecting:
+                if is_collecting and tick:
                     Metrics.addUse(line, coord)
 
                 yield CoordPayload(coord, payload)
@@ -453,8 +453,9 @@ def __and__(self, other):
             a_coord, a_payload = _get_next(a)
             b_coord, b_payload = _get_next(b)
 
-            line = "Rank " + self.a_fiber.getRankAttrs().getId()
             is_collecting = Metrics.isCollecting()
+            if is_collecting:
+                line = "Rank " + self.a_fiber.getRankAttrs().getId()
 
             if is_collecting:
                 Metrics.incCount(line, "coordinate_read_tensor0", 1)
@@ -464,9 +465,6 @@ def __and__(self, other):
                 Metrics.incCount(line, "skipped_intersect", 0)
 
                 skip = None
-
-            a_collecting = self.a_fiber.getRankAttrs().getCollecting()
-            b_collecting = self.b_fiber.getRankAttrs().getCollecting()
 
             while not (a_coord is None or b_coord is None):
                 if a_coord == b_coord:
@@ -536,7 +534,6 @@ def __and__(self, other):
                     Metrics.incCount(line, "same_last_coord", 1)
                 else:
                     Metrics.incCount(line, "diff_last_coord", 1)
-                    Metrics.removeUse(line[5:])
 
             return
 
@@ -794,9 +791,6 @@ def __lshift__(self, other):
 
             # Add coordinates/payloads to a_fiber where necessary
             maybe_remove = False
-            a_collecting = self.a_fiber.getRankAttrs().getCollecting()
-            b_collecting = self.b_fiber.getRankAttrs().getCollecting()
-
             b = self.b_fiber.__iter__(tick=False)
             for b_coord, b_payload in b:
                 a_payload = self.a_fiber.getPayload(b_coord, allocate=False)

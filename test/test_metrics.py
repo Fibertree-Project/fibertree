@@ -116,39 +116,6 @@ class TestMetrics(unittest.TestCase):
         with open("tmp/test_add_use_num_cached_uses-K.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
-    def test_add_use_repeat_iter(self):
-        """Test that addUse correctly removes repeated iteration"""
-        Metrics.beginCollect("tmp/test_add_use_repeat_iter", ["M", "K", "N"])
-        Metrics.traceRank("K")
-
-        ks = [[3, 7], [8]]
-
-        for i, m in enumerate([2, 5]):
-            Metrics.addUse("M", m)
-            for k in ks[i]:
-                Metrics.addUse("K", k)
-                Metrics.addUse("K", k + 1)
-                for n in range(3):
-                    Metrics.addUse("N", n)
-                    Metrics.incIter("N")
-                Metrics.clrIter("N")
-                Metrics.incIter("K")
-            Metrics.clrIter("K")
-            Metrics.incIter("M")
-        Metrics.clrIter("M")
-
-        Metrics.endCollect()
-
-        corr = [
-            "M_pos,K_pos,M,K\n",
-            "0,0,2,4\n",
-            "0,1,2,8\n",
-            "1,0,5,9\n"
-        ]
-
-        with open("tmp/test_add_use_repeat_iter-K.csv", "r") as f:
-            self.assertEqual(f.readlines(), corr)
-
     def test_empty_dump(self):
         """Test that if no metrics have been collected, the dump is empty"""
         Metrics.beginCollect("", ["K"])
@@ -221,29 +188,6 @@ class TestMetrics(unittest.TestCase):
         Metrics.beginCollect("", ["K"])
         Metrics.endCollect()
         self.assertEqual(Metrics.dump(), {})
-
-    def test_remove_use(self):
-        """Test that removeUse works correctly"""
-        Metrics.beginCollect("tmp/test_remove_use", ["K"])
-        Metrics.traceRank("K")
-
-        Metrics.addUse("K", 5)
-        Metrics.incIter("K")
-        Metrics.addUse("K", 7)
-        Metrics.removeUse("K")
-        Metrics.incIter("K")
-        Metrics.addUse("K", 9)
-
-        Metrics.endCollect()
-
-        corr = [
-            "K_pos,K\n",
-            "0,5\n",
-            "2,9\n"
-        ]
-
-        with open("tmp/test_remove_use-K.csv", "r") as f:
-            self.assertEqual(f.readlines(), corr)
 
     def test_trace_rank_exists(self):
         """Test that the rank exists"""

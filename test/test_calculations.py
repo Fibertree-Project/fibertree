@@ -153,7 +153,7 @@ class TestCalculations(unittest.TestCase):
         output_shape = Fiber(coords=range(Q), initial=1)
 
         for q, (o_q_ref, _) in o_q << output_shape:
-            for r, (w_val, i_val) in w_r.project(lambda r: q+r) & i_h:
+            for h, (w_val, i_val) in w_r.project(lambda r: q+r) & i_h:
                 o_q_ref += w_val * i_val
 
         o_ref = Tensor.fromYAMLfile("./data/conv-output-os-a.yaml")
