@@ -25,22 +25,28 @@ class TestMetrics(unittest.TestCase):
     def test_begin_collect(self):
         """Test that the beginCollect() method begins collection"""
         self.assertFalse(Metrics.isCollecting())
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
         self.assertTrue(Metrics.isCollecting())
 
         Metrics.endCollect()
 
     def test_end_collect(self):
         """Test that the endCollect() method ends collection"""
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
 
         self.assertTrue(Metrics.isCollecting())
         Metrics.endCollect()
         self.assertFalse(Metrics.isCollecting())
 
+    def test_add_use_fails_if_not_collecting(self):
+        """Test that addUse fails if collection is not on"""
+        with self.assertRaises(AssertionError):
+            Metrics.addUse("K", 4)
+
     def test_add_use_none_traced(self):
         """Test that addUse only adds a file if the rank is traced"""
-        Metrics.beginCollect("tmp/test_add_use_none_traced", ["K"])
+        Metrics.beginCollect("tmp/test_add_use_none_traced")
+        Metrics.registerRank("K")
         Metrics.addUse("K", 2)
         Metrics.endCollect()
 
@@ -48,15 +54,18 @@ class TestMetrics(unittest.TestCase):
 
     def test_add_use_one_traced(self):
         """Test that addUse correctly traces a rank if it is being traced"""
-        Metrics.beginCollect("tmp/test_add_use_one_traced", ["M", "K", "N"])
+        Metrics.beginCollect("tmp/test_add_use_one_traced")
         Metrics.traceRank("K")
 
         ks = [[3, 7], [8]]
 
+        Metrics.registerRank("M")
         for i, m in enumerate([2, 5]):
             Metrics.addUse("M", m)
+            Metrics.registerRank("K")
             for k in ks[i]:
                 Metrics.addUse("K", k)
+                Metrics.registerRank("N")
                 for n in range(3):
                     Metrics.addUse("N", n)
                     Metrics.incIter("N")
@@ -80,7 +89,7 @@ class TestMetrics(unittest.TestCase):
 
     def test_add_use_num_cached_uses(self):
         """Test that num_cached_uses is followed"""
-        Metrics.beginCollect("tmp/test_add_use_num_cached_uses", ["M", "K", "N"])
+        Metrics.beginCollect("tmp/test_add_use_num_cached_uses")
         Metrics.setNumCachedUses(2)
         Metrics.traceRank("K")
 
@@ -94,10 +103,13 @@ class TestMetrics(unittest.TestCase):
             "1,1,5,8\n"
         ]
 
+        Metrics.registerRank("M")
         for i, m in enumerate([2, 5]):
             Metrics.addUse("M", m)
+            Metrics.registerRank("K")
             for k in ks[i]:
                 Metrics.addUse("K", k)
+                Metrics.registerRank("N")
                 for n in range(3):
                     Metrics.addUse("N", n)
                     Metrics.incIter("N")
@@ -116,17 +128,28 @@ class TestMetrics(unittest.TestCase):
         with open("tmp/test_add_use_num_cached_uses-K.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
+    def test_clr_iter_fails_if_not_collecting(self):
+        """Test that clrIter fails if collection is not on"""
+        with self.assertRaises(AssertionError):
+            Metrics.clrIter("K")
+
+
     def test_empty_dump(self):
         """Test that if no metrics have been collected, the dump is empty"""
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
         Metrics.endCollect()
 
         self.assertEqual(Metrics.dump(), {})
 
+    def test_inc_count_fails_if_not_collecting(self):
+        """Test that incCount fails if collection is not on"""
+        with self.assertRaises(AssertionError):
+            Metrics.incCount("Line 1", "Metric 4", 2)
+
     def test_inc_count(self):
         """Test that inc updates the correct line/metric and adds new entries
         to the metrics dictionary if the line/metric do not already exist"""
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
         Metrics.incCount("Line 1", "Metric 1", 5)
         self.assertEqual(Metrics.dump(), {"Line 1": {"Metric 1": 5}})
 
@@ -149,9 +172,16 @@ class TestMetrics(unittest.TestCase):
 
         Metrics.endCollect()
 
+    def test_inc_iter_fails_if_not_collecting(self):
+        """Test that incIter fails if collection is not on"""
+        with self.assertRaises(AssertionError):
+            Metrics.incIter("K")
+
     def test_inc_iter(self):
         """Test that the iterator increments correctly"""
-        Metrics.beginCollect("", ["N", "M"])
+        Metrics.beginCollect()
+        Metrics.registerRank("N")
+        Metrics.registerRank("M")
         self.assertEqual(Metrics.getIter(), (0, 0))
 
         Metrics.incIter("M")
@@ -170,7 +200,9 @@ class TestMetrics(unittest.TestCase):
     def test_clr_iter_without_inc(self):
         """Test that clear functions correctly even if the corresponding
         iterator has not yet been incremented"""
-        Metrics.beginCollect("", ["N", "M"])
+        Metrics.beginCollect()
+        Metrics.registerRank("N")
+        Metrics.registerRank("M")
 
         Metrics.clrIter("M")
         Metrics.incIter("N")
@@ -181,20 +213,30 @@ class TestMetrics(unittest.TestCase):
 
     def test_new_collection(self):
         """Test that a beginCollect() restarts collection"""
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
         Metrics.incCount("Line 1", "Metric 1", 5)
         Metrics.endCollect()
 
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
         Metrics.endCollect()
         self.assertEqual(Metrics.dump(), {})
 
-    def test_trace_rank_exists(self):
-        """Test that the rank exists"""
-        Metrics.beginCollect("", ["K"])
+    def test_register_rank_fails_if_not_collecting(self):
+        """Test that registerRank fails if collection is not on"""
+        with self.assertRaises(AssertionError):
+            Metrics.registerRank("K")
+
+    def test_trace_rank_fails_if_not_collecting(self):
+        """Test that traceRank fails if collection is not on"""
+        with self.assertRaises(AssertionError):
+            Metrics.traceRank("K")
+
+    def test_trace_rank_has_prefix(self):
+        """Test that a prefix has been specified if we want to trace a rank"""
+
+        Metrics.beginCollect()
 
         with self.assertRaises(AssertionError):
             Metrics.traceRank("M")
 
         Metrics.endCollect()
-

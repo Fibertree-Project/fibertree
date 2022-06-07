@@ -18,7 +18,7 @@ class TestCompute(unittest.TestCase):
         a = Payload(av)
         b = Payload(bv)
 
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
         _ = a * b
         self.assertEqual(Compute.opCount(Metrics.dump(), "mul"), 1)
         self.assertEqual(Compute.opCount(Metrics.dump(), "add"), 0)
@@ -38,7 +38,7 @@ class TestCompute(unittest.TestCase):
         b_k = Fiber.fromUncompressed([0, 0, 6, 7, 9])
         b_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("", ["M", "K"])
+        Metrics.beginCollect()
         for _ in range(1):
             for _ in Fiber.intersection(a_k, b_k):
                 pass
@@ -54,7 +54,7 @@ class TestCompute(unittest.TestCase):
         b_k = Fiber.fromUncompressed([0, 2, 3, 4, 6, 0, 0, 4, 0])
         b_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("", ["M", "K"])
+        Metrics.beginCollect()
         for _ in range(1):
             for _ in Fiber.intersection(a_k, b_k):
                 pass

@@ -538,7 +538,7 @@ class TestFiber(unittest.TestCase):
         a_k = Fiber(c0, p0)
         a_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("tmp/test_iterOccupancy_uses", ["K"])
+        Metrics.beginCollect("tmp/test_iterOccupancy_uses")
         Metrics.traceRank("K")
         for _ in a_k.iterOccupancy():
             pass
@@ -674,7 +674,7 @@ class TestFiber(unittest.TestCase):
         a_k = Fiber(c0, p0, active_range=(2, 9))
         a_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("tmp/test_iterActive_uses", ["K"])
+        Metrics.beginCollect("tmp/test_iterActive_uses")
         Metrics.traceRank("K")
         for _ in a_k.iterActive():
             pass
@@ -843,7 +843,7 @@ class TestFiber(unittest.TestCase):
         a_k = Fiber(c0, p0)
         a_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("tmp/test_iterRange_uses", ["K"])
+        Metrics.beginCollect("tmp/test_iterRange_uses")
         Metrics.traceRank("K")
         for _ in a_k.iterRange(2, 9):
             pass
@@ -1801,7 +1801,7 @@ class TestFiber(unittest.TestCase):
         f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
         f_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("tmp/test_project_use_stats", ["I"])
+        Metrics.beginCollect("tmp/test_project_use_stats")
         Metrics.traceRank("I")
         for _ in f_k.project(trans_fn=lambda k: k + 1, rank_id="I"):
             pass
@@ -1823,7 +1823,7 @@ class TestFiber(unittest.TestCase):
         f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
         f_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("", ["I"])
+        Metrics.beginCollect()
         with self.assertRaises(AssertionError):
             f_i = f_k.project(lambda k: k + 1)
             next(f_i.__iter__())
@@ -1882,7 +1882,7 @@ class TestFiber(unittest.TestCase):
         f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
         f_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("tmp/test_prune_use_stats", ["K"])
+        Metrics.beginCollect("tmp/test_prune_use_stats")
         Metrics.traceRank("K")
         for _ in f_k.prune(lambda i, c, p: i % 2 == 0):
             pass

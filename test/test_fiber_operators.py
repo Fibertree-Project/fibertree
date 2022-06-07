@@ -112,7 +112,7 @@ class TestFiberOperators(unittest.TestCase):
         b_k = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6, 0])
         b_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
@@ -139,7 +139,7 @@ class TestFiberOperators(unittest.TestCase):
         b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 6])
         b_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
@@ -164,7 +164,7 @@ class TestFiberOperators(unittest.TestCase):
         A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 0, 6])
         B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
 
-        Metrics.beginCollect("", ["K"])
+        Metrics.beginCollect()
         for _ in A_K.getRoot() & B_K.getRoot():
             pass
         Metrics.endCollect()
@@ -192,8 +192,9 @@ class TestFiberOperators(unittest.TestCase):
         B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
         b_k = B_K.getRoot()
 
-        Metrics.beginCollect("tmp/test_and_use_stats_1D", ["M", "K"])
+        Metrics.beginCollect("tmp/test_and_use_stats_1D")
         Metrics.traceRank("K")
+        Metrics.registerRank("M")
         for m in range(3):
             Metrics.addUse("M", m * 2)
             for _ in a_k & b_k:
@@ -221,7 +222,7 @@ class TestFiberOperators(unittest.TestCase):
         a_j = A_JK.getRoot()
         b_i = B_IJK.getRoot()
 
-        Metrics.beginCollect("tmp/test_and_use_stats_2D", ["I", "J", "K"])
+        Metrics.beginCollect("tmp/test_and_use_stats_2D")
         Metrics.traceRank("J")
         for _, b_j in b_i:
             for _, (a_k, b_k) in a_j & b_j:
@@ -355,7 +356,7 @@ class TestFiberOperators(unittest.TestCase):
         z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
         z_m.getRankAttrs().setId("M")
 
-        Metrics.beginCollect("", ["M"])
+        Metrics.beginCollect()
         for _ in z_m << a_m:
             pass
         Metrics.endCollect()
@@ -380,7 +381,7 @@ class TestFiberOperators(unittest.TestCase):
         Z_M = Tensor.fromUncompressed(rank_ids=["M"], root=[0, 2, 3, 0, 0])
         z_m = Z_M.getRoot()
 
-        Metrics.beginCollect("", ["M"])
+        Metrics.beginCollect()
         for _ in z_m << a_m:
             pass
         Metrics.endCollect()
@@ -405,8 +406,9 @@ class TestFiberOperators(unittest.TestCase):
         z_m = Fiber()
         z_m.getRankAttrs().setId("M")
 
-        Metrics.beginCollect("tmp/test_lshift_use_stats_1D", ["N", "M"])
+        Metrics.beginCollect("tmp/test_lshift_use_stats_1D")
         Metrics.traceRank("M")
+        Metrics.registerRank("N")
         for n in range(3):
             Metrics.addUse("N", n * 2)
             for _ in z_m << a_m:
@@ -438,7 +440,7 @@ class TestFiberOperators(unittest.TestCase):
         Z_MN = Tensor(rank_ids=["M", "N"])
         z_m = Z_MN.getRoot()
 
-        Metrics.beginCollect("tmp/test_lshift_use_stats_2D", ["J", "M", "N"])
+        Metrics.beginCollect("tmp/test_lshift_use_stats_2D")
         Metrics.traceRank("M")
         Metrics.traceRank("N")
         for j, a_m in a_j:

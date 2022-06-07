@@ -58,6 +58,8 @@ class Metrics:
         None
 
         """
+        assert cls.collecting
+
         # Update the point
         i = cls.line_order[rank]
         cls.point[i] = coord
@@ -77,7 +79,7 @@ class Metrics:
             cls._writeTrace(rank)
 
     @classmethod
-    def beginCollect(cls, prefix, loop_order):
+    def beginCollect(cls, prefix=None):
         """Begin metrics collection
 
         Start collecting metrics during future HFA program execution.
@@ -88,9 +90,6 @@ class Metrics:
         prefix: str
             The prefix to the files that will store the reuse statistics
 
-        loop_order: [str]
-            The order of ranks in the loop order
-
         Returns
         -------
 
@@ -98,11 +97,11 @@ class Metrics:
 
         """
         cls.collecting = True
-        cls.iteration = [0] * len(loop_order)
-        cls.line_order = {r: i for i, r in enumerate(loop_order)}
-        cls.loop_order = loop_order
+        cls.iteration = []
+        cls.line_order = {}
+        cls.loop_order = []
         cls.metrics = {}
-        cls.point = [0] * len(loop_order)
+        cls.point = []
         cls.prefix = prefix
         cls.trace = {}
 
@@ -122,9 +121,9 @@ class Metrics:
 
         None
 
-        NDN: Test
-
         """
+        assert cls.collecting
+
         if line not in cls.line_order.keys():
             return
 
@@ -227,6 +226,7 @@ class Metrics:
         None
 
         """
+        assert cls.collecting
 
         line = line.strip()
 
@@ -255,6 +255,8 @@ class Metrics:
         None
 
         """
+        assert cls.collecting
+
         if line not in cls.line_order.keys():
             return
 
@@ -280,6 +282,36 @@ class Metrics:
         return cls.collecting
 
     @classmethod
+    def registerRank(cls, rank):
+        """Register a rank as a part of the loop order
+
+        Parameters
+        ----------
+
+        rank: str
+            The name of the rank to register
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.collecting
+
+        # If this rank has already been registered, do nothing
+        if rank in cls.line_order.keys():
+            return
+
+        cls.iteration.append(0)
+        cls.line_order[rank] = len(cls.iteration) - 1
+        cls.loop_order.append(rank)
+        cls.point.append(0)
+
+        if rank in cls.trace.keys():
+            cls._startTrace(rank)
+
+    @classmethod
     def setNumCachedUses(cls, num_cached_uses):
         """Set the number of uses that are saved to memory before the trace is
         written to disk per rank
@@ -301,16 +333,14 @@ class Metrics:
         cls.num_cached_uses = num_cached_uses
 
     @classmethod
-    def traceRank(cls, rank):
-        """Set a rank to trace
-
-        Note must be called after Metrics.beginCollect()
+    def _startTrace(cls, rank):
+        """Start to trace the given rank
 
         Parameters
         ----------
 
         rank: str
-            The rank to collect the trace of
+            The name of the rank to register
 
         Returns
         -------
@@ -328,7 +358,34 @@ class Metrics:
         with open(cls.prefix + "-" + rank + ".csv", "w") as f:
             f.write("")
 
-        cls.trace[rank] = [pos + "," + coord + "\n"]
+        cls.trace[rank].append(pos + "," + coord + "\n")
+
+
+    @classmethod
+    def traceRank(cls, rank):
+        """Set a rank to trace
+
+        Note must be called after Metrics.beginCollect()
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank to collect the trace of
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.prefix is not None
+        assert cls.collecting
+
+        cls.trace[rank] = []
+
+        if rank in cls.line_order.keys():
+            cls._startTrace(rank)
 
     @classmethod
     def _writeTrace(cls, rank):

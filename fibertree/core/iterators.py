@@ -151,7 +151,10 @@ def iterRange(self, start, end, tick=True, start_pos=None):
 
         iter_ = zip(self.coords[i:], self.payloads[i:])
 
-    is_collecting, line = _prep_metrics_inc(self)
+    is_collecting, rank = _prep_metrics_inc(self)
+
+    if is_collecting and tick:
+        Metrics.registerRank(rank)
 
     for j, (coord, payload) in enumerate(iter_):
         # If we are outside the range, stop
@@ -165,18 +168,18 @@ def iterRange(self, start, end, tick=True, start_pos=None):
                     self.setSavedPos(i + j, distance=j)
 
                 if is_collecting and tick:
-                    Metrics.addUse(line, coord)
+                    Metrics.addUse(rank, coord)
 
                 yield CoordPayload(coord, payload)
 
                 if is_collecting and tick:
-                    Metrics.incIter(line)
+                    Metrics.incIter(rank)
 
         # Otherwise continue iterating untile we find the beginning of the
         # range
 
     if is_collecting and tick:
-        Metrics.clrIter(line)
+        Metrics.clrIter(rank)
 
 def iterRangeShape(self, start, end, tick=True):
     """Iterate over the given range, including default elements
@@ -194,17 +197,20 @@ def iterRangeShape(self, start, end, tick=True):
     """
     assert not self.isLazy()
 
-    is_collecting, line = _prep_metrics_inc(self)
+    is_collecting, rank = _prep_metrics_inc(self)
+
+    if is_collecting and tick:
+        self.registerRank(rank)
 
     for c in range(start, end):
         p = self.getPayload(c)
         yield CoordPayload(c, p)
 
         if is_collecting and tick:
-            Metrics.incIter(line)
+            Metrics.incIter(rank)
 
     if is_collecting and tick:
-        Metrics.clrIter(line)
+        Metrics.clrIter(rank)
 
 def iterRangeShapeRef(self, start, end, tick=True):
     """Iterate over the given range, including default elements
@@ -219,17 +225,20 @@ def iterRangeShapeRef(self, start, end, tick=True):
     """
     assert not self.isLazy()
 
-    is_collecting, line = _prep_metrics_inc(self)
+    is_collecting, rank = _prep_metrics_inc(self)
+
+    if is_collecting and tick:
+        self.registerRank(rank)
 
     for c in range(start, end):
         p = self.getPayloadRef(c)
         yield CoordPayload(c, p)
 
         if is_collecting and tick:
-            Metrics.incIter(line)
+            Metrics.incIter(rank)
 
     if is_collecting and tick:
-        Metrics.clrIter(line)
+        Metrics.clrIter(rank)
 
 def _prep_metrics_inc(fiber):
     """Prepare to do a metrics increment
@@ -240,13 +249,13 @@ def _prep_metrics_inc(fiber):
     is_collecting: bool
         True if Metrics collection is on
 
-    line: str
-        The name of the line number to increment over
+    rank: str
+        The name of the rank number to increment over
     """
     is_collecting = Metrics.isCollecting()
-    line = str(fiber.getRankAttrs().getId())
+    rank = str(fiber.getRankAttrs().getId())
 
-    return is_collecting, line
+    return is_collecting, rank
 
 
 #

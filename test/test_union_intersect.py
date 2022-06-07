@@ -73,8 +73,9 @@ class TestUnionIntersect(unittest.TestCase):
         c_k = Fiber.fromUncompressed([10, 0, 9, 0, 12])
         c_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect("tmp/test_intersection_metrics", ["M", "K"])
+        Metrics.beginCollect("tmp/test_intersection_metrics")
         Metrics.traceRank("K")
+        Metrics.registerRank("M")
         for m in range(3):
             Metrics.addUse("M", m + 1)
             for _ in Fiber.intersection(a_k, b_k, c_k):

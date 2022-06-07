@@ -33,7 +33,7 @@ class TestTraffic(unittest.TestCase):
         T_MKN = Tensor(rank_ids=["M", "K", "N"])
         t_m = T_MKN.getRoot()
 
-        Metrics.beginCollect("tmp/test_traffic_stage0", ["M", "K", "N"])
+        Metrics.beginCollect("tmp/test_traffic_stage0")
         Metrics.traceRank("K")
         for m, (t_k, a_k) in t_m << a_m:
             for k, (t_n, (a_val, b_n)) in t_k << (a_k & b_k):
@@ -47,7 +47,7 @@ class TestTraffic(unittest.TestCase):
         self.Z_MN = Tensor(rank_ids=["M", "N"])
         z_m = self.Z_MN.getRoot()
 
-        Metrics.beginCollect("tmp/test_traffic_stage1", ["M", "N", "K"])
+        Metrics.beginCollect("tmp/test_traffic_stage1")
         for m, (z_n, (t_n, a_k)) in z_m << (t_m & a_m):
             for n, (z_ref, t_k) in z_n << t_n:
                 for k, (t_val, a_val) in t_k & a_k:
