@@ -27,6 +27,7 @@ class Metrics:
     """
     # Create a class instance variable for the metrics collection
     collecting = False
+    fiber_label = {}
     iteration = None
     line_order = None
     loop_order = None
@@ -97,6 +98,7 @@ class Metrics:
 
         """
         cls.collecting = True
+        cls.fiber_label = {}
         cls.iteration = []
         cls.line_order = {}
         cls.loop_order = []
@@ -104,31 +106,6 @@ class Metrics:
         cls.point = []
         cls.prefix = prefix
         cls.trace = {}
-
-
-    @classmethod
-    def clrIter(cls, line):
-        """Clear the given line's iteration counter
-
-        Parameters
-        ----------
-
-        line: string
-            The name of the line number this metric is associated with
-
-        Returns
-        -------
-
-        None
-
-        """
-        assert cls.collecting
-
-        if line not in cls.line_order.keys():
-            return
-
-        cls.iteration[cls.line_order[line]] = 0
-
 
     @classmethod
     def dump(cls):
@@ -174,6 +151,7 @@ class Metrics:
 
         # Clear all info
         cls.collecting = False
+        cls.fiber_label = {}
         cls.iteration = None
         cls.line_order = None
         cls.loop_order = None
@@ -181,6 +159,28 @@ class Metrics:
         cls.point = None
         cls.prefix = None
         cls.trace = {}
+
+    @classmethod
+    def endIter(cls, rank):
+        """
+        End iteration over a given rank
+
+        Parameters
+        ----------
+
+        rank: str
+            The name of the rank whose iteration is over
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.collecting
+
+        cls.fiber_label[rank] = 0
+        cls.iteration[cls.line_order[rank]] = 0
 
     @classmethod
     def getIter(cls):
@@ -199,6 +199,27 @@ class Metrics:
         """
         return tuple(cls.iteration)
 
+    @classmethod
+    def getLabel(cls, rank):
+        """Get a new label for a fiber at this rank
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank whose fiber we want to label
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.collecting
+        assert rank in cls.line_order.keys()
+
+        cls.fiber_label[rank] += 1
+        return cls.fiber_label[rank] - 1
 
     @classmethod
     def incCount(cls, line, metric, inc):
@@ -303,6 +324,7 @@ class Metrics:
         if rank in cls.line_order.keys():
             return
 
+        cls.fiber_label[rank] = 0
         cls.iteration.append(0)
         cls.line_order[rank] = len(cls.iteration) - 1
         cls.loop_order.append(rank)

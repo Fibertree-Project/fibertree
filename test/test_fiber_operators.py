@@ -122,13 +122,13 @@ class TestFiberOperators(unittest.TestCase):
             {"Rank K": {
                 "coordinate_read_tensor0": 4,
                 "coordinate_read_tensor1": 4,
-                "successful_intersect": 1,
+                "successful_intersect_0_1": 1,
                 "unsuccessful_intersect_tensor0": 2,
                 "unsuccessful_intersect_tensor1": 3,
-                "skipped_intersect": 2,
+                "skipped_intersect_0_1": 2,
                 "payload_read_tensor0": 1,
                 "payload_read_tensor1": 1,
-                "diff_last_coord": 1
+                "diff_last_coord_0_1": 1
             }}
         )
 
@@ -149,13 +149,13 @@ class TestFiberOperators(unittest.TestCase):
             {"Rank K": {
                 "coordinate_read_tensor0": 3,
                 "coordinate_read_tensor1": 4,
-                "successful_intersect": 2,
+                "successful_intersect_0_1": 2,
                 "unsuccessful_intersect_tensor0": 1,
                 "unsuccessful_intersect_tensor1": 2,
-                "skipped_intersect": 0,
+                "skipped_intersect_0_1": 0,
                 "payload_read_tensor0": 2,
                 "payload_read_tensor1": 2,
-                "same_last_coord": 1
+                "same_last_coord_0_1": 1
             }}
         )
 
@@ -174,13 +174,51 @@ class TestFiberOperators(unittest.TestCase):
             {"Rank K": {
                 "coordinate_read_tensor0": 3,
                 "coordinate_read_tensor1": 3,
-                "successful_intersect": 1,
+                "successful_intersect_0_1": 1,
                 "unsuccessful_intersect_tensor0": 1,
                 "unsuccessful_intersect_tensor1": 2,
-                "skipped_intersect": 0,
+                "skipped_intersect_0_1": 0,
                 "payload_read_tensor0": 1,
                 "payload_read_tensor1": 1,
-                "diff_last_coord": 1
+                "diff_last_coord_0_1": 1
+            }}
+        )
+
+    def test_and_metrics_many_fibers(self):
+        """Test metrics collection when there are more than two fibers"""
+        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 0, 6])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 6])
+        b_k.getRankAttrs().setId("K")
+        c_k = Fiber.fromUncompressed([0, 0, 0, 4, 0, 6])
+        c_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect()
+        for _ in (a_k & b_k) & c_k:
+            pass
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank K": {
+                "coordinate_read_tensor0": 3,
+                "coordinate_read_tensor1": 2,
+                "coordinate_read_tensor2": 4,
+                "coordinate_read_tensor3": 4,
+                "successful_intersect_0_1": 1,
+                "successful_intersect_2_3": 3,
+                "unsuccessful_intersect_tensor0": 2,
+                "unsuccessful_intersect_tensor1": 1,
+                "unsuccessful_intersect_tensor2": 1,
+                "unsuccessful_intersect_tensor3": 1,
+                "skipped_intersect_0_1": 1,
+                "skipped_intersect_2_3": 0,
+                "payload_read_tensor0": 1,
+                "payload_read_tensor1": 1,
+                "payload_read_tensor2": 3,
+                "payload_read_tensor3": 3,
+                "same_last_coord_0_1": 1,
+                "same_last_coord_2_3": 1
             }}
         )
 
@@ -397,6 +435,38 @@ class TestFiberOperators(unittest.TestCase):
                 "coord_payload_append_tensor0": 1
             }}
         )
+    def test_lshift_metrics_many_fibers(self):
+        """Test metrics collection on Fiber.__lshift__ with more than 2 fibers"""
+        a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        a_m.getRankAttrs().setId("M")
+        z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
+        z_m.getRankAttrs().setId("M")
+        y_m = Fiber()
+        y_m.getRankAttrs().setId("M")
+
+        Metrics.beginCollect()
+        for _ in z_m << (y_m << a_m):
+            pass
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank M": {
+                "coordinate_read_tensor0": 1,
+                "coordinate_read_tensor1": 3,
+                "coordinate_read_tensor2": 0,
+                "coordinate_read_tensor3": 3,
+                "payload_read_tensor0": 1,
+                "payload_read_tensor1": 3,
+                "payload_read_tensor2": 0,
+                "payload_read_tensor3": 3,
+                "coord_payload_insert_tensor0": 1,
+                "coord_payload_insert_tensor2": 0,
+                "coord_payload_append_tensor0": 1,
+                "coord_payload_append_tensor2": 3
+            }}
+        )
+
 
     def test_lshift_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__lshift__"""
