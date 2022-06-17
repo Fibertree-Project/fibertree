@@ -101,7 +101,7 @@ class Compute:
 
 
     @staticmethod
-    def swapCount(tensor, depth, radix, next_latency):
+    def numSwaps(tensor, depth, radix, next_latency):
         """Compute the number of swaps required at the given depth"""
         return Compute._swapCountTree(tensor.getRoot(), depth, radix, next_latency)
 
