@@ -102,11 +102,33 @@ class Compute:
 
     @staticmethod
     def numSwaps(tensor, depth, radix, next_latency):
-        """Compute the number of swaps required at the given depth"""
-        return Compute._swapCountTree(tensor.getRoot(), depth, radix, next_latency)
+        """Compute the number of swaps required at the given depth
+
+        Parameters
+        ----------
+
+        tensor: Tensor
+            The tensor being swapped
+
+        depth: int
+            The depth of the swap
+
+        radix: Union[int, "N"]
+            The radix of the merger
+
+        next_latency: Union[int, "N"]
+            The latency to get the next element
+
+        Returns
+        -------
+
+        num_swaps: int
+            The number of cycles required to perform the swap
+        """
+        return Compute._numSwapsTree(tensor.getRoot(), depth, radix, next_latency)
 
     @staticmethod
-    def _swapCountTree(fiber, depth, radix, next_latency):
+    def _numSwapsTree(fiber, depth, radix, next_latency):
         """Compute the number of swaps required at the given depth"""
         swaps = 0
 
@@ -114,7 +136,7 @@ class Compute:
         if depth > 0:
             depth -= 1
             for _, payload in fiber:
-                swaps += Compute._swapCountTree(payload, depth, radix, next_latency)
+                swaps += Compute._numSwapsTree(payload, depth, radix, next_latency)
             return swaps
 
         # Otherwise merge
