@@ -245,6 +245,16 @@ class TestTensorShape(unittest.TestCase):
             self.assertEqual(t1.getShape("M", authoritative=True), 100)
             self.assertEqual(t1.getShape("K", authoritative=True), 200)
 
+    def test_shape_after_populate(self):
+        """Test shape after populate"""
+        Z_M = Tensor(rank_ids=["M"])
+        A_M = Tensor.fromUncompressed(rank_ids=["M"], root=[1, 2, 3, 4])
+
+        for m, (z_ref, a_val) in Z_M.getRoot() << A_M.getRoot():
+            z_ref += a_val
+
+        self.assertEqual(Z_M.getShape(), [4])
+
     def test_rankid_2D(self):
         """Test setting rank ids of 2D tensor"""
 
