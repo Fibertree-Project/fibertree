@@ -452,9 +452,9 @@ class Rank:
 
             old = self._attrs.getShape()
             new = fiber.getShape(all_ranks=False)
-            if old is None:
+            if old is None and new != 0:
                 self._attrs.setShape(new)
-            else:
+            elif new != 0:
                 self._attrs.setShape(max(old, new))
 
         #
