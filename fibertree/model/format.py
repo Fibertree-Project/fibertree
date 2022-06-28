@@ -89,6 +89,30 @@ class Format:
 
         assert isinstance(self.spec[rank][field], int)
 
+    def getCBits(self, rank):
+        """Get the number of bits required to represent the coordinates of
+        the given rank"""
+
+        return self.spec[rank]["cbits"]
+
+    def getFHBits(self, rank):
+        """Get the number of bits required to represent the fiber headers of
+        the given rank"""
+
+        return self.spec[rank]["fhbits"]
+
+    def getPBits(self, rank):
+        """Get the number of bits required to represent the payloads of
+        the given rank"""
+
+        return self.spec[rank]["pbits"]
+
+    def getRHBits(self, rank):
+        """Get the number of bits required to represent the rank headers of
+        the given rank"""
+
+        return self.spec[rank]["rhbits"]
+
     def getFiber(self, *coords):
         """Get the footprint of a single fiber"""
         fiber = self._getFiberFromCoords(*coords)

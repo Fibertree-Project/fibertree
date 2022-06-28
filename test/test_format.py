@@ -126,6 +126,31 @@ class TestFormat(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f.getFiber(1, 0)
 
+    def test_get_cbits(self):
+        """Test getCBits"""
+        f = Format(self.t, self.spec)
+        self.assertEqual(f.getCBits("M"), 0)
+        self.assertEqual(f.getCBits("K"), 32)
+
+    def test_get_fhbits(self):
+        """Test getFHBits"""
+        f = Format(self.t, self.spec)
+        self.assertEqual(f.getFHBits("M"), 32)
+        self.assertEqual(f.getFHBits("K"), 0)
+
+    def test_get_pbits(self):
+        """Test getPBits"""
+        f = Format(self.t, self.spec)
+        self.assertEqual(f.getPBits("M"), 32)
+        self.assertEqual(f.getPBits("K"), 64)
+
+    def test_get_rhbits(self):
+        """Test getRHBits"""
+        f = Format(self.t, self.spec)
+        self.assertEqual(f.getRHBits("M"), 0)
+        self.assertEqual(f.getRHBits("K"), 128)
+
+
     def test_fiber_footprint(self):
         """Test the fiber footprint"""
         f = Format(self.t, self.spec)

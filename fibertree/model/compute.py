@@ -7,11 +7,18 @@ import bisect
 from fibertree import Tensor
 
 class Compute:
-    """YS
+    """Class for storing all compute counting methods
+
+    Note: All methods in this class are static. It is meaningless to
+    instantiate a Compute object
     """
 
+    def __init__(self):
+        """Do not call!"""
+        raise NotImplementedError
+
     @staticmethod
-    def opCount(dump, op):
+    def numOps(dump, op):
         """Compute the number of operations executed by this kernel """
         metric = "payload_" + op
         if(metric in dump["Compute"].keys()):
@@ -20,37 +27,108 @@ class Compute:
             return 0
 
     @staticmethod
-    def lfCount(dump, rank, leader):
+    def numIsectLeaderFollower(dump, rank, leader):
         """
         Compute the number of intersection attempts with leader-follower
         intersection
 
-        leader is 0 or 1 depending on which tensor the leader is.
-        """
+        Parameters
+        ----------
 
+        dump: dict
+            The statistics counted by `Metrics.dump()`
+
+        rank: str
+            The rank whose intersection tests we care about
+
+        leader: int
+            Tensor number of the leader
+
+        Returns
+        ------
+
+        num_isects: int
+            Number of intersection tests
+
+        """
         line = "Rank " + rank
-        l = "tensor" + str(leader)
-        metric = "unsuccessful_intersect_" + l
-        return dump[line]["successful_intersect"] + dump[line][metric]
+        if leader % 2 == 0:
+            first = str(leader)
+            second = str(leader + 1)
+        else:
+            first = str(leader - 1)
+            second = str(leader)
+
+        succ = dump[line]["successful_intersect_" + first + "_" + second]
+        unsucc = dump[line]["unsuccessful_intersect_tensor" + str(leader)]
+        return succ + unsucc
 
     @staticmethod
-    def skipCount(dump, rank):
-        """
-        Compute the number of intersection attempts with skip-ahead
+    def numIsectSkipAhead(dump, rank, left=0):
+        """ Compute the number of intersection attempts with skip-ahead
         intersection
+
+        Parameters
+        ----------
+
+        dump: dict
+            The statistics counted by `Metrics.dump()`
+
+        rank: str
+            The rank whose intersection tests we care about
+
+        left: int
+            Tensor number of the left tensor (default=0)
+
+        Returns
+        ------
+
+        num_isects: int
+            Number of intersection tests
+
         """
         line = "Rank " + rank
-        total = dump[line]["successful_intersect"] + dump[line]["unsuccessful_intersect_tensor0"] + dump[line]["unsuccessful_intersect_tensor1"]
-        skipped = dump[line]["skipped_intersect"]
-        return total - skipped
+        right = str(left + 1)
+        left = str(left)
+        both = left + "_" + right
+
+        succ = dump[line]["successful_intersect_" + both]
+        unsucc_a = dump[line]["unsuccessful_intersect_tensor" + left]
+        unsucc_b = dump[line]["unsuccessful_intersect_tensor" + right]
+        skipped = dump[line]["skipped_intersect_" + both]
+
+        return succ + unsucc_a + unsucc_b - skipped
+
 
     @staticmethod
-    def swapCount(tensor, depth, radix, next_latency):
-        """Compute the number of swaps required at the given depth"""
-        return Compute._swapCountTree(tensor.getRoot(), depth, radix, next_latency)
+    def numSwaps(tensor, depth, radix, next_latency):
+        """Compute the number of swaps required at the given depth
+
+        Parameters
+        ----------
+
+        tensor: Tensor
+            The tensor being swapped
+
+        depth: int
+            The depth of the swap
+
+        radix: Union[int, "N"]
+            The radix of the merger
+
+        next_latency: Union[int, "N"]
+            The latency to get the next element
+
+        Returns
+        -------
+
+        num_swaps: int
+            The number of cycles required to perform the swap
+        """
+        return Compute._numSwapsTree(tensor.getRoot(), depth, radix, next_latency)
 
     @staticmethod
-    def _swapCountTree(fiber, depth, radix, next_latency):
+    def _numSwapsTree(fiber, depth, radix, next_latency):
         """Compute the number of swaps required at the given depth"""
         swaps = 0
 
@@ -58,7 +136,7 @@ class Compute:
         if depth > 0:
             depth -= 1
             for _, payload in fiber:
-                swaps += Compute._swapCountTree(payload, depth, radix, next_latency)
+                swaps += Compute._numSwapsTree(payload, depth, radix, next_latency)
             return swaps
 
         # Otherwise merge

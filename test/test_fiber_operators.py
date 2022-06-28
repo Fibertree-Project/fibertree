@@ -1,5 +1,6 @@
 """ Tests of fiber operators """
 
+import os
 import unittest
 
 from fibertree import Fiber
@@ -14,6 +15,11 @@ class TestFiberOperators(unittest.TestCase):
         # Make sure that no metrics are being collected, unless explicitly
         # desired by the test
         Metrics.endCollect()
+
+        # Make sure we have a tmp directory to write to
+        if not os.path.exists("tmp"):
+            os.makedirs("tmp")
+
 
     def test_add_int(self):
         """Test __add__ integers"""
@@ -102,50 +108,54 @@ class TestFiberOperators(unittest.TestCase):
     def test_and_metrics_fiber(self):
         """Test metrics collected during Fiber.__and__ on unowned fibers"""
         a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 0, 7])
+        a_k.getRankAttrs().setId("K")
         b_k = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6, 0])
+        b_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect(["K"])
+        Metrics.beginCollect()
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
 
         self.assertEqual(
             Metrics.dump(),
-            {"Rank Unknown": {
+            {"Rank K": {
                 "coordinate_read_tensor0": 4,
                 "coordinate_read_tensor1": 4,
-                "successful_intersect": 1,
+                "successful_intersect_0_1": 1,
                 "unsuccessful_intersect_tensor0": 2,
                 "unsuccessful_intersect_tensor1": 3,
-                "skipped_intersect": 2,
+                "skipped_intersect_0_1": 2,
                 "payload_read_tensor0": 1,
                 "payload_read_tensor1": 1,
-                "diff_last_coord": 1
+                "diff_last_coord_0_1": 1
             }}
         )
 
     def test_and_metrics_fiber_same_end(self):
         """Test metrics collected during Fiber.__and__ on unowned fibers"""
         a_k = Fiber.fromUncompressed([1, 0, 0, 4, 0, 6])
+        a_k.getRankAttrs().setId("K")
         b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 6])
+        b_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect(["K"])
+        Metrics.beginCollect()
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
 
         self.assertEqual(
             Metrics.dump(),
-            {"Rank Unknown": {
+            {"Rank K": {
                 "coordinate_read_tensor0": 3,
                 "coordinate_read_tensor1": 4,
-                "successful_intersect": 2,
+                "successful_intersect_0_1": 2,
                 "unsuccessful_intersect_tensor0": 1,
                 "unsuccessful_intersect_tensor1": 2,
-                "skipped_intersect": 0,
+                "skipped_intersect_0_1": 0,
                 "payload_read_tensor0": 2,
                 "payload_read_tensor1": 2,
-                "same_last_coord": 1
+                "same_last_coord_0_1": 1
             }}
         )
 
@@ -154,7 +164,7 @@ class TestFiberOperators(unittest.TestCase):
         A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 0, 6])
         B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
 
-        Metrics.beginCollect(["K"])
+        Metrics.beginCollect()
         for _ in A_K.getRoot() & B_K.getRoot():
             pass
         Metrics.endCollect()
@@ -164,61 +174,110 @@ class TestFiberOperators(unittest.TestCase):
             {"Rank K": {
                 "coordinate_read_tensor0": 3,
                 "coordinate_read_tensor1": 3,
-                "successful_intersect": 1,
+                "successful_intersect_0_1": 1,
                 "unsuccessful_intersect_tensor0": 1,
                 "unsuccessful_intersect_tensor1": 2,
-                "skipped_intersect": 0,
+                "skipped_intersect_0_1": 0,
                 "payload_read_tensor0": 1,
                 "payload_read_tensor1": 1,
-                "diff_last_coord": 1
+                "diff_last_coord_0_1": 1
+            }}
+        )
+
+    def test_and_metrics_many_fibers(self):
+        """Test metrics collection when there are more than two fibers"""
+        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 0, 6])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 6])
+        b_k.getRankAttrs().setId("K")
+        c_k = Fiber.fromUncompressed([0, 0, 0, 4, 0, 6])
+        c_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect()
+        for _ in (a_k & b_k) & c_k:
+            pass
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank K": {
+                "coordinate_read_tensor0": 3,
+                "coordinate_read_tensor1": 2,
+                "coordinate_read_tensor2": 4,
+                "coordinate_read_tensor3": 4,
+                "successful_intersect_0_1": 1,
+                "successful_intersect_2_3": 3,
+                "unsuccessful_intersect_tensor0": 2,
+                "unsuccessful_intersect_tensor1": 1,
+                "unsuccessful_intersect_tensor2": 1,
+                "unsuccessful_intersect_tensor3": 1,
+                "skipped_intersect_0_1": 1,
+                "skipped_intersect_2_3": 0,
+                "payload_read_tensor0": 1,
+                "payload_read_tensor1": 1,
+                "payload_read_tensor2": 3,
+                "payload_read_tensor3": 3,
+                "same_last_coord_0_1": 1,
+                "same_last_coord_2_3": 1
             }}
         )
 
     def test_and_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__and__"""
         A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 5, 6])
-        A_K.setCollecting("K", True)
         a_k = A_K.getRoot()
 
         B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
-        B_K.setCollecting("K", True)
         b_k = B_K.getRoot()
 
-        Metrics.beginCollect(["M", "K"])
-        for _ in range(3):
+        Metrics.beginCollect("tmp/test_and_use_stats_1D")
+        Metrics.traceRank("K")
+        Metrics.registerRank("M")
+        for m in range(3):
+            Metrics.addUse("M", m * 2)
             for _ in a_k & b_k:
                 pass
             Metrics.incIter("M")
         Metrics.endCollect()
 
-        reuses = a_k.getUseStats()
-        correct = {0: ((0, 0), [(1, 0), (2, 0)]), 4: ((0, 1), [(1, 0), (2, 0)])}
-        self.assertEqual(reuses, correct)
-
-        reuses = b_k.getUseStats()
-        self.assertEqual(reuses, correct)
+        corr = [
+            "M_pos,K_pos,M,K\n",
+            "0,0,0,0\n",
+            "0,1,0,4\n",
+            "1,0,2,0\n",
+            "1,1,2,4\n",
+            "2,0,4,0\n",
+            "2,1,4,4\n"
+        ]
+        with open("tmp/test_and_use_stats_1D-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
     def test_and_use_stats_2D(self):
         """Test reuse statistics collected on a 2D fiber during Fiber.__and__"""
         A_JK = Tensor.fromUncompressed(rank_ids=["J", "K"], root=[[1, 0, 3], [0, 0, 6], [0, 8, 9]])
-        B_IJK = Tensor.fromUncompressed(rank_ids=["I", "J", "K"], root=[[[0, 2, 3], [0, 0, 0], [7, 8, 0]], [[1, 0, 0], [4, 5, 6], [7, 0, 0]]])
-
-        A_JK.setCollecting("J", True)
+        B_IJK = Tensor.fromUncompressed(rank_ids=["I", "J", "K"], root=[[[0, 2, 3], [0, 0, 0], [7, 8, 0]], [[1, 0, 0], [4, 5, 6], [0, 0, 0]]])
 
         a_j = A_JK.getRoot()
         b_i = B_IJK.getRoot()
 
-        Metrics.beginCollect(["I", "J", "K"])
+        Metrics.beginCollect("tmp/test_and_use_stats_2D")
+        Metrics.traceRank("J")
         for _, b_j in b_i:
             for _, (a_k, b_k) in a_j & b_j:
                 for _ in a_k & b_k:
                     pass
         Metrics.endCollect()
 
-        reuses = a_j.getUseStats()
-        correct = {0: ((0, 0, 0), [(1, 0, 0)]), 2: ((0, 1, 0), [(1, 1, 0)]), 1: ((1, 1, 0), [])}
-        self.assertEqual(reuses, correct)
+        corr = [
+            "I_pos,J_pos,I,J\n",
+            "0,0,0,0\n",
+            "0,1,0,2\n",
+            "1,0,1,0\n",
+            "1,1,1,1\n"
+        ]
 
+        with open("tmp/test_and_use_stats_2D-J.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
     def test_and_with_format(self):
         """Test Fiber.__and__ with toggling the format"""
@@ -331,16 +390,18 @@ class TestFiberOperators(unittest.TestCase):
     def test_lshift_metrics_fiber(self):
         """Test metrics collection on Fiber.__lshift__ from a fiber"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        a_m.getRankAttrs().setId("M")
         z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
+        z_m.getRankAttrs().setId("M")
 
-        Metrics.beginCollect(["M"])
+        Metrics.beginCollect()
         for _ in z_m << a_m:
             pass
         Metrics.endCollect()
 
         self.assertEqual(
             Metrics.dump(),
-            {"Rank Unknown": {
+            {"Rank M": {
                 "coordinate_read_tensor1": 3,
                 "payload_read_tensor1": 3,
                 "coord_payload_insert_tensor0": 1,
@@ -358,7 +419,7 @@ class TestFiberOperators(unittest.TestCase):
         Z_M = Tensor.fromUncompressed(rank_ids=["M"], root=[0, 2, 3, 0, 0])
         z_m = Z_M.getRoot()
 
-        Metrics.beginCollect(["M"])
+        Metrics.beginCollect()
         for _ in z_m << a_m:
             pass
         Metrics.endCollect()
@@ -374,52 +435,115 @@ class TestFiberOperators(unittest.TestCase):
                 "coord_payload_append_tensor0": 1
             }}
         )
+    def test_lshift_metrics_many_fibers(self):
+        """Test metrics collection on Fiber.__lshift__ with more than 2 fibers"""
+        a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        a_m.getRankAttrs().setId("M")
+        z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
+        z_m.getRankAttrs().setId("M")
+        y_m = Fiber()
+        y_m.getRankAttrs().setId("M")
+
+        Metrics.beginCollect()
+        for _ in z_m << (y_m << a_m):
+            pass
+        Metrics.endCollect()
+
+        self.assertEqual(
+            Metrics.dump(),
+            {"Rank M": {
+                "coordinate_read_tensor0": 1,
+                "coordinate_read_tensor1": 3,
+                "coordinate_read_tensor2": 0,
+                "coordinate_read_tensor3": 3,
+                "payload_read_tensor0": 1,
+                "payload_read_tensor1": 3,
+                "payload_read_tensor2": 0,
+                "payload_read_tensor3": 3,
+                "coord_payload_insert_tensor0": 1,
+                "coord_payload_insert_tensor2": 0,
+                "coord_payload_append_tensor0": 1,
+                "coord_payload_append_tensor2": 3
+            }}
+        )
+
 
     def test_lshift_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__lshift__"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
         a_m.getRankAttrs().setId("M")
-        a_m.getRankAttrs().setCollecting(True)
 
         z_m = Fiber()
         z_m.getRankAttrs().setId("M")
-        z_m.getRankAttrs().setCollecting(True)
 
-        Metrics.beginCollect(["N", "M"])
-        for _ in range(3):
+        Metrics.beginCollect("tmp/test_lshift_use_stats_1D")
+        Metrics.traceRank("M")
+        Metrics.registerRank("N")
+        for n in range(3):
+            Metrics.addUse("N", n * 2)
             for _ in z_m << a_m:
                 pass
             Metrics.incIter("N")
         Metrics.endCollect()
 
-        reuses = a_m.getUseStats()
-        correct = {0: ((0, 0), [(1, 0), (2, 0)]), 2: ((0, 1), [(1, 0), (2, 0)]), 3: ((0, 2), [(1, 0), (2, 0)])}
-        self.assertEqual(reuses, correct)
+        corr = [
+            "N_pos,M_pos,N,M\n",
+            "0,0,0,0\n",
+            "0,1,0,2\n",
+            "0,2,0,3\n",
+            "1,0,2,0\n",
+            "1,1,2,2\n",
+            "1,2,2,3\n",
+            "2,0,4,0\n",
+            "2,1,4,2\n",
+            "2,2,4,3\n",
+        ]
 
-        reuses = z_m.getUseStats()
-        self.assertEqual(reuses, correct)
+        with open("tmp/test_lshift_use_stats_1D-M.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
 
     def test_lshift_use_stats_2D(self):
         """Test reuse statistics collected on a 2D fiber during Fiber.__lshift__"""
-        a_j = Fiber.fromUncompressed([[[1, 0, 3], [0, 0, 0], [7, 8, 0]], [[1, 2, 3], [0, 0, 6], [0, 8, 0]]])
+        A_JMN = Tensor.fromUncompressed(rank_ids=["J", "M", "N"], root=[[[1, 0, 3], [0, 0, 0], [7, 8, 0]], [[1, 2, 3], [0, 0, 6], [0, 0, 0]]])
+        a_j = A_JMN.getRoot()
         Z_MN = Tensor(rank_ids=["M", "N"])
-
-        Z_MN.setCollecting("M", True)
-        Z_MN.setCollecting("N", True)
-
         z_m = Z_MN.getRoot()
 
-        Metrics.beginCollect(["J", "M", "N"])
-        for _, a_m in a_j:
-            for m, (z_n, a_n) in z_m << a_m:
+        Metrics.beginCollect("tmp/test_lshift_use_stats_2D")
+        Metrics.traceRank("M")
+        Metrics.traceRank("N")
+        for j, a_m in a_j:
+            for _, (z_n, a_n) in z_m << a_m:
                 for _ in z_n << a_n:
                     pass
-            Metrics.incIter("J")
         Metrics.endCollect()
 
-        reuses = z_m.getUseStats()
-        correct = {0: ((0, 0, 0), [(1, 0, 0)]), 2: ((0, 1, 0), [(1, 1, 0)]), 1: ((1, 1, 0), [])}
-        self.assertEqual(reuses, correct)
+        M_corr = [
+            "J_pos,M_pos,J,M\n",
+            "0,0,0,0\n",
+            "0,1,0,2\n",
+            "1,0,1,0\n",
+            "1,1,1,1\n"
+        ]
+
+        with open("tmp/test_lshift_use_stats_2D-M.csv", "r") as f:
+            self.assertEqual(f.readlines(), M_corr)
+
+        N_corr = [
+            "J_pos,M_pos,N_pos,J,M,N\n",
+            "0,0,0,0,0,0\n",
+            "0,0,1,0,0,2\n",
+            "0,1,0,0,2,0\n",
+            "0,1,1,0,2,1\n",
+            "1,0,0,1,0,0\n",
+            "1,0,1,1,0,1\n",
+            "1,0,2,1,0,2\n",
+            "1,1,0,1,1,2\n"
+        ]
+
+        with open("tmp/test_lshift_use_stats_2D-N.csv", "r") as f:
+            self.assertEqual(f.readlines(), N_corr)
 
     def test_lshift_with_format(self):
         """Test that Fiber.__lshift__ obeys the specified format"""

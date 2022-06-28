@@ -27,14 +27,60 @@ class Metrics:
     """
     # Create a class instance variable for the metrics collection
     collecting = False
-    iteration = []
-    metrics = []
+    fiber_label = {}
+    iteration = None
+    line_order = None
+    loop_order = None
+    metrics = None
+    num_cached_uses = 1000
+    point = None
+    prefix = None
+    trace = {}
 
     def __init__(self):
         raise NotImplementedError
 
     @classmethod
-    def beginCollect(cls, loop_order):
+    def addUse(cls, rank, coord):
+        """Add a use of all tensors at the given rank and coord
+
+        Parameters
+        ----------
+
+        rank: str
+            The name of the rank
+
+        coord: int
+            The coordinate at this rank
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.collecting
+
+        # Update the point
+        i = cls.line_order[rank]
+        cls.point[i] = coord
+
+        # Make sure we are tracking this rank
+        if rank not in cls.trace.keys():
+            return
+
+        # Add the trace
+        iteration = ",".join(str(j) for j in cls.iteration[:(i + 1)])
+        point = ",".join(str(j) for j in cls.point[:(i + 1)])
+        cls.trace[rank].append(iteration + "," + point + "\n")
+
+        # If we are at the limit of the number of cached uses, write the data
+        # to disk
+        if len(cls.trace[rank]) == cls.num_cached_uses:
+            cls._writeTrace(rank)
+
+    @classmethod
+    def beginCollect(cls, prefix=None):
         """Begin metrics collection
 
         Start collecting metrics during future HFA program execution.
@@ -42,8 +88,8 @@ class Metrics:
         Parameters
         ----------
 
-        loop_order: [str]
-            The order of ranks in the loop order
+        prefix: str
+            The prefix to the files that will store the reuse statistics
 
         Returns
         -------
@@ -52,33 +98,14 @@ class Metrics:
 
         """
         cls.collecting = True
-        cls.iteration = [0] * len(loop_order)
-        cls.line_order = {r: i for i, r in enumerate(loop_order)}
-        cls.metrics.append({})
-
-    @classmethod
-    def clrIter(cls, line):
-        """Clear the given line's iteration counter
-
-        Parameters
-        ----------
-
-        line: string
-            The name of the line number this metric is associated with
-
-        Returns
-        -------
-
-        None
-
-        NDN: Test
-
-        """
-        if line not in cls.line_order.keys():
-            return
-
-        cls.iteration[cls.line_order[line]] = 0
-
+        cls.fiber_label = {}
+        cls.iteration = []
+        cls.line_order = {}
+        cls.loop_order = []
+        cls.metrics = {}
+        cls.point = []
+        cls.prefix = prefix
+        cls.trace = {}
 
     @classmethod
     def dump(cls):
@@ -99,7 +126,7 @@ class Metrics:
             The dictionary of metrics collected
 
         """
-        return cls.metrics[-1]
+        return cls.metrics
 
     @classmethod
     def endCollect(cls):
@@ -118,9 +145,42 @@ class Metrics:
         None
 
         """
+        # Save the trace of uses
+        for rank in cls.trace.keys():
+            cls._writeTrace(rank)
 
+        # Clear all info
         cls.collecting = False
+        cls.fiber_label = {}
+        cls.iteration = None
+        cls.line_order = None
+        cls.loop_order = None
+        cls.num_cached_uses = 1000
+        cls.point = None
+        cls.prefix = None
+        cls.trace = {}
 
+    @classmethod
+    def endIter(cls, rank):
+        """
+        End iteration over a given rank
+
+        Parameters
+        ----------
+
+        rank: str
+            The name of the rank whose iteration is over
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.collecting
+
+        cls.fiber_label[rank] = 0
+        cls.iteration[cls.line_order[rank]] = 0
 
     @classmethod
     def getIter(cls):
@@ -139,6 +199,27 @@ class Metrics:
         """
         return tuple(cls.iteration)
 
+    @classmethod
+    def getLabel(cls, rank):
+        """Get a new label for a fiber at this rank
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank whose fiber we want to label
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.collecting
+        assert rank in cls.line_order.keys()
+
+        cls.fiber_label[rank] += 1
+        return cls.fiber_label[rank] - 1
 
     @classmethod
     def incCount(cls, line, metric, inc):
@@ -166,16 +247,17 @@ class Metrics:
         None
 
         """
+        assert cls.collecting
 
         line = line.strip()
 
-        if line not in cls.metrics[-1]:
-            cls.metrics[-1][line] = {}
+        if line not in cls.metrics:
+            cls.metrics[line] = {}
 
-        if metric not in cls.metrics[-1][line]:
-            cls.metrics[-1][line][metric] = 0
+        if metric not in cls.metrics[line]:
+            cls.metrics[line][metric] = 0
 
-        cls.metrics[-1][line][metric] += inc
+        cls.metrics[line][metric] += inc
 
 
     @classmethod
@@ -194,6 +276,8 @@ class Metrics:
         None
 
         """
+        assert cls.collecting
+
         if line not in cls.line_order.keys():
             return
 
@@ -218,3 +302,131 @@ class Metrics:
         """
         return cls.collecting
 
+    @classmethod
+    def registerRank(cls, rank):
+        """Register a rank as a part of the loop order
+
+        Parameters
+        ----------
+
+        rank: str
+            The name of the rank to register
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.collecting
+
+        # If this rank has already been registered, do nothing
+        if rank in cls.line_order.keys():
+            return
+
+        cls.fiber_label[rank] = 0
+        cls.iteration.append(0)
+        cls.line_order[rank] = len(cls.iteration) - 1
+        cls.loop_order.append(rank)
+        cls.point.append(0)
+
+        if rank in cls.trace.keys():
+            cls._startTrace(rank)
+
+    @classmethod
+    def setNumCachedUses(cls, num_cached_uses):
+        """Set the number of uses that are saved to memory before the trace is
+        written to disk per rank
+
+        Parameters
+        ----------
+
+        num_cached_uses: int
+            Number of uses to cache
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert num_cached_uses > 1
+
+        cls.num_cached_uses = num_cached_uses
+
+    @classmethod
+    def _startTrace(cls, rank):
+        """Start to trace the given rank
+
+        Parameters
+        ----------
+
+        rank: str
+            The name of the rank to register
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert rank in cls.line_order.keys()
+
+        end = cls.line_order[rank] + 1
+
+        pos = ",".join(r + "_pos" for r in cls.loop_order[:end])
+        coord = ",".join(r for r in cls.loop_order[:end])
+
+        with open(cls.prefix + "-" + rank + ".csv", "w") as f:
+            f.write("")
+
+        cls.trace[rank].append(pos + "," + coord + "\n")
+
+
+    @classmethod
+    def traceRank(cls, rank):
+        """Set a rank to trace
+
+        Note must be called after Metrics.beginCollect()
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank to collect the trace of
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.prefix is not None
+        assert cls.collecting
+
+        cls.trace[rank] = []
+
+        if rank in cls.line_order.keys():
+            cls._startTrace(rank)
+
+    @classmethod
+    def _writeTrace(cls, rank):
+        """Write the trace to the file
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank whose trace to write
+
+        Returns
+        -------
+
+        None
+
+        """
+        with open(cls.prefix + "-" + rank + ".csv", "a") as f:
+           for use in cls.trace[rank]:
+                f.write(use)
+
+        cls.trace[rank] = []

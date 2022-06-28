@@ -962,71 +962,6 @@ class Tensor:
         rank_ids = self.getRankIds()
         return self.ranks[rank_ids.index(rank_id)].getFormat()
 
-    def setCollecting(self, rank_id, collecting):
-        """Set whether metrics are being collected for the given rank
-
-        Sets whether metrics are being collected of the rank specified by the
-        `rank_id` to the given value
-
-        Parameters
-        ----------
-
-        rank_id: string
-            The ID of the rank to modify
-
-        collecting: bool
-            True if use statistiscs should be collected
-
-
-        Returns
-        -------
-        None
-
-
-        Raises
-        ------
-
-        ValueError
-            rank_id is not a named rank in the tensor
-
-        AssertionError
-            collecting not a bool
-
-
-        """
-
-        rank_ids = self.getRankIds()
-        self.ranks[rank_ids.index(rank_id)].setCollecting(collecting)
-
-    def getCollecting(self, rank_id):
-        """Get whether metrics are being collected for the given rank
-
-        Gets whether metrics are being collected for the rank specified by
-        the `rank_id`
-
-        Parameters
-        ----------
-
-        rank_id: string
-            The ID of the rank to modify
-
-
-        Returns
-        -------
-
-        collecting: bool
-            True if use statistiscs should be collected
-
-
-        Raises
-        ------
-
-        ValueError
-            rank_id is not a named rank in the tensor
-        """
-
-        rank_ids = self.getRankIds()
-        return self.ranks[rank_ids.index(rank_id)].getCollecting()
 
 #
 #  Comparison operations
@@ -1605,49 +1540,6 @@ class Tensor:
         # Create Tensor from rank_ids and root fiber
         #
         return root
-
-#
-# Tensor-specific metrics access
-#
-    def getUseStats(self):
-        """getUseStats
-        NDN: add comment
-        """
-
-        def addFiber(fiber, loc, reuses):
-            rank_id = fiber.getOwner().getId()
-            reuses["Rank " + rank_id][loc] = fiber.getUseStats()
-
-        iter_stack = [self.getRoot().__iter__()]
-        fiber_stack = [self.getRoot()]
-        coord_stack = []
-        reuses = {"Rank " + rank_id: {} for rank_id in self.getRankIds()}
-
-        # Add the root fiber
-        if self.getCollecting(self.getRankIds()[0]):
-            addFiber(self.getRoot(), (), reuses)
-
-        # Add all children fibers
-        while len(iter_stack) > 0:
-            try:
-                coord, payload = next(iter_stack[-1])
-                if isinstance(payload, Fiber):
-                    loc = tuple(coord_stack + [coord])
-                    addFiber(payload, loc, reuses)
-
-                    iter_stack.append(payload.__iter__())
-                    fiber_stack.append(payload)
-                    coord_stack.append(coord)
-
-            except StopIteration:
-                iter_stack.pop()
-                fiber_stack.pop()
-
-                if len(iter_stack) > 0:
-                    coord_stack.pop()
-
-        return reuses
-
 
     def clearStats(self):
         """clearStats

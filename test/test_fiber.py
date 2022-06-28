@@ -1,8 +1,19 @@
+import os
 import unittest
 
 from fibertree import *
 
 class TestFiber(unittest.TestCase):
+
+    def setUp(self):
+        # Make sure that no metrics are being collected, unless explicitly
+        # desired by the test
+        Metrics.endCollect()
+
+        # Make sure we have a tmp directory to write to
+        if not os.path.exists("tmp"):
+            os.makedirs("tmp")
+
 
     def test_new_1d(self):
         """Create a 1d fiber"""
@@ -355,11 +366,11 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(f.getRankAttrs(), attrs)
 
         attrs0 = RankAttrs("K", shape=20)
-        attrs0.setFormat("U").setDefault(3).setId("M").setCollecting(True)
+        attrs0.setFormat("U").setDefault(3).setId("M")
         f.setRankAttrs(attrs0)
 
         attrs1 = RankAttrs("K", shape=20)
-        attrs1.setFormat("U").setDefault(3).setId("M").setCollecting(True)
+        attrs1.setFormat("U").setDefault(3).setId("M")
         self.assertEqual(f.getRankAttrs(), attrs1)
 
         # Set via the constructor
@@ -520,6 +531,31 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.getSavedPos(), 2)
 
 
+    def test_iterOccupancy_uses(self):
+        """Test that iterOccupancy emits the correct trace of uses"""
+        c0 = [1, 4, 5, 8, 9]
+        p0 = [2, 3, 6, 7, 10]
+        a_k = Fiber(c0, p0)
+        a_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_iterOccupancy_uses")
+        Metrics.traceRank("K")
+        for _ in a_k.iterOccupancy():
+            pass
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K\n",
+            "0,1\n",
+            "1,4\n",
+            "2,5\n",
+            "3,8\n",
+            "4,9\n"
+        ]
+
+        with open("tmp/test_iterOccupancy_uses-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
     def test_iterShape(self):
         """Test iteration over a fiber's shape"""
 
@@ -630,6 +666,31 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a.getSavedPosStats(), (2, 1))
         self.assertEqual(a.getSavedPos(), 3)
 
+
+    def test_iterActive_uses(self):
+        """Test that iterActive emits the correct trace of uses"""
+        c0 = [1, 4, 5, 8, 9]
+        p0 = [2, 3, 6, 7, 10]
+        a_k = Fiber(c0, p0, active_range=(2, 9))
+        a_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_iterActive_uses")
+        Metrics.traceRank("K")
+        for _ in a_k.iterActive():
+            pass
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K\n",
+            "0,4\n",
+            "1,5\n",
+            "2,8\n"
+        ]
+
+        with open("tmp/test_iterActive_uses-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+
     def test_iterActiveShape(self):
         """Test iteration over the coordinates within the active shape"""
 
@@ -698,6 +759,7 @@ class TestFiber(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             next(a.iterActiveShapeRef())
+
 
     def test_iterRange(self):
         """Test iteration over non-default elements of a fiber within the given range"""
@@ -773,6 +835,29 @@ class TestFiber(unittest.TestCase):
 
             c = Fiber.fromIterator(test_iterator)
             self.assertEqual(c, ans[i])
+
+    def test_iterRange_uses(self):
+        """Test that iterRange emits the correct trace of uses"""
+        c0 = [1, 4, 5, 8, 9]
+        p0 = [2, 3, 6, 7, 10]
+        a_k = Fiber(c0, p0)
+        a_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_iterRange_uses")
+        Metrics.traceRank("K")
+        for _ in a_k.iterRange(2, 9):
+            pass
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K\n",
+            "0,4\n",
+            "1,5\n",
+            "2,8\n"
+        ]
+
+        with open("tmp/test_iterRange_uses-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
 
     def test_iterRangeShape(self):
@@ -1714,19 +1799,45 @@ class TestFiber(unittest.TestCase):
     def test_project_use_stats(self):
         """Test that use stats are tracked correctly after project"""
         f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
-        f_k.getRankAttrs().setCollecting(True)
         f_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect(["J", "K"])
-        for _ in range(3):
-            for _ in f_k.project(lambda c: + 1):
-                pass
-            Metrics.incIter("J")
+        Metrics.beginCollect("tmp/test_project_use_stats")
+        Metrics.traceRank("I")
+        for _ in f_k.project(trans_fn=lambda k: k + 1, rank_id="I"):
+            pass
         Metrics.endCollect()
 
-        reuses = f_k.getUseStats()
-        correct = {2: ((0, 0), [(1, 0), (2, 0)]), 4: ((0, 1), [(1, 0), (2, 0)]), 6: ((0, 2), [(1, 0), (2, 0)]), 8: ((0, 3), [(1, 0), (2, 0)])}
-        self.assertEqual(reuses, correct)
+        corr = [
+            "I_pos,I\n",
+            "0,3\n",
+            "1,5\n",
+            "2,7\n",
+            "3,9\n"
+        ]
+
+        with open("tmp/test_project_use_stats-I.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+    def test_project_collecting_requires_rank_id(self):
+        """Test that project requires non-None rank_id"""
+        f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect()
+        with self.assertRaises(AssertionError):
+            f_i = f_k.project(lambda k: k + 1)
+            next(f_i.__iter__())
+        Metrics.endCollect()
+
+    def test_project_rank_id_correct_no_collect(self):
+        """Test that the rank_id is correctly set to Unknown if no collection
+        occurs"""
+        f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f_k.getRankAttrs().setId("K")
+
+        f_i = f_k.project(lambda k: k + 1)
+        self.assertEqual(f_i.getRankAttrs().getId(), "Unknown")
+
 
     def test_prune(self):
         """Test pruning a fiber"""
@@ -1769,19 +1880,22 @@ class TestFiber(unittest.TestCase):
     def test_prune_use_stats(self):
         """Test that use stats are tracked correctly after prune"""
         f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
-        f_k.getRankAttrs().setCollecting(True)
         f_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect(["J", "K"])
-        for _ in range(3):
-            for _ in f_k.prune(lambda i, c, p: i % 2 == 0):
-                pass
-            Metrics.incIter("J")
+        Metrics.beginCollect("tmp/test_prune_use_stats")
+        Metrics.traceRank("K")
+        for _ in f_k.prune(lambda i, c, p: i % 2 == 0):
+            pass
         Metrics.endCollect()
 
-        reuses = f_k.getUseStats()
-        correct = {2: ((0, 0), [(1, 0), (2, 0)]), 6: ((0, 1), [(1, 0), (2, 0)])}
-        self.assertEqual(reuses, correct)
+        corr = [
+            "K_pos,K\n",
+            "0,2\n",
+            "1,6\n"
+        ]
+
+        with open("tmp/test_prune_use_stats-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
     def test_getPosition_eager_only(self):
         """getPosition only works in eager mode"""

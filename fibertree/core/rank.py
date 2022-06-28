@@ -390,54 +390,6 @@ class Rank:
         """
         return self._attrs.getFormat()
 
-    def setCollecting(self, collecting):
-        """Set  whether the trace of uses should be collected for this rank
-
-        Parameters
-        ----------
-
-        collecting: bool
-            True if use statistiscs should be collected
-
-
-        Returns
-        -------
-
-        self: Rank
-           So method can be used in a chain
-
-        Raises
-        ------
-
-        AssertionError
-            collecting not a bool
-
-        """
-        self._attrs.setCollecting(collecting)
-        return self
-
-    def getCollecting(self):
-        """Get whether the trace of uses should be collected for this rank
-
-        Parameters
-        ----------
-        None
-
-
-        Returns
-        -------
-
-        collecting: bool
-            True if use statistiscs should be collected
-
-
-        Raises
-        ------
-        None
-
-        """
-        return self._attrs.getCollecting()
-
     def getAttrs(self):
         """
         Get the rank attributes

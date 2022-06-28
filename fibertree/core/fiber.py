@@ -544,7 +544,6 @@ class Fiber:
         """
 
         self._clearSavedPosStats()
-        self._clearReuseStats()
 
 
 #
@@ -910,20 +909,10 @@ class Fiber:
             start = start_pos
 
             def __iter__(self):
-                line = "Rank " + self.fiber.getRankAttrs().getId()
-                is_collecting = Metrics.isCollecting() and \
-                    self.fiber.getRankAttrs().getCollecting()
-
-                fiter = self.fiber.__iter__(tick=False, start_pos=self.start)
-                for i, (c, p) in enumerate(fiter):
+                f_iter = self.fiber.__iter__(tick=False, start_pos=self.start)
+                for i, (c, p) in enumerate(f_iter):
                     if self.trans(i, c, p):
-                        if is_collecting:
-                            start_iter = Metrics.getIter()
-
                         yield c, p
-
-                        if is_collecting:
-                            self.fiber._addUse(c, start_iter)
 
         result = Fiber.fromIterator(prune_iterator)
         result._setDefault(self.getDefault())
@@ -1032,7 +1021,7 @@ class Fiber:
         return index
 
 
-    def project(self, trans_fn=None, interval=None, start_pos=None):
+    def project(self, trans_fn=None, interval=None, rank_id=None, start_pos=None):
         """Create a new fiber with coordinates projected according to `trans_fn`
 
         This method creates a new fiber with the same payloads as the
@@ -1048,6 +1037,12 @@ class Fiber:
 
         interval: tuple, default=None (all coordinates)
             Restict projection to this range of new coordinates
+
+        rank_id: str
+            The name of the target rank of the project
+
+        start_pos: int
+            Shortcut for the position to start iterating at
 
         Returns
         -------
@@ -1111,12 +1106,13 @@ class Fiber:
             trans = lambda self, c: trans_fn(c)
             interv = interval
             start = start_pos
+            rank = rank_id
+
+            def __init__(self):
+                is_collecting = Metrics.isCollecting()
+                assert not is_collecting or self.rank is not None
 
             def __iter__(self):
-                line = "Rank " + self.fbr.getRankAttrs().getId()
-                is_collecting = Metrics.isCollecting() and \
-                    self.fbr.getRankAttrs().getCollecting()
-
                 fiter = self.fbr.__iter__(tick=False, start_pos=self.start)
                 for old_c, p in fiter:
                     c = self.trans(old_c)
@@ -1125,17 +1121,12 @@ class Fiber:
 
                     if self.interv is None \
                             or (c >= self.interv[0] and c < self.interv[1]):
-                        if is_collecting:
-                            start_iter = Metrics.getIter()
-
                         yield c, p
-
-                        if is_collecting:
-                            self.fbr._addUse(old_c, start_iter)
 
         result = Fiber.fromIterator(project_iterator)
         result._setDefault(self.getDefault())
-        result.getRankAttrs().setId(self.getRankAttrs().getId())
+        if rank_id is not None:
+            result.getRankAttrs().setId(rank_id)
 
         return result
 
@@ -1606,35 +1597,6 @@ class Fiber:
 
         self._saved_count = 0
         self._saved_dist = 0
-
-    def getUseStats(self):
-        """getUseStats
-
-        NDN: Add comment
-        """
-        uses = {}
-        for coord in self._first_use.keys():
-            uses[coord] = (self._first_use[coord], self._reuses[coord])
-        return uses
-
-
-    def _addUse(self, coord, start):
-        """_addUse"""
-        if coord in self._first_use.keys():
-            dist = tuple((s - f for s, f in zip(start, self._first_use[coord])))
-            self._reuses[coord].append(dist)
-            self._last_use[coord] = start
-        else:
-            self._reuses[coord] = []
-            self._first_use[coord] = start
-            self._last_use[coord] = start
-
-
-    def _clearReuseStats(self):
-        """_clearReuseStats"""
-        self._first_use = {}
-        self._last_use = {}
-        self._reuses = {}
 
     #
     # Computed attribute acccessors
