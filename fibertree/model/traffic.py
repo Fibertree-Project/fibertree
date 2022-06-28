@@ -3,17 +3,40 @@
 
 A class for computing the memory traffic incurred by a tensor
 """
+import pandas as pd
 
 from fibertree import Tensor
 
 class Traffic:
     """Class for computing the memory traffic of a tensor"""
     @staticmethod
-    def buffetTraffic(tensor, rank, format_):
-        """Compute the buffet traffic for a given tensor and rank"""
-        uses = Traffic._getAllUses(tensor.getUseStats()["Rank " + rank])
+    def buffetTraffic(prefix, tensor, rank, format_):
+        """Compute the buffet traffic for a given tensor and rank
+
+        Parameters
+        ----------
+
+        prefix: str
+            The file prefix where the data for this loopnest was collected
+
+        tensor: Tensor
+            The tensor whose buffer traffic to compute
+
+        rank: str
+            The name of the buffered rank
+
+        format_: Format
+            The format of the tensor
+
+        Returns
+        -------
+
+        bits: int
+            The number of bits loaded from off-chip memory into the buffet
+        """
+        uses = Traffic._getAllUses(prefix, tensor, rank)
         use_data = {}
-        for _, use in uses:
+        for use in uses:
             if use not in use_data.keys():
                 use_data[use] = [format_.getSubTree(*use), 0]
 
@@ -22,13 +45,34 @@ class Traffic:
         return sum(data[0] * data[1] for data in use_data.values())
 
     @staticmethod
-    def cacheTraffic(tensor, rank, format_, capacity):
-        """Compute the cache traffic for given tensor and rank"""
-        uses = Traffic._getAllUses(tensor.getUseStats()["Rank " + rank])
-        uses.sort()
+    def cacheTraffic(prefix, tensor, rank, format_, capacity):
+        """Compute the cache traffic for given tensor and rank
 
-        # Remove the timestamps
-        uses = [use[1] for use in uses]
+        Parameters
+        ----------
+
+        prefix: str
+            The file prefix where the data for this loopnest was collected
+
+        tensor: Tensor
+            The tensor whose buffer traffic to compute
+
+        rank: str
+            The name of the buffered rank
+
+        format_: Format
+            The format of the tensor
+
+        capacity: int
+            The capacity of the cache in bits
+
+        Returns
+        -------
+
+        bits: int
+            The number of bits loaded from off-chip memory into the buffet
+        """
+        uses = list(Traffic._getAllUses(prefix, tensor, rank))
 
         # Save some state about the uses
         use_data = {}
@@ -41,7 +85,7 @@ class Traffic:
         objs = set()
 
         occupancy = 0
-        bytes_loaded = 0
+        bits_loaded = 0
 
         for i, use in enumerate(uses):
             # If it is already in the cache, we incur no traffic
@@ -62,7 +106,7 @@ class Traffic:
                 occupancy -= use_data[obj][0]
 
             # Now add in the new fiber
-            bytes_loaded += size
+            bits_loaded += size
 
             # Immediately evict objects that will never be used again
             use_data[use][1].pop()
@@ -70,39 +114,61 @@ class Traffic:
                 objs.add(use)
                 occupancy += size
 
-        return bytes_loaded
-
-
-    @staticmethod
-    def _getAllUses(raw_reuses):
-        """
-        Get a list of tuples of the form (time point, use)
-        """
-        # Flatten the reuse list
-        reuses = {point + (coord,): stat
-                  for point, payloads in raw_reuses.items()
-                  for coord, stat in payloads.items()}
-
-        # Get the uses in the order that they occur
-        uses = []
-        for point in reuses.keys():
-            first = reuses[point][0]
-            uses.append((first, point))
-
-            for reuse in reuses[point][1]:
-                curr = Traffic._getUse(first, reuse)
-                uses.append((curr, point))
-
-        return uses
+        return bits_loaded
 
     @staticmethod
-    def _getUse(last, dist):
-        """
-        Combine the last use and reuse distance to get the time point of the
-        current use
-        """
-        return tuple(l + d for l, d in zip(last, dist))
+    def streamTraffic(prefix, tensor, rank, format_):
+        """Compute the traffic for streaming over a given tensor and rank
 
+        WARNING: Should not be used for tensors iterated over with
+        intersection
+
+        Parameters
+        ----------
+
+        prefix: str
+            The file prefix where the data for this loopnest was collected
+
+        tensor: Tensor
+            The tensor whose buffer traffic to compute
+
+        rank: str
+            The name of the buffered rank
+
+        format_: Format
+            The format of the tensor
+
+        Returns
+        -------
+
+        bits: int
+            The number of bits loaded from off-chip memory into the buffet
+        """
+        uses = Traffic._getAllUses(prefix, tensor, rank)
+        curr_fiber = None
+        bits = format_.getRHBits(rank)
+        fheader = format_.getFHBits(rank)
+        elem = format_.getCBits(rank) + format_.getPBits(rank)
+
+        for use in uses:
+            fiber = use[:-1]
+            if fiber != curr_fiber:
+                bits += fheader
+                curr_fiber = fiber
+            bits += elem
+
+        return bits
+
+    @staticmethod
+    def _getAllUses(prefix, tensor, rank):
+        """
+        Get an iterable of uses ordered by iteration stamp
+        """
+        df = pd.read_csv(prefix + "-" + rank + ".csv")
+        cols = df.columns[(df.shape[1] // 2):]
+        ranks = [col for col in cols if col in tensor.getRankIds()]
+        records = df[ranks].to_records(index=False)
+        return map(tuple, records)
 
     @staticmethod
     def _optimalEvict(use_data, objs):
