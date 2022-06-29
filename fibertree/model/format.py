@@ -138,6 +138,9 @@ class Format:
 
     def getSubTree(self, *coords):
         """Get a subtree under a given fiber (does not include rhbits)"""
+        if len(coords) == len(self.tensor.getShape()):
+            return self.spec[self.tensor.getRankIds()[-1]]["cbits"] + \
+                self.spec[self.tensor.getRankIds()[-1]]["pbits"]
         fibers = [self._getFiberFromCoords(*coords)]
 
         total = 0
@@ -150,7 +153,12 @@ class Format:
             total += self._getFiberFootprint(rank, fiber)
 
             # Add child fibers
-            for _, payload in fiber:
+            if self.spec[rank]["format"] == "U":
+                iter_ = fiber.iterShape()
+            else:
+                iter_ = fiber.iterOccupancy()
+
+            for _, payload in iter_:
                 if isinstance(payload, Fiber):
                     fibers.append(payload)
 

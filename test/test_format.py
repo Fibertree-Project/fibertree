@@ -174,6 +174,20 @@ class TestFormat(unittest.TestCase):
 
         self.assertEqual(f.getSubTree(), 32 + 7 * 32 + (3 + 2 + 2 + 2) * (32 + 64))
         self.assertEqual(f.getSubTree(1), 3 * 32 + 3 * 64)
+        self.assertEqual(f.getSubTree(1, 2), 32 + 64)
+
+    def test_subtree_footprint_dense(self):
+        """Test the subtree footprint for dense tensors"""
+        spec = """
+        M:
+            format: U
+        K:
+            format: U
+            pbits: 32
+        """
+        tensor = Tensor(rank_ids=["M", "K"], shape=[5, 7])
+        f = Format(tensor, yaml.safe_load(spec))
+        self.assertEqual(f.getSubTree(), 5 * 7 * 32)
 
     def test_tensor_footprint(self):
         """Test the tensor footprint"""

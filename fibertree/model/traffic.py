@@ -70,7 +70,7 @@ class Traffic:
         -------
 
         bits: int
-            The number of bits loaded from off-chip memory into the buffet
+            The number of bits loaded from off-chip memory into the cache
         """
         uses = list(Traffic._getAllUses(prefix, tensor, rank))
 
@@ -142,7 +142,7 @@ class Traffic:
         -------
 
         bits: int
-            The number of bits loaded from off-chip memory into the buffet
+            The number of bits loaded from off-chip memory onto the chip
         """
         uses = Traffic._getAllUses(prefix, tensor, rank)
         curr_fiber = None
