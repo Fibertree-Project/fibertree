@@ -3,6 +3,8 @@
 
 A class for computing the memory traffic incurred by a tensor
 """
+
+from blist import sortedlist
 import pandas as pd
 
 from fibertree import Tensor
@@ -82,28 +84,32 @@ class Traffic:
             use_data[use][1].append(len(uses) - i - 1)
 
         # Model the cache
-        objs = set()
+        objs = sortedlist()
 
         occupancy = 0
         bits_loaded = 0
 
         for i, use in enumerate(uses):
             # If it is already in the cache, we incur no traffic
-            if use in objs:
+            if len(objs) > 0 and use == objs[0][1]:
                 use_data[use][1].pop()
+                del objs[0]
+
                 if len(use_data[use][1]) == 0:
-                    objs.remove(use)
                     occupancy -= use_data[use][0]
+                else:
+                    objs.add((use_data[use][1][-1], use))
+
                 continue
 
-            # Data + metadata stored as 32 bit values
+            # Sixe of the object
             size = use_data[use][0]
 
             # Evict until there is space in the cache
             while occupancy + size > capacity:
-                obj = Traffic._optimalEvict(use_data, objs)
-                objs.remove(obj)
-                occupancy -= use_data[obj][0]
+                obj = objs[-1]
+                del objs[-1]
+                occupancy -= use_data[obj[1]][0]
 
             # Now add in the new fiber
             bits_loaded += size
@@ -111,7 +117,7 @@ class Traffic:
             # Immediately evict objects that will never be used again
             use_data[use][1].pop()
             if len(use_data[use][1]) > 0:
-                objs.add(use)
+                objs.add((use_data[use][1][-1], use))
                 occupancy += size
 
         return bits_loaded
@@ -169,18 +175,3 @@ class Traffic:
         ranks = [col for col in cols if col in tensor.getRankIds()]
         records = df[ranks].to_records(index=False)
         return map(tuple, records)
-
-    @staticmethod
-    def _optimalEvict(use_data, objs):
-        """
-        Get the index of the optimal object to evict
-        """
-        last = -1
-        evict = None
-
-        for obj in objs:
-            if use_data[obj][1][-1] > last:
-                evict = obj
-                last = use_data[obj][1][-1]
-
-        return evict

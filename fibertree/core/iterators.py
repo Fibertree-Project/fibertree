@@ -149,7 +149,8 @@ def iterRange(self, start, end, tick=True, start_pos=None):
         else:
             i = 0
 
-        iter_ = zip(self.coords[i:], self.payloads[i:])
+        iter_ = ((self.coords[j], self.payloads[j])
+                  for j in range(i, len(self.coords)))
 
     is_collecting, rank = _prep_metrics_inc(self)
 

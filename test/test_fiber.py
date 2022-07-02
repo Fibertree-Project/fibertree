@@ -1267,6 +1267,54 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(a.getPayload(test[i], allocate=False, default=-1),
                              answer_default[i])
 
+    def test_getPayload_start_pos(self):
+        """Get payload with a shortcut"""
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+        a = Fiber(coords, payloads)
+
+        # Basic test
+        self.assertEqual(a.getPayload(2, start_pos=0), 3)
+        self.assertEqual(a.getSavedPosStats(), (1, 0))
+        self.assertEqual(a.getSavedPos(), 0)
+
+        # Missing coordinate
+        self.assertEqual(a.getPayload(5, start_pos=0), 0)
+        self.assertEqual(a.getSavedPosStats(), (1, 2))
+        self.assertEqual(a.getSavedPos(), 1)
+
+        # Start at start_pos > 0
+        self.assertEqual(a.getPayload(6, start_pos=1), 7)
+        self.assertEqual(a.getSavedPosStats(), (1, 1))
+        self.assertEqual(a.getSavedPos(), 2)
+
+        # Empty fiber
+        b = Fiber()
+        self.assertEqual(b.getPayload(3, start_pos=0), 0)
+        self.assertEqual(b.getSavedPosStats(), (1, 0))
+        self.assertEqual(b.getSavedPos(), 0)
+
+
+    def test_getPayload_start_pos_only_one_coord(self):
+        """Ensure that getPayload only works if one coordinate is passed"""
+        a = Fiber(default=Fiber)
+
+        with self.assertRaises(AssertionError):
+            a.getPayload(5, 7, start_pos=0)
+
+    def test_getPayload_start_pos_less_than_coord(self):
+        """Esure that getPayload must start before or at the coordinate"""
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+        a = Fiber(coords, payloads)
+
+        # If start_pos=0, this does not apply
+        self.assertEqual(a.getPayload(0, start_pos=0), 0)
+
+        with self.assertRaises(AssertionError):
+            a.getPayload(3, start_pos=1)
+
+
     def test_getPayload_eager_only(self):
         """Can only access coordinates by payload in eager mode"""
         coords = [2, 4, 6]
@@ -1395,14 +1443,14 @@ class TestFiber(unittest.TestCase):
         a = Fiber(coords, payloads)
 
         test = [0, 4, 6, 3, 6]
-        start_pos = [0, 0, 1, 1, Payload(2)]
+        start_pos = [0, 0, 1, 0, Payload(2)]
 
-        answer_saved_pos = [0, 1, 2, 1, 2]
+        answer_saved_pos = [0, 1, 2, 0, 2]
         answer_saved_stats = [(1, 0),
                               (2, 1),
                               (3, 2),
-                              (4, 2),
-                              (5, 2)]
+                              (4, 3),
+                              (5, 3)]
 
 
         for i in range(len(test)):

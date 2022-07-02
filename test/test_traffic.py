@@ -122,12 +122,3 @@ class TestTraffic(unittest.TestCase):
         corr = [(use[1][0], use[1][2]) for use in uses]
 
         self.assertEqual(result, corr)
-
-    def test_optimalEvict(self):
-        """Test _optimalEvict"""
-        uses = [1, 3, 5, 1, 7, 4, 5]
-        use_data = {1: [4, [3, 0]], 3: [12, [1]], 5: [
-            20, [6, 2]], 7: [28, [4]], 4: [16, [5]]}
-        objs = [5, 4, 1]
-
-        self.assertEqual(Traffic._optimalEvict(use_data, objs), 4)

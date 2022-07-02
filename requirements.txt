@@ -8,3 +8,4 @@ ipywidgets
 tqdm
 Cython
 pandas
+blist

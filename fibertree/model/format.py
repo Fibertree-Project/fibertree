@@ -141,6 +141,7 @@ class Format:
         if len(coords) == len(self.tensor.getShape()):
             return self.spec[self.tensor.getRankIds()[-1]]["cbits"] + \
                 self.spec[self.tensor.getRankIds()[-1]]["pbits"]
+
         fibers = [self._getFiberFromCoords(*coords)]
 
         total = 0

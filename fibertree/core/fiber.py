@@ -685,13 +685,24 @@ class Fiber:
         assert start_pos is None or len(coords) == 1
 
         start_pos = Payload.get(start_pos)
+        assert not start_pos or self.coords[start_pos] <= coords[0]
 
-        # TBD: Actually optimize the search
+        # If there is no saved shortcut, then do a log search
+        if start_pos is None:
+            index = bisect.bisect_left(self.coords, coords[0])
 
-        index = bisect.bisect_left(self.coords, coords[0])
+        # If there is a saved shortcut, then search linearly from that point
+        else:
+            index = len(self.coords)
+            for i in range(start_pos, len(self.coords)):
+                if self.coords[i] >= coords[0]:
+                    index = i
+                    break
+
         const_used = False
+        existing = index < len(self.coords) and self.coords[index] == coords[0]
 
-        if index < len(self.coords) and self.coords[index] == coords[0]:
+        if existing:
             payload = self.payloads[index]
         elif allocate:
             payload = self._createDefault(addtorank=False)
@@ -709,7 +720,14 @@ class Fiber:
                                       allocate=allocate)
 
         if start_pos is not None:
-            self.setSavedPos(index, distance=index - start_pos)
+            if existing or index == 0:
+                self.setSavedPos(index, distance=index - start_pos)
+
+            # If the new element is never inserted, the saved pos should be the
+            # closest coordinate before that actually exists, but the distance
+            # should still be the amount actually traveled
+            else:
+                self.setSavedPos(index - 1, distance=index - start_pos)
 
         return payload
 
