@@ -34,6 +34,7 @@ class TestTraffic(unittest.TestCase):
         t_m = T_MKN.getRoot()
 
         Metrics.beginCollect("tmp/test_traffic_stage0")
+        Metrics.traceRank("M")
         Metrics.traceRank("K")
         for m, (t_k, a_k) in t_m << a_m:
             for k, (t_n, (a_val, b_n)) in t_k << (a_k & b_k):
@@ -90,11 +91,24 @@ class TestTraffic(unittest.TestCase):
         corr = 480 + 288 + 288 + 480 + 480 + 288 + 288 + 96 + 480 + 96 + 288 + 288 + 288 + 288
         self.assertEqual(bits, corr)
 
+    def test_buffetTraffic_fiber(self):
+        bits = Traffic.buffetTraffic(
+            "tmp/test_traffic_stage0", self.B_KN, "M", self.B_format, mode="fiber")
+        corr = 6 * 8 * 32
+        self.assertEqual(bits, corr)
+
     def test_cacheTraffic(self):
         """Test cacheTraffic"""
         bits = Traffic.cacheTraffic(
             "tmp/test_traffic_stage0", self.B_KN, "K", self.B_format, 2**10)
         corr = 480 + 288 + 288 + 480 +  0 + 288 + 288 + 96 + 0 + 0 + 288 + 288 + 0 + 0
+        self.assertEqual(bits, corr)
+
+    def test_lruTraffic(self):
+        """Test cacheTraffic"""
+        bits = Traffic.lruTraffic(
+            "tmp/test_traffic_stage0", self.B_KN, "K", self.B_format, 2**10 + 2**8)
+        corr = 480 + 288 + 288 + 480 + 480 + 288 + 288 + 96 + 480 + 0 + 0 + 288 + 288 + 0
         self.assertEqual(bits, corr)
 
     def test_streamTraffic(self):

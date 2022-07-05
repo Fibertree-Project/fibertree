@@ -1,4 +1,5 @@
 #cython: language_level=3
+#cython: profile=False
 """Format
 
 A class for computing the true memory footprint of a tensor
@@ -138,7 +139,7 @@ class Format:
 
     def getSubTree(self, *coords):
         """Get a subtree under a given fiber (does not include rhbits)"""
-        if len(coords) == len(self.tensor.getShape()):
+        if len(coords) == len(self.tensor.getRankIds()):
             return self.spec[self.tensor.getRankIds()[-1]]["cbits"] + \
                 self.spec[self.tensor.getRankIds()[-1]]["pbits"]
 
