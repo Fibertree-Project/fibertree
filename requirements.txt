@@ -8,5 +8,4 @@ ipywidgets
 tqdm
 Cython
 pandas
-blist
 sortedcontainers
