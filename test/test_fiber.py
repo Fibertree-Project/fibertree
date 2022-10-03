@@ -929,6 +929,264 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             next(a.iterRangeShapeRef(2, 9))
 
+    def test_coiterShape(self):
+        """Test coiterShape"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [0, 2, 5, 9]
+        p1 = [3, 4, 7, 1]
+        b = Fiber(c1, p1)
+
+        c0_ans = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p0_ans = [(0, 3), (2, 0), (0, 4), (0, 0), (3, 0), (0, 7), (0, 0), (0, 0), (0, 0), (10, 1)]
+
+        for i, (c, p) in enumerate(Fiber.coiterShape([a, b])):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0)
+            self.assertEqual(a.payloads, p0)
+
+            self.assertEqual(b.coords, c1)
+            self.assertEqual(b.payloads, p1)
+
+    def test_coiterShape_eager_only(self):
+        """Test coiterShape only works on eager fibers"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [0, 2, 5, 9]
+        p1 = [3, 4, 7, 1]
+        b = Fiber(c1, p1)
+        b._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            Fiber.coiterShape([a, b])
+
+    def test_coiterShapeRef(self):
+        """Test coiterShapeRef"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [0, 2, 5]
+        p1 = [3, 4, 7]
+        b = Fiber(c1, p1)
+
+        c0_ans = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p0_ans = [(0, 3), (2, 0), (0, 4), (0, 0), (3, 0), (0, 7), (0, 0), (0, 0), (0, 0), (10, 0)]
+
+        for i, (c, p) in enumerate(Fiber.coiterShapeRef([a, b])):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        c0_after = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p0_after = [0, 2, 0, 0, 3, 0, 0, 0, 0, 10]
+
+        c1_after = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p1_after = [3, 0, 4, 0, 0, 7, 0, 0, 0, 0]
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0_after)
+            self.assertEqual(a.payloads, p0_after)
+
+            self.assertEqual(b.coords, c1_after)
+            self.assertEqual(b.payloads, p1_after)
+
+    def test_coiterShapeRef_eager_only(self):
+        """Test coiterShapeRef only works on eager fibers"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [0, 2, 5, 9]
+        p1 = [3, 4, 7, 1]
+        b = Fiber(c1, p1)
+        b._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            Fiber.coiterShapeRef([a, b])
+
+    def test_coiterActiveShape(self):
+        """Test coiterActiveShape"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+        a.setActive((2, 9))
+
+        c1 = [0, 2, 5, 9]
+        p1 = [3, 4, 7, 1]
+        b = Fiber(c1, p1)
+
+        c0_ans = [2, 3, 4, 5, 6, 7, 8]
+        p0_ans = [(0, 4), (0, 0), (3, 0), (0, 7), (0, 0), (0, 0), (0, 0)]
+
+        for i, (c, p) in enumerate(Fiber.coiterActiveShape([a, b])):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0)
+            self.assertEqual(a.payloads, p0)
+
+            self.assertEqual(b.coords, c1)
+            self.assertEqual(b.payloads, p1)
+
+    def test_coiterActiveShape_eager_only(self):
+        """Test coiterActiveShape only works on eager fibers"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [0, 2, 5, 9]
+        p1 = [3, 4, 7, 1]
+        b = Fiber(c1, p1)
+        b._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            Fiber.coiterActiveShape([a, b])
+
+    def test_coiterActiveShapeRef(self):
+        """Test coiterActiveShapeRef"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+        a.setActive((2, 9))
+
+        c1 = [0, 2, 5]
+        p1 = [3, 4, 7]
+        b = Fiber(c1, p1)
+
+        c0_ans = [2, 3, 4, 5, 6, 7, 8]
+        p0_ans = [(0, 4), (0, 0), (3, 0), (0, 7), (0, 0), (0, 0), (0, 0)]
+
+        for i, (c, p) in enumerate(Fiber.coiterActiveShapeRef([a, b])):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        c0_after = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p0_after = [2, 0, 0, 3, 0, 0, 0, 0, 10]
+
+        c1_after = [0, 2, 3, 4, 5, 6, 7, 8]
+        p1_after = [3, 4, 0, 0, 7, 0, 0, 0]
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0_after)
+            self.assertEqual(a.payloads, p0_after)
+
+            self.assertEqual(b.coords, c1_after)
+            self.assertEqual(b.payloads, p1_after)
+
+    def test_coiterActiveShapeRef_eager_only(self):
+        """Test coiterActiveShapeRef only works on eager fibers"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+        a.setActive((2, 9))
+
+        c1 = [0, 2, 5, 9]
+        p1 = [3, 4, 7, 1]
+        b = Fiber(c1, p1)
+        b._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            Fiber.coiterActiveShapeRef([a, b])
+
+    def test_coiterRangeShape(self):
+        """Test coiterRangeShape"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [0, 2, 5, 9]
+        p1 = [3, 4, 7, 1]
+        b = Fiber(c1, p1)
+
+        c0_ans = [2, 3, 4, 5, 6, 7, 8]
+        p0_ans = [(0, 4), (0, 0), (3, 0), (0, 7), (0, 0), (0, 0), (0, 0)]
+
+        for i, (c, p) in enumerate(Fiber.coiterRangeShape([a, b], 2, 9)):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0)
+            self.assertEqual(a.payloads, p0)
+
+            self.assertEqual(b.coords, c1)
+            self.assertEqual(b.payloads, p1)
+
+    def test_coiterRangeShape_eager_only(self):
+        """Test coiterRangeShape only works on eager fibers"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [0, 2, 5, 9]
+        p1 = [3, 4, 7, 1]
+        b = Fiber(c1, p1)
+        b._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            Fiber.coiterRangeShape([a, b], 2, 9)
+
+    def test_coiterRangeShapeRef(self):
+        """Test coiterRangeShapeRef"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [0, 2, 5]
+        p1 = [3, 4, 7]
+        b = Fiber(c1, p1)
+
+        c0_ans = [2, 3, 4, 5, 6, 7, 8]
+        p0_ans = [(0, 4), (0, 0), (3, 0), (0, 7), (0, 0), (0, 0), (0, 0)]
+
+        for i, (c, p) in enumerate(Fiber.coiterRangeShapeRef([a, b], 2, 9)):
+            with self.subTest(test=f"Element {i}"):
+                self.assertEqual(c, c0_ans[i])
+                self.assertEqual(p, p0_ans[i])
+                self.assertIsInstance(p, Payload)
+
+        c0_after = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        p0_after = [2, 0, 0, 3, 0, 0, 0, 0, 10]
+
+        c1_after = [0, 2, 3, 4, 5, 6, 7, 8]
+        p1_after = [3, 4, 0, 0, 7, 0, 0, 0]
+        with self.subTest(test="Test fiber internals"):
+            self.assertEqual(a.coords, c0_after)
+            self.assertEqual(a.payloads, p0_after)
+
+            self.assertEqual(b.coords, c1_after)
+            self.assertEqual(b.payloads, p1_after)
+
+    def test_coiterRangeShapeRef_eager_only(self):
+        """Test coiterRangeShapeRef only works on eager fibers"""
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+        a = Fiber(c0, p0)
+
+        c1 = [0, 2, 5, 9]
+        p1 = [3, 4, 7, 1]
+        b = Fiber(c1, p1)
+        b._setIsLazy(True)
+
+        with self.assertRaises(AssertionError):
+            Fiber.coiterRangeShapeRef([a, b], 2, 9)
+
     def test_iter_no_fmt(self):
         """Test iteration over a fiber (default: iterOccupancy)"""
 

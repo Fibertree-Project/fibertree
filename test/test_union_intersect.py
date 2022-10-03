@@ -96,6 +96,24 @@ class TestUnionIntersect(unittest.TestCase):
         with open("tmp/test_intersection_metrics-K.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
+#     def test_intersection_tuple():
+#         A_coords = [(0, 2), (0, 8), (2, 10), (3, 2), (3, 4), (3, 6), (4, 17)]
+#         A_payloads = [1, 1, 2, 3, 5, 8, 13]
+#
+#         B_coords = [0, 1, 3]
+#         B_payloads = [2, 7, 8]
+#
+#         a_km = Fiber(coords=A_coords, payloads=A_payloads)
+#         b_k = Fiber(coords=B_coords, payloads=B_payloads)
+#
+#         class Any:
+#             def __eq__(self, other):
+#                 return True
+#
+#         corr = [(0, 2), (0, 8), (3, 2), (3, 4), (3, 6)]
+#         for i, (km, (a_val, b_val)) in enumerate(a_km & b_k.project(trans_fn=lambda k: (k, Any()))):
+#             self.assertEqual(km, corr[i])
+
     def test_union(self):
         """Test the union() function"""
         a_k = Fiber.fromUncompressed([1, 0, 3, 0, 0])

@@ -49,6 +49,18 @@ class TestConstructor(unittest.TestCase):
                 self.assertEqual(f, ans)
                 self.assertEqual(f_attr, attrs[test])
 
+    def test_constructor_copies_elements(self):
+        """Test that the constructor copies the coordinate and payload lists"""
+        c = [1, 3, 6]
+        p = [2, 4, 9]
+        a = Fiber(c, p)
+
+        c.append(10)
+        p.append(2)
+
+        self.assertEqual(a.getCoords(), [1, 3, 6])
+        self.assertEqual(a.getPayloads(), [2, 4, 9])
+
 
     def test_constructor_2D(self):
         """Test constructor 2D"""
