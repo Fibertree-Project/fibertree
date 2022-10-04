@@ -15,7 +15,9 @@ import yaml
 import random
 
 from .coord_payload import CoordPayload
-from .iterators import intersection, union
+from .iterators import coiterShape, coiterShapeRef, coiterActiveShape, \
+    coiterActiveShapeRef, coiterRangeShape, coiterRangeShapeRef, intersection, \
+    union
 from .metrics import Metrics
 from .payload import Payload
 from .rank_attrs import RankAttrs
@@ -218,7 +220,7 @@ class Fiber:
         #    We do not eliminate explicit zeros in the payloads
         #    so zeros will be preserved.
         #
-        self.coords = coords
+        self.coords = [coord for coord in coords]
         """The list of coordinates of the fiber"""
 
         self.payloads = [Payload.maybe_box(p) for p in payloads]
@@ -2002,6 +2004,68 @@ class Fiber:
     from .iterators import iterRangeShapeRef
 
 #
+# Dense coiteration methods
+#
+    @staticmethod
+    def coiterShape(*args, **kwargs):
+        """Co-iterate in a dense manner over the given fibers
+
+        Note: because we want this to be a static method, we cannot entirely
+        move it to the submodule
+        """
+        return coiterShape(*args, **kwargs)
+
+    @staticmethod
+    def coiterShapeRef(*args, **kwargs):
+        """Co-iterate in a dense manner over the given fibers using the given
+        range
+
+        Note: because we want this to be a static method, we cannot entirely
+        move it to the submodule
+        """
+        return coiterShapeRef(*args, **kwargs)
+
+    @staticmethod
+    def coiterActiveShape(*args, **kwargs):
+        """Co-iterate in a dense manner over the given fibers, inserting any
+        implicit payloads
+
+        Note: because we want this to be a static method, we cannot entirely
+        move it to the submodule
+        """
+        return coiterActiveShape(*args, **kwargs)
+
+    @staticmethod
+    def coiterActiveShapeRef(*args, **kwargs):
+        """Co-iterate in a dense manner over the given fibers using the given
+        range
+
+        Note: because we want this to be a static method, we cannot entirely
+        move it to the submodule
+        """
+        return coiterActiveShapeRef(*args, **kwargs)
+
+    @staticmethod
+    def coiterRangeShape(*args, **kwargs):
+        """Co-iterate in a dense manner over the given fibers using the given
+        range
+
+        Note: because we want this to be a static method, we cannot entirely
+        move it to the submodule
+        """
+        return coiterRangeShape(*args, **kwargs)
+
+    @staticmethod
+    def coiterRangeShapeRef(*args, **kwargs):
+        """Co-iterate in a dense manner over the given fibers using the given
+        range, inserting any implicit payloads
+
+        Note: because we want this to be a static method, we cannot entirely
+        move it to the submodule
+        """
+        return coiterRangeShapeRef(*args, **kwargs)
+
+#
 # Core methods
 #
 
@@ -3493,22 +3557,22 @@ class Fiber:
 #
 
     @staticmethod
-    def intersection(*args):
+    def intersection(*args, **kwargs):
         """Intersect a set of fibers.
 
         Note: because we want this to be a static method, we cannot entirely
         move it to the submodule
         """
-        return intersection(*args)
+        return intersection(*args, **kwargs)
 
     @staticmethod
-    def union(*args):
+    def union(*args, **kwargs):
         """Union a set of fibers.
 
         Note: because we want this to be a static method, we cannot entirely
         move it to the submodule
         """
-        return union(*args)
+        return union(*args, **kwargs)
 
     from .iterators import __and__
     from .iterators import __or__

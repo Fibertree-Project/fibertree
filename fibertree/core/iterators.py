@@ -182,7 +182,7 @@ def iterRange(self, start, end, tick=True, start_pos=None):
     if is_collecting and tick:
         Metrics.endIter(rank)
 
-def iterRangeShape(self, start, end, tick=True):
+def iterRangeShape(self, start, end, step=1, tick=True):
     """Iterate over the given range, including default elements
 
     Parameters
@@ -192,6 +192,9 @@ def iterRangeShape(self, start, end, tick=True):
 
     end: int
         End of range (exclusive)
+
+    step: int
+        Step of each iteration
 
     tick: bool
         True if this iterator should tick the metrics counter
@@ -203,7 +206,7 @@ def iterRangeShape(self, start, end, tick=True):
     if is_collecting and tick:
         self.registerRank(rank)
 
-    for c in range(start, end):
+    for c in range(start, end, step):
         p = self.getPayload(c)
         yield CoordPayload(c, p)
 
@@ -213,7 +216,7 @@ def iterRangeShape(self, start, end, tick=True):
     if is_collecting and tick:
         Metrics.endIter(rank)
 
-def iterRangeShapeRef(self, start, end, tick=True):
+def iterRangeShapeRef(self, start, end, step=1, tick=True):
     """Iterate over the given range, including default elements
 
     Parameters
@@ -223,6 +226,12 @@ def iterRangeShapeRef(self, start, end, tick=True):
 
     end: int
         End of range (exclusive)
+
+    step: int
+        Step of each iteration
+
+    tick: bool
+        True if this iterator should tick the metrics counter
     """
     assert not self.isLazy()
 
@@ -231,7 +240,7 @@ def iterRangeShapeRef(self, start, end, tick=True):
     if is_collecting and tick:
         self.registerRank(rank)
 
-    for c in range(start, end):
+    for c in range(start, end, step):
         p = self.getPayloadRef(c)
         yield CoordPayload(c, p)
 
@@ -240,6 +249,7 @@ def iterRangeShapeRef(self, start, end, tick=True):
 
     if is_collecting and tick:
         Metrics.endIter(rank)
+
 
 def _prep_metrics_inc(fiber):
     """Prepare to do a metrics increment
@@ -258,6 +268,181 @@ def _prep_metrics_inc(fiber):
 
     return is_collecting, rank
 
+#
+# Dense coiterators
+#
+def coiterShape(fibers):
+    """Co-iterate in a dense manner over the given fibers
+
+    Parameters
+    ----------
+
+    fibers: List[Fiber]
+        A list of fibers to coiterate over
+
+    Returns
+    -------
+
+    result: Fiber
+        A fiber whose payloads are the payloads of the corresponding tuples
+
+    """
+    assert len(fibers) > 0
+
+    return type(fibers[0]).coiterRangeShape(fibers, 0, fibers[0].getShape(all_ranks=False))
+
+def coiterShapeRef(fibers):
+    """Co-iterate in a dense manner over the given fibers, inserting any
+    implicit payloads
+
+    Parameters
+    ----------
+
+    fibers: List[Fiber]
+        A list of fibers to coiterate over
+
+    Returns
+    -------
+
+    result: Fiber
+        A fiber whose payloads are the payloads of the corresponding tuples
+
+    """
+    assert len(fibers) > 0
+
+    return type(fibers[0]).coiterRangeShapeRef(fibers, 0, fibers[0].getShape(all_ranks=False))
+
+def coiterActiveShape(fibers):
+    """Co-iterate in a dense manner over the given fibers using the active
+    range of the first fiber
+
+    Parameters
+    ----------
+
+    fibers: List[Fiber]
+        A list of fibers to coiterate over
+
+    Returns
+    -------
+
+    result: Fiber
+        A fiber whose payloads are the payloads of the corresponding tuples
+
+    """
+    assert len(fibers) > 0
+
+    return type(fibers[0]).coiterRangeShape(fibers, *fibers[0].getActive())
+
+def coiterActiveShapeRef(fibers):
+    """Co-iterate in a dense manner over the given fibers using the active
+    range of the first fiber, inserting any implicit payloads
+
+    Parameters
+    ----------
+
+    fibers: List[Fiber]
+        A list of fibers to coiterate over
+
+    Returns
+    -------
+
+    result: Fiber
+        A fiber whose payloads are the payloads of the corresponding tuples
+
+    """
+    assert len(fibers) > 0
+
+    return type(fibers[0]).coiterRangeShapeRef(fibers, *fibers[0].getActive())
+
+def coiterRangeShape(fibers, start, end, step=1):
+    """Co-iterate in a dense manner over the given fibers using the given
+    range
+
+    Parameters
+    ----------
+
+    fibers: List[Fiber]
+        A list of fibers to coiterate over
+
+    start: int
+        Beginning of range (inclusive)
+
+    end: int
+        End of range (exclusive)
+
+    step: int
+        Coordinates per iteration
+
+    Returns
+    -------
+
+    result: Fiber
+        A fiber whose payloads are the payloads of the corresponding tuples
+
+    """
+    assert len(fibers) > 0
+    assert all(not fiber.isLazy() for fiber in fibers)
+
+    class coiter_range_shape_iterator:
+        fibers_ = fibers
+        start_ = start
+        end_ = end
+        step_ = step
+
+        def __iter__(self):
+            for c in range(self.start_, self.end_, self.step_):
+                payloads = tuple(fiber.getPayload(c) for fiber in self.fibers_)
+                yield CoordPayload(c, payloads)
+
+    fiber = fibers[0].fromIterator(coiter_range_shape_iterator)
+    fiber.getRankAttrs().setId(fibers[0].getRankAttrs().getId())
+    fiber.setActive((start, end))
+    return fiber
+
+def coiterRangeShapeRef(fibers, start, end, step=1):
+    """Co-iterate in a dense manner over the given fibers using the given
+    range, inserting any implicit payloads
+
+    Parameters
+    ----------
+
+    fibers: List[Fiber]
+        A list of fibers to coiterate over
+
+    start: int
+        Beginning of range (inclusive)
+
+    end: int
+        End of range (exclusive)
+
+    step: int
+        Coordinates per iteration
+
+    Returns
+    -------
+
+    result: Fiber
+        A fiber whose payloads are the payloads of the corresponding tuples
+
+    """
+    assert len(fibers) > 0
+    assert all(not fiber.isLazy() for fiber in fibers)
+
+    class coiter_range_shape_ref_iterator:
+        fibers_ = fibers
+        start_ = start
+        end_ = end
+        step_ = step
+
+        def __iter__(self):
+            for c in range(self.start_, self.end_, self.step_):
+                payloads = tuple(fiber.getPayloadRef(c) for fiber in self.fibers_)
+                yield CoordPayload(c, payloads)
+
+    fiber = fibers[0].fromIterator(coiter_range_shape_ref_iterator)
+    fiber.getRankAttrs().setId(fibers[0].getRankAttrs().getId())
+    fiber.setActive((start, end))
+    return fiber
 
 #
 # Aggretated intersection/union methods
@@ -304,9 +489,10 @@ def intersection(*args):
         def __iter__(self):
             for c, np in self.nested.__iter__(tick=False):
                 p = []
-                while isinstance(np, tuple):
-                    p.append(np[1])
-                    np = np[0]
+                while isinstance(Payload.get(np), tuple):
+                    val = Payload.get(np)
+                    p.append(val[1])
+                    np = val[0]
                 p.append(np)
                 yield CoordPayload(c, tuple(reversed(p)))
 

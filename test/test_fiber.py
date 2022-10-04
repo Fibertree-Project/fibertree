@@ -866,12 +866,12 @@ class TestFiber(unittest.TestCase):
         c0 = [1, 4, 8, 9]
         p0 = [2, 3, 0, 10]
 
-        c0_ans = [2, 3, 4, 5, 6, 7, 8]
-        p0_ans = [0, 0, 3, 0, 0, 0, 0]
+        c0_ans = [2, 4, 6, 8]
+        p0_ans = [0, 3, 0, 0]
 
         a = Fiber(c0, p0)
 
-        for i, (c, p) in enumerate(a.iterRangeShape(2, 9)):
+        for i, (c, p) in enumerate(a.iterRangeShape(2, 9, 2)):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
@@ -897,22 +897,22 @@ class TestFiber(unittest.TestCase):
         """Test iteration over the coordinates within the given range,
         creating a fiber if one does not exist"""
 
-        c0 = [1, 4, 8, 9]
-        p0 = [2, 3, 0, 10]
+        c0 = [1, 4, 5, 8, 9]
+        p0 = [2, 3, 7, 0, 10]
 
-        c0_ans = [2, 3, 4, 5, 6, 7, 8]
-        p0_ans = [0, 0, 3, 0, 0, 0, 0]
+        c0_ans = [2, 4, 6, 8]
+        p0_ans = [0, 3, 0, 0]
 
         a = Fiber(c0, p0)
 
-        for i, (c, p) in enumerate(a.iterRangeShapeRef(2, 9)):
+        for i, (c, p) in enumerate(a.iterRangeShapeRef(2, 9, 2)):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
                 self.assertIsInstance(p, Payload)
 
-        c0_final = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        p0_final = [2, 0, 0, 3, 0, 0, 0, 0, 10]
+        c0_final = [1, 2, 4, 5, 6, 8, 9]
+        p0_final = [2, 0, 3, 7, 0, 0, 10]
 
         with self.subTest(test="Test fiber internals"):
             self.assertEqual(a.coords, c0_final)
@@ -1112,10 +1112,10 @@ class TestFiber(unittest.TestCase):
         p1 = [3, 4, 7, 1]
         b = Fiber(c1, p1)
 
-        c0_ans = [2, 3, 4, 5, 6, 7, 8]
-        p0_ans = [(0, 4), (0, 0), (3, 0), (0, 7), (0, 0), (0, 0), (0, 0)]
+        c0_ans = [2, 4, 6, 8]
+        p0_ans = [(0, 4), (3, 0), (0, 0), (0, 0)]
 
-        for i, (c, p) in enumerate(Fiber.coiterRangeShape([a, b], 2, 9)):
+        for i, (c, p) in enumerate(Fiber.coiterRangeShape([a, b], 2, 9, 2)):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
@@ -1152,20 +1152,20 @@ class TestFiber(unittest.TestCase):
         p1 = [3, 4, 7]
         b = Fiber(c1, p1)
 
-        c0_ans = [2, 3, 4, 5, 6, 7, 8]
-        p0_ans = [(0, 4), (0, 0), (3, 0), (0, 7), (0, 0), (0, 0), (0, 0)]
+        c0_ans = [2, 4, 6, 8]
+        p0_ans = [(0, 4), (3, 0), (0, 0), (0, 0)]
 
-        for i, (c, p) in enumerate(Fiber.coiterRangeShapeRef([a, b], 2, 9)):
+        for i, (c, p) in enumerate(Fiber.coiterRangeShapeRef([a, b], 2, 9, 2)):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
                 self.assertIsInstance(p, Payload)
 
-        c0_after = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        p0_after = [2, 0, 0, 3, 0, 0, 0, 0, 10]
+        c0_after = [1, 2, 4, 6, 8, 9]
+        p0_after = [2, 0, 3, 0, 0, 10]
 
-        c1_after = [0, 2, 3, 4, 5, 6, 7, 8]
-        p1_after = [3, 4, 0, 0, 7, 0, 0, 0]
+        c1_after = [0, 2, 4, 5, 6, 8]
+        p1_after = [3, 4, 0, 7, 0, 0]
         with self.subTest(test="Test fiber internals"):
             self.assertEqual(a.coords, c0_after)
             self.assertEqual(a.payloads, p0_after)

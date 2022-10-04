@@ -7,6 +7,8 @@ coordinate/payload tuple.
 """
 import logging
 
+from .payload import Payload
+
 #
 # Set up logging
 #
@@ -100,7 +102,7 @@ class CoordPayload():
 
 
         self.coord = coord
-        self.payload = payload
+        self.payload = Payload.maybe_box(payload)
 
 
     def __iter__(self):
