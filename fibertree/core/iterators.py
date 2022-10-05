@@ -394,9 +394,8 @@ def coiterRangeShape(fibers, start, end, step=1):
                 payloads = tuple(fiber.getPayload(c) for fiber in self.fibers_)
                 yield CoordPayload(c, payloads)
 
-    fiber = fibers[0].fromIterator(coiter_range_shape_iterator)
+    fiber = fibers[0].fromIterator(coiter_range_shape_iterator, active_range=(start, end))
     fiber.getRankAttrs().setId(fibers[0].getRankAttrs().getId())
-    fiber.setActive((start, end))
     return fiber
 
 def coiterRangeShapeRef(fibers, start, end, step=1):
@@ -439,9 +438,8 @@ def coiterRangeShapeRef(fibers, start, end, step=1):
                 payloads = tuple(fiber.getPayloadRef(c) for fiber in self.fibers_)
                 yield CoordPayload(c, payloads)
 
-    fiber = fibers[0].fromIterator(coiter_range_shape_ref_iterator)
+    fiber = fibers[0].fromIterator(coiter_range_shape_ref_iterator, active_range=(start,end))
     fiber.getRankAttrs().setId(fibers[0].getRankAttrs().getId())
-    fiber.setActive((start, end))
     return fiber
 
 #
@@ -497,7 +495,7 @@ def intersection(*args):
                 yield CoordPayload(c, tuple(reversed(p)))
 
     # Call the constructor via the first argument
-    fiber = args[0].fromIterator(intersection_iterator)
+    fiber = args[0].fromIterator(intersection_iterator, active_range=args[0].getActive())
     fiber.getRankAttrs().setId(args[0].getRankAttrs().getId())
     return fiber
 
@@ -565,7 +563,7 @@ def union(*args):
                 p[1] = np
                 yield CoordPayload(c, tuple(p))
 
-    fiber = args[0].fromIterator(union_iterator)
+    fiber = args[0].fromIterator(union_iterator, active_range=args[0].getActive())
     fiber._setDefault(tuple([""]+[arg.getDefault() for arg in args]))
     fiber.getRankAttrs().setId(args[0].getRankAttrs().getId())
     return fiber
@@ -743,7 +741,7 @@ def __and__(self, other):
 
             return
 
-    fiber = self.fromIterator(and_iterator)
+    fiber = self.fromIterator(and_iterator, active_range=self.getActive())
     fiber.getRankAttrs().setId(self.getRankAttrs().getId())
     return fiber
 
@@ -834,7 +832,7 @@ def __or__(self, other):
                     yield b_coord, ("B", a_default, b_payload)
                     b_coord, b_payload = _get_next(b)
 
-    result = self.fromIterator(or_iterator)
+    result = self.fromIterator(or_iterator, active_range=self.getActive())
     result._setDefault(("", self.getDefault(), other.getDefault()))
     result.getRankAttrs().setId(self.getRankAttrs().getId())
 
@@ -925,7 +923,7 @@ def __xor__(self, other):
                 yield b_coord, ("B", a_default, b_payload)
                 b_coord, b_payload = _get_next(b)
 
-    result = self.fromIterator(xor_iterator)
+    result = self.fromIterator(xor_iterator, active_range=self.getActive())
     result._setDefault(("", self.getDefault(), other.getDefault()))
     result.getRankAttrs().setId(self.getRankAttrs().getId())
 
@@ -981,6 +979,8 @@ def __lshift__(self, other):
 
     """
     assert not self.isLazy()
+
+    self.setActive(other.getActive())
 
     class lshift_iterator:
         a_fiber = self
@@ -1067,7 +1067,7 @@ def __lshift__(self, other):
 
             return
 
-    fiber = self.fromIterator(lshift_iterator)
+    fiber = self.fromIterator(lshift_iterator, active_range=other.getActive())
     fiber.getRankAttrs().setId(self.getRankAttrs().getId())
     return fiber
 
@@ -1148,7 +1148,7 @@ def __sub__(self, other):
                 yield a_coord, a_payload
                 a_coord, a_payload = _get_next(a)
 
-    result = self.fromIterator(sub_iterator)
+    result = self.fromIterator(sub_iterator, active_range=self.getActive())
     result._setDefault(self.getDefault())
     result.getRankAttrs().setId(self.getRankAttrs().getId())
 

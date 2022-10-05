@@ -833,7 +833,7 @@ class TestFiber(unittest.TestCase):
                 def __iter__(self):
                     return a.iterRange(startc[i], end_coord[i])
 
-            c = Fiber.fromIterator(test_iterator)
+            c = Fiber.fromIterator(test_iterator, active_range=(startc[i], end_coord[i]))
             self.assertEqual(c, ans[i])
 
     def test_iterRange_uses(self):
@@ -1107,6 +1107,7 @@ class TestFiber(unittest.TestCase):
         c0 = [1, 4, 8, 9]
         p0 = [2, 3, 0, 10]
         a = Fiber(c0, p0)
+        a.getRankAttrs().setId("K")
 
         c1 = [0, 2, 5, 9]
         p1 = [3, 4, 7, 1]
@@ -1115,7 +1116,8 @@ class TestFiber(unittest.TestCase):
         c0_ans = [2, 4, 6, 8]
         p0_ans = [(0, 4), (3, 0), (0, 0), (0, 0)]
 
-        for i, (c, p) in enumerate(Fiber.coiterRangeShape([a, b], 2, 9, 2)):
+        ans = Fiber.coiterRangeShape([a, b], 2, 9, 2)
+        for i, (c, p) in enumerate(ans):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
@@ -1127,6 +1129,9 @@ class TestFiber(unittest.TestCase):
 
             self.assertEqual(b.coords, c1)
             self.assertEqual(b.payloads, p1)
+
+            self.assertEqual(ans.getActive(), (2, 9))
+            self.assertEqual(ans.getRankAttrs().getId(), "K")
 
     def test_coiterRangeShape_eager_only(self):
         """Test coiterRangeShape only works on eager fibers"""
@@ -1147,6 +1152,7 @@ class TestFiber(unittest.TestCase):
         c0 = [1, 4, 8, 9]
         p0 = [2, 3, 0, 10]
         a = Fiber(c0, p0)
+        a.getRankAttrs().setId("K")
 
         c1 = [0, 2, 5]
         p1 = [3, 4, 7]
@@ -1155,7 +1161,8 @@ class TestFiber(unittest.TestCase):
         c0_ans = [2, 4, 6, 8]
         p0_ans = [(0, 4), (3, 0), (0, 0), (0, 0)]
 
-        for i, (c, p) in enumerate(Fiber.coiterRangeShapeRef([a, b], 2, 9, 2)):
+        ans = Fiber.coiterRangeShapeRef([a, b], 2, 9, 2)
+        for i, (c, p) in enumerate(ans):
             with self.subTest(test=f"Element {i}"):
                 self.assertEqual(c, c0_ans[i])
                 self.assertEqual(p, p0_ans[i])
@@ -1172,6 +1179,9 @@ class TestFiber(unittest.TestCase):
 
             self.assertEqual(b.coords, c1_after)
             self.assertEqual(b.payloads, p1_after)
+
+            self.assertEqual(ans.getActive(), (2, 9))
+            self.assertEqual(ans.getRankAttrs().getId(), "K")
 
     def test_coiterRangeShapeRef_eager_only(self):
         """Test coiterRangeShapeRef only works on eager fibers"""
@@ -2071,6 +2081,7 @@ class TestFiber(unittest.TestCase):
         c = [0, 1, 10, 20]
         p = [1, 2, 11, 21]
         a = Fiber(c, p)
+        a.setActive((0, 25))
 
         cp = [1, 2, 11, 21]
         ap_ref = Fiber(cp, p)
@@ -2078,7 +2089,37 @@ class TestFiber(unittest.TestCase):
         ap = a.project(lambda c: c + 1)
 
         self.assertEqual(ap, ap_ref)
+        self.assertEqual(ap.getActive(), (1, 26))
 
+    def test_project_interval(self):
+        """Test project when given an interval"""
+        c = [0, 1, 10, 20]
+        p = [1, 2, 11, 21]
+        a = Fiber(c, p)
+        a.setActive((0, 25))
+
+        cp = [1, 2, 11]
+        ap_ref = Fiber(cp, p[:3])
+
+        ap = a.project(lambda c: c + 1, interval=(1, 20))
+
+        self.assertEqual(ap, ap_ref)
+        self.assertEqual(ap.getActive(), (1, 20))
+
+    def test_project_reverse(self):
+        """Test project when the transfer function reverses the coordinates"""
+        c = [0, 1, 10, 20]
+        p = [1, 2, 11, 21]
+        a = Fiber(c, p)
+        a.setActive((0, 25))
+
+        cp = [20, 40, 58, 60]
+        ap_ref = Fiber(cp, list(reversed(p)))
+
+        ap = a.project(lambda c: 60 - 2 * c)
+
+        self.assertEqual(ap, ap_ref)
+        self.assertEqual(ap.getActive(), (12, 61))
 
     def test_project_reverse_eager_only(self):
         """Test projections, eager only if reversed"""
@@ -2149,6 +2190,7 @@ class TestFiber(unittest.TestCase):
         """Test pruning a fiber"""
 
         f = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f.setActive((0, 10))
 
         fl2_ref = Fiber([2, 4], [4, 8])
         fu2_ref = Fiber([6, 8], [12, 16])
@@ -2158,6 +2200,9 @@ class TestFiber(unittest.TestCase):
         #
         f0 = f.prune(lambda n, c, p: n < 2)
         self.assertEqual(f0, fl2_ref)
+
+        # Check that active_range does not change
+        self.assertEqual(f0.getActive(), (0, 10))
 
         f1 = f.prune(lambda n, c, p: c < 5)
         self.assertEqual(f1, fl2_ref)
@@ -2426,7 +2471,9 @@ class TestFiber(unittest.TestCase):
         """Union test"""
 
         a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
+        a.getRankAttrs().setId("K").setShape(20)
         b = Fiber([0, 5, 9], [2, 7, 11])
+        b.getRankAttrs().setId("K").setShape(20)
 
         ab_ref = Fiber([0, 1, 5, 8, 9],
                        [("B", 0, 2),
@@ -2438,6 +2485,10 @@ class TestFiber(unittest.TestCase):
         ab = a | b
 
         self.assertEqual(ab, ab_ref)
+
+        # Check the fiber attributes
+        self.assertEqual(ab.getRankAttrs().getId(), "K")
+        self.assertEqual(ab.getActive(), (0, 20))
 
     def test_or_empty(self):
         """Uniontest - with explict zeros"""
@@ -2502,9 +2553,9 @@ class TestFiber(unittest.TestCase):
         """Xor test"""
 
         a = Fiber([1, 5, 8, 9], [2, 6, 9, 10])
-        a.getRankAttrs().setId("K")
+        a.getRankAttrs().setId("K").setShape(10)
         b = Fiber([0, 5, 9], [2, 7, 11])
-        b.getRankAttrs().setId("K")
+        b.getRankAttrs().setId("K").setShape(10)
 
         ab_ref = Fiber([0, 1, 8],
                        [("B", 0, 2),
@@ -2515,7 +2566,7 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(ab, ab_ref)
         self.assertEqual(ab.getRankAttrs().getId(), "K")
-
+        self.assertEqual(ab.getActive(), (0, 10))
 
     def test_xor_2d(self):
         """Union test 2d"""

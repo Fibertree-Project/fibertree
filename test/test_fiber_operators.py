@@ -100,9 +100,10 @@ class TestFiberOperators(unittest.TestCase):
             self.assertEqual(cc[i], c)
             self.assertEqual(cp[i], p)
 
-        # Check the rank ID
+        # Check the fiber attributes
         id_ = (a_k & b_k).getRankAttrs().getId()
         self.assertEqual(id_, "K")
+        self.assertEqual((a_k & b_k).getActive(), (0, 7))
 
 
     def test_and_metrics_fiber(self):
@@ -334,9 +335,11 @@ class TestFiberOperators(unittest.TestCase):
             z_ref += a_val
 
         self.assertEqual(z_m, a_m)
+        self.assertEqual(z_m.getActive(), (0, 5))
 
         id_ = (z_m << a_m).getRankAttrs().getId()
         self.assertEqual(id_, "M")
+        self.assertEqual((z_m << a_m).getActive(), (0, 5))
 
     def test_lshift_eager_only(self):
         """Test that we can only populate eager fibers"""
@@ -587,6 +590,7 @@ class TestFiberOperators(unittest.TestCase):
 
         id_ = (a_k - b_k).getRankAttrs().getId()
         self.assertEqual(id_, "K")
+        self.assertEqual((a_k - b_k).getActive(), (0, 5))
 
 
     def test_mul_int(self):

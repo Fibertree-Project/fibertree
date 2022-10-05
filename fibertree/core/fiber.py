@@ -934,7 +934,7 @@ class Fiber:
                     if self.trans(i, c, p):
                         yield c, p
 
-        result = Fiber.fromIterator(prune_iterator)
+        result = Fiber.fromIterator(prune_iterator, active_range=self.getActive())
         result._setDefault(self.getDefault())
         result.getRankAttrs().setId(self.getRankAttrs().getId())
 
@@ -1143,7 +1143,15 @@ class Fiber:
                             or (c >= self.interv[0] and c < self.interv[1]):
                         yield c, p
 
-        result = Fiber.fromIterator(project_iterator)
+        if interval:
+            active_range = interval
+
+        else:
+            start = trans_fn(self.getActive()[0])
+            end = trans_fn(self.getActive()[1] - 1)
+            active_range = (min(start, end), max(start, end) + 1)
+
+        result = Fiber.fromIterator(project_iterator, active_range=active_range)
         result._setDefault(self.getDefault())
         if rank_id is not None:
             result.getRankAttrs().setId(rank_id)

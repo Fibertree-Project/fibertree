@@ -200,6 +200,7 @@ class TestConstructor(unittest.TestCase):
                     yield CoordPayload(coord, payload)
 
         lazy = Fiber.fromIterator(iterator)
+        lazy.getRankAttrs().setShape(7)
         eager = Fiber.fromLazy(lazy)
 
         self.assertEqual(eager.getCoords(), c)

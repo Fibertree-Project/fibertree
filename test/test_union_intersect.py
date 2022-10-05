@@ -56,13 +56,15 @@ class TestUnionIntersect(unittest.TestCase):
         # Check the elements
         cc = [2, 4]
         cp = [(3, 7, 9), (5, 8, 12)]
-        for i, (c, p) in enumerate(Fiber.intersection(a_k, b_k, c_k)):
+
+        ans = Fiber.intersection(a_k, b_k, c_k)
+        for i, (c, p) in enumerate(ans):
             self.assertEqual(cc[i], c)
             self.assertEqual(cp[i], p)
 
-        # Check the rank ID
-        id_ = Fiber.intersection(a_k, b_k, c_k).getRankAttrs().getId()
-        self.assertEqual(id_, "K")
+        # Check the fiber fields
+        self.assertEqual(ans.getActive(), (0, 5))
+        self.assertEqual(ans.getRankAttrs().getId(), "K")
 
     def test_intersection_metrics(self):
         """Test metrics collection on the intersection() function"""
@@ -125,13 +127,15 @@ class TestUnionIntersect(unittest.TestCase):
 
         cc = [0, 1, 2, 4]
         cp = [("AC", 1, 0, 10), ("B", 0, 6, 0), ("ABC", 3, 7, 9), ("BC", 0, 8, 12)]
-        for i, (c, p) in enumerate(Fiber.union(a_k, b_k, c_k)):
+
+        ans = Fiber.union(a_k, b_k, c_k)
+        for i, (c, p) in enumerate(ans):
             self.assertEqual(cc[i], c)
             self.assertEqual(cp[i], p)
 
-        # Check the rank ID
-        id_ = Fiber.union(a_k, b_k, c_k).getRankAttrs().getId()
-        self.assertEqual(id_, "K")
+        # Test fiber attributes
+        self.assertEqual(ans.getRankAttrs().getId(), "K")
+        self.assertEqual(ans.getActive(), (0, 5))
 
     def test_union_2x_1d(self):
         """Test union 2-way for 1d fibers"""
