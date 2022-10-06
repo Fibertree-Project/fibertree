@@ -168,7 +168,6 @@ class TestFiberMutator(unittest.TestCase):
 
         self.assertEqual(f, f_ref)
 
-
     def test_split_equal_below_deep(self):
         """Test splitEqualBelow with depth=1"""
 

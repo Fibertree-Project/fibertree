@@ -1,4 +1,5 @@
-#cython: language_level=3
+# cython: language_level=3
+# cython: profile=True
 """Rank
 
 A class used to implement a rank (or dimension) of a tensor.
@@ -6,6 +7,7 @@ A class used to implement a rank (or dimension) of a tensor.
 """
 
 import logging
+import pickle
 
 from .fiber import Fiber
 from .payload import Payload
@@ -570,6 +572,18 @@ class Rank:
         string += ", ".join([x.__repr__() for x in self.fibers])
         string += "]"
         return string
+
+#
+# Copy operation
+#
+    def __deepcopy__(self, memo):
+        """__deepcopy__
+
+        Note: to ensure maintainability, we want to automatically copy
+        everything. We use pickling because it is much more performant
+        than the default deepcopy
+        """
+        return pickle.loads(pickle.dumps(self))
 
 #
 # Utility functions

@@ -6,6 +6,7 @@ of an element of a fiber.
 
 """
 import logging
+import pickle
 
 from .metrics import Metrics
 
@@ -649,6 +650,18 @@ class Payload:
             ans = self.value << other
 
         return Payload(ans)
+
+#
+# Copy operation
+#
+    def __deepcopy__(self, memo):
+        """__deepcopy__
+
+        Note: to ensure maintainability, we want to automatically copy
+        everything. We use pickling because it is much more performant
+        than the default deepcopy
+        """
+        return pickle.loads(pickle.dumps(self))
 
 #
 # Conversion methods - to/from dictionaries

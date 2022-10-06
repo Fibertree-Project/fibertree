@@ -1,4 +1,5 @@
-#cython: language_level=3
+# cython: language_level=3
+# cython: profile=True
 """Tensor
 
 A class used to implement the a tensor based on the **fibertree**
@@ -8,6 +9,7 @@ abstraction for representing tensors.
 import logging
 
 import copy
+import pickle
 import yaml
 from copy import deepcopy
 
@@ -648,7 +650,6 @@ class Tensor:
 
     def _addFiber(self, fiber, level=0):
         """Recursively fill in ranks from "fiber"."""
-
         self.ranks[level].append(fiber)
 
         # Note: The code below handles the (probably abandoned)
@@ -658,7 +659,6 @@ class Tensor:
         for p in fiber.getPayloads():
             if Payload.contains(p, Fiber):
                 self._addFiber(Payload.get(p), level + 1)
-
 
     def getRoot(self):
         """Get the root fiber of the tensor
@@ -1240,15 +1240,14 @@ class Tensor:
         #
         # Create new shape list
         #
-        # TBD: Create shape
-        #
-        shape = None
+        shape = self.getShape(authoritative=True)
+        if shape:
+            shape.insert(depth + 1, shape[depth])
 
         #
         # Create new root fiber
         #
-        root_copy = copy.deepcopy(self.getRoot())
-        root = func(root_copy, *args, **kwargs)
+        root = func(self.getRoot(), *args, **kwargs)
 
         #
         # Create Tensor from rank_ids and root fiber
@@ -1696,6 +1695,18 @@ class Tensor:
 
         with open(filename, 'w') as file:
             yaml.dump(tensor_dict, file)
+
+#
+# Copy operation
+#
+    def __deepcopy__(self, memo):
+        """__deepcopy__
+
+        Note: to ensure maintainability, we want to automatically copy
+        everything. We use pickling because it is much more performant
+        than the default deepcopy
+        """
+        return pickle.loads(pickle.dumps(self))
 
 #
 # Utility methods

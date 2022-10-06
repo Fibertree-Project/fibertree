@@ -6,6 +6,7 @@ A class used to store all attributes of a Rank
 """
 
 from copy import deepcopy
+import pickle
 
 from .payload import Payload
 
@@ -311,3 +312,14 @@ class RankAttrs:
     def __repr__(self):
         """__repr__"""
         return "(RankAttrs, " + ", ".join(repr(val) for val in self.__key()) + ")"
+#
+# Copy operation
+#
+    def __deepcopy__(self, memo):
+        """__deepcopy__
+
+        Note: to ensure maintainability, we want to automatically copy
+        everything. We use pickling because it is much more performant
+        than the default deepcopy
+        """
+        return pickle.loads(pickle.dumps(self))

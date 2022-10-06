@@ -75,7 +75,7 @@ class TestFiberInfixSplit(unittest.TestCase):
             f.splitNonUniform([0, 10, 20, 30, 40])
 
     def test_split_equal(self):
-        """Test splitUniform"""
+        """Test splitEqual"""
 
         self.ans = {}
 

@@ -36,7 +36,7 @@ class TestFiberTensorSplitDeep(unittest.TestCase):
         rankids = t.getRankIds()
 
         for depth, rankid in enumerate(rankids):
-    
+
             with self.subTest(test=f"splitUniform(2, [depth={depth} | rankid='{rankid}'])"):
                 t1a = t.splitUniform(2, depth=depth)
                 t1b = t.splitUniform(2, rankid=rankid)
@@ -50,7 +50,7 @@ class TestFiberTensorSplitDeep(unittest.TestCase):
 
 
             with self.subTest(test=f"splitNonUniform[0,1], [depth={depth} | rankid='{rankid}'])"):
-            
+
                 t2a = t.splitNonUniform([0, 1], depth=depth)
                 t2b = t.splitNonUniform([0, 1], rankid=rankid)
                 self.assertEqual(t2b, t2a)
@@ -62,7 +62,7 @@ class TestFiberTensorSplitDeep(unittest.TestCase):
                 self.assertEqual(i2b, i2a)
 
             with self.subTest(test=f"splitEqual(2, [depth={depth} | rankid='{rankid}'])"):
-            
+
                 t3a = t.splitEqual(2, depth=depth)
                 t3b = t.splitEqual(2, rankid=rankid)
                 self.assertEqual(t3b, t3a)
@@ -73,7 +73,7 @@ class TestFiberTensorSplitDeep(unittest.TestCase):
                 i3b = f.splitEqual(2, rankid=rankid)
                 self.assertEqual(i3b, i3a)
 
-            
+
             with self.subTest(test=f"splitUnEqual([1,3], [depth={depth}, rankid='{rankid}'])"):
 
                  t4a = t.splitUnEqual([1,3], depth=depth)

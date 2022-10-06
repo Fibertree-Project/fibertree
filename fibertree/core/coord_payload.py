@@ -6,6 +6,7 @@ coordinate/payload tuple.
 
 """
 import logging
+import pickle
 
 from .payload import Payload
 
@@ -387,6 +388,18 @@ class CoordPayload():
             return self.payload != other.payload
 
         return self.payload != other
+
+    #
+    # Copy operation
+    #
+    def __deepcopy__(self, memo):
+        """__deepcopy__
+
+        Note: to ensure maintainability, we want to automatically copy
+        everything. We use pickling because it is much more performant
+        than the default deepcopy
+        """
+        return pickle.loads(pickle.dumps(self))
 
     #
     # Printing

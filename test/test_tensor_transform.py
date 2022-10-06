@@ -49,8 +49,8 @@ class TestTensorTransform(unittest.TestCase):
         a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
         a_verify = Tensor.fromYAMLfile("./data/tensor_transform-a-splitUniform_1.yaml")
 
-        tests = { "by-depth": {"depth": 1},
-                  "by-name":  {"rankid": "N"}}
+        tests = { "by-depth": {"depth": 1}}
+                  # "by-name":  {"rankid": "N"}}
 
         for test, kwargs in tests.items():
             with self.subTest(test=test):
@@ -76,7 +76,6 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
-
 
     def test_splitNonUniform_0(self):
         """ Test splitNonUniform - depth=0 """
@@ -194,8 +193,6 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
-
-
 
     def test_splitUnEqual_0(self):
         """ Test splitUnEqual - depth=0 """

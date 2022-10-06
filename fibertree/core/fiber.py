@@ -1,4 +1,5 @@
-#cython: language_level=3
+# cython: language_level=3
+# cython: profile=True
 """Fiber
 
 A class used to implement the fibers (or the entire **fibertree**) of
@@ -10,7 +11,8 @@ import logging
 
 from functools import partialmethod
 import bisect
-from copy import deepcopy
+import copy
+import pickle
 import yaml
 import random
 
@@ -2306,8 +2308,7 @@ class Fiber:
                 p.updatePayloads(func, depth=depth - 1)
         else:
             # Update my payloads
-            for c, p in self.iterOccupancy(start_pos=0):
-                i = self.getSavedPos()
+            for i, (c, p) in enumerate(self.iterOccupancy()):
                 self.payloads[i] = func(i, c, p)
 
         return None
@@ -3077,16 +3078,18 @@ class Fiber:
 
         return self.splitEqual ((occupancy+partitions-1)//partitions)
 
-
     def splitUniform(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None, halo=0):
         """Split a fiber uniformly in coordinate space
 
         Parameters
         ----------
-        step: integer
+        step: int
             The `step` between initial coordinates in each split
 
-        relative_coords: Bool
+        partitions: int
+            What is this?!?!?
+
+        relative_coords: bool
             Should the coordinate in the split fibers match the
             original coordinates (`relativeCoords`=False) or always
             start at zero (`relativeCoords`=True)
@@ -3120,10 +3123,11 @@ class Fiber:
 
         class _SplitterUniform():
 
-            def __init__(self, fiber, step, halo):
+            def __init__(self, fiber, step, halo, relative):
                 self.fiber = fiber
                 self.step = step
                 self.halo = halo
+                self.relative = relative
 
             def __iter__(self):
                 if len(self.fiber) == 0:
@@ -3133,6 +3137,8 @@ class Fiber:
                     assert isinstance(self.fiber.coords[0], int)
 
                 last_part = 0
+                coords = []
+                payloads = []
                 for i, (c, p) in enumerate(self.fiber.iterOccupancy(start_pos=start)):
                     part = c // self.step * self.step
 
@@ -3141,33 +3147,54 @@ class Fiber:
                         # The halo needs to be in the previous partition
                         halo_part = part - self.step
 
+                        # If this is the halo for a new partition, first finish
+                        # off the old one
+                        if halo_part != last_part and coords:
+                            yield self.build_elem(last_part, coords, payloads)
+
+                            # Clear the lists
+                            coords = []
+                            payloads = []
+
                         # Iterate until we reach the end of the halo
                         pos = self.fiber.getSavedPos()
                         for hc, hp in self.fiber.iterOccupancy(start_pos=pos):
                             if hc - part >= self.halo:
                                 break
 
-                            yield halo_part, hc, hp
+                            coords.append(hc)
+                            payloads.append(hp)
 
-                    yield part, c, p
+                        # Yield the partition with the halo
+                        if coords:
+                            yield self.build_elem(halo_part, coords, payloads)
+
+                            # Clear the lists
+                            coords = []
+                            payloads = []
+
+                    coords.append(c)
+                    payloads.append(p)
 
                     # Set the last_part
                     last_part = part
 
+                if coords:
+                    yield self.build_elem(last_part, coords, payloads)
+
+            def build_elem(self, part, coords, payloads):
+                if self.relative:
+                    coords = [c - part for c in coords]
+
+                active_range = (part, min(part + self.step, self.fiber.getActive()[1]))
+                return part, coords, payloads, active_range
+
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
-        if depth > 0:
-            split_fiber = deepcopy(self)
-            update_lambda = lambda i, c, p: p.splitUniform(step, partitions, relativeCoords)
-            split_fiber.updatePayloads(update_lambda, depth=depth-1)
-            return split_fiber
+        splitter = lambda f: _SplitterUniform(f, step, halo, relativeCoords)
 
-        splitter = _SplitterUniform(self, step, halo)
-
-        return self._splitGeneric(splitter,
-                                  partitions,
-                                  relativeCoords=relativeCoords)
+        return self._splitGeneric(splitter, depth=depth, partitions=partitions)
 
 
     def splitNonUniform(self, splits, partitions=1, relativeCoords=False, depth=0, rankid=None):
@@ -3178,7 +3205,10 @@ class Fiber:
         splits: list of integers
             A list of the starting coordinates for each split
 
-        relative_coords: Bool
+        partitions: int
+            What is this?!?!?
+
+        relative_coords: bool
             Should the coordinate in the split fibers match the
             original coordinates (`relativeCoords`=False) or always
             start at zero (`relativeCoords`=True)
@@ -3209,7 +3239,7 @@ class Fiber:
 
         class _SplitterNonUniform():
 
-            def __init__(self, fiber, splits):
+            def __init__(self, fiber, splits, relative):
                 self.fiber = fiber
 
                 if Payload.contains(splits, Fiber):
@@ -3221,29 +3251,52 @@ class Fiber:
                 # If it is after the last coordinate, it is in the last partition
                 self.splits.insert(0, None)
                 self.splits.append(float("inf"))
-                self.ind = 0
+
+                self.relative = relative
 
             def __iter__(self):
-                for i, (c, p) in enumerate(self.fiber.iterOccupancy()):
-                    while c >= self.splits[self.ind + 1]:
-                        self.ind += 1
+                ind = 0
+                last_ind = 0
 
-                    yield self.splits[self.ind], c, p
+                coords = []
+                payloads = []
+                for i, (c, p) in enumerate(self.fiber.iterOccupancy()):
+                    while c >= self.splits[ind + 1]:
+                        ind += 1
+
+                    if ind != last_ind and coords:
+                        if last_ind:
+                            yield self.build_elem(last_ind, coords, payloads)
+
+                        coords = []
+                        payloads = []
+
+                    coords.append(c)
+                    payloads.append(p)
+
+                    last_ind = ind
+
+                if last_ind and coords:
+                    yield self.build_elem(last_ind, coords, payloads)
+
+            def build_elem(self, ind, coords, payloads):
+                if relativeCoords:
+                    coords = [c - self.splits[ind] for c in coords]
+
+                range_end = self.splits[ind + 1]
+                if range_end == float("inf"):
+                    range_end = self.fiber.getActive()[1]
+
+                active_range = (self.splits[ind], range_end)
+                return self.splits[ind], coords, payloads, active_range
+
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
-        if depth > 0:
-            split_fiber = deepcopy(self)
-            update_lambda = lambda i, c, p: p.splitNonUniform(splits, partitions, relativeCoords)
-            split_fiber.updatePayloads(update_lambda, depth=depth-1)
-            return split_fiber
+        splitter = lambda f: _SplitterNonUniform(f, splits, relativeCoords)
 
-        splitter = _SplitterNonUniform(self, splits)
-
-        return self._splitGeneric(splitter,
-                                  partitions,
-                                  relativeCoords=relativeCoords)
+        return self._splitGeneric(splitter, depth=depth, partitions=partitions)
 
 
     def splitEqual(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None, halo=0):
@@ -3254,7 +3307,10 @@ class Fiber:
         step: integer
             The `step` in number of elements in each split
 
-        relative_coords: Bool
+        partitions: int
+            What is this?!?!?
+
+        relative_coords: bool
             Should the coordinate in the split fibers match the
             original coordinates (`relativeCoords`=False) or always
             start at zero (`relativeCoords`=True)
@@ -3274,7 +3330,7 @@ class Fiber:
         Returns
         -------
         split_fiber: Fiber
-            A fibertree with one more level corresonding to the
+            A fibertree with one more level corresponding to the
             splits of the original fiber
 
         Notes:
@@ -3289,13 +3345,11 @@ class Fiber:
 
         class _SplitterEqual():
 
-            def __init__(self, fiber, step, halo):
+            def __init__(self, fiber, step, halo, relative):
                 self.fiber = fiber
                 self.step = step
                 self.halo = halo
-
-                self.coord = None
-                self.part = None
+                self.relative = relative
 
             def __iter__(self):
                 if len(self.fiber) == 0:
@@ -3303,10 +3357,15 @@ class Fiber:
                 else:
                     start = 0
 
+                parts = []
+                coords = []
+                payloads = []
                 for i, (c, p) in enumerate(self.fiber.iterOccupancy(start_pos=start)):
                     # The first partition is labeled by the first coordinate
                     if i == 0:
-                        self.coord = c
+                        parts.append(c)
+                        coords.append([])
+                        payloads.append([])
 
                     # Otherwise, if we are about to start a new partition,
                     # then we need to build the halo first
@@ -3321,28 +3380,39 @@ class Fiber:
                             if hc - c >= self.halo:
                                 break
 
-                            yield self.coord, hc, hp
+                            coords[-1].append(hc)
+                            payloads[-1].append(hp)
 
                         # Now start the new partition
-                        self.coord = c
+                        parts.append(c)
+                        coords.append([])
+                        payloads.append([])
 
-                    yield self.coord, c, p
+                    coords[-1].append(c)
+                    payloads[-1].append(p)
 
+                for i, (clist, plist) in enumerate(zip(coords, payloads)):
+                    yield self.build_elem(i, parts, clist, plist)
+
+            def build_elem(self, i, parts, coords, payloads):
+                if self.relative:
+                    coords = [c - parts[i] for c in coords]
+
+                if i + 1 < len(parts):
+                    range_end = parts[i + 1]
+                else:
+                    range_end = self.fiber.getActive()[1]
+
+                active_range = (parts[i], range_end)
+                return parts[i], coords, payloads, active_range
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
-        if depth > 0:
-            split_fiber = deepcopy(self)
-            update_lambda = lambda i, c, p: p.splitEqual(step, partitions, relativeCoords)
-            split_fiber.updatePayloads(update_lambda, depth=depth-1)
-            return split_fiber
+        splitter = lambda f: _SplitterEqual(f, step, halo, relativeCoords)
 
-        splitter = _SplitterEqual(self, step, halo)
+        return self._splitGeneric(splitter, depth=depth, partitions=partitions)
 
-        return self._splitGeneric(splitter,
-                                  partitions,
-                                  relativeCoords=relativeCoords)
 
 
     def splitUnEqual(self, sizes, partitions=1, relativeCoords=False, depth=0, rankid=None):
@@ -3386,44 +3456,61 @@ class Fiber:
 
         class _SplitterUnEqual():
 
-            def __init__(self, fiber, sizes):
+            def __init__(self, fiber, sizes, relative):
                 self.fiber = fiber
                 self.sizes = sizes
                 self.sizes.append(float("inf"))
+                self.relative = relative
 
                 self.coord = None
                 self.count = 0
                 self.ind = 0
 
             def __iter__(self):
+                parts = []
+                coords = []
+                payloads = []
+
+                count = 0
+                ind  = 0
+
                 for i, (c, p) in enumerate(self.fiber.iterOccupancy()):
                     # If this is the first payload in the partition, save the coordinate
-                    if self.count == 0:
-                        self.coord = c
+                    if count == 0:
+                        parts.append(c)
+                        coords.append([])
+                        payloads.append([])
 
-                    yield self.coord, c, p
+                    coords[-1].append(c)
+                    payloads[-1].append(p)
 
                     # If this is the last payload in the partition, end the partition
-                    self.count += 1
-                    if self.count == self.sizes[self.ind]:
-                        self.count = 0
-                        self.ind += 1
+                    count += 1
+                    if count == self.sizes[ind]:
+                        count = 0
+                        ind += 1
 
+                for i, (clist, plist) in enumerate(zip(coords, payloads)):
+                    yield self.build_elem(i, parts, clist, plist)
+
+            def build_elem(self, i, parts, coords, payloads):
+                if self.relative:
+                    coords = [c - parts[i] for c in coords]
+
+                if i + 1 < len(parts):
+                    range_end = parts[i + 1]
+                else:
+                    range_end = self.fiber.getActive()[1]
+
+                active_range = (parts[i], range_end)
+                return parts[i], coords, payloads, active_range
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
-        if depth > 0:
-            split_fiber = deepcopy(self)
-            update_lambda = lambda i, c, p: p.splitUnEqual(sizes, partitions, relativeCoords)
-            split_fiber.updatePayloads(update_lambda, depth=depth-1)
-            return split_fiber
+        splitter = lambda f: _SplitterUnEqual(f, sizes, relativeCoords)
 
-        splitter = _SplitterUnEqual(self, sizes)
-
-        return self._splitGeneric(splitter,
-                                  partitions,
-                                  relativeCoords=relativeCoords)
+        return self._splitGeneric(splitter, depth=depth, partitions=partitions)
 
 
     def _rankid2depth(self, rankid):
@@ -3442,100 +3529,67 @@ class Fiber:
 
 
 
-    def _splitGeneric(self, splitter, partitions, relativeCoords):
-        """_splitGeneric
+    def _splitGeneric(self, splitter, depth=0, partitions=1):
+        """Generic partitioning function
 
-        Takes the current fiber and splits it according to the
-        boundaries defined by splitter().  The result is a new rank
-        (for paritions = 1) or two new ranks (for partitions > 1).
+        Parameters
+        ----------
 
-        rank2 - uppermost rank with one coordinate per partition
-                only exists for partitions > 1
-        rank1 - middle rank with one coordinate per split
-        rank0 - lowest rank with fibers split out from the original fiber
+        splitter: Iterator
+            An iterator that yields 4 element tuples:
+            (partition_coord, coord_list, payload_list, active_range)
 
+        depth: int
+            The depth of the rank to actually partition
+
+        partitions:
+            TODO: What is this?!?!?
+
+        Returns
+        -------
+
+        fiber: Fiber
+            A fiber like self with the top rank split into two according to the
+            splitter
         """
+        # fiber = pickle.loads(pickle.dumps(self))
+        fiber = copy.deepcopy(self)
+        fiber.setOwner(None)
 
-        rank0_fiber_group = []
-        rank0_fiber_coords = []
-        rank0_fiber_payloads = []
+        if depth == 0:
+            return fiber._splitFiber(splitter, partitions)
 
-        rank1_fiber_coords = []
-        rank1_fiber_payloads = []
+        fiber.updatePayloadsBelow(Fiber._splitFiber, splitter, partitions, depth=depth-1)
+        return fiber
 
-        # Create arrays for rank1 fibers per partition
+    def _splitFiber(self, splitter, partitions=1):
+        """Split a single fiber into two according to the splitter
 
-        for i in range(partitions):
-            rank1_fiber_coords.append([])
-            rank1_fiber_payloads.append([])
+        Parameters
+        ----------
 
-        cur_coords = None
-        cur_payloads = None
+        splitter: Iterator
+            An iterator that yields 4 element tuples:
+            (partition_coord, coord_list, payload_list, active_range)
 
-        # Split apart the fiber into groups according to "splitter"
+        partitions:
+            TODO: What is this?!?!?
 
-        rank1_coord = None
+        Returns
+        -------
 
-        for part, c, p in splitter:
-            # End the old partition
-            if part != rank1_coord:
-                rank1_coord = part
-                cur_coords = None
-                cur_payloads = None
+        fiber: Fiber
+            A fiber like self with the top rank split into two according to the
+            splitter
+        """
+        upper = Fiber(default=Fiber(), active_range=self.getActive())
 
-            if part is None:
-                continue
+        for part, coords, payloads, active_range in splitter(self):
+            lower = Fiber(coords=coords, payloads=payloads, active_range=active_range)
+            upper.coords.append(part)
+            upper.payloads.append(lower)
 
-            # Start a new partition if necessary
-            if cur_coords is None:
-                rank0_offset = rank1_coord
-                rank0_fiber_group.append(rank1_coord)
-
-                cur_coords = []
-                rank0_fiber_coords.append(cur_coords)
-
-                cur_payloads = []
-                rank0_fiber_payloads.append(cur_payloads)
-
-
-            # Add this coordinate/payload to the relevant partition
-            if relativeCoords:
-                cur_coords.append(c - rank0_offset)
-            else:
-                cur_coords.append(c)
-
-            cur_payloads.append(p)
-
-
-
-        # Deal the split fibers out to the partitions
-
-        partition = 0
-
-        for c1, c0, p0 in zip(rank0_fiber_group,
-                              rank0_fiber_coords,
-                              rank0_fiber_payloads):
-
-            rank1_fiber_coords[partition].append(c1)
-            rank1_fiber_payloads[partition].append(Fiber(c0, p0))
-            partition = (partition + 1) % partitions
-
-        # For 1 partition don't return a extra level of Fiber
-
-        if partitions == 1:
-            fiber = self._newFiber(rank1_fiber_coords[0], rank1_fiber_payloads[0])
-            fiber._setDefault(Fiber())
-            return fiber
-
-        # For >1 partitions return a Fiber with a payload for each partition
-
-        payloads = []
-
-        for c1, p1 in zip(rank1_fiber_coords, rank1_fiber_payloads):
-            payload = self._newFiber(c1, p1)
-            payloads.append(payload)
-
-        return self._newFiber(payloads=payloads)
+        return upper
 
 #
 # Operation methods
@@ -3980,6 +4034,17 @@ class Fiber:
     unflattenRanksBelow = partialmethod(updatePayloadsBelow,
                                         unflattenRanks)
 
+#
+# Copy operation
+#
+    def __deepcopy__(self, memo):
+        """__deepcopy__
+
+        Note: to ensure maintainability, we want to automatically copy
+        everything. We use pickling because it is much more performant
+        than the default deepcopy
+        """
+        return pickle.loads(pickle.dumps(self))
 
 #
 #  Comparison operations
@@ -4243,7 +4308,6 @@ class Fiber:
             f_payloads = []
             for y_f_payload in y_f_payloads:
                 f_payloads.append(Fiber.dict2fiber(y_f_payload, level + 1))
-
             #
             # Turn into a fiber
             #
