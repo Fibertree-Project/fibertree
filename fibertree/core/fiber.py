@@ -3562,7 +3562,7 @@ class Fiber:
 
 
 
-    def _splitGeneric(self, splitter, depth=0, partitions=1):
+    def _splitGeneric(self, splitter, depth=0):
         """Generic partitioning function
 
         Parameters
@@ -3574,9 +3574,6 @@ class Fiber:
 
         depth: int
             The depth of the rank to actually partition
-
-        partitions:
-            TODO: What is this?!?!?
 
         Returns
         -------
@@ -3590,12 +3587,12 @@ class Fiber:
         fiber.setOwner(None)
 
         if depth == 0:
-            return fiber._splitFiber(splitter, partitions)
+            return fiber._splitFiber(splitter)
 
-        fiber.updatePayloadsBelow(Fiber._splitFiber, splitter, partitions, depth=depth-1)
+        fiber.updatePayloadsBelow(Fiber._splitFiber, splitter, depth=depth-1)
         return fiber
 
-    def _splitFiber(self, splitter, partitions=1):
+    def _splitFiber(self, splitter):
         """Split a single fiber into two according to the splitter
 
         Parameters
@@ -3605,15 +3602,22 @@ class Fiber:
             An iterator that yields 4 element tuples:
             (partition_coord, coord_list, payload_list, active_range)
 
-        partitions:
-            TODO: What is this?!?!?
-
         Returns
         -------
 
         fiber: Fiber
             A fiber like self with the top rank split into two according to the
             splitter
+
+        Notes
+        -----
+
+        This method should never be called directly, it should only be invoked
+        as a result of a call to Fiber._splitGeneric.
+
+        In light of the above, this method does not copy the fiber (so the
+        result may contain references to the payloads of self).
+
         """
         upper = Fiber(default=Fiber(), active_range=self.getActive())
 
