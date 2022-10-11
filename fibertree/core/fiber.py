@@ -9,12 +9,14 @@ a tensor.
 
 import logging
 
-from functools import partialmethod
 import bisect
 import copy
+from functools import partialmethod
+import numbers
 import pickle
-import yaml
 import random
+
+import yaml
 
 from .coord_payload import CoordPayload
 from .iterators import coiterShape, coiterShapeRef, coiterActiveShape, \
@@ -3139,39 +3141,35 @@ class Fiber:
                 last_part = 0
                 coords = []
                 payloads = []
-                for i, (c, p) in enumerate(self.fiber.iterOccupancy(start_pos=start)):
+                for c, p in self.fiber.iterActive(start_pos=start):
                     part = c // self.step * self.step
 
                     # If we are about to end an old part, start the halo
                     if part != last_part:
-                        # The halo needs to be in the previous partition
-                        halo_part = part - self.step
+                        # Build the halo
+                        pos = self.fiber.getSavedPos()
+                        halo_info = self.build_halo(pos)
 
-                        # If this is the halo for a new partition, first finish
-                        # off the old one
-                        if halo_part != last_part and coords:
+                        # If the halo is part of the current partition, add it
+                        if halo_info and halo_info[0] == last_part:
+                            coords.extend(halo_info[1])
+                            payloads.extend(halo_info[2])
+
+                        # Otherwise, finish the last partition and prepare to
+                        # yield the halo
+                        elif halo_info:
+                            if coords:
+                                yield self.build_elem(last_part, coords, payloads)
+
+                            last_part, coords, payloads = halo_info
+
+                        # Yield the last partition, halo and all
+                        if coords:
                             yield self.build_elem(last_part, coords, payloads)
 
-                            # Clear the lists
-                            coords = []
-                            payloads = []
-
-                        # Iterate until we reach the end of the halo
-                        pos = self.fiber.getSavedPos()
-                        for hc, hp in self.fiber.iterOccupancy(start_pos=pos):
-                            if hc - part >= self.halo:
-                                break
-
-                            coords.append(hc)
-                            payloads.append(hp)
-
-                        # Yield the partition with the halo
-                        if coords:
-                            yield self.build_elem(halo_part, coords, payloads)
-
-                            # Clear the lists
-                            coords = []
-                            payloads = []
+                        # Clear the lists
+                        coords = []
+                        payloads = []
 
                     coords.append(c)
                     payloads.append(p)
@@ -3179,15 +3177,50 @@ class Fiber:
                     # Set the last_part
                     last_part = part
 
+                # Add the final halo
+                pos = self.fiber.getSavedPos()
+                halo_info = self.build_halo(pos + 1)
+
+                if halo_info:
+                    assert halo_info[0] == last_part
+                    coords.extend(halo_info[1])
+                    payloads.extend(halo_info[2])
+
                 if coords:
                     yield self.build_elem(last_part, coords, payloads)
 
             def build_elem(self, part, coords, payloads):
+                """Build a partition from its coordinate, and fiber defined by
+                the given coordinates and payloads"""
                 if self.relative:
                     coords = [c - part for c in coords]
 
                 active_range = (part, min(part + self.step, self.fiber.getActive()[1]))
                 return part, coords, payloads, active_range
+
+            def build_halo(self, start_pos):
+                """Build the halo that includes the element starting at start_pos"""
+                # Ensure that there are elements to add to the halo
+                if start_pos >= len(self.fiber):
+                    return
+
+                part = self.fiber.coords[start_pos] // self.step * self.step - self.step
+
+                # Ensure that at least some part of the partition is within
+                # the active range
+                if part + self.step <= self.fiber.getActive()[0]:
+                    return
+
+                coords = []
+                payloads = []
+                for c, p in self.fiber.iterOccupancy(start_pos=start_pos):
+                    if c - part >= self.step + self.halo:
+                        break
+
+                    coords.append(c)
+                    payloads.append(p)
+
+                return part, coords, payloads
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3360,7 +3393,7 @@ class Fiber:
                 parts = []
                 coords = []
                 payloads = []
-                for i, (c, p) in enumerate(self.fiber.iterOccupancy(start_pos=start)):
+                for i, (c, p) in enumerate(self.fiber.iterActive(start_pos=start)):
                     # The first partition is labeled by the first coordinate
                     if i == 0:
                         parts.append(c)
@@ -3371,17 +3404,9 @@ class Fiber:
                     # then we need to build the halo first
                     elif i % self.step == 0:
                         pos = self.fiber.getSavedPos()
-                        for hc, hp in self.fiber.iterOccupancy(start_pos=pos):
-                            # No halo allowed for tuple coordinates
-                            if isinstance(hc, tuple):
-                                assert self.halo == 0
-                                break
-
-                            if hc - c >= self.halo:
-                                break
-
-                            coords[-1].append(hc)
-                            payloads[-1].append(hp)
+                        halo_coords, halo_payloads = self.build_halo(c, pos)
+                        coords[-1].extend(halo_coords)
+                        payloads[-1].extend(halo_payloads)
 
                         # Now start the new partition
                         parts.append(c)
@@ -3391,6 +3416,13 @@ class Fiber:
                     coords[-1].append(c)
                     payloads[-1].append(p)
 
+                pos = self.fiber.getSavedPos()
+                halo_info = self.build_halo(self.fiber.getActive()[1], pos + 1)
+
+                if halo_info is not None:
+                    coords[-1].extend(halo_info[0])
+                    payloads[-1].extend(halo_info[1])
+
                 for i, (clist, plist) in enumerate(zip(coords, payloads)):
                     yield self.build_elem(i, parts, clist, plist)
 
@@ -3398,13 +3430,39 @@ class Fiber:
                 if self.relative:
                     coords = [c - parts[i] for c in coords]
 
+                if i == 0:
+                    range_start = self.fiber.getActive()[0]
+                else:
+                    range_start = parts[i]
+
                 if i + 1 < len(parts):
                     range_end = parts[i + 1]
                 else:
                     range_end = self.fiber.getActive()[1]
 
-                active_range = (parts[i], range_end)
+                active_range = (range_start, range_end)
                 return parts[i], coords, payloads, active_range
+
+            def build_halo(self, part_end, part_end_pos):
+                """Build a halo starting at a given part_end_pos"""
+                if part_end_pos >= len(self.fiber):
+                    return
+
+                if self.halo == 0:
+                    return [], []
+
+                assert isinstance(part_end, numbers.Number)
+
+                coords = []
+                payloads = []
+                for c, p in self.fiber.iterOccupancy(start_pos=part_end_pos):
+                    if c - part_end >= self.halo:
+                        break
+
+                    coords.append(c)
+                    payloads.append(p)
+
+                return coords, payloads
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3765,13 +3823,21 @@ class Fiber:
         coords = []
         payloads = []
 
-        for c1, p1 in zip(self.coords, cur_payloads):
+        range_start = None
+        range_end = None
+
+        for i, (c1, p1) in enumerate(zip(self.coords, cur_payloads)):
 
             if Payload.contains(p1, Fiber):
                 #
                 # Handle case where payload of next rank is a Fiber
                 #
                 p1 = Payload.get(p1)
+                if i == 0:
+                    range_start, range_end = p1.getActive()
+                else:
+                    range_start = min(range_start, p1.getActive()[0])
+                    range_end = max(range_end, p1.getActive()[1])
 
                 for c0, p0 in p1:
                     coords.append(self._flattenCoords(c1,
@@ -3780,6 +3846,7 @@ class Fiber:
                     payloads.append(p0)
 
             elif Payload.contains(p1, tuple):
+                raise ValueError
                 #
                 # Handle case where payload is a tuple. In this case,
                 # look for the first fiber in the "p1" tuple and use
@@ -3832,7 +3899,12 @@ class Fiber:
         #
         # TBD: set default
         #
-        return Fiber(coords, payloads)
+        if range_start is None:
+            range_start = 0
+            range_end = float("inf")
+
+        active_range = ((self.getActive()[0], range_start), (self.getActive()[1], range_end))
+        return Fiber(coords, payloads, active_range=active_range)
 
     @staticmethod
     def _flattenCoords(c1, c0, style="nested"):
