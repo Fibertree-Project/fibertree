@@ -3080,16 +3080,13 @@ class Fiber:
 
         return self.splitEqual ((occupancy+partitions-1)//partitions)
 
-    def splitUniform(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None, halo=0):
+    def splitUniform(self, step, relativeCoords=False, depth=0, rankid=None, halo=0):
         """Split a fiber uniformly in coordinate space
 
         Parameters
         ----------
         step: int
             The `step` between initial coordinates in each split
-
-        partitions: int
-            What is this?!?!?
 
         relative_coords: bool
             Should the coordinate in the split fibers match the
@@ -3111,11 +3108,6 @@ class Fiber:
         split_fiber: Fiber
             A fibertree with one more level corresonding to the
             splits of the original fiber.
-
-        Notes:
-        -------
-        References to pieces of the original tensor may be returned as
-        pieces of the returned tensor.
 
         """
 
@@ -3227,19 +3219,16 @@ class Fiber:
 
         splitter = lambda f: _SplitterUniform(f, step, halo, relativeCoords)
 
-        return self._splitGeneric(splitter, depth=depth, partitions=partitions)
+        return self._splitGeneric(splitter, depth=depth)
 
 
-    def splitNonUniform(self, splits, partitions=1, relativeCoords=False, depth=0, rankid=None):
+    def splitNonUniform(self, splits, relativeCoords=False, depth=0, rankid=None):
         """Split a fiber non-uniformly in coordinate space
 
         Parameters
         ----------
         splits: list of integers
             A list of the starting coordinates for each split
-
-        partitions: int
-            What is this?!?!?
 
         relative_coords: bool
             Should the coordinate in the split fibers match the
@@ -3263,9 +3252,6 @@ class Fiber:
         Notes:
         -------
         One does not needs to include a split starting at coordinate zero.
-
-        References to pieces of the original tensor may be returned as
-        pieces of the returned tensor.
 
         """
         assert not self.isLazy()
@@ -3329,19 +3315,16 @@ class Fiber:
 
         splitter = lambda f: _SplitterNonUniform(f, splits, relativeCoords)
 
-        return self._splitGeneric(splitter, depth=depth, partitions=partitions)
+        return self._splitGeneric(splitter, depth=depth)
 
 
-    def splitEqual(self, step, partitions=1, relativeCoords=False, depth=0, rankid=None, halo=0):
+    def splitEqual(self, step, relativeCoords=False, depth=0, rankid=None, halo=0):
         """Split a fiber equally in postion space
 
         Parameters
         ----------
         step: integer
             The `step` in number of elements in each split
-
-        partitions: int
-            What is this?!?!?
 
         relative_coords: bool
             Should the coordinate in the split fibers match the
@@ -3365,11 +3348,6 @@ class Fiber:
         split_fiber: Fiber
             A fibertree with one more level corresponding to the
             splits of the original fiber
-
-        Notes:
-        -------
-        References to pieces of the original tensor may be returned as
-        pieces of the returned tensor.
 
         """
         assert not self.isLazy()
@@ -3419,10 +3397,12 @@ class Fiber:
                 pos = self.fiber.getSavedPos()
                 halo_info = self.build_halo(self.fiber.getActive()[1], pos + 1)
 
+                # Add the final halo
                 if halo_info is not None:
                     coords[-1].extend(halo_info[0])
                     payloads[-1].extend(halo_info[1])
 
+                # Yield the partitions
                 for i, (clist, plist) in enumerate(zip(coords, payloads)):
                     yield self.build_elem(i, parts, clist, plist)
 
@@ -3469,11 +3449,9 @@ class Fiber:
 
         splitter = lambda f: _SplitterEqual(f, step, halo, relativeCoords)
 
-        return self._splitGeneric(splitter, depth=depth, partitions=partitions)
+        return self._splitGeneric(splitter, depth=depth)
 
-
-
-    def splitUnEqual(self, sizes, partitions=1, relativeCoords=False, depth=0, rankid=None):
+    def splitUnEqual(self, sizes, relativeCoords=False, depth=0, rankid=None):
         """Split a fiber unequally in postion space
 
         Split a fiber by the sizes in `sizes`.
@@ -3505,9 +3483,6 @@ class Fiber:
         ------
         If there are more coordinates than the sum of the `sizes` all
         remaining coordinates are put into the final split.
-
-        References to pieces of the original tensor may be returned as
-        pieces of the returned tensor.
 
         """
         assert not self.isLazy()
@@ -3568,7 +3543,7 @@ class Fiber:
 
         splitter = lambda f: _SplitterUnEqual(f, sizes, relativeCoords)
 
-        return self._splitGeneric(splitter, depth=depth, partitions=partitions)
+        return self._splitGeneric(splitter, depth=depth)
 
 
     def _rankid2depth(self, rankid):

@@ -807,45 +807,6 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(split.flattenRanks(style="absolute"), f)
 
-
-# NDN: Deprecated, REMOVE!!!
-#     def test_split_equal_partioned(self):
-#         """Test splitEqual(2, partitions=2)"""
-#
-#         #
-#         # Create the fiber to be split
-#         #
-#         c = [0, 1, 9, 10, 12, 31, 41]
-#         p = [ 1, 10, 20, 100, 120, 310, 410 ]
-#
-#         f = Fiber(c,p)
-#
-#         #
-#         # Create list of reference fibers after the split
-#         #
-#         a_coords = [0, 12]
-#         a1 = Fiber([0, 1], [1, 10])
-#         a2 = Fiber([12, 31], [120, 310])
-#         a = Fiber(coords=a_coords, payloads=[a1, a2])
-#
-#         b_coords = [9, 41]
-#         b1 = Fiber([9, 10], [20, 100])
-#         b2 = Fiber([41], [410])
-#         b = Fiber(coords=b_coords, payloads=[b1, b2])
-#
-#         split_ref = Fiber(payloads=[a, b])
-#
-#         #
-#         # Do the split
-#         #
-#         size = 2
-#         split = f.splitEqual(size, partitions=2)
-#
-#         #
-#         # Check the split
-#         #
-#         self.assertEqual(split, split_ref)
-
     @staticmethod
     def _make_fiber_a():
 
