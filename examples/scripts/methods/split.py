@@ -47,18 +47,3 @@ fibers = f.splitUnEqual(sizes)
 for c,s in fibers:
     s.print()
 
-#
-# Create multiple partitions
-#
-
-#
-# Equal position-based split
-#
-size = 2
-print(f"Two partitions with equal position split (groups of {size})\n")
-
-fibers = f.splitEqual(size, partitions=2)
-
-for c,s in fibers:
-    s.print()
-
