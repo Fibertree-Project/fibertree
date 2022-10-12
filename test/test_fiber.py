@@ -2698,6 +2698,78 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(fu, f)
 
+    def test_flatten_default_correct(self):
+        """Test flattening/unflattening 1 level"""
+
+        u_t = [[1, 2, 3, 0],
+               [1, 0, 3, 4],
+               [0, 2, 3, 4],
+               [1, 2, 0, 4]]
+
+        f = Fiber.fromUncompressed(u_t)
+
+        for _, f2 in f:
+            f2._setDefault(10)
+
+        ff = f.flattenRanks()
+        ff_ref = Fiber([(0, 0), (0, 1), (0, 2), (1, 0), (1, 2), (1, 3),
+                        (2, 1), (2, 2), (2, 3), (3, 0), (3, 1), (3, 3)],
+                        [1, 2, 3, 1, 3, 4, 2, 3, 4, 1, 2, 4])
+
+        self.assertEqual(ff, ff_ref)
+        self.assertEqual(ff.getDefault(), 10)
+
+        fu = ff.unflattenRanks()
+
+        self.assertEqual(fu, f)
+        self.assertEqual(fu.getDefault(), Fiber)
+
+        for _, f2 in fu:
+            self.assertEqual(f2.getDefault(), 10)
+
+    def test_flatten_deepcopies(self):
+        """Test flattening/unflattening 1 level"""
+
+        u_t = [[[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 2, 3, 4],
+                [1, 2, 0, 4]],
+               [[0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]],
+               [[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 0, 0, 0],
+                [1, 2, 0, 4]]]
+
+        f = Fiber.fromUncompressed(u_t)
+
+        ff = f.flattenRanks()
+
+        ff_ref = Fiber([(0, 0), (0, 1), (0, 2), (0, 3), (2, 0), (2, 1), (2, 3)],
+                       [Fiber([0, 1, 2], [1, 2, 3]),
+                        Fiber([0, 2, 3], [1, 3, 4]),
+                        Fiber([1, 2, 3], [2, 3, 4]),
+                        Fiber([0, 1, 3], [1, 2, 4]),
+                        Fiber([0, 1, 2], [1, 2, 3]),
+                        Fiber([0, 2, 3], [1, 3, 4]),
+                        Fiber([0, 1, 3], [1, 2, 4])])
+
+        self.assertEqual(ff, ff_ref)
+
+        changed = f.getPayload(0, 0)
+        changed.append(3, 1)
+
+        self.assertEqual(ff, ff_ref)
+
+    def test_flatten_payload_error(self):
+        """PayloadError is raised if the payloads of the given fiber are not fibers"""
+        f = Fiber.fromUncompressed([1, 2, 0, 0, 4, 0])
+
+        with self.assertRaises(PayloadError):
+            f.flattenRanks()
+
     def test_flatten_unflatten_eager_only(self):
         """Test flattening/unflattening, eager only"""
 

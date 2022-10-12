@@ -3715,6 +3715,8 @@ class Fiber:
         #
         # Flatten the (highest) two ranks
         #
+        # Note: We do not need to deepcopy explicitly, because flattenRanks
+        # does the deepcopy for us
         flattened = self.flattenRanks(style="pair")
 
         # Make sure that the flattened fiber has at least one coordinate
@@ -3782,6 +3784,30 @@ class Fiber:
         assert not self.isLazy()
         assert self._ordered and self._unique
 
+        # Ensure that we only deepcopy once
+        copied = copy.deepcopy(self)
+        copied.setOwner(None)
+
+        return copied._flattenRanksHelper(levels, style)
+
+    def _flattenRanksHelper(self, levels=1, style="tuple"):
+        """ Flatten the top two ranks of self
+
+        Parameters
+        ----------
+
+        levels: integer
+            Number of levels to flatten into the top level
+
+        style: One of ['tuple', 'pair', 'absolute', 'relative'], default='tuple'
+
+
+        Returns
+        -------
+
+        result: Fiber
+            Fiber with `level` ranks flattened into the current rank
+        """
         #
         # Flatten deeper levels first, if requested
         #
@@ -3794,96 +3820,96 @@ class Fiber:
             cur_payloads = []
 
             for p in self.payloads:
-                cur_payloads.append(p.flattenRanks(levels=levels - 1, style=style))
+                cur_payloads.append(p._flattenRanksHelper(
+                                        levels=levels - 1, style=style))
 
-        #
-        # Flatten this level
-        #
+
         coords = []
         payloads = []
 
         range_start = None
         range_end = None
 
+        default = Payload(0)
+
         for i, (c1, p1) in enumerate(zip(self.coords, cur_payloads)):
-
-            if Payload.contains(p1, Fiber):
-                #
-                # Handle case where payload of next rank is a Fiber
-                #
-                p1 = Payload.get(p1)
-                if i == 0:
-                    range_start, range_end = p1.getActive()
-                else:
-                    range_start = min(range_start, p1.getActive()[0])
-                    range_end = max(range_end, p1.getActive()[1])
-
-                for c0, p0 in p1:
-                    coords.append(self._flattenCoords(c1,
-                                                      c0,
-                                                      style=style))
-                    payloads.append(p0)
-
-            elif Payload.contains(p1, tuple):
-                raise ValueError
-                #
-                # Handle case where payload is a tuple. In this case,
-                # look for the first fiber in the "p1" tuple and use
-                # that fiber to flatten the ranks. The payloads of the
-                # new flattened rank is a new tuple containing a
-                # payload from that fiber and the the other values in
-                # the "p1" tuple.
-                #
-                # Note: unflattening the fiber tree created in this
-                # scenario will not recreate the original pre-flattened
-                # fiber tree
-                #
-                p1 = Payload.get(p1)
-
-                #
-                # Find the fiber..
-                #
-                p1_fiber = None
-
-                for n, p1_p in enumerate(p1):
-                    if Payload.contains(p1_p, Fiber):
-                        p1_fiber = p1_p
-
-                        if len(p1) == 2:
-                            # value is other element of tuple
-                            p1_value = p1[(n + 1) % 2]
-                        else:
-                            # value is tuple without fiber
-                            p1_value = p1[:n] + p1[n + 1:]
-
-                        break
-
-                if p1_fiber is None:
-                    raise PayloadError
-
-                #
-                # Create the flattened fiber
-                #
-                for c0, p0 in p1_fiber:
-                    coords.append(self._flattenCoords(c1,
-                                                      c0,
-                                                      style=style))
-
-                    payloads.append((p0, p1_value))
-            else:
-                #
-                # I don't know how to handle this payload
-                #
+            if not Payload.contains(p1, Fiber):
                 raise PayloadError
-        #
-        # TBD: set default
-        #
+
+            if i == 0:
+                range_start, range_end = p1.getActive()
+            else:
+                range_start = min(range_start, p1.getActive()[0])
+                range_end = max(range_end, p1.getActive()[1])
+
+            default = p1.getDefault()
+
+            for c0, p0 in p1:
+                coords.append(self._flattenCoords(c1, c0, style=style))
+                payloads.append(p0)
+
+            # Note: This commented out code is from an old version of the
+            # flattenRanks() function. I removed it because it was not clear
+            # when this code is ever actually used, and it makes things
+            # complicated.  Joel wanted to leave it in the code base for
+            # documentation purposes, but it can be removed at any time.
+            # elif Payload.contains(p1, tuple):
+            #     #
+            #     # Handle case where payload is a tuple. In this case,
+            #     # look for the first fiber in the "p1" tuple and use
+            #     # that fiber to flatten the ranks. The payloads of the
+            #     # new flattened rank is a new tuple containing a
+            #     # payload from that fiber and the the other values in
+            #     # the "p1" tuple.
+            #     #
+            #     # Note: unflattening the fiber tree created in this
+            #     # scenario will not recreate the original pre-flattened
+            #     # fiber tree
+            #     #
+            #     p1 = Payload.get(p1)
+
+            #     #
+            #     # Find the fiber..
+            #     #
+            #     p1_fiber = None
+
+            #     for n, p1_p in enumerate(p1):
+            #         if Payload.contains(p1_p, Fiber):
+            #             p1_fiber = p1_p
+
+            #             if len(p1) == 2:
+            #                 # value is other element of tuple
+            #                 p1_value = p1[(n + 1) % 2]
+            #             else:
+            #                 # value is tuple without fiber
+            #                 p1_value = p1[:n] + p1[n + 1:]
+
+            #             break
+
+            #     if p1_fiber is None:
+            #         raise PayloadError
+
+            #     #
+            #     # Create the flattened fiber
+            #     #
+            #     for c0, p0 in p1_fiber:
+            #         coords.append(self._flattenCoords(c1,
+            #                                           c0,
+            #                                           style=style))
+
+            #         payloads.append((p0, p1_value))
+            # else:
+            #     #
+            #     # I don't know how to handle this payload
+            #     #
+            #     raise PayloadError
+
         if range_start is None:
             range_start = 0
             range_end = float("inf")
 
         active_range = ((self.getActive()[0], range_start), (self.getActive()[1], range_end))
-        return Fiber(coords, payloads, active_range=active_range)
+        return Fiber(coords, payloads, default=default, active_range=active_range)
 
     @staticmethod
     def _flattenCoords(c1, c0, style="nested"):
@@ -4003,7 +4029,7 @@ class Fiber:
                     #
                     coords1.append(c1_last)
 
-                    cur_fiber = Fiber(coords0, payloads0)
+                    cur_fiber = Fiber(coords0, payloads0, default=self.getDefault())
                     if levels > 1:
                         cur_fiber = cur_fiber.unflattenRanks(levels=levels - 1)
 
@@ -4028,7 +4054,7 @@ class Fiber:
         #
         coords1.append(c1_last)
 
-        cur_fiber = Fiber(coords0, payloads0)
+        cur_fiber = Fiber(coords0, payloads0, default=self.getDefault())
         if levels > 1:
             cur_fiber = cur_fiber.unflattenRanks(levels=levels - 1)
 
@@ -4037,10 +4063,7 @@ class Fiber:
         #
         # Create (and return) the new top (c1) rank
         #
-        #
-        # TBD: set default
-        #
-        return self._newFiber(coords1, payloads1)
+        return self._newFiber(coords1, payloads1, default=Fiber())
 
 #
 # Closures to operate on all payloads at a specified depth
