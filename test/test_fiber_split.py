@@ -81,7 +81,6 @@ class TestFiberSplit(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f.splitUniform(5)
 
-
     def test_split_uniform_then_flatten(self):
         """Test that flattenRanks() can undo splitUniform"""
 

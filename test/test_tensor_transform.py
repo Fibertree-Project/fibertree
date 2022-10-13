@@ -42,6 +42,23 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out.getRankIds(), ["M.1", "M.0", "N", "K"])
                 self.assertEqual(a_out.getShape(), [41, 41, 42, 10])
 
+    def test_tensor_split_uniform_correct_active_range(self):
+        """Test that the active range is set correctly for tensors"""
+        W = 40
+        S = 5
+        Q = W - S + 1
+        Q0 = 10
+
+        density = 1
+        seed = 0
+
+        I_W = Tensor.fromRandom(rank_ids=["W"], shape=[W], density=density, seed=seed)
+        I_W_cropped = Tensor.fromFiber(rank_ids=["W"], fiber=I_W.getRoot(), shape=[Q])
+        self.assertEqual(I_W_cropped.getRoot().getActive(), (0, 36))
+
+        I_Q1W0 = I_W_cropped.getRoot().splitUniform(Q0, halo=S - 1)
+        self.assertEqual(I_Q1W0.getActive(), (0, 36))
+
 
     def test_splitUniform_1(self):
         """ Test splitUniform - depth=1 """

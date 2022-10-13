@@ -3687,14 +3687,16 @@ class Fiber:
             A fiber like self with the top rank split into two according to the
             splitter
         """
-        # fiber = pickle.loads(pickle.dumps(self))
         fiber = copy.deepcopy(self)
-        fiber.setOwner(None)
 
         if depth == 0:
             return fiber._splitFiber(splitter)
 
         fiber.updatePayloadsBelow(Fiber._splitFiber, splitter, depth=depth-1)
+
+        # Only clear the owner after the split so that the fiber has the full
+        # shape information
+        fiber.setOwner(None)
         return fiber
 
     def _splitFiber(self, splitter):
