@@ -661,6 +661,51 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
+    def test_split_nonuniform_halo_outside_active3(self):
+        """Test splitNonUniform with a halo, ensure that the halo is only
+        built once"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 13, 31, 41]
+        p = [ 1, 10, 20, 100, 120, 130, 310, 410 ]
+
+        f = Fiber(c,p, shape=40)
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 9, 10, 12],
+              [ 12, 13 ],
+              [ 31 ],
+              [ 31, 41 ] ]
+
+        pss = [ [ 20, 100, 120 ],
+                [ 120, 130 ],
+                [ 310 ],
+                [ 310, 410 ] ]
+
+        ranges = [(8, 11), (11, 15), (20, 30), (30, 40)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        splits = [8, 11, 15, 20, 30, 50]
+        split = f.splitNonUniform(splits, halo=2)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, ranges[i][0])
+            self.assertEqual(sp, split_ref[i])
     def test_split_nonuniform_valid_halo(self):
         """Test that splitNonUniform only accepts valid halos"""
         #
