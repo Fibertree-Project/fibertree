@@ -3155,6 +3155,11 @@ class Fiber:
 
                     last_ind = ind
 
+                    # If we have already built the final halo, do not try to
+                    # build another one
+                    if ind * self.step + self.step >= active_end:
+                        break
+
                 # If we have not built the last partition
                 if pos < len(self.fiber):
                     start_c = active_end - 1

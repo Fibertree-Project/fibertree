@@ -301,6 +301,46 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
+    def test_split_uniform_build_halo_once(self):
+        """splitUniform, make sure that if the halo for the last partition has already
+        been built, we do not try to build it again"""
+        c = [0, 9, 12, 14, 17, 19, 20]
+        p = [3, 4,  5,  6,  7,  8, 9]
+        f = Fiber(c, p, active_range=(8, 16))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [0, 10]
+
+        css = [ [ 9, 12 ],
+                [ 12, 14, 17] ]
+
+        pss = [ [ 4, 5 ],
+              [ 5, 6, 7 ] ]
+
+        ranges = [(8, 10), (10, 16)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        coords = 10
+        split = f.splitUniform(coords, halo=3)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
     def test_split_uniform_halo_not_bigger_than_step(self):
         """splitUniform, halo cannot be bigger than the step"""
         # Original Fiber
