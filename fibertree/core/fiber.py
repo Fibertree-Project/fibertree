@@ -3125,94 +3125,89 @@ class Fiber:
 
             def __iter__(self):
                 if len(self.fiber) == 0:
-                    start = None
-                else:
-                    start = 0
-                    assert isinstance(self.fiber.coords[0], int)
+                    return
 
-                last_part = 0
-                coords = []
-                payloads = []
-                for c, p in self.fiber.iterActive(start_pos=start):
-                    part = c // self.step * self.step
+                assert isinstance(self.fiber.coords[0], int)
 
-                    # If we are about to end an old part, start the halo
-                    if part != last_part:
-                        # Build the halo
-                        pos = self.fiber.getSavedPos()
-                        halo_info = self.build_halo(pos)
+                active_start, active_end = self.fiber.getActive()
 
-                        # If the halo is part of the current partition, add it
-                        if halo_info and halo_info[0] == last_part:
-                            coords.extend(halo_info[1])
-                            payloads.extend(halo_info[2])
+                pos = self.first_coord()
+                last_ind = -1
+                ind = -1
+                while pos < len(self.fiber):
+                    # Ensure we are still inside the active range
+                    start_c = self.fiber.coords[pos]
 
-                        # Otherwise, finish the last partition and prepare to
-                        # yield the halo
-                        elif halo_info:
-                            if coords:
-                                yield self.build_elem(last_part, coords, payloads)
+                    ind = self.get_split_ind(ind, start_c) - 1
+                    # Check if there is a partition with just a halo
+                    if ind > last_ind and (ind + 1) * self.step > active_start:
+                        coords, payloads, _ = self.build_partition(ind, pos)
 
-                            last_part, coords, payloads = halo_info
-
-                        # Yield the last partition, halo and all
                         if coords:
-                            yield self.build_elem(last_part, coords, payloads)
+                            yield self.build_elem(ind, coords, payloads)
 
-                        # Clear the lists
-                        coords = []
-                        payloads = []
-
-                    coords.append(c)
-                    payloads.append(p)
-
-                    # Set the last_part
-                    last_part = part
-
-                # Add the final halo
-                pos = self.fiber.getSavedPos()
-                halo_info = self.build_halo(pos + 1)
-
-                if halo_info:
-                    assert halo_info[0] == last_part
-                    coords.extend(halo_info[1])
-                    payloads.extend(halo_info[2])
-
-                if coords:
-                    yield self.build_elem(last_part, coords, payloads)
-
-            def build_elem(self, part, coords, payloads):
-                """Build a partition from its coordinate, and fiber defined by
-                the given coordinates and payloads"""
-                if self.relative:
-                    coords = [c - part for c in coords]
-
-                active_range = (part, min(part + self.step, self.fiber.getActive()[1]))
-                return part, coords, payloads, active_range
-
-            def build_halo(self, start_pos):
-                """Build the halo that includes the element starting at start_pos"""
-                # Ensure that there are elements to add to the halo
-                if start_pos >= len(self.fiber):
-                    return
-
-                part = self.fiber.coords[start_pos] // self.step * self.step - self.step
-
-                # Ensure that at least some part of the partition is within
-                # the active range
-                if part + self.step <= self.fiber.getActive()[0]:
-                    return
-
-                coords = []
-                payloads = []
-                for c, p in self.fiber.iterOccupancy(start_pos=start_pos):
-                    if c - part >= self.step + self.halo:
+                    if start_c >= active_end:
                         break
 
+                    ind = self.get_split_ind(ind, start_c)
+                    coords, payloads, pos = self.build_partition(ind, pos)
+                    yield self.build_elem(ind, coords, payloads)
+
+                    last_ind = ind
+
+                # If we have not built the last partition
+                if pos < len(self.fiber):
+                    start_c = active_end - 1
+                    halo_ind = self.get_split_ind(ind, start_c)
+
+                    # Check if the first coordinate outside the active range
+                    # corresponds to a halo we have not yet built
+                    if halo_ind > ind:
+                        coords, payloads, _ = self.build_partition(halo_ind, pos)
+
+                        if coords:
+                            yield self.build_elem(halo_ind, coords, payloads)
+
+
+            def build_elem(self, ind, coords, payloads):
+                part = ind * self.step
+                if relativeCoords:
+                    coords = [c - part for c in coords]
+
+                range_start = max(part, self.fiber.getActive()[0])
+                range_end = min(part + self.step, self.fiber.getActive()[1])
+                active_range = (range_start, range_end)
+
+                return part, coords, payloads, active_range
+
+            def build_partition(self, ind, pos):
+                coords = []
+                payloads = []
+
+                part_end = min(self.fiber.getActive()[1], (ind + 1) * self.step)
+
+                new_pos = pos + 1
+                for c, p in self.fiber.iterRange(self.fiber.coords[pos],
+                               part_end + self.halo, start_pos=pos):
+                    if c < part_end:
+                        new_pos = self.fiber.getSavedPos() + 1
+
                     coords.append(c)
                     payloads.append(p)
 
-                return part, coords, payloads
+                return coords, payloads, new_pos
+
+
+            def first_coord(self):
+                start = 0
+                for c, p in self.fiber.iterActive(start_pos=start):
+                    return self.fiber.getSavedPos()
+
+                # We need to look for the end of the active_range
+                return bisect.bisect_left(self.fiber.coords, self.fiber.getActive()[1])
+
+            def get_split_ind(self, ind, c):
+                return c // self.step
 
         if rankid is not None:
             depth = self._rankid2depth(rankid)
@@ -3279,13 +3274,12 @@ class Fiber:
                 self.splits.append(float("inf"))
 
             def __iter__(self):
-                ind = 0
-                last_ind = 0
-
                 if len(self.fiber) == 0:
                     return
 
                 assert isinstance(self.fiber.coords[0], int)
+
+                active_start, active_end = self.fiber.getActive()
 
                 pos = self.first_coord()
                 last_ind = 0
@@ -3296,13 +3290,13 @@ class Fiber:
 
                     ind = self.get_split_ind(ind, start_c) - 1
                     # Check if there is a partition with just a halo
-                    if ind > last_ind:
+                    if ind > last_ind and self.splits[ind + 1] > active_start:
                         coords, payloads, _ = self.build_partition(ind, pos)
 
                         if coords:
                             yield self.build_elem(ind, coords, payloads)
 
-                    if start_c >= self.fiber.getActive()[1]:
+                    if start_c >= active_end:
                         break
 
                     ind = self.get_split_ind(ind, start_c)
@@ -3313,7 +3307,7 @@ class Fiber:
 
                 # If we have not built the last partition
                 if pos < len(self.fiber) and ind < len(self.splits) - 1:
-                    start_c = self.fiber.getActive()[1] - 1
+                    start_c = active_end - 1
                     halo_ind = self.get_split_ind(ind, start_c)
 
                     # Check if the first coordinate outside the active range
@@ -3330,9 +3324,7 @@ class Fiber:
                     coords = [c - self.splits[ind] for c in coords]
 
                 range_start = max(self.splits[ind], self.fiber.getActive()[0])
-
                 range_end = min(self.splits[ind + 1], self.fiber.getActive()[1])
-
                 active_range = (range_start, range_end)
 
                 return self.splits[ind], coords, payloads, active_range
