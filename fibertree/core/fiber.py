@@ -3433,7 +3433,9 @@ class Fiber:
                 parts = []
                 coords = []
                 payloads = []
+                pos = 0
                 for i, (c, p) in enumerate(self.fiber.iterActive(start_pos=0)):
+                    pos = self.fiber.getSavedPos()
                     # The first partition is labeled by the first coordinate
                     if i == 0:
                         parts.append(c)
@@ -3443,7 +3445,6 @@ class Fiber:
                     # Otherwise, if we are about to start a new partition,
                     # then we need to build the halo first
                     elif i % self.step == 0:
-                        pos = self.fiber.getSavedPos()
                         halo_coords, halo_payloads = self.build_halo(c, pos)
                         coords[-1].extend(halo_coords)
                         payloads[-1].extend(halo_payloads)
@@ -3456,7 +3457,6 @@ class Fiber:
                     coords[-1].append(c)
                     payloads[-1].append(p)
 
-                pos = self.fiber.getSavedPos()
                 halo_coords, halo_payloads = self.build_halo(self.fiber.getActive()[1], pos + 1)
 
                 # Add the final halo

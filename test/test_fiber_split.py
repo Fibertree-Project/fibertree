@@ -1028,6 +1028,56 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
+    def test_split_equal_strangeness(self):
+        """TODO: add description"""
+        c = list(range(40))
+        p = list(range(40))
+        p[0] = 100
+
+        f = Fiber(c, p, active_range=(0, 36))
+
+        split_ref_coords = [0, 5, 10, 15, 20, 25, 30, 35]
+
+        css = [ [0, 1, 2, 3, 4, 5, 6, 7, 8],
+                [5, 6, 7, 8, 9, 10, 11, 12, 13],
+                [10, 11, 12, 13, 14, 15, 16, 17, 18],
+                [15, 16, 17, 18, 19, 20, 21, 22, 23],
+                [20, 21, 22, 23, 24, 25, 26, 27, 28],
+                [25, 26, 27, 28, 29, 30, 31, 32, 33],
+                [30, 31, 32, 33, 34, 35, 36, 37, 38],
+                [35, 36, 37, 38, 39] ]
+
+        pss = [ [100, 1, 2, 3, 4, 5, 6, 7, 8],
+                [5, 6, 7, 8, 9, 10, 11, 12, 13],
+                [10, 11, 12, 13, 14, 15, 16, 17, 18],
+                [15, 16, 17, 18, 19, 20, 21, 22, 23],
+                [20, 21, 22, 23, 24, 25, 26, 27, 28],
+                [25, 26, 27, 28, 29, 30, 31, 32, 33],
+                [30, 31, 32, 33, 34, 35, 36, 37, 38],
+                [35, 36, 37, 38, 39] ]
+
+        ranges = [(0, 5), (5, 10), (10, 15), (15, 20), (20, 25), (25, 30), (30, 35), (35, 36)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        size = 5
+        split = f.splitEqual(size, halo=4)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
     def test_split_equal_halo_not_bigger_than_step(self):
         """splitEqual, halo cannot be bigger than the step"""
         # Original Fiber
