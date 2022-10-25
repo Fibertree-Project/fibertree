@@ -1045,7 +1045,7 @@ class Fiber:
         return index
 
 
-    def project(self, trans_fn=None, interval=None, rank_id=None, start_pos=None, tuple_sz=None):
+    def project(self, trans_fn=None, interval=None, rank_id=None, start_pos=None, tup_in=None, tup_out=None):
         """Create a new fiber with coordinates projected according to `trans_fn`
 
         This method creates a new fiber with the same payloads as the
@@ -1068,8 +1068,11 @@ class Fiber:
         start_pos: int
             Shortcut for the position to start iterating at
 
-        tuple_sz: Optional[int]
-            If the coordinates are tuples, the number of elements in the tuple
+        tup_in: Optional[int]
+            If the input coordinates are tuples, the number of elements in the tuple
+
+        tup_out: Optional[int]
+            If the output coordinates are tuples, the number of elements in the tuple
 
         Returns
         -------
@@ -1099,13 +1102,13 @@ class Fiber:
 
 
         # Invariant: trans_fn is order preserving, but we check for reversals
-        if tuple_sz is None:
+        if tup_in is None:
             c0 = 0
             c1 = 1
 
         else:
-            c0 = (0,) * tuple_sz
-            c1 = (1,) * tuple_sz
+            c0 = (0,) * tup_in
+            c1 = (1,) * tup_in
 
         if trans_fn(c0) > trans_fn(c1):
             # Note that we cannot reverse lazy fibers
@@ -1162,13 +1165,13 @@ class Fiber:
 
         else:
             start = trans_fn(self.getActive()[0])
-            if tuple_sz is None:
+            if tup_in is None:
                 end = trans_fn(self.getActive()[1] - 1)
             else:
                 end = trans_fn(tuple(i - 1 for i in self.getActive()[1]))
 
             min_ = min(start, end)
-            if tuple_sz is None:
+            if tup_out is None:
                 max_ = max(start, end) + 1
             else:
                 max_ = tuple(i + 1 for i in max(start, end))
