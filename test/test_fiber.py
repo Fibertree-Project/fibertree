@@ -2121,6 +2121,21 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(ap, ap_ref)
         self.assertEqual(ap.getActive(), (12, 61))
 
+    def test_project_tuple(self):
+        """Test whether project works on tuple coordinates"""
+        c = [(0, 1), (0, 3), (1, 4)]
+        p = [1, 2, 3]
+
+        a = Fiber(c, p, active_range=((0, 0), (2, 5)))
+
+        cp = [(1, 3), (1, 5), (2, 6)]
+        ap_ref = Fiber(cp, p)
+
+        ap = a.project(lambda c: (c[0] + 1, c[1] + 2), tuple_sz=2)
+
+        self.assertEqual(ap, ap_ref)
+        self.assertEqual(ap.getActive(), ((1, 2), (3, 7)))
+
     def test_project_reverse_eager_only(self):
         """Test projections, eager only if reversed"""
 

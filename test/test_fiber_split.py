@@ -1029,7 +1029,7 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
     def test_split_equal_correct_final_halo(self):
-        """TODO: add description"""
+        """splitEqual - Correctly build the final halo"""
         c = list(range(40))
         p = list(range(40))
         p[0] = 100

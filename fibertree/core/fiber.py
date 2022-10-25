@@ -1045,7 +1045,7 @@ class Fiber:
         return index
 
 
-    def project(self, trans_fn=None, interval=None, rank_id=None, start_pos=None):
+    def project(self, trans_fn=None, interval=None, rank_id=None, start_pos=None, tuple_sz=None):
         """Create a new fiber with coordinates projected according to `trans_fn`
 
         This method creates a new fiber with the same payloads as the
@@ -1067,6 +1067,9 @@ class Fiber:
 
         start_pos: int
             Shortcut for the position to start iterating at
+
+        tuple_sz: Optional[int]
+            If the coordinates are tuples, the number of elements in the tuple
 
         Returns
         -------
@@ -1096,8 +1099,15 @@ class Fiber:
 
 
         # Invariant: trans_fn is order preserving, but we check for reversals
+        if tuple_sz is None:
+            c0 = 0
+            c1 = 1
 
-        if trans_fn(0) > trans_fn(1):
+        else:
+            c0 = (0,) * tuple_sz
+            c1 = (1,) * tuple_sz
+
+        if trans_fn(c0) > trans_fn(c1):
             # Note that we cannot reverse lazy fibers
             assert not self.isLazy()
 
@@ -1148,14 +1158,22 @@ class Fiber:
                         yield c, p
 
         if interval:
-            active_range = interval
+            min_, max_ = interval
 
         else:
             start = trans_fn(self.getActive()[0])
-            end = trans_fn(self.getActive()[1] - 1)
-            active_range = (min(start, end), max(start, end) + 1)
+            if tuple_sz is None:
+                end = trans_fn(self.getActive()[1] - 1)
+            else:
+                end = trans_fn(tuple(i - 1 for i in self.getActive()[1]))
 
-        result = Fiber.fromIterator(project_iterator, active_range=active_range)
+            min_ = min(start, end)
+            if tuple_sz is None:
+                max_ = max(start, end) + 1
+            else:
+                max_ = tuple(i + 1 for i in max(start, end))
+
+        result = Fiber.fromIterator(project_iterator, active_range=(min_, max_))
         result._setDefault(self.getDefault())
         if rank_id is not None:
             result.getRankAttrs().setId(rank_id)
