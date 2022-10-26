@@ -108,27 +108,40 @@ class TestFiberOperators(unittest.TestCase):
 
     def test_and_metrics_fiber(self):
         """Test metrics collected during Fiber.__and__ on unowned fibers"""
-        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 0, 7])
+        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 6, 7])
         a_k.getRankAttrs().setId("K")
-        b_k = Fiber.fromUncompressed([1, 2, 3, 0, 0, 6, 0])
+        b_k = Fiber.fromUncompressed([1, 2, 0, 0, 0, 6, 0])
         b_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect()
+        Metrics.beginCollect("tmp/test_and_metrics_fiber")
+        Metrics.trace("K", type_="intersect_0_1")
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
 
+        corr = [
+            "K_pos,K,0_match,1_match\n",
+            "0,0,True,True\n",
+            "1,1,False,True\n",
+            "1,3,True,False\n",
+            "1,4,True,False\n",
+            "1,5,True,True\n"
+        ]
+
+        with open("tmp/test_and_metrics_fiber-K-intersect_0_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
         self.assertEqual(
             Metrics.dump(),
             {"Rank K": {
-                "coordinate_read_tensor0": 4,
-                "coordinate_read_tensor1": 4,
-                "successful_intersect_0_1": 1,
+                "coordinate_read_tensor0": 5,
+                "coordinate_read_tensor1": 3,
+                "successful_intersect_0_1": 2,
                 "unsuccessful_intersect_tensor0": 2,
-                "unsuccessful_intersect_tensor1": 3,
-                "skipped_intersect_0_1": 2,
-                "payload_read_tensor0": 1,
-                "payload_read_tensor1": 1,
+                "unsuccessful_intersect_tensor1": 1,
+                "skipped_intersect_0_1": 1,
+                "payload_read_tensor0": 2,
+                "payload_read_tensor1": 2,
                 "diff_last_coord_0_1": 1
             }}
         )

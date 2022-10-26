@@ -27,7 +27,7 @@ class Compute:
             return 0
 
     @staticmethod
-    def numIsectLeaderFollower(dump, rank, leader):
+    def numIsectLeaderFollower(trace, leader):
         """
         Compute the number of intersection attempts with leader-follower
         intersection

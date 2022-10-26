@@ -410,7 +410,7 @@ class Metrics:
 
 
     @classmethod
-    def trace(cls, rank, type_="iter", info=[]):
+    def trace(cls, rank, type_="iter", info=None):
         """Set a rank to trace
 
         Note must be called after Metrics.beginCollect()
@@ -424,7 +424,7 @@ class Metrics:
         type_: str
             Description of the information this trace is collecting
 
-        info: List[str]
+        info: Optional[List[str]]
             Any additional info that should be added to the CSV
 
         Returns
@@ -441,7 +441,17 @@ class Metrics:
             cls.trace_info[rank] = {}
 
         cls.traces[rank][type_] = []
-        cls.trace_info[rank][type_] = info
+
+        # Default info for common types
+        fields = type_.split("_")
+        if fields[0] == "intersect":
+            info = [fields[1] + "_match", fields[2] + "_match"]
+
+        # Save the info if it has been set
+        if info:
+            cls.trace_info[rank][type_] = info
+        else:
+            cls.trace_info[rank][type_] = []
 
     @classmethod
     def _writeTrace(cls, rank, type_):

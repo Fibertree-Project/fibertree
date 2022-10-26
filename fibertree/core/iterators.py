@@ -664,6 +664,8 @@ def __and__(self, other):
                 Metrics.incCount(line, succ, 0)
                 Metrics.incCount(line, skipped, 0)
 
+                trace_type = "intersect_" + both
+
                 skip = None
 
             # Get the iterators
@@ -682,6 +684,8 @@ def __and__(self, other):
                         Metrics.incCount(line, payload_a, 1)
                         Metrics.incCount(line, payload_b, 1)
 
+                        Metrics.addUse(rank, a_coord, type_=trace_type, info=[True, True])
+
                     yield a_coord, (a_payload, b_payload)
 
                     a_coord, a_payload = _get_next(a)
@@ -697,6 +701,9 @@ def __and__(self, other):
                     continue
 
                 if a_coord < b_coord:
+                    if is_collecting:
+                        Metrics.addUse(rank, a_coord, type_=trace_type, info=[True, False])
+
                     a_coord, a_payload = _get_next(a)
 
                     if is_collecting:
@@ -715,6 +722,9 @@ def __and__(self, other):
                     continue
 
                 if a_coord > b_coord:
+                    if is_collecting:
+                        Metrics.addUse(rank, b_coord, type_=trace_type, info=[False, True])
+
                     b_coord, b_payload = _get_next(b)
 
                     if is_collecting:
