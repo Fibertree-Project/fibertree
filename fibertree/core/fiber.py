@@ -528,7 +528,7 @@ class Fiber:
             The lazy fiber to build from
         """
 
-        f_out = cls(**kwargs)
+        f_out = cls(**kwargs, default=fiber.getDefault())
 
         for c, (f_ref, f_val) in f_out << fiber:
             f_ref <<= f_val
@@ -807,7 +807,7 @@ class Fiber:
         """
 
         # Create a payload at coord
-        # Iemporary value (should be None)
+        # Temporary value (should be None)
 
         if payload is None:
             payload = self._createDefault()
@@ -2704,6 +2704,7 @@ class Fiber:
             self.payloads = []
 
 
+        self._setDefault(other.getDefault())
         for c, p in other:
             #
             # For each non-empty element of other, insert it into the

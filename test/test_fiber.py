@@ -1819,6 +1819,15 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(a, b)
 
+    def test_ilshift_multiple_ranks(self):
+        """ <<= infix operator with multiple ranks"""
+        a = Fiber.fromUncompressed([[0, 1, 0, 3], [0, 0, 0, 0], [8, 0, 0, 0]])
+        b = Fiber()
+
+        b <<= a
+
+        self.assertEqual(a, b)
+
     def test_ilshift_eager_only(self):
         """<<= infix operator eager mode only"""
 
@@ -2214,7 +2223,6 @@ class TestFiber(unittest.TestCase):
 
         f_i = f_k.project(lambda k: k + 1)
         self.assertEqual(f_i.getRankAttrs().getId(), "Unknown")
-
 
     def test_prune(self):
         """Test pruning a fiber"""
