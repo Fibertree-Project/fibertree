@@ -131,72 +131,28 @@ class TestFiberOperators(unittest.TestCase):
         with open("tmp/test_and_metrics_fiber-K-intersect_0_1.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
-        self.assertEqual(
-            Metrics.dump(),
-            {"Rank K": {
-                "coordinate_read_tensor0": 5,
-                "coordinate_read_tensor1": 3,
-                "successful_intersect_0_1": 2,
-                "unsuccessful_intersect_tensor0": 2,
-                "unsuccessful_intersect_tensor1": 1,
-                "skipped_intersect_0_1": 1,
-                "payload_read_tensor0": 2,
-                "payload_read_tensor1": 2,
-                "diff_last_coord_0_1": 1
-            }}
-        )
-
-    def test_and_metrics_fiber_same_end(self):
-        """Test metrics collected during Fiber.__and__ on unowned fibers"""
-        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 0, 6])
-        a_k.getRankAttrs().setId("K")
-        b_k = Fiber.fromUncompressed([1, 0, 3, 0, 5, 6])
-        b_k.getRankAttrs().setId("K")
-
-        Metrics.beginCollect()
-        for _ in a_k & b_k:
-            pass
-        Metrics.endCollect()
-
-        self.assertEqual(
-            Metrics.dump(),
-            {"Rank K": {
-                "coordinate_read_tensor0": 3,
-                "coordinate_read_tensor1": 4,
-                "successful_intersect_0_1": 2,
-                "unsuccessful_intersect_tensor0": 1,
-                "unsuccessful_intersect_tensor1": 2,
-                "skipped_intersect_0_1": 0,
-                "payload_read_tensor0": 2,
-                "payload_read_tensor1": 2,
-                "same_last_coord_0_1": 1
-            }}
-        )
-
     def test_and_metrics_tensor(self):
         """Test metrics collected during Fiber.__and__ on unowned fibers"""
-        A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 0, 6])
-        B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 3, 0, 5, 0])
+        A_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 0, 0, 4, 5, 6, 7])
+        B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 2, 0, 0, 0, 6, 0])
 
-        Metrics.beginCollect()
+        Metrics.beginCollect("tmp/test_and_metrics_tensor")
+        Metrics.trace("K", type_="intersect_0_1")
         for _ in A_K.getRoot() & B_K.getRoot():
             pass
         Metrics.endCollect()
 
-        self.assertEqual(
-            Metrics.dump(),
-            {"Rank K": {
-                "coordinate_read_tensor0": 3,
-                "coordinate_read_tensor1": 3,
-                "successful_intersect_0_1": 1,
-                "unsuccessful_intersect_tensor0": 1,
-                "unsuccessful_intersect_tensor1": 2,
-                "skipped_intersect_0_1": 0,
-                "payload_read_tensor0": 1,
-                "payload_read_tensor1": 1,
-                "diff_last_coord_0_1": 1
-            }}
-        )
+        corr = [
+            "K_pos,K,0_match,1_match\n",
+            "0,0,True,True\n",
+            "1,1,False,True\n",
+            "1,3,True,False\n",
+            "1,4,True,False\n",
+            "1,5,True,True\n"
+        ]
+
+        with open("tmp/test_and_metrics_tensor-K-intersect_0_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
     def test_and_metrics_many_fibers(self):
         """Test metrics collection when there are more than two fibers"""
@@ -207,34 +163,28 @@ class TestFiberOperators(unittest.TestCase):
         c_k = Fiber.fromUncompressed([0, 0, 0, 4, 0, 6])
         c_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect()
+        Metrics.beginCollect("tmp/test_and_metrics_many_fibers")
+        Metrics.trace("K", "intersect_0_1")
+        Metrics.trace("K", "intersect_2_3")
         for _ in (a_k & b_k) & c_k:
             pass
         Metrics.endCollect()
 
-        self.assertEqual(
-            Metrics.dump(),
-            {"Rank K": {
-                "coordinate_read_tensor0": 3,
-                "coordinate_read_tensor1": 2,
-                "coordinate_read_tensor2": 4,
-                "coordinate_read_tensor3": 4,
-                "successful_intersect_0_1": 1,
-                "successful_intersect_2_3": 3,
-                "unsuccessful_intersect_tensor0": 2,
-                "unsuccessful_intersect_tensor1": 1,
-                "unsuccessful_intersect_tensor2": 1,
-                "unsuccessful_intersect_tensor3": 1,
-                "skipped_intersect_0_1": 1,
-                "skipped_intersect_2_3": 0,
-                "payload_read_tensor0": 1,
-                "payload_read_tensor1": 1,
-                "payload_read_tensor2": 3,
-                "payload_read_tensor3": 3,
-                "same_last_coord_0_1": 1,
-                "same_last_coord_2_3": 1
-            }}
-        )
+        corr01 = [
+            "K_pos,K,0_match,1_match\n",
+            "0,0,True,True\n",
+            "0,2,True,True\n",
+            "0,3,True,False\n",
+            "0,4,False,True\n",
+            "0,5,True,True\n"
+        ]
+
+        corr23 = [
+            "K_pos,K,2_match,3_match\n",
+            "0,0,True,False\n",
+            "0,2,True,False\n",
+            "0,5,True,True\n"
+        ]
 
     def test_and_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__and__"""

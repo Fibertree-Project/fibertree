@@ -27,7 +27,7 @@ class Compute:
             return 0
 
     @staticmethod
-    def numIsectLeaderFollower(trace, leader):
+    def numIsectLeaderFollower(trace_fn, leader):
         """
         Compute the number of intersection attempts with leader-follower
         intersection
@@ -35,11 +35,8 @@ class Compute:
         Parameters
         ----------
 
-        dump: dict
-            The statistics counted by `Metrics.dump()`
-
-        rank: str
-            The rank whose intersection tests we care about
+        trace_fn: str
+            The filename of the intersection
 
         leader: int
             Tensor number of the leader
@@ -51,34 +48,28 @@ class Compute:
             Number of intersection tests
 
         """
-        line = "Rank " + rank
-        if leader % 2 == 0:
-            first = str(leader)
-            second = str(leader + 1)
-        else:
-            first = str(leader - 1)
-            second = str(leader)
+        with open(trace_fn, "r") as f:
+            cols = f.readline()[:-1].split(",")
+            ind = cols.index(str(leader) + "_match")
 
-        succ = dump[line]["successful_intersect_" + first + "_" + second]
-        unsucc = dump[line]["unsuccessful_intersect_tensor" + str(leader)]
-        return succ + unsucc
+            isects = 0
+            for line in f.readlines():
+                data = line[:-1].split(",")
+                if data[ind] == "True":
+                    isects += 1
+
+        return isects
 
     @staticmethod
-    def numIsectSkipAhead(dump, rank, left=0):
+    def numIsectSkipAhead(trace_fn):
         """ Compute the number of intersection attempts with skip-ahead
         intersection
 
         Parameters
         ----------
 
-        dump: dict
-            The statistics counted by `Metrics.dump()`
-
-        rank: str
-            The rank whose intersection tests we care about
-
-        left: int
-            Tensor number of the left tensor (default=0)
+        trace_fn: str
+            The filename of the intersection
 
         Returns
         ------
@@ -87,17 +78,29 @@ class Compute:
             Number of intersection tests
 
         """
-        line = "Rank " + rank
-        right = str(left + 1)
-        left = str(left)
-        both = left + "_" + right
+        with open(trace_fn, "r") as f:
+            isects = 0
+            curr = None
+            for line in f.readlines():
+                data = line[:-1].split(",")
+                a_match, b_match = tuple(match == "True" for match in data[-2:])
 
-        succ = dump[line]["successful_intersect_" + both]
-        unsucc_a = dump[line]["unsuccessful_intersect_tensor" + left]
-        unsucc_b = dump[line]["unsuccessful_intersect_tensor" + right]
-        skipped = dump[line]["skipped_intersect_" + both]
+                # If both matched, there is nothing to skip
+                if a_match and b_match:
+                    curr = None
+                    isects += 1
 
-        return succ + unsucc_a + unsucc_b - skipped
+                # If only A matched, intersect if not skipped
+                elif a_match and curr != 0:
+                    curr = 0
+                    isects += 1
+
+                # If only B matched, intersect if not skipped
+                elif b_match and curr != 1:
+                    curr = 1
+                    isects += 1
+
+        return isects
 
 
     @staticmethod

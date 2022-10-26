@@ -641,32 +641,11 @@ def __and__(self, other):
             is_collecting = Metrics.isCollecting()
             if is_collecting:
                 rank = self.a_fiber.getRankAttrs().getId()
-                line = "Rank " + rank
                 a_label = str(Metrics.getLabel(rank))
                 b_label = str(Metrics.getLabel(rank))
                 both = a_label + "_" + b_label
 
-                coord_a = "coordinate_read_tensor" + a_label
-                coord_b = "coordinate_read_tensor" + b_label
-                payload_a = "payload_read_tensor" + a_label
-                payload_b = "payload_read_tensor" + b_label
-                unsucc_a = "unsuccessful_intersect_tensor" + a_label
-                unsucc_b = "unsuccessful_intersect_tensor" + b_label
-                succ = "successful_intersect_" + both
-                skipped = "skipped_intersect_" + both
-
-                Metrics.incCount(line, coord_a, 1)
-                Metrics.incCount(line, coord_b, 1)
-                Metrics.incCount(line, payload_a, 0)
-                Metrics.incCount(line, payload_b, 0)
-                Metrics.incCount(line, unsucc_a, 0)
-                Metrics.incCount(line, unsucc_b, 0)
-                Metrics.incCount(line, succ, 0)
-                Metrics.incCount(line, skipped, 0)
-
                 trace_type = "intersect_" + both
-
-                skip = None
 
             # Get the iterators
             a = self.a_fiber.__iter__(tick=False)
@@ -679,24 +658,12 @@ def __and__(self, other):
                 if a_coord == b_coord:
 
                     if is_collecting:
-                        # Increment the count metrics
-                        Metrics.incCount(line, succ, 1)
-                        Metrics.incCount(line, payload_a, 1)
-                        Metrics.incCount(line, payload_b, 1)
-
                         Metrics.addUse(rank, a_coord, type_=trace_type, info=[True, True])
 
                     yield a_coord, (a_payload, b_payload)
 
                     a_coord, a_payload = _get_next(a)
                     b_coord, b_payload = _get_next(b)
-
-                    if is_collecting:
-                        if a_coord is not None:
-                            Metrics.incCount(line, coord_a, 1)
-
-                        if b_coord is not None:
-                            Metrics.incCount(line, coord_b, 1)
 
                     continue
 
@@ -706,19 +673,6 @@ def __and__(self, other):
 
                     a_coord, a_payload = _get_next(a)
 
-                    if is_collecting:
-                        Metrics.incCount(line, unsucc_a, 1)
-
-                        if skip == "A":
-                            Metrics.incCount(line, skipped, 1)
-
-                        if a_coord is not None:
-                            Metrics.incCount(line, coord_a, 1)
-
-                            if a_coord < b_coord:
-                                skip = "A"
-                            else:
-                                skip = None
                     continue
 
                 if a_coord > b_coord:
@@ -727,27 +681,7 @@ def __and__(self, other):
 
                     b_coord, b_payload = _get_next(b)
 
-                    if is_collecting:
-                        Metrics.incCount(line, unsucc_b, 1)
-
-                        if skip == "B":
-                            Metrics.incCount(line, skipped, 1)
-
-                        if b_coord is not None:
-                            Metrics.incCount(line, coord_b, 1)
-
-                            if b_coord < a_coord:
-                                skip = "B"
-                            else:
-                                skip = None
-
                     continue
-
-            if is_collecting:
-                if a_coord is None and b_coord is None:
-                    Metrics.incCount(line, "same_last_coord_" + both, 1)
-                else:
-                    Metrics.incCount(line, "diff_last_coord_" + both, 1)
 
             return
 

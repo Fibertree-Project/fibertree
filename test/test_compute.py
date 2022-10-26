@@ -40,13 +40,15 @@ class TestCompute(unittest.TestCase):
         b_k = Fiber.fromUncompressed([0, 0, 6, 7, 9])
         b_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect()
+        Metrics.beginCollect("tmp/test_num_isect_leader_follower")
+        Metrics.trace("K", "intersect_0_1")
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
 
-        self.assertEqual(Compute.numIsectLeaderFollower(Metrics.dump(), "K", 0), 4)
-        self.assertEqual(Compute.numIsectLeaderFollower(Metrics.dump(), "K", 1), 3)
+        trace_fn = "tmp/test_num_isect_leader_follower-K-intersect_0_1.csv"
+        self.assertEqual(Compute.numIsectLeaderFollower(trace_fn, 0), 4)
+        self.assertEqual(Compute.numIsectLeaderFollower(trace_fn, 1), 3)
 
     def test_num_isect_skip_ahead(self):
         """ Test Compute.numIsectSkipAhead()"""
@@ -55,12 +57,14 @@ class TestCompute(unittest.TestCase):
         b_k = Fiber.fromUncompressed([0, 2, 3, 4, 6, 0, 0, 4, 0])
         b_k.getRankAttrs().setId("K")
 
-        Metrics.beginCollect()
+        Metrics.beginCollect("tmp/test_num_isect_skip_ahead")
+        Metrics.trace("K", "intersect_0_1")
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
 
-        self.assertEqual(Compute.numIsectSkipAhead(Metrics.dump(), "K"), 3)
+        trace_fn = "tmp/test_num_isect_skip_ahead-K-intersect_0_1.csv"
+        self.assertEqual(Compute.numIsectSkipAhead(trace_fn), 3)
 
     def test_num_swaps_discrete_next(self):
         """Test Compute.numSwaps()"""
