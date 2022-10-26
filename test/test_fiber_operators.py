@@ -232,7 +232,7 @@ class TestFiberOperators(unittest.TestCase):
         b_k = B_K.getRoot()
 
         Metrics.beginCollect("tmp/test_and_use_stats_1D")
-        Metrics.traceRank("K")
+        Metrics.trace("K")
         Metrics.registerRank("M")
         for m in range(3):
             Metrics.addUse("M", m * 2)
@@ -250,7 +250,7 @@ class TestFiberOperators(unittest.TestCase):
             "2,0,4,0\n",
             "2,1,4,4\n"
         ]
-        with open("tmp/test_and_use_stats_1D-K.csv", "r") as f:
+        with open("tmp/test_and_use_stats_1D-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
     def test_and_use_stats_2D(self):
@@ -262,7 +262,7 @@ class TestFiberOperators(unittest.TestCase):
         b_i = B_IJK.getRoot()
 
         Metrics.beginCollect("tmp/test_and_use_stats_2D")
-        Metrics.traceRank("J")
+        Metrics.trace("J")
         for _, b_j in b_i:
             for _, (a_k, b_k) in a_j & b_j:
                 for _ in a_k & b_k:
@@ -277,7 +277,7 @@ class TestFiberOperators(unittest.TestCase):
             "1,1,1,1\n"
         ]
 
-        with open("tmp/test_and_use_stats_2D-J.csv", "r") as f:
+        with open("tmp/test_and_use_stats_2D-J-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
     def test_and_with_format(self):
@@ -480,7 +480,7 @@ class TestFiberOperators(unittest.TestCase):
         z_m.getRankAttrs().setId("M")
 
         Metrics.beginCollect("tmp/test_lshift_use_stats_1D")
-        Metrics.traceRank("M")
+        Metrics.trace("M")
         Metrics.registerRank("N")
         for n in range(3):
             Metrics.addUse("N", n * 2)
@@ -502,7 +502,7 @@ class TestFiberOperators(unittest.TestCase):
             "2,2,4,3\n",
         ]
 
-        with open("tmp/test_lshift_use_stats_1D-M.csv", "r") as f:
+        with open("tmp/test_lshift_use_stats_1D-M-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
 
@@ -514,8 +514,8 @@ class TestFiberOperators(unittest.TestCase):
         z_m = Z_MN.getRoot()
 
         Metrics.beginCollect("tmp/test_lshift_use_stats_2D")
-        Metrics.traceRank("M")
-        Metrics.traceRank("N")
+        Metrics.trace("M")
+        Metrics.trace("N")
         for j, a_m in a_j:
             for _, (z_n, a_n) in z_m << a_m:
                 for _ in z_n << a_n:
@@ -530,7 +530,7 @@ class TestFiberOperators(unittest.TestCase):
             "1,1,1,1\n"
         ]
 
-        with open("tmp/test_lshift_use_stats_2D-M.csv", "r") as f:
+        with open("tmp/test_lshift_use_stats_2D-M-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), M_corr)
 
         N_corr = [
@@ -545,7 +545,7 @@ class TestFiberOperators(unittest.TestCase):
             "1,1,0,1,1,2\n"
         ]
 
-        with open("tmp/test_lshift_use_stats_2D-N.csv", "r") as f:
+        with open("tmp/test_lshift_use_stats_2D-N-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), N_corr)
 
     def test_lshift_with_format(self):

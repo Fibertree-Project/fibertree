@@ -34,8 +34,8 @@ class TestTraffic(unittest.TestCase):
         t_m = T_MKN.getRoot()
 
         Metrics.beginCollect("tmp/test_traffic_stage0")
-        Metrics.traceRank("M")
-        Metrics.traceRank("K")
+        Metrics.trace("M")
+        Metrics.trace("K")
         for m, (t_k, a_k) in t_m << a_m:
             for k, (t_n, (a_val, b_n)) in t_k << (a_k & b_k):
                 for n, (t_ref, b_val) in t_n << b_n:
@@ -49,7 +49,7 @@ class TestTraffic(unittest.TestCase):
         z_m = self.Z_MN.getRoot()
 
         Metrics.beginCollect("tmp/test_traffic_stage1")
-        Metrics.traceRank("N")
+        Metrics.trace("N")
         for m, (z_n, (t_n, a_k)) in z_m << (t_m & a_m):
             for n, (z_ref, t_k) in z_n << t_n:
                 for k, (t_val, a_val) in t_k & a_k:
@@ -86,34 +86,34 @@ class TestTraffic(unittest.TestCase):
 
     def test_buffetTraffic(self):
         """Test buffetTraffic"""
-        bits = Traffic.buffetTraffic(
+        bits = Traffic.buffetTraffic_old(
             "tmp/test_traffic_stage0", self.B_KN, "K", self.B_format)
         corr = 480 + 288 + 288 + 480 + 480 + 288 + 288 + 96 + 480 + 96 + 288 + 288 + 288 + 288
         self.assertEqual(bits, corr)
 
     def test_buffetTraffic_fiber(self):
-        bits = Traffic.buffetTraffic(
+        bits = Traffic.buffetTraffic_old(
             "tmp/test_traffic_stage0", self.B_KN, "M", self.B_format, mode="fiber")
         corr = 6 * 8 * 32
         self.assertEqual(bits, corr)
 
     def test_cacheTraffic(self):
         """Test cacheTraffic"""
-        bits = Traffic.cacheTraffic(
+        bits = Traffic.cacheTraffic_old(
             "tmp/test_traffic_stage0", self.B_KN, "K", self.B_format, 2**10)
         corr = 480 + 288 + 288 + 480 +  0 + 288 + 288 + 96 + 0 + 0 + 288 + 288 + 0 + 0
         self.assertEqual(bits, corr)
 
     def test_lruTraffic(self):
         """Test cacheTraffic"""
-        bits = Traffic.lruTraffic(
+        bits = Traffic.lruTraffic_old(
             "tmp/test_traffic_stage0", self.B_KN, "K", self.B_format, 2**10 + 2**8)
         corr = 480 + 288 + 288 + 480 + 480 + 288 + 288 + 96 + 480 + 0 + 0 + 288 + 288 + 0
         self.assertEqual(bits, corr)
 
     def test_streamTraffic(self):
         """Test streamTraffic"""
-        bits = Traffic.streamTraffic(
+        bits = Traffic.streamTraffic_old(
             "tmp/test_traffic_stage1", self.T_MNK, "N", self.T_format)
         corr = 256 + 128 * 6 + (64 + 32) * 33
 
@@ -125,7 +125,7 @@ class TestTraffic(unittest.TestCase):
                 ((0, 0, 1), (1, 2, 6)), ((0, 5, 6), (10, 8, 7)),
                 ((2, 6, 9), (10, 8, 7)), ((3, 6, 8), (10, 8, 7))]
 
-        with open("tmp/test_getAllUses-K.csv", "w") as f:
+        with open("tmp/test_getAllUses-K-iter.csv", "w") as f:
             f.write("M_pos,N_pos,K_pos,M,N,K\n")
             for use in uses:
                 data = [str(i) for i in use[0] + use[1]]

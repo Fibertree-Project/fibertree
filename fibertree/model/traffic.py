@@ -12,8 +12,27 @@ from sortedcontainers import SortedList
 
 class Traffic:
     """Class for computing the memory traffic of a tensor"""
+
+    def buffetTraffic(bindings, formats, traces, buffer_sz):
+        """Compute the traffic loading data into this buffet
+
+        Parameters
+        ----------
+
+        bindings: List[dict]
+            A list of bindings to this buffet
+
+        formats: Dict[str, Format]
+            A dictionary from tensor names to their corresponding format objects
+
+        traces: Dict[str, Dict[str, Dict[str, str]]]
+            A nested dictionary of traces of the form {tensor: {rank: {type: trace_fn}}}
+
+        """
+        pass
+
     @staticmethod
-    def buffetTraffic(prefix, tensor, rank, format_, mode="subtree"):
+    def buffetTraffic_old(prefix, tensor, rank, format_, mode="subtree"):
         """Compute the buffet traffic for a given tensor and rank
 
         Parameters
@@ -56,7 +75,7 @@ class Traffic:
         return sum(data[0] * data[1] for data in use_data.values())
 
     @staticmethod
-    def cacheTraffic(prefix, tensor, rank, format_, capacity):
+    def cacheTraffic_old(prefix, tensor, rank, format_, capacity):
         """Compute the cache traffic for given tensor and rank
 
         Parameters
@@ -131,7 +150,7 @@ class Traffic:
         return bits_loaded
 
     @staticmethod
-    def lruTraffic(prefix, tensor, rank, format_, capacity):
+    def lruTraffic_old(prefix, tensor, rank, format_, capacity):
         """Compute the cache traffic for given tensor and rank, given an LRU
         replacement policy
 
@@ -203,7 +222,7 @@ class Traffic:
         return bits_loaded
 
     @staticmethod
-    def streamTraffic(prefix, tensor, rank, format_):
+    def streamTraffic_old(prefix, tensor, rank, format_):
         """Compute the traffic for streaming over a given tensor and rank
 
         WARNING: Should not be used for tensors iterated over with
@@ -250,7 +269,7 @@ class Traffic:
         """
         Get an iterable of uses ordered by iteration stamp
         """
-        with open(prefix + "-" + rank + ".csv", "r") as f:
+        with open(prefix + "-" + rank + "-iter.csv", "r") as f:
             cols = f.readline()[:-1].split(",")
             inds = [i for i, col in enumerate(cols) if col in tensor.getRankIds()]
 

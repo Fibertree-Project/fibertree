@@ -539,7 +539,7 @@ class TestFiber(unittest.TestCase):
         a_k.getRankAttrs().setId("K")
 
         Metrics.beginCollect("tmp/test_iterOccupancy_uses")
-        Metrics.traceRank("K")
+        Metrics.trace("K")
         for _ in a_k.iterOccupancy():
             pass
         Metrics.endCollect()
@@ -553,7 +553,7 @@ class TestFiber(unittest.TestCase):
             "4,9\n"
         ]
 
-        with open("tmp/test_iterOccupancy_uses-K.csv", "r") as f:
+        with open("tmp/test_iterOccupancy_uses-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
     def test_iterShape(self):
@@ -675,7 +675,7 @@ class TestFiber(unittest.TestCase):
         a_k.getRankAttrs().setId("K")
 
         Metrics.beginCollect("tmp/test_iterActive_uses")
-        Metrics.traceRank("K")
+        Metrics.trace("K")
         for _ in a_k.iterActive():
             pass
         Metrics.endCollect()
@@ -687,7 +687,7 @@ class TestFiber(unittest.TestCase):
             "2,8\n"
         ]
 
-        with open("tmp/test_iterActive_uses-K.csv", "r") as f:
+        with open("tmp/test_iterActive_uses-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
 
@@ -844,7 +844,7 @@ class TestFiber(unittest.TestCase):
         a_k.getRankAttrs().setId("K")
 
         Metrics.beginCollect("tmp/test_iterRange_uses")
-        Metrics.traceRank("K")
+        Metrics.trace("K")
         for _ in a_k.iterRange(2, 9):
             pass
         Metrics.endCollect()
@@ -856,7 +856,7 @@ class TestFiber(unittest.TestCase):
             "2,8\n"
         ]
 
-        with open("tmp/test_iterRange_uses-K.csv", "r") as f:
+        with open("tmp/test_iterRange_uses-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
 
@@ -2188,7 +2188,7 @@ class TestFiber(unittest.TestCase):
         f_k.getRankAttrs().setId("K")
 
         Metrics.beginCollect("tmp/test_project_use_stats")
-        Metrics.traceRank("I")
+        Metrics.trace("I")
         for _ in f_k.project(trans_fn=lambda k: k + 1, rank_id="I"):
             pass
         Metrics.endCollect()
@@ -2201,7 +2201,7 @@ class TestFiber(unittest.TestCase):
             "3,9\n"
         ]
 
-        with open("tmp/test_project_use_stats-I.csv", "r") as f:
+        with open("tmp/test_project_use_stats-I-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
     def test_project_collecting_requires_rank_id(self):
@@ -2272,7 +2272,7 @@ class TestFiber(unittest.TestCase):
         f_k.getRankAttrs().setId("K")
 
         Metrics.beginCollect("tmp/test_prune_use_stats")
-        Metrics.traceRank("K")
+        Metrics.trace("K")
         for _ in f_k.prune(lambda i, c, p: i % 2 == 0):
             pass
         Metrics.endCollect()
@@ -2283,7 +2283,7 @@ class TestFiber(unittest.TestCase):
             "1,6\n"
         ]
 
-        with open("tmp/test_prune_use_stats-K.csv", "r") as f:
+        with open("tmp/test_prune_use_stats-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
     def test_getPosition_eager_only(self):

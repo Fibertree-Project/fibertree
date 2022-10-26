@@ -24,6 +24,7 @@ class Format:
             - fhbits: bits required for the fiber header (any per-fiber bits)
             - cbits: bits required per coordinate
             - pbits: bits required per payload
+            - layout: "contiguous" (struct-of-arrays) or "interleaved" (array-of-structs)
         There can also be a "root" rank with keys:
             - hbits: bits required for the tensor header
             - pbits: bits required for the payload to the root fiber
@@ -68,20 +69,17 @@ class Format:
             if rank not in self.spec.keys():
                 self.spec[rank] = {}
 
-            if "format" not in self.spec[rank].keys():
-                self.spec[rank]["format"] = "C"
-
-            assert self.spec[rank]["format"] == "C" \
-                or self.spec[rank]["format"] == "U"
-
             self._checkFillIntField(rank, "rhbits")
             self._checkFillIntField(rank, "fhbits")
             self._checkFillIntField(rank, "cbits")
             self._checkFillIntField(rank, "pbits")
 
-            # No additional fields beyond format, hbits, cbits, and pbits
+            self._checkFillStrField(rank, "format", "C", ["C", "U"])
+            self._checkFillStrField(rank, "layout", "contiguous", ["contiguous", "interleaved"])
+
+            # No additional fields beyond rhbits, fhbits, cbits, pbits, format, and layout
             # should be specified
-            assert len(self.spec[rank]) == 5
+            assert len(self.spec[rank]) == 6
 
     def _checkFillIntField(self, rank, field):
         """Check the specific integer field"""
@@ -89,6 +87,14 @@ class Format:
             self.spec[rank][field] = 0
 
         assert isinstance(self.spec[rank][field], int)
+
+    def _checkFillStrField(self, rank, field, default, options):
+        """Check a specific string field"""
+        if field not in self.spec[rank].keys():
+            self.spec[rank][field] = default
+
+        assert any(self.spec[rank][field] == val for val in options)
+
 
     def getCBits(self, rank):
         """Get the number of bits required to represent the coordinates of
@@ -101,6 +107,10 @@ class Format:
         the given rank"""
 
         return self.spec[rank]["fhbits"]
+
+    def getLayout(self, rank):
+        """Get the layout of this rank"""
+        return self.spec[rank]["layout"]
 
     def getPBits(self, rank):
         """Get the number of bits required to represent the payloads of

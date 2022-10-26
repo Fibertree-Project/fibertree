@@ -50,12 +50,12 @@ class TestMetrics(unittest.TestCase):
         Metrics.addUse("K", 2)
         Metrics.endCollect()
 
-        self.assertFalse(os.path.exists("tmp/test_add_use_none_traced-K.csv"))
+        self.assertFalse(os.path.exists("tmp/test_add_use_none_traced-K-iter.csv"))
 
     def test_add_use_one_traced(self):
         """Test that addUse correctly traces a rank if it is being traced"""
         Metrics.beginCollect("tmp/test_add_use_one_traced")
-        Metrics.traceRank("K")
+        Metrics.trace("K")
 
         ks = [[3, 7], [8]]
 
@@ -84,14 +84,14 @@ class TestMetrics(unittest.TestCase):
             "1,0,5,8\n"
         ]
 
-        with open("tmp/test_add_use_one_traced-K.csv", "r") as f:
+        with open("tmp/test_add_use_one_traced-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
     def test_add_use_num_cached_uses(self):
         """Test that num_cached_uses is followed"""
         Metrics.beginCollect("tmp/test_add_use_num_cached_uses")
         Metrics.setNumCachedUses(2)
-        Metrics.traceRank("K")
+        Metrics.trace("K")
 
         ks = [[3, 7], [1, 8]]
 
@@ -116,7 +116,7 @@ class TestMetrics(unittest.TestCase):
                 Metrics.endIter("N")
                 Metrics.incIter("K")
 
-            with open("tmp/test_add_use_num_cached_uses-K.csv", "r") as f:
+            with open("tmp/test_add_use_num_cached_uses-K-iter.csv", "r") as f:
                 self.assertEqual(f.readlines(), corr[:(2 * i + 2)])
 
             Metrics.endIter("K")
@@ -125,8 +125,44 @@ class TestMetrics(unittest.TestCase):
 
         Metrics.endCollect()
 
-        with open("tmp/test_add_use_num_cached_uses-K.csv", "r") as f:
+        with open("tmp/test_add_use_num_cached_uses-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
+
+    def test_add_use_other_type(self):
+        """Test that addUse works with types other than "iter" """
+        Metrics.beginCollect("tmp/test_add_use_other_type")
+        Metrics.trace("K", type_="other", info=["info1", "info2"])
+
+        ks = [[3, 7], [8]]
+
+        Metrics.registerRank("M")
+        for i, m in enumerate([2, 5]):
+            Metrics.addUse("M", m)
+            Metrics.registerRank("K")
+            for k in ks[i]:
+                Metrics.addUse("K", k, type_="other", info=[str(m + 1), k - 1])
+                Metrics.registerRank("N")
+                for n in range(3):
+                    Metrics.addUse("N", n)
+                    Metrics.incIter("N")
+                Metrics.endIter("N")
+                Metrics.incIter("K")
+            Metrics.endIter("K")
+            Metrics.incIter("M")
+        Metrics.endIter("M")
+
+        Metrics.endCollect()
+
+        corr = [
+            "M_pos,K_pos,M,K,info1,info2\n",
+            "0,0,2,3,3,2\n",
+            "0,1,2,7,3,6\n",
+            "1,0,5,8,6,7\n"
+        ]
+
+        with open("tmp/test_add_use_other_type-K-other.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
 
     def test_end_iter_fails_if_not_collecting(self):
         """Test that endIter fails if collection is not on"""
@@ -256,9 +292,9 @@ class TestMetrics(unittest.TestCase):
             Metrics.registerRank("K")
 
     def test_trace_rank_fails_if_not_collecting(self):
-        """Test that traceRank fails if collection is not on"""
+        """Test that trace fails if collection is not on"""
         with self.assertRaises(AssertionError):
-            Metrics.traceRank("K")
+            Metrics.trace("K")
 
     def test_trace_rank_has_prefix(self):
         """Test that a prefix has been specified if we want to trace a rank"""
@@ -266,6 +302,6 @@ class TestMetrics(unittest.TestCase):
         Metrics.beginCollect()
 
         with self.assertRaises(AssertionError):
-            Metrics.traceRank("M")
+            Metrics.trace("M")
 
         Metrics.endCollect()

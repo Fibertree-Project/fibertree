@@ -35,13 +35,14 @@ class Metrics:
     num_cached_uses = 1000
     point = None
     prefix = None
-    trace = {}
+    traces = {}
+    trace_info = {}
 
     def __init__(self):
         raise NotImplementedError
 
     @classmethod
-    def addUse(cls, rank, coord):
+    def addUse(cls, rank, coord, type_="iter", info=[]):
         """Add a use of all tensors at the given rank and coord
 
         Parameters
@@ -52,6 +53,12 @@ class Metrics:
 
         coord: int
             The coordinate at this rank
+
+        type_: str
+            Description of the information this trace is collecting
+
+        info: list
+            Any additional info that should be added to the CSV
 
         Returns
         -------
@@ -65,19 +72,28 @@ class Metrics:
         i = cls.line_order[rank]
         cls.point[i] = coord
 
-        # Make sure we are tracking this rank
-        if rank not in cls.trace.keys():
+        # Make sure we are tracking this rank and type_
+        if rank not in cls.traces.keys():
+            return
+
+        if type_ not in cls.traces[rank].keys():
             return
 
         # Add the trace
         iteration = ",".join(str(j) for j in cls.iteration[:(i + 1)])
         point = ",".join(str(j) for j in cls.point[:(i + 1)])
-        cls.trace[rank].append(iteration + "," + point + "\n")
+
+        data = [iteration, point]
+        if info:
+            str_info = [val if isinstance(val, str) else str(val) for val in info]
+            data.append(",".join(str_info))
+
+        cls.traces[rank][type_].append(",".join(data) + "\n")
 
         # If we are at the limit of the number of cached uses, write the data
         # to disk
-        if len(cls.trace[rank]) == cls.num_cached_uses:
-            cls._writeTrace(rank)
+        if len(cls.traces[rank][type_]) == cls.num_cached_uses:
+            cls._writeTrace(rank, type_)
 
     @classmethod
     def beginCollect(cls, prefix=None):
@@ -105,7 +121,8 @@ class Metrics:
         cls.metrics = {}
         cls.point = []
         cls.prefix = prefix
-        cls.trace = {}
+        cls.traces = {}
+        cls.trace_info = {}
 
     @classmethod
     def dump(cls):
@@ -146,8 +163,9 @@ class Metrics:
 
         """
         # Save the trace of uses
-        for rank in cls.trace.keys():
-            cls._writeTrace(rank)
+        for rank, dicts in cls.traces.items():
+            for type_ in dicts:
+                cls._writeTrace(rank, type_)
 
         # Clear all info
         cls.collecting = False
@@ -158,7 +176,8 @@ class Metrics:
         cls.num_cached_uses = 1000
         cls.point = None
         cls.prefix = None
-        cls.trace = {}
+        cls.traces = {}
+        cls.trace_info = {}
 
     @classmethod
     def endIter(cls, rank):
@@ -330,8 +349,9 @@ class Metrics:
         cls.loop_order.append(rank)
         cls.point.append(0)
 
-        if rank in cls.trace.keys():
-            cls._startTrace(rank)
+        if rank in cls.traces.keys():
+            for type_ in cls.traces[rank]:
+                cls._startTrace(rank, type_)
 
     @classmethod
     def setNumCachedUses(cls, num_cached_uses):
@@ -355,7 +375,7 @@ class Metrics:
         cls.num_cached_uses = num_cached_uses
 
     @classmethod
-    def _startTrace(cls, rank):
+    def _startTrace(cls, rank, type_="iter"):
         """Start to trace the given rank
 
         Parameters
@@ -363,6 +383,9 @@ class Metrics:
 
         rank: str
             The name of the rank to register
+
+        type_: str
+            Description of the information this trace is collecting
 
         Returns
         -------
@@ -374,17 +397,20 @@ class Metrics:
 
         end = cls.line_order[rank] + 1
 
+        with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "w") as f:
+            f.write("")
+
         pos = ",".join(r + "_pos" for r in cls.loop_order[:end])
         coord = ",".join(r for r in cls.loop_order[:end])
 
-        with open(cls.prefix + "-" + rank + ".csv", "w") as f:
-            f.write("")
-
-        cls.trace[rank].append(pos + "," + coord + "\n")
+        headings = [pos, coord]
+        if cls.trace_info[rank][type_]:
+            headings.append(",".join(cls.trace_info[rank][type_]))
+        cls.traces[rank][type_].append(",".join(headings) + "\n")
 
 
     @classmethod
-    def traceRank(cls, rank):
+    def trace(cls, rank, type_="iter", info=[]):
         """Set a rank to trace
 
         Note must be called after Metrics.beginCollect()
@@ -395,6 +421,12 @@ class Metrics:
         rank: str
             The rank to collect the trace of
 
+        type_: str
+            Description of the information this trace is collecting
+
+        info: List[str]
+            Any additional info that should be added to the CSV
+
         Returns
         -------
 
@@ -404,13 +436,15 @@ class Metrics:
         assert cls.prefix is not None
         assert cls.collecting
 
-        cls.trace[rank] = []
+        if rank not in cls.traces.keys():
+            cls.traces[rank] = {}
+            cls.trace_info[rank] = {}
 
-        if rank in cls.line_order.keys():
-            cls._startTrace(rank)
+        cls.traces[rank][type_] = []
+        cls.trace_info[rank][type_] = info
 
     @classmethod
-    def _writeTrace(cls, rank):
+    def _writeTrace(cls, rank, type_):
         """Write the trace to the file
 
         Parameters
@@ -419,14 +453,17 @@ class Metrics:
         rank: str
             The rank whose trace to write
 
+        type_: str
+            Description of the information this trace is collecting
+
         Returns
         -------
 
         None
 
         """
-        with open(cls.prefix + "-" + rank + ".csv", "a") as f:
-           for use in cls.trace[rank]:
+        with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "a") as f:
+           for use in cls.traces[rank][type_]:
                 f.write(use)
 
-        cls.trace[rank] = []
+        cls.traces[rank][type_] = []

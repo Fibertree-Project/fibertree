@@ -25,6 +25,7 @@ class TestFormat(unittest.TestCase):
             rhbits: 128
             cbits: 32
             pbits: 64
+            layout: interleaved
         """
         self.spec = yaml.safe_load(spec)
 
@@ -33,6 +34,16 @@ class TestFormat(unittest.TestCase):
         spec = """
         M:
             format: Y
+        """
+
+        with self.assertRaises(AssertionError):
+            f = Format(self.t, yaml.safe_load(spec))
+
+    def test_bad_layout(self):
+        """Test if the layout is bad"""
+        spec = """
+        M:
+            layout: Y
         """
 
         with self.assertRaises(AssertionError):
@@ -150,6 +161,11 @@ class TestFormat(unittest.TestCase):
         self.assertEqual(f.getRHBits("M"), 0)
         self.assertEqual(f.getRHBits("K"), 128)
 
+    def test_get_layout(self):
+        """Test getLayout"""
+        f = Format(self.t, self.spec)
+        self.assertEqual(f.getLayout("M"), "contiguous")
+        self.assertEqual(f.getLayout("K"), "interleaved")
 
     def test_fiber_footprint(self):
         """Test the fiber footprint"""

@@ -76,7 +76,7 @@ class TestUnionIntersect(unittest.TestCase):
         c_k.getRankAttrs().setId("K")
 
         Metrics.beginCollect("tmp/test_intersection_metrics")
-        Metrics.traceRank("K")
+        Metrics.trace("K")
         Metrics.registerRank("M")
         for m in range(3):
             Metrics.addUse("M", m + 1)
@@ -95,7 +95,7 @@ class TestUnionIntersect(unittest.TestCase):
             "2,1,3,4\n"
         ]
 
-        with open("tmp/test_intersection_metrics-K.csv", "r") as f:
+        with open("tmp/test_intersection_metrics-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
 #     def test_intersection_tuple():
