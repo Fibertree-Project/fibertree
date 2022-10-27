@@ -939,26 +939,11 @@ def __lshift__(self, other):
 
             if is_collecting:
                 rank = self.a_fiber.getRankAttrs().getId()
-                line = "Rank " + rank
                 a_label = str(Metrics.getLabel(rank))
                 b_label = str(Metrics.getLabel(rank))
                 both = a_label + "_" + b_label
 
                 trace_type = "populate_" + both
-
-                coord_a = "coordinate_read_tensor" + a_label
-                coord_b = "coordinate_read_tensor" + b_label
-                payload_a = "payload_read_tensor" + a_label
-                payload_b = "payload_read_tensor" + b_label
-                append = "coord_payload_append_tensor" + a_label
-                insert = "coord_payload_insert_tensor" + a_label
-
-                Metrics.incCount(line, coord_a, 0)
-                Metrics.incCount(line, coord_b, 0)
-                Metrics.incCount(line, payload_a, 0)
-                Metrics.incCount(line, payload_b, 0)
-                Metrics.incCount(line, append, 0)
-                Metrics.incCount(line, insert, 0)
 
             # Add coordinates/payloads to a_fiber where necessary
             maybe_remove = False
@@ -978,20 +963,10 @@ def __lshift__(self, other):
                 a_payload = self.a_fiber.getPayload(b_coord,
                                 allocate=False, start_pos=get_payload_pos)
 
-                if is_collecting:
-                    Metrics.incCount(line, coord_b, 1)
-                    Metrics.incCount(line, payload_b, 1)
-
                 new_a_payload = a_payload is None
                 if new_a_payload:
                     if is_collecting:
                         Metrics.addUse(rank, b_coord, type_=trace_type, info=[False, True])
-
-                        max_coord = self.a_fiber.maxCoord()
-                        if max_coord is None  or max_coord < b_coord:
-                            Metrics.incCount(line, append, 1)
-                        else:
-                            Metrics.incCount(line, insert, 1)
 
                     # Do not actually insert the payload into the tensor
                     a_payload = self.a_fiber._create_payload(b_coord, pos=start_pos)
@@ -999,10 +974,6 @@ def __lshift__(self, other):
 
                 elif is_collecting:
                     Metrics.addUse(rank, b_coord, type_=trace_type, info=[True, True])
-
-                    Metrics.incCount(line, coord_a, 1)
-                    Metrics.incCount(line, payload_a, 1)
-                    maybe_remove = False
 
                 else:
                     maybe_remove = False
@@ -1028,7 +999,7 @@ def __lshift__(self, other):
                         # middle and we actually popped off the correct fiber
                         assert id(a_payload) == id(popped)
 
-                # If this is a new payload, we may have to track the insert
+                # If this is a new payload, we may have to track the insert/append
                 elif is_collecting and new_a_payload \
                             and self.a_fiber.getRankAttrs().getFormat() != "U":
                         for c, p in self.a_fiber.iterRange(b_coord, None, tick=False, start_pos=start_pos):

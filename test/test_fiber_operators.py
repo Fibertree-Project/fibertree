@@ -377,19 +377,6 @@ class TestFiberOperators(unittest.TestCase):
         with open("tmp/test_lshift_metrics_fiber-M-populate_0_1.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
-        self.assertEqual(
-            Metrics.dump(),
-            {"Compute": {'payload_add': 3, 'payload_update': 3},
-             "Rank M": {
-                "coordinate_read_tensor1": 3,
-                "payload_read_tensor1": 3,
-                "coord_payload_insert_tensor0": 1,
-                "coordinate_read_tensor0": 1,
-                "payload_read_tensor0": 1,
-                "coord_payload_append_tensor0": 1
-            }}
-        )
-
     def test_lshift_metrics_tensor(self):
         """Test metrics collection on Fiber.__lshift__ from a tensor"""
         A_M = Tensor.fromUncompressed(rank_ids=["M"], root=[1, 0, 3, 4, 0])
@@ -418,18 +405,6 @@ class TestFiberOperators(unittest.TestCase):
         with open("tmp/test_lshift_metrics_tensor-M-populate_0_1.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
-        self.assertEqual(
-            Metrics.dump(),
-            {"Compute": {'payload_add': 3, 'payload_update': 3},
-             "Rank M": {
-                "coordinate_read_tensor1": 3,
-                "payload_read_tensor1": 3,
-                "coord_payload_insert_tensor0": 1,
-                "coordinate_read_tensor0": 1,
-                "payload_read_tensor0": 1,
-                "coord_payload_append_tensor0": 1
-            }}
-        )
     def test_lshift_metrics_many_fibers(self):
         """Test metrics collection on Fiber.__lshift__ with more than 2 fibers"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
@@ -469,26 +444,6 @@ class TestFiberOperators(unittest.TestCase):
 
         with open("tmp/test_lshift_metrics_many_fibers-M-populate_2_3.csv", "r") as f:
             self.assertEqual(f.readlines(), corr23)
-
-        self.assertEqual(
-            Metrics.dump(),
-            {"Compute": {'payload_add': 3, 'payload_update': 3},
-             "Rank M": {
-                "coordinate_read_tensor0": 1,
-                "coordinate_read_tensor1": 3,
-                "coordinate_read_tensor2": 0,
-                "coordinate_read_tensor3": 3,
-                "payload_read_tensor0": 1,
-                "payload_read_tensor1": 3,
-                "payload_read_tensor2": 0,
-                "payload_read_tensor3": 3,
-                "coord_payload_insert_tensor0": 1,
-                "coord_payload_insert_tensor2": 0,
-                "coord_payload_append_tensor0": 1,
-                "coord_payload_append_tensor2": 3
-            }}
-        )
-
 
     def test_lshift_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__lshift__"""
