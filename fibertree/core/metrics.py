@@ -446,6 +446,8 @@ class Metrics:
         fields = type_.split("_")
         if fields[0] == "intersect":
             info = [fields[1] + "_match", fields[2] + "_match"]
+        elif fields[0] == "populate":
+            info = [fields[1] + "_access", fields[2] + "_access"]
 
         # Save the info if it has been set
         if info:

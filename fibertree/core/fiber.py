@@ -799,7 +799,7 @@ class Fiber:
         return payload
 
 
-    def _create_payload(self, coord, payload=None):
+    def _create_payload(self, coord, payload=None, pos=None):
         """Create a payload in the fiber at coord
 
         Optionally insert into the owners rank.
@@ -814,15 +814,16 @@ class Fiber:
 
         assert Payload.is_payload(payload)
 
-        index = bisect.bisect_left(self.coords, coord)
-        self.coords.insert(index, coord)
-        self.payloads.insert(index, payload)
+        if pos is None:
+            pos = bisect.bisect_left(self.coords, coord)
+        self.coords.insert(pos, coord)
+        self.payloads.insert(pos, payload)
 
         #
         # Get the payload out of the payloads array
         # TBD: Not sure why I felt this was needed
         #
-        payload = self.payloads[index]
+        payload = self.payloads[pos]
 
         assert Payload.is_payload(payload)
 
@@ -1045,7 +1046,7 @@ class Fiber:
         return index
 
 
-    def project(self, trans_fn=None, interval=None, rank_id=None, start_pos=None, tup_in=None, tup_out=None):
+    def project(self, trans_fn=None, interval=None, rank_id=None, start_pos=None, coord_ex=None):
         """Create a new fiber with coordinates projected according to `trans_fn`
 
         This method creates a new fiber with the same payloads as the
@@ -1068,11 +1069,8 @@ class Fiber:
         start_pos: int
             Shortcut for the position to start iterating at
 
-        tup_in: Optional[int]
-            If the input coordinates are tuples, the number of elements in the tuple
-
-        tup_out: Optional[int]
-            If the output coordinates are tuples, the number of elements in the tuple
+        coord_ex: Optional[Union[int, tuple]]
+            An example of a coordinate that should appear in the input tensor
 
         Returns
         -------
@@ -1101,15 +1099,17 @@ class Fiber:
             trans_fn = lambda x: x
 
 
+        # Get an example of a coordinate if one was not provided
+        if coord_ex is None:
+            if len(self) > 0:
+                coord_ex, _ = next(self.iterOccupancy(tick=False))
+            else:
+                coord_ex = 0
+
+        c0 = Fiber._transCoord(coord_ex, lambda c: 0)
+        c1 = Fiber._transCoord(coord_ex, lambda c: 1)
+
         # Invariant: trans_fn is order preserving, but we check for reversals
-        if tup_in is None:
-            c0 = 0
-            c1 = 1
-
-        else:
-            c0 = (0,) * tup_in
-            c1 = (1,) * tup_in
-
         if trans_fn(c0) > trans_fn(c1):
             # Note that we cannot reverse lazy fibers
             assert not self.isLazy()
@@ -1165,16 +1165,10 @@ class Fiber:
 
         else:
             start = trans_fn(self.getActive()[0])
-            if tup_in is None:
-                end = trans_fn(self.getActive()[1] - 1)
-            else:
-                end = trans_fn(tuple(i - 1 for i in self.getActive()[1]))
+            end = trans_fn(Fiber._transCoord(self.getActive()[1], lambda c: c - 1))
 
             min_ = min(start, end)
-            if tup_out is None:
-                max_ = max(start, end) + 1
-            else:
-                max_ = tuple(i + 1 for i in max(start, end))
+            max_ = Fiber._transCoord(max(start, end), lambda c: c + 1)
 
         result = Fiber.fromIterator(project_iterator, active_range=(min_, max_))
         result._setDefault(self.getDefault())
@@ -1716,18 +1710,12 @@ class Fiber:
             return None
 
         #
-        # TBD: Check is there is a lexographical order...
-        #
-        if not isinstance(self.coords[0], int):
-            #
-            # Coordinates aren't integers, so maxCoord doesn't make sense
-            #
-            return None
-
-        #
         # TBD: Maybe should actually look for largest non-empty coordinate
         #
-        return max(self.coords)
+        if self._ordered:
+            return self.coords[-1]
+        else:
+            return max(self.coords)
 
 
     def countValues(self):
@@ -1961,9 +1949,14 @@ class Fiber:
     def __len__(self):
         """__len__"""
 
-        assert not self.isLazy()
+        if self.isLazy():
+            len_ = 0
+            for _ in self.iterOccupancy(tick=False):
+                len_ += 1
+            return len_
 
-        return len(self.coords)
+        else:
+            return len(self.coords)
 
 
     def isEmpty(self):
@@ -2447,34 +2440,27 @@ class Fiber:
             shape = []
 
         #
-        # Conditionaly append a new level to the shape array
-        #
-        if len(shape) < level + 1:
-            shape.append(0)
-
-        #
-        # If fiber is empty then shape doesn't change
-        #
-        if not len(self.coords):
-            return shape
-
-        #
         # Try to determine the maximum coordinate
         #
         max_coord = self.maxCoord()
 
         #
-        # The fiber is not empty, but max_coord isn't meaningful,
-        # so assume fiber is dense and coodinates start at zero,
-        # and return count of elements minus one.
+        # If fiber is empty then shape doesn't change
         #
-        if max_coord is None:
-            max_coord = len(self.coords)-1
+        if not self.coords:
+            if len(shape) < level + 1:
+                shape.append(0)
+
+            return shape
 
         #
         # Update shape for this Fiber at this level
         #
-        shape[level] = max(shape[level], max_coord + 1)
+        new_shape = Fiber._transCoord(max_coord, lambda c: c + 1)
+        if len(shape) < level + 1:
+            shape.append(new_shape)
+        else:
+            shape[level] = max(shape[level], Fiber._transCoord(max_coord))
 
         #
         # Recursively process payloads that are Fibers
@@ -2484,6 +2470,33 @@ class Fiber:
                 shape = Payload.get(p)._calcShape(shape, level + 1)
 
         return shape
+
+    @staticmethod
+    def _transCoord(coord, trans_fn=lambda c: c):
+        """Translate all integers of a coordinate according to the function,
+        applying recursively for tuples
+
+        Parameters
+        ----------
+
+        coord: Union[int, tuple]
+            The coordinate to translate
+
+        trans_fn: int -> int
+            A function that translates from a coordinate to a coordinate
+
+        Returns
+        -------
+
+        new_coord: Union[int, tuple]
+            The coordinate with the function applied to all integers
+
+        """
+        if isinstance(coord, tuple):
+            return tuple(Fiber._transCoord(c, trans_fn) for c in coord)
+
+        return trans_fn(coord)
+
 
 #
 # Rankid methods

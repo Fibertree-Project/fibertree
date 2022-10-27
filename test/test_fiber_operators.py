@@ -350,9 +350,6 @@ class TestFiberOperators(unittest.TestCase):
         with self.assertRaises(AssertionError):
             next(iter_)
 
-
-
-
     def test_lshift_metrics_fiber(self):
         """Test metrics collection on Fiber.__lshift__ from a fiber"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
@@ -360,14 +357,30 @@ class TestFiberOperators(unittest.TestCase):
         z_m = Fiber.fromUncompressed([0, 2, 3, 0, 0])
         z_m.getRankAttrs().setId("M")
 
-        Metrics.beginCollect()
-        for _ in z_m << a_m:
-            pass
+        Metrics.beginCollect("tmp/test_lshift_metrics_fiber")
+        Metrics.trace("M", type_="populate_0_1")
+        for _, (z_ref, _) in z_m << a_m:
+            z_ref += 1
         Metrics.endCollect()
+
+        corr = [
+            "M_pos,M,0_access,1_access\n",
+            "0,0,False,True\n",
+            "1,0,True,False\n",
+            "1,1,True,False\n",
+            "1,2,True,False\n",
+            "1,2,True,True\n",
+            "2,3,False,True\n",
+            "3,3,True,False\n"
+        ]
+
+        with open("tmp/test_lshift_metrics_fiber-M-populate_0_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
         self.assertEqual(
             Metrics.dump(),
-            {"Rank M": {
+            {"Compute": {'payload_add': 3, 'payload_update': 3},
+             "Rank M": {
                 "coordinate_read_tensor1": 3,
                 "payload_read_tensor1": 3,
                 "coord_payload_insert_tensor0": 1,
@@ -385,14 +398,30 @@ class TestFiberOperators(unittest.TestCase):
         Z_M = Tensor.fromUncompressed(rank_ids=["M"], root=[0, 2, 3, 0, 0])
         z_m = Z_M.getRoot()
 
-        Metrics.beginCollect()
-        for _ in z_m << a_m:
-            pass
+        Metrics.beginCollect("tmp/test_lshift_metrics_tensor")
+        Metrics.trace("M", type_="populate_0_1")
+        for _, (z_ref, _) in z_m << a_m:
+            z_ref += 1
         Metrics.endCollect()
+
+        corr = [
+            "M_pos,M,0_access,1_access\n",
+            "0,0,False,True\n",
+            "1,0,True,False\n",
+            "1,1,True,False\n",
+            "1,2,True,False\n",
+            "1,2,True,True\n",
+            "2,3,False,True\n",
+            "3,3,True,False\n"
+        ]
+
+        with open("tmp/test_lshift_metrics_tensor-M-populate_0_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
         self.assertEqual(
             Metrics.dump(),
-            {"Rank M": {
+            {"Compute": {'payload_add': 3, 'payload_update': 3},
+             "Rank M": {
                 "coordinate_read_tensor1": 3,
                 "payload_read_tensor1": 3,
                 "coord_payload_insert_tensor0": 1,
@@ -410,14 +439,41 @@ class TestFiberOperators(unittest.TestCase):
         y_m = Fiber()
         y_m.getRankAttrs().setId("M")
 
-        Metrics.beginCollect()
-        for _ in z_m << (y_m << a_m):
-            pass
+        Metrics.beginCollect("tmp/test_lshift_metrics_many_fibers")
+        Metrics.trace("M", type_="populate_0_1")
+        Metrics.trace("M", type_="populate_2_3")
+        for _, (z_ref, (y_ref, _)) in z_m << (y_m << a_m):
+            z_ref += 1
         Metrics.endCollect()
+
+        corr01 = [
+            "M_pos,M,0_access,1_access\n",
+            "0,0,False,True\n",
+            "1,0,True,False\n",
+            "1,1,True,False\n",
+            "1,2,True,False\n",
+            "1,2,True,True\n",
+            "2,3,False,True\n",
+            "3,3,True,False\n"
+        ]
+
+        corr23 = [
+            "M_pos,M,2_access,3_access\n",
+            "0,0,False,True\n",
+            "1,2,False,True\n",
+            "2,3,False,True\n"
+        ]
+
+        with open("tmp/test_lshift_metrics_many_fibers-M-populate_0_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr01)
+
+        with open("tmp/test_lshift_metrics_many_fibers-M-populate_2_3.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr23)
 
         self.assertEqual(
             Metrics.dump(),
-            {"Rank M": {
+            {"Compute": {'payload_add': 3, 'payload_update': 3},
+             "Rank M": {
                 "coordinate_read_tensor0": 1,
                 "coordinate_read_tensor1": 3,
                 "coordinate_read_tensor2": 0,
