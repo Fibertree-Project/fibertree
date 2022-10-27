@@ -1000,9 +1000,14 @@ def __lshift__(self, other):
                         assert id(a_payload) == id(popped)
 
                 # If this is a new payload, we may have to track the insert/append
-                elif is_collecting and new_a_payload \
-                            and self.a_fiber.getRankAttrs().getFormat() != "U":
-                        for c, p in self.a_fiber.iterRange(b_coord, None, tick=False, start_pos=start_pos):
+                elif is_collecting and new_a_payload:
+                    Metrics.addUse(rank, b_coord, type_=trace_type, info=[True, False])
+
+                    # If this is an insert into a compressed fiber, move
+                    # the following elements forward one
+                    if self.a_fiber.getRankAttrs().getFormat() != "U":
+                        for c, p in self.a_fiber.iterRange(b_coord + 1, None,
+                                        tick=False, start_pos=start_pos):
                             Metrics.addUse(rank, c, type_=trace_type, info=[True, False])
 
 

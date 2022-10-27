@@ -13,6 +13,85 @@ from sortedcontainers import SortedList
 class Traffic:
     """Class for computing the memory traffic of a tensor"""
 
+    @staticmethod
+    def buildTrace(rank, input_fn, output_fn, tensor=None, trace_type="iter", access_type="read"):
+        """Compute a trace just for the given trace and filename
+
+        Parameters
+        ----------
+
+        rank: str
+            Rank whose trace to build
+
+        input_fn: str
+            Input trace filename
+
+        output_fn: str
+            Output trace filename
+
+        tensor: Optional[int]
+            Tensor number whose information to extract, None if irrelevant
+
+        trace_type: str
+            Type of the trace given; one of iter, intersect, or populate
+
+        access_type: str
+            Type of access to worry about; one of read or write
+
+        """
+
+        assert trace_type == "iter" or tensor is not None
+
+        with open(input_fn, "r") as f_in, open(output_fn, "w") as f_out:
+            head_in = f_in.readline()[:-1].split(",")
+
+            # Find the start and end of the relevant names
+            for start, head in enumerate(head_in):
+                if not head.endswith("_pos"):
+                    break
+
+            end = head_in.index(rank) + 1
+
+            other = None
+            used = None
+            if trace_type == "intersect":
+                used = head_in.index(str(tensor) + "_match")
+
+            elif trace_type == "populate":
+                used = head_in.index(str(tensor) + "_access")
+
+                if tensor % 2 == 0:
+                    other = used + 1
+                else:
+                    other = used - 1
+
+            f_out.write(",".join(head_in[start:end]) + "\n")
+
+            # Build the trace, coalescing together consecutive accesses of the
+            # same element
+            last_stamp = None
+            for line in f_in.readlines():
+                split = line[:-1].split(",")
+
+                # If not used continue
+                if trace_type == "intersect" and split[used] == "False":
+                    continue
+
+                if trace_type == "populate" and split[used] == "False":
+                    continue
+
+                # If we only care about reads, don't track the writes on the output
+                if trace_type == "populate" and access_type == "read" \
+                        and tensor % 2 == 0 and split[other] == "False":
+                    continue
+
+                stamp = split[start:end]
+                if stamp != last_stamp:
+                    last_stamp = stamp
+                    f_out.write(",".join(stamp) + "\n")
+
+
+    @staticmethod
     def buffetTraffic(bindings, formats, traces, buffer_sz):
         """Compute the traffic loading data into this buffet
 

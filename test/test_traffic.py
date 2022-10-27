@@ -14,7 +14,6 @@ class TestTraffic(unittest.TestCase):
         M = 6
         N = 7
         density = 0.5
-
         # Create the tensors
         A_KM = Tensor.fromRandom(
             rank_ids=[
@@ -36,6 +35,7 @@ class TestTraffic(unittest.TestCase):
         Metrics.beginCollect("tmp/test_traffic_stage0")
         Metrics.trace("M")
         Metrics.trace("K")
+        Metrics.trace("K", type_="intersect_2_3")
         for m, (t_k, a_k) in t_m << a_m:
             for k, (t_n, (a_val, b_n)) in t_k << (a_k & b_k):
                 for n, (t_ref, b_val) in t_n << b_n:
@@ -83,6 +83,138 @@ class TestTraffic(unittest.TestCase):
 
         self.B_format = Format(self.B_KN, formats["B"])
         self.T_format = Format(self.T_MNK, formats["T"])
+
+        # We can also have a single-stage version of Gustavson's
+        b_k = self.B_KN.getRoot()
+        a_m = self.A_MK.getRoot()
+        Z_MN = Tensor(rank_ids=["M", "N"])
+        z_m = Z_MN.getRoot()
+
+        Metrics.beginCollect("tmp/test_traffic_single_stage")
+        Metrics.trace("N", type_="populate_0_1")
+        for m, (z_n, a_k) in z_m << a_m:
+            for k, (a_val, b_n) in a_k & b_k:
+                for n, (z_ref, b_val) in z_n << b_n:
+                    z_ref += a_val * b_val
+        Metrics.endCollect()
+
+    def test_buildTrace_iter(self):
+        """Test buildTrace with trace_type=iter"""
+        corrM = [
+            "M\n",
+            "0\n",
+            "1\n",
+            "2\n",
+            "3\n",
+            "4\n",
+            "5\n"
+        ]
+
+        corrK = [
+            "M,K\n",
+            "0,1\n",
+            "0,7\n",
+            "1,0\n",
+            "1,5\n",
+            "2,1\n",
+            "2,6\n",
+            "3,0\n",
+            "3,2\n",
+            "3,5\n",
+            "4,2\n",
+            "4,6\n",
+            "4,7\n",
+            "5,0\n",
+            "5,6\n"
+        ]
+
+        Traffic.buildTrace("M", "tmp/test_traffic_stage0-K-iter.csv", "tmp/test_buildTrace_iter-M.csv")
+
+        with open("tmp/test_buildTrace_iter-M.csv", "r") as f:
+            self.assertEqual(f.readlines(), corrM)
+
+        Traffic.buildTrace("K", "tmp/test_traffic_stage0-K-iter.csv", "tmp/test_buildTrace_iter-K.csv")
+
+        with open("tmp/test_buildTrace_iter-K.csv", "r") as f:
+            self.assertEqual(f.readlines(), corrK)
+
+    def test_buildTrace_intersect_no_tensor(self):
+        """Test buildTrace for an intersection trace without an explicit
+        tensor number"""
+
+        with self.assertRaises(AssertionError):
+            Traffic.buildTrace("K", "tmp/test_traffic_stage0-K-intersect_2_3.csv", "tmp/bad.csv", trace_type="intersect")
+
+    def test_buildTrace_intersect(self):
+        """Test buildTrace with an intersection"""
+
+        corr = [
+            "M,K\n",
+            "0,1\n",
+            "0,7\n",
+            "1,0\n",
+            "1,5\n",
+            "2,1\n",
+            "2,6\n",
+            "3,0\n",
+            "3,2\n",
+            "3,5\n",
+            "4,2\n",
+            "4,6\n",
+            "4,7\n",
+            "5,0\n",
+            "5,6\n"
+        ]
+
+        Traffic.buildTrace("K",
+            "tmp/test_traffic_stage0-K-intersect_2_3.csv",
+            "tmp/test_buildTrace_intersect.csv",
+            trace_type="intersect", tensor=2)
+
+        with open("tmp/test_buildTrace_intersect.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+    def test_buildTrace_populate_no_tensor(self):
+        """Test buildTrace for an populate trace without an explicit tensor number"""
+
+        with self.assertRaises(AssertionError):
+            Traffic.buildTrace("K", "tmp/test_traffic_single_stage-N-populate_0_1.csv", "tmp/bad.csv", trace_type="populate")
+
+    def test_buildTrace_populate_1(self):
+        """Test buildTrace for a populate trace"""
+        Traffic.buildTrace(
+            "N",
+            "tmp/test_traffic_single_stage-N-populate_0_1.csv",
+            "tmp/test_buildTrace_populate_1.csv",
+            trace_type="populate", tensor=1)
+
+        with open("tmp/test_buildTrace_populate_1.csv", "r") as f_test, \
+             open("test_traffic-test_buildTrace_populate-corr1.csv", "r") as f_corr:
+            self.assertEqual(f_test.readlines(), f_corr.readlines())
+
+    def test_buildTrace_populate_read0(self):
+        """Test buildTrace for a populate trace"""
+        Traffic.buildTrace(
+            "N",
+            "tmp/test_traffic_single_stage-N-populate_0_1.csv",
+            "tmp/test_buildTrace_populate_read0.csv",
+            trace_type="populate", tensor=0)
+
+        with open("tmp/test_buildTrace_populate_read0.csv", "r") as f_test, \
+             open("test_traffic-test_buildTrace_populate-corr0-read.csv", "r") as f_corr:
+            self.assertEqual(f_test.readlines(), f_corr.readlines())
+
+    def test_buildTrace_populate_write0(self):
+        """Test buildTrace for a populate trace"""
+        Traffic.buildTrace(
+            "N",
+            "tmp/test_traffic_single_stage-N-populate_0_1.csv",
+            "tmp/test_buildTrace_populate_write0.csv",
+            trace_type="populate", access_type="write", tensor=0)
+
+        with open("tmp/test_buildTrace_populate_write0.csv", "r") as f_test, \
+             open("test_traffic-test_buildTrace_populate-corr0-write.csv", "r") as f_corr:
+            self.assertEqual(f_test.readlines(), f_corr.readlines())
 
     def test_buffetTraffic(self):
         """Test buffetTraffic"""
