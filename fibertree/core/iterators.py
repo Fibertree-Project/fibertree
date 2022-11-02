@@ -670,6 +670,7 @@ def __and__(self, other):
                 if a_coord < b_coord:
                     if is_collecting:
                         Metrics.addUse(rank, a_coord, type_=trace_type, info=[True, False])
+                        Metrics.incIter(rank)
 
                     a_coord, a_payload = _get_next(a)
 
@@ -678,6 +679,7 @@ def __and__(self, other):
                 if a_coord > b_coord:
                     if is_collecting:
                         Metrics.addUse(rank, b_coord, type_=trace_type, info=[False, True])
+                        Metrics.incIter(rank)
 
                     b_coord, b_payload = _get_next(b)
 
@@ -1002,6 +1004,7 @@ def __lshift__(self, other):
                 # If this is a new payload, we may have to track the insert/append
                 elif is_collecting and new_a_payload:
                     Metrics.addUse(rank, b_coord, type_=trace_type, info=[True, False])
+                    Metrics.incIter(rank)
 
                     # If this is an insert into a compressed fiber, move
                     # the following elements forward one
@@ -1009,6 +1012,7 @@ def __lshift__(self, other):
                         for c, p in self.a_fiber.iterRange(b_coord + 1, None,
                                         tick=False, start_pos=start_pos):
                             Metrics.addUse(rank, c, type_=trace_type, info=[True, False])
+                            Metrics.incIter(rank)
 
 
             return

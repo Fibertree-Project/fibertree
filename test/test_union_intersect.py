@@ -87,12 +87,12 @@ class TestUnionIntersect(unittest.TestCase):
 
         corr = [
             "M_pos,K_pos,M,K\n",
-            "0,0,1,2\n",
-            "0,1,1,4\n",
-            "1,0,2,2\n",
-            "1,1,2,4\n",
-            "2,0,3,2\n",
-            "2,1,3,4\n"
+            "0,3,1,2\n",
+            "0,5,1,4\n",
+            "1,3,2,2\n",
+            "1,5,2,4\n",
+            "2,3,3,2\n",
+            "2,5,3,4\n"
         ]
 
         with open("tmp/test_intersection_metrics-K-iter.csv", "r") as f:

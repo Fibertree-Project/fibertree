@@ -123,9 +123,9 @@ class TestFiberOperators(unittest.TestCase):
             "K_pos,K,0_match,1_match\n",
             "0,0,True,True\n",
             "1,1,False,True\n",
-            "1,3,True,False\n",
-            "1,4,True,False\n",
-            "1,5,True,True\n"
+            "2,3,True,False\n",
+            "3,4,True,False\n",
+            "4,5,True,True\n"
         ]
 
         with open("tmp/test_and_metrics_fiber-K-intersect_0_1.csv", "r") as f:
@@ -146,9 +146,9 @@ class TestFiberOperators(unittest.TestCase):
             "K_pos,K,0_match,1_match\n",
             "0,0,True,True\n",
             "1,1,False,True\n",
-            "1,3,True,False\n",
-            "1,4,True,False\n",
-            "1,5,True,True\n"
+            "2,3,True,False\n",
+            "3,4,True,False\n",
+            "4,5,True,True\n"
         ]
 
         with open("tmp/test_and_metrics_tensor-K-intersect_0_1.csv", "r") as f:
@@ -207,11 +207,11 @@ class TestFiberOperators(unittest.TestCase):
         corr = [
             "M_pos,K_pos,M,K\n",
             "0,0,0,0\n",
-            "0,1,0,4\n",
+            "0,3,0,4\n",
             "1,0,2,0\n",
-            "1,1,2,4\n",
+            "1,3,2,4\n",
             "2,0,4,0\n",
-            "2,1,4,4\n"
+            "2,3,4,4\n"
         ]
         with open("tmp/test_and_use_stats_1D-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
@@ -235,7 +235,7 @@ class TestFiberOperators(unittest.TestCase):
         corr = [
             "I_pos,J_pos,I,J\n",
             "0,0,0,0\n",
-            "0,1,0,2\n",
+            "0,2,0,2\n",
             "1,0,1,0\n",
             "1,1,1,1\n"
         ]
@@ -367,11 +367,11 @@ class TestFiberOperators(unittest.TestCase):
             "M_pos,M,0_access,1_access\n",
             "0,0,False,True\n",
             "1,0,True,False\n",
-            "1,1,True,False\n",
-            "1,2,True,False\n",
-            "1,2,True,True\n",
-            "2,3,False,True\n",
-            "3,3,True,False\n"
+            "2,1,True,False\n",
+            "3,2,True,False\n",
+            "4,2,True,True\n",
+            "5,3,False,True\n",
+            "6,3,True,False\n"
         ]
 
         with open("tmp/test_lshift_metrics_fiber-M-populate_0_1.csv", "r") as f:
@@ -395,11 +395,11 @@ class TestFiberOperators(unittest.TestCase):
             "M_pos,M,0_access,1_access\n",
             "0,0,False,True\n",
             "1,0,True,False\n",
-            "1,1,True,False\n",
-            "1,2,True,False\n",
-            "1,2,True,True\n",
-            "2,3,False,True\n",
-            "3,3,True,False\n"
+            "2,1,True,False\n",
+            "3,2,True,False\n",
+            "4,2,True,True\n",
+            "5,3,False,True\n",
+            "6,3,True,False\n"
         ]
 
         with open("tmp/test_lshift_metrics_tensor-M-populate_0_1.csv", "r") as f:
@@ -425,18 +425,18 @@ class TestFiberOperators(unittest.TestCase):
             "M_pos,M,0_access,1_access\n",
             "0,0,False,True\n",
             "1,0,True,False\n",
-            "1,1,True,False\n",
-            "1,2,True,False\n",
-            "1,2,True,True\n",
-            "2,3,False,True\n",
-            "3,3,True,False\n"
+            "2,1,True,False\n",
+            "3,2,True,False\n",
+            "4,2,True,True\n",
+            "5,3,False,True\n",
+            "6,3,True,False\n"
         ]
 
         corr23 = [
             "M_pos,M,2_access,3_access\n",
             "0,0,False,True\n",
-            "1,2,False,True\n",
-            "2,3,False,True\n"
+            "4,2,False,True\n",
+            "5,3,False,True\n"
         ]
 
         with open("tmp/test_lshift_metrics_many_fibers-M-populate_0_1.csv", "r") as f:
