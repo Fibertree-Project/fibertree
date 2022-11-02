@@ -161,6 +161,16 @@ class TestFormat(unittest.TestCase):
         self.assertEqual(f.getRHBits("M"), 0)
         self.assertEqual(f.getRHBits("K"), 128)
 
+    def test_get_elem(self):
+        """Test getElem"""
+        f = Format(self.t, self.spec)
+        self.assertEqual(f.getElem("K", "coord"), 32)
+        self.assertEqual(f.getElem("K", "payload"), 64)
+        self.assertEqual(f.getElem("K", "elem"), 96)
+
+        with self.assertRaises(AssertionError):
+            f.getElem("K", "foo")
+
     def test_get_layout(self):
         """Test getLayout"""
         f = Format(self.t, self.spec)

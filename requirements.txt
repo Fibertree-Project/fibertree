@@ -9,3 +9,4 @@ tqdm
 Cython
 pandas
 sortedcontainers
+file-read-backwards

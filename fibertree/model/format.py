@@ -124,6 +124,18 @@ class Format:
 
         return self.spec[rank]["rhbits"]
 
+    def getElem(self, rank, type_):
+        """Get the footprint of a single element, either a coordinate, payload, or element"""
+        if type_ == "coord":
+            return self.spec[rank]["cbits"]
+        elif type_ == "payload":
+            return self.spec[rank]["pbits"]
+        elif type_ == "elem":
+            return self.spec[rank]["cbits"] + self.spec[rank]["pbits"]
+
+        # Code should never reach here, bad type_
+        assert False
+
     def getFiber(self, *coords):
         """Get the footprint of a single fiber"""
         fiber = self._getFiberFromCoords(*coords)

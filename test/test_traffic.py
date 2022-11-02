@@ -36,6 +36,7 @@ class TestTraffic(unittest.TestCase):
         Metrics.trace("M")
         Metrics.trace("K")
         Metrics.trace("K", type_="intersect_2_3")
+        Metrics.trace("N")
         for m, (t_k, a_k) in t_m << a_m:
             for k, (t_n, (a_val, b_n)) in t_k << (a_k & b_k):
                 for n, (t_ref, b_val) in t_n << b_n:
@@ -57,6 +58,14 @@ class TestTraffic(unittest.TestCase):
         Metrics.endCollect()
 
         formats = yaml.safe_load("""
+        A:
+            M:
+                format: U
+                pbits: 32
+            K:
+                format: C
+                cbits: 32
+                pbits: 64
         B:
             K:
                 format: U
@@ -81,8 +90,10 @@ class TestTraffic(unittest.TestCase):
                 pbits: 64
         """)
 
+        self.A_format = Format(self.A_MK, formats["A"])
         self.B_format = Format(self.B_KN, formats["B"])
         self.T_format = Format(self.T_MNK, formats["T"])
+        self.formats = {"A": self.A_format, "B": self.B_format, "T": self.T_format}
 
         # We can also have a single-stage version of Gustavson's
         b_k = self.B_KN.getRoot()
@@ -216,7 +227,132 @@ class TestTraffic(unittest.TestCase):
              open("test_traffic-test_buildTrace_populate-corr0-write.csv", "r") as f_corr:
             self.assertEqual(f_test.readlines(), f_corr.readlines())
 
-    def test_buffetTraffic(self):
+    def test_buildNextUseTrace(self):
+        """Build a trace for each use that includes when the next use is"""
+        Traffic.buildTrace(
+            "N",
+            "tmp/test_traffic_single_stage-N-populate_0_1.csv",
+            "tmp/test_buildNextUseTrace_raw_trace.csv",
+            trace_type="populate", access_type="read", tensor=1)
+        Traffic._buildNextUseTrace(["K", "N"], "tmp/test_buildNextUseTrace_raw_trace.csv", "tmp/test_buildNextUseTrace_next_uses.csv")
+
+        with open("tmp/test_buildNextUseTrace_next_uses.csv", "r") as f_test, \
+             open("test_traffic-test_buildNextUseTrace-corr.csv", "r") as f_corr:
+            self.assertEqual(f_test.readlines(), f_corr.readlines())
+
+    def test_buffetTraffic_basic(self):
+        """Test buffetTraffic"""
+        bindings = yaml.safe_load("""
+        - tensor: A
+          rank: M
+          type: payload
+          evict-on: M
+        """)
+        traces = {("A", "M", "payload"): "tmp/test_traffic_stage0-M-iter.csv"}
+
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0)
+        self.assertEqual(bits, 6 * 32)
+        self.assertEqual(overflows, 0)
+
+    def test_buffetTraffic_multiple_bindings(self):
+        """Test buffetTraffic multiple bindings"""
+        bindings = yaml.safe_load("""
+        - tensor: A
+          rank: M
+          type: payload
+          evict-on: M
+
+        - tensor: A
+          rank: K
+          type: coord
+          evict-on: M
+
+        - tensor: A
+          rank: K
+          type: payload
+          evict-on: M
+        """)
+
+        # The coordinates of the K rank are those used for intersection
+        Traffic.buildTrace("K",
+            "tmp/test_traffic_stage0-K-intersect_2_3.csv",
+            "tmp/test_buffetTraffic_multiple_bindings-K_coord.csv",
+            trace_type="intersect", tensor=2)
+
+        # The payloads are needed only when they are used (in the inner-most loop)
+        Traffic.buildTrace("K",
+            "tmp/test_traffic_stage0-N-iter.csv",
+            "tmp/test_buffetTraffic_multiple_bindings-K_payload.csv")
+
+        traces = {
+            ("A", "M", "payload"): "tmp/test_traffic_stage0-M-iter.csv",
+            ("A", "K", "coord"): "tmp/test_buffetTraffic_multiple_bindings-K_coord.csv",
+            ("A", "K", "payload"): "tmp/test_buffetTraffic_multiple_bindings-K_payload.csv"
+        }
+
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0)
+        self.assertEqual(bits, 6 * 32 + 14 * 32 + 14 * 64)
+        self.assertEqual(overflows, 0)
+
+    def test_buffetTraffic_multiple_tensors(self):
+        """Test buffetTraffic multiple tensors"""
+        bindings = yaml.safe_load("""
+        - tensor: A
+          rank: K
+          type: payload
+          evict-on: M
+
+        # Pin the K fiber of B
+        - tensor: B
+          rank: K
+          type: payload
+          evict-on: root
+        """)
+
+        # The payloads are needed only when they are used (in the inner-most loop)
+        Traffic.buildTrace("K",
+            "tmp/test_traffic_stage0-N-iter.csv",
+            "tmp/test_buffetTraffic_multiple_tensors.csv")
+
+        traces = {
+            ("A", "K", "payload"): "tmp/test_buffetTraffic_multiple_tensors.csv",
+            ("B", "K", "payload"): "tmp/test_buffetTraffic_multiple_tensors.csv"
+        }
+
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 8 * 32)
+        self.assertEqual(bits, 14 * 64 + 6 * 32)
+        self.assertEqual(overflows, 0)
+
+    def test_buffetTraffic_overflow(self):
+        bindings = yaml.safe_load("""
+        - tensor: A
+          rank: K
+          type: payload
+          evict-on: M
+
+        # Pin the K fiber of B
+        - tensor: B
+          rank: K
+          type: payload
+          evict-on: root
+        """)
+
+        # The payloads are needed only when they are used (in the inner-most loop)
+        Traffic.buildTrace("K",
+            "tmp/test_traffic_stage0-N-iter.csv",
+            "tmp/test_buffetTraffic_multiple_tensors.csv")
+
+        traces = {
+            ("A", "K", "payload"): "tmp/test_buffetTraffic_multiple_tensors.csv",
+            ("B", "K", "payload"): "tmp/test_buffetTraffic_multiple_tensors.csv"
+        }
+
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 4 * 32)
+        self.assertEqual(bits, 14 * 64 + 6 * 32)
+        self.assertEqual(overflows, 2)
+
+
+    def test_buffetTraffic_old(self):
         """Test buffetTraffic"""
         bits = Traffic.buffetTraffic_old(
             "tmp/test_traffic_stage0", self.B_KN, "K", self.B_format)
