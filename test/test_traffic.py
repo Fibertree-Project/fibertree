@@ -101,31 +101,31 @@ class TestTraffic(unittest.TestCase):
     def test_buildTrace_iter(self):
         """Test buildTrace with trace_type=iter"""
         corrM = [
-            "M\n",
-            "0\n",
-            "1\n",
-            "2\n",
-            "3\n",
-            "4\n",
-            "5\n"
+            "M_pos,M\n",
+            "0,0\n",
+            "2,1\n",
+            "4,2\n",
+            "6,3\n",
+            "8,4\n",
+            "10,5\n"
         ]
 
         corrK = [
-            "M,K\n",
-            "0,1\n",
-            "0,7\n",
-            "1,0\n",
-            "1,5\n",
-            "2,1\n",
-            "2,6\n",
-            "3,0\n",
-            "3,2\n",
-            "3,5\n",
-            "4,2\n",
-            "4,6\n",
-            "4,7\n",
-            "5,0\n",
-            "5,6\n"
+            "M_pos,K_pos,M,K\n",
+            "0,1,0,1\n",
+            "0,8,0,7\n",
+            "2,0,1,0\n",
+            "2,6,1,5\n",
+            "4,1,2,1\n",
+            "4,7,2,6\n",
+            "6,0,3,0\n",
+            "6,3,3,2\n",
+            "6,7,3,5\n",
+            "8,2,4,2\n",
+            "8,7,4,6\n",
+            "8,9,4,7\n",
+            "10,0,5,0\n",
+            "10,7,5,6\n"
         ]
 
         Traffic.buildTrace("M", "tmp/test_traffic_stage0-K-iter.csv", "tmp/test_buildTrace_iter-M.csv")
@@ -149,21 +149,21 @@ class TestTraffic(unittest.TestCase):
         """Test buildTrace with an intersection"""
 
         corr = [
-            "M,K\n",
-            "0,1\n",
-            "0,7\n",
-            "1,0\n",
-            "1,5\n",
-            "2,1\n",
-            "2,6\n",
-            "3,0\n",
-            "3,2\n",
-            "3,5\n",
-            "4,2\n",
-            "4,6\n",
-            "4,7\n",
-            "5,0\n",
-            "5,6\n"
+            "M_pos,K_pos,M,K\n",
+            "0,1,0,1\n",
+            "0,8,0,7\n",
+            "2,0,1,0\n",
+            "2,6,1,5\n",
+            "4,1,2,1\n",
+            "4,7,2,6\n",
+            "6,0,3,0\n",
+            "6,3,3,2\n",
+            "6,7,3,5\n",
+            "8,2,4,2\n",
+            "8,7,4,6\n",
+            "8,9,4,7\n",
+            "10,0,5,0\n",
+            "10,7,5,6\n"
         ]
 
         Traffic.buildTrace("K",

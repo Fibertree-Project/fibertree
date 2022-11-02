@@ -46,11 +46,12 @@ class Traffic:
             head_in = f_in.readline()[:-1].split(",")
 
             # Find the start and end of the relevant names
-            for start, head in enumerate(head_in):
+            for coord_start, head in enumerate(head_in):
                 if not head.endswith("_pos"):
                     break
 
-            end = head_in.index(rank) + 1
+            coord_end = head_in.index(rank) + 1
+            iter_end = head_in.index(rank + "_pos") + 1
 
             other = None
             used = None
@@ -65,7 +66,7 @@ class Traffic:
                 else:
                     other = used - 1
 
-            f_out.write(",".join(head_in[start:end]) + "\n")
+            f_out.write(",".join(head_in[:iter_end] + head_in[coord_start:coord_end]) + "\n")
 
             # Build the trace, coalescing together consecutive accesses of the
             # same element
@@ -85,7 +86,7 @@ class Traffic:
                         and tensor % 2 == 0 and split[other] == "False":
                     continue
 
-                stamp = split[start:end]
+                stamp = split[:iter_end] + split[coord_start:coord_end]
                 if stamp != last_stamp:
                     last_stamp = stamp
                     f_out.write(",".join(stamp) + "\n")
