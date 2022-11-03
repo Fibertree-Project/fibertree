@@ -545,12 +545,12 @@ class TestFiber(unittest.TestCase):
         Metrics.endCollect()
 
         corr = [
-            "K_pos,K\n",
-            "0,1\n",
-            "1,4\n",
-            "2,5\n",
-            "3,8\n",
-            "4,9\n"
+            "K_pos,K,fiber_pos\n",
+            "0,1,0\n",
+            "1,4,1\n",
+            "2,5,2\n",
+            "3,8,3\n",
+            "4,9,4\n"
         ]
 
         with open("tmp/test_iterOccupancy_uses-K-iter.csv", "r") as f:
@@ -681,10 +681,10 @@ class TestFiber(unittest.TestCase):
         Metrics.endCollect()
 
         corr = [
-            "K_pos,K\n",
-            "0,4\n",
-            "1,5\n",
-            "2,8\n"
+            "K_pos,K,fiber_pos\n",
+            "0,4,1\n",
+            "1,5,2\n",
+            "2,8,3\n"
         ]
 
         with open("tmp/test_iterActive_uses-K-iter.csv", "r") as f:
@@ -850,10 +850,10 @@ class TestFiber(unittest.TestCase):
         Metrics.endCollect()
 
         corr = [
-            "K_pos,K\n",
-            "0,4\n",
-            "1,5\n",
-            "2,8\n"
+            "K_pos,K,fiber_pos\n",
+            "0,4,1\n",
+            "1,5,2\n",
+            "2,8,3\n"
         ]
 
         with open("tmp/test_iterRange_uses-K-iter.csv", "r") as f:
@@ -2224,11 +2224,11 @@ class TestFiber(unittest.TestCase):
         Metrics.endCollect()
 
         corr = [
-            "I_pos,I\n",
-            "0,3\n",
-            "1,5\n",
-            "2,7\n",
-            "3,9\n"
+            "I_pos,I,fiber_pos\n",
+            "0,3,0\n",
+            "1,5,1\n",
+            "2,7,2\n",
+            "3,9,3\n"
         ]
 
         with open("tmp/test_project_use_stats-I-iter.csv", "r") as f:
@@ -2308,9 +2308,9 @@ class TestFiber(unittest.TestCase):
         Metrics.endCollect()
 
         corr = [
-            "K_pos,K\n",
-            "0,2\n",
-            "1,6\n"
+            "K_pos,K,fiber_pos\n",
+            "0,2,0\n",
+            "1,6,1\n"
         ]
 
         with open("tmp/test_prune_use_stats-K-iter.csv", "r") as f:

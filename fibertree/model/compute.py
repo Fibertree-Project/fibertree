@@ -27,7 +27,7 @@ class Compute:
             return 0
 
     @staticmethod
-    def numIsectLeaderFollower(trace_fn, leader):
+    def numIsectLeaderFollower(leader_fn):
         """
         Compute the number of intersection attempts with leader-follower
         intersection
@@ -35,11 +35,8 @@ class Compute:
         Parameters
         ----------
 
-        trace_fn: str
-            The filename of the intersection
-
-        leader: int
-            Tensor number of the leader
+        leader_fn: str
+            The filename of the access trace of the leader
 
         Returns
         ------
@@ -48,28 +45,28 @@ class Compute:
             Number of intersection tests
 
         """
-        with open(trace_fn, "r") as f:
-            cols = f.readline()[:-1].split(",")
-            ind = cols.index(str(leader) + "_match")
+        with open(leader_fn, "r") as f:
+            # Throw away the header
+            f.readline()
 
             isects = 0
-            for line in f.readlines():
-                data = line[:-1].split(",")
-                if data[ind] == "True":
-                    isects += 1
+            line = f.readline()
+            while line:
+                isects += 1
+                line = f.readline()
 
         return isects
 
     @staticmethod
-    def numIsectSkipAhead(trace_fn):
+    def numIsectSkipAhead(fn0, fn1):
         """ Compute the number of intersection attempts with skip-ahead
         intersection
 
         Parameters
         ----------
 
-        trace_fn: str
-            The filename of the intersection
+        fn0, fn1: str
+            The filenames of the intersection traces
 
         Returns
         ------
@@ -78,27 +75,52 @@ class Compute:
             Number of intersection tests
 
         """
-        with open(trace_fn, "r") as f:
+        def get_data(line):
+            if line:
+                return tuple(int(val) for val in line[:-1].split(",")[:-1])
+            else:
+                return (float("inf"),)
+
+        with open(fn0, "r") as f0, open(fn1, "r") as f1:
+            # Throw away headers
+            f0.readline()
+            f1.readline()
+
             isects = 0
             curr = None
-            for line in f.readlines():
-                data = line[:-1].split(",")
-                a_match, b_match = tuple(match == "True" for match in data[-2:])
 
+            line0 = f0.readline()
+            line1 = f1.readline()
+            data0 = get_data(line0)
+            data1 = get_data(line1)
+            while line0 or line1:
                 # If both matched, there is nothing to skip
-                if a_match and b_match:
+                if data0 == data1:
                     curr = None
                     isects += 1
 
-                # If only A matched, intersect if not skipped
-                elif a_match and curr != 0:
-                    curr = 0
-                    isects += 1
+                    line0 = f0.readline()
+                    line1 = f1.readline()
+                    data0 = get_data(line0)
+                    data1 = get_data(line1)
 
-                # If only B matched, intersect if not skipped
-                elif b_match and curr != 1:
-                    curr = 1
-                    isects += 1
+                # If only 0 matched, intersect if not skipped
+                elif data0 < data1:
+                    if curr != 0:
+                        curr = 0
+                        isects += 1
+
+                    line0 = f0.readline()
+                    data0 = get_data(line0)
+
+                # If only 1 matched, intersect if not skipped
+                else:
+                    if curr != 1:
+                        curr = 1
+                        isects += 1
+
+                    line1 = f1.readline()
+                    data1 = get_data(line1)
 
         return isects
 

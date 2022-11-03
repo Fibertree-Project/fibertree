@@ -36,13 +36,12 @@ class Metrics:
     point = None
     prefix = None
     traces = {}
-    trace_info = {}
 
     def __init__(self):
         raise NotImplementedError
 
     @classmethod
-    def addUse(cls, rank, coord, type_="iter", info=[]):
+    def addUse(cls, rank, coord, pos, type_="iter"):
         """Add a use of all tensors at the given rank and coord
 
         Parameters
@@ -56,9 +55,6 @@ class Metrics:
 
         type_: str
             Description of the information this trace is collecting
-
-        info: list
-            Any additional info that should be added to the CSV
 
         Returns
         -------
@@ -83,11 +79,7 @@ class Metrics:
         iteration = ",".join(str(j) for j in cls.iteration[:(i + 1)])
         point = ",".join(str(j) for j in cls.point[:(i + 1)])
 
-        data = [iteration, point]
-        if info:
-            str_info = [val if isinstance(val, str) else str(val) for val in info]
-            data.append(",".join(str_info))
-
+        data = [iteration, point, str(pos)]
         cls.traces[rank][type_].append(",".join(data) + "\n")
 
         # If we are at the limit of the number of cached uses, write the data
@@ -122,7 +114,6 @@ class Metrics:
         cls.point = []
         cls.prefix = prefix
         cls.traces = {}
-        cls.trace_info = {}
 
     @classmethod
     def dump(cls):
@@ -177,7 +168,6 @@ class Metrics:
         cls.point = None
         cls.prefix = None
         cls.traces = {}
-        cls.trace_info = {}
 
     @classmethod
     def endIter(cls, rank):
@@ -403,14 +393,12 @@ class Metrics:
         pos = ",".join(r + "_pos" for r in cls.loop_order[:end])
         coord = ",".join(r for r in cls.loop_order[:end])
 
-        headings = [pos, coord]
-        if cls.trace_info[rank][type_]:
-            headings.append(",".join(cls.trace_info[rank][type_]))
+        headings = [pos, coord, "fiber_pos"]
         cls.traces[rank][type_].append(",".join(headings) + "\n")
 
 
     @classmethod
-    def trace(cls, rank, type_="iter", info=None):
+    def trace(cls, rank, type_="iter"):
         """Set a rank to trace
 
         Note must be called after Metrics.beginCollect()
@@ -424,9 +412,6 @@ class Metrics:
         type_: str
             Description of the information this trace is collecting
 
-        info: Optional[List[str]]
-            Any additional info that should be added to the CSV
-
         Returns
         -------
 
@@ -438,22 +423,8 @@ class Metrics:
 
         if rank not in cls.traces.keys():
             cls.traces[rank] = {}
-            cls.trace_info[rank] = {}
 
         cls.traces[rank][type_] = []
-
-        # Default info for common types
-        fields = type_.split("_")
-        if fields[0] == "intersect":
-            info = [fields[1] + "_match", fields[2] + "_match"]
-        elif fields[0] == "populate":
-            info = [fields[1] + "_access", fields[2] + "_access"]
-
-        # Save the info if it has been set
-        if info:
-            cls.trace_info[rank][type_] = info
-        else:
-            cls.trace_info[rank][type_] = []
 
     @classmethod
     def _writeTrace(cls, rank, type_):

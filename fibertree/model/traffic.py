@@ -168,6 +168,7 @@ class Traffic:
         os.remove(comb_fn)
         os.remove(rev_fn)
 
+
     @staticmethod
     def buffetTraffic(bindings, formats, trace_fns, capacity, line_sz):
         """Compute the traffic loading data into this buffet
@@ -181,8 +182,11 @@ class Traffic:
         formats: Dict[str, Format]
             A dictionary from tensor names to their corresponding format objects
 
-        trace_fns: Dict[Tuple[str, str, str], str]]]
-            A nested dictionary of traces of the form {(tensor, rank, type): trace_fn}}}
+        trace_fns: Dict[Tuple[str, str, str, str], str]]]
+            A nested dictionary of traces of the form
+            {(tensor, rank, type, access): trace_fn}}}
+            where type is one of "elem", "coord", or "payload" and access is
+            "read" or "write"
 
         capacity: int
             The number of bits that fit in the buffet
@@ -199,12 +203,13 @@ class Traffic:
         # Build traces with the next use
         next_use_traces = {}
         for key, fn in trace_fns.items():
-            rank_ids = formats[key[0]].tensor.getRankIds()
-            elems_per_line = line_sz // formats[key[0]].getElem(key[1], key[2])
+            tensor, rank, type_, access = key
+            rank_ids = formats[tensor].tensor.getRankIds()
+            elems_per_line = line_sz // formats[tensor].getElem(rank, type_)
             assert elems_per_line > 0
 
             split_fn = os.path.splitext(fn)
-            next_fn = split_fn[0] + "-next-" + ",".join(key) + split_fn[1]
+            next_fn = split_fn[0] + "-next-" + "-".join(key) + split_fn[1]
 
             Traffic._buildNextUseTrace(rank_ids, elems_per_line, fn, next_fn)
             next_use_traces[key] = next_fn
@@ -227,14 +232,21 @@ class Traffic:
         bind_info = [[] for _ in order]
         for binding in bindings:
             pos = order.index(binding["rank"])
-            info = (binding["tensor"], binding["rank"], binding["type"], binding["evict-on"])
+            tensor, rank, type_, evict_on = \
+                binding["tensor"], binding["rank"], binding["type"], binding["evict-on"]
 
             # Make sure that the correct type is used
-            assert (info[2] == "elem" and formats[info[0]].getLayout(info[1]) == "interleaved") \
-                or (info[2] == "coord" and formats[info[0]].getLayout(info[1]) == "contiguous") \
-                or (info[2] == "payload" and formats[info[0]].getLayout(info[1]) == "contiguous")
+            assert (type_ == "elem" and formats[tensor].getLayout(rank) == "interleaved") \
+                or (type_ == "coord" and formats[tensor].getLayout(rank) == "contiguous") \
+                or (type_ == "payload" and formats[tensor].getLayout(rank) == "contiguous")
 
-            bind_info[pos].append(info)
+            # If we have a trace for the read of this binding
+            if (tensor, rank, type_, "read") in traces:
+                bind_info[pos].append((tensor, rank, type_, "read", evict_on))
+
+            # If we have a trace for the write of this binding
+            if (tensor, rank, type_, "write") in traces:
+                bind_info[pos].append((tensor, rank, type_, "write", evict_on))
 
         # Flatten the binding info
         bind_info = [info for infos in bind_info for info in infos]
@@ -248,7 +260,7 @@ class Traffic:
 
         # Compute the number of elements per line for each binding
         elems_per_line = []
-        for tensor, rank, type_, _ in bind_info:
+        for tensor, rank, type_, _, _ in bind_info:
             footprint = formats[tensor].getElem(rank, type_)
             elems_per_line.append(line_sz // footprint)
             assert elems_per_line[-1] > 1
@@ -271,7 +283,7 @@ class Traffic:
         # While at least one of the traces is still going
         while next_keys[0][:-1] != (float("inf"),) * len(order):
             i = next_keys[0][-1]
-            tensor, rank, type_, evict_on = bind_info[i]
+            tensor, rank, type_, access, evict_on = bind_info[i]
 
             # Get the tensor access
             trace = next_traces[i]
@@ -333,7 +345,7 @@ class Traffic:
     def _extractNext(i, info, traces, order):
         """Get the next stamps for the given binding info"""
         # Get the trace
-        line = traces[info[:3]].readline()
+        line = traces[info[:4]].readline()
 
         # If there are no more lines, push this trace to the end
         if line == "":

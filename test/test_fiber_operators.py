@@ -114,22 +114,32 @@ class TestFiberOperators(unittest.TestCase):
         b_k.getRankAttrs().setId("K")
 
         Metrics.beginCollect("tmp/test_and_metrics_fiber")
-        Metrics.trace("K", type_="intersect_0_1")
+        Metrics.trace("K", type_="intersect_0")
+        Metrics.trace("K", type_="intersect_1")
         for _ in a_k & b_k:
             pass
         Metrics.endCollect()
 
-        corr = [
-            "K_pos,K,0_match,1_match\n",
-            "0,0,True,True\n",
-            "1,1,False,True\n",
-            "2,3,True,False\n",
-            "3,4,True,False\n",
-            "4,5,True,True\n"
+        corr0 = [
+            "K_pos,K,fiber_pos\n",
+            "0,0,0\n",
+            "2,3,1\n",
+            "3,4,2\n",
+            "4,5,3\n"
         ]
 
-        with open("tmp/test_and_metrics_fiber-K-intersect_0_1.csv", "r") as f:
-            self.assertEqual(f.readlines(), corr)
+        corr1 = [
+            "K_pos,K,fiber_pos\n",
+            "0,0,0\n",
+            "1,1,1\n",
+            "4,5,2\n"
+        ]
+
+        with open("tmp/test_and_metrics_fiber-K-intersect_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr0)
+
+        with open("tmp/test_and_metrics_fiber-K-intersect_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr1)
 
     def test_and_metrics_tensor(self):
         """Test metrics collected during Fiber.__and__ on unowned fibers"""
@@ -137,22 +147,32 @@ class TestFiberOperators(unittest.TestCase):
         B_K = Tensor.fromUncompressed(rank_ids=["K"], root=[1, 2, 0, 0, 0, 6, 0])
 
         Metrics.beginCollect("tmp/test_and_metrics_tensor")
-        Metrics.trace("K", type_="intersect_0_1")
+        Metrics.trace("K", type_="intersect_0")
+        Metrics.trace("K", type_="intersect_1")
         for _ in A_K.getRoot() & B_K.getRoot():
             pass
         Metrics.endCollect()
 
-        corr = [
-            "K_pos,K,0_match,1_match\n",
-            "0,0,True,True\n",
-            "1,1,False,True\n",
-            "2,3,True,False\n",
-            "3,4,True,False\n",
-            "4,5,True,True\n"
+        corr0 = [
+            "K_pos,K,fiber_pos\n",
+            "0,0,0\n",
+            "2,3,1\n",
+            "3,4,2\n",
+            "4,5,3\n"
         ]
 
-        with open("tmp/test_and_metrics_tensor-K-intersect_0_1.csv", "r") as f:
-            self.assertEqual(f.readlines(), corr)
+        corr1 = [
+            "K_pos,K,fiber_pos\n",
+            "0,0,0\n",
+            "1,1,1\n",
+            "4,5,2\n"
+        ]
+
+        with open("tmp/test_and_metrics_tensor-K-intersect_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr0)
+
+        with open("tmp/test_and_metrics_tensor-K-intersect_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr1)
 
     def test_and_metrics_many_fibers(self):
         """Test metrics collection when there are more than two fibers"""
@@ -198,20 +218,20 @@ class TestFiberOperators(unittest.TestCase):
         Metrics.trace("K")
         Metrics.registerRank("M")
         for m in range(3):
-            Metrics.addUse("M", m * 2)
+            Metrics.addUse("M", m * 2, m)
             for _ in a_k & b_k:
                 pass
             Metrics.incIter("M")
         Metrics.endCollect()
 
         corr = [
-            "M_pos,K_pos,M,K\n",
-            "0,0,0,0\n",
-            "0,3,0,4\n",
-            "1,0,2,0\n",
-            "1,3,2,4\n",
-            "2,0,4,0\n",
-            "2,3,4,4\n"
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "0,0,0,0,0\n",
+            "0,3,0,4,1\n",
+            "1,0,2,0,0\n",
+            "1,3,2,4,1\n",
+            "2,0,4,0,0\n",
+            "2,3,4,4,1\n"
         ]
         with open("tmp/test_and_use_stats_1D-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
@@ -233,11 +253,11 @@ class TestFiberOperators(unittest.TestCase):
         Metrics.endCollect()
 
         corr = [
-            "I_pos,J_pos,I,J\n",
-            "0,0,0,0\n",
-            "0,2,0,2\n",
-            "1,0,1,0\n",
-            "1,1,1,1\n"
+            "I_pos,J_pos,I,J,fiber_pos\n",
+            "0,0,0,0,0\n",
+            "0,2,0,2,1\n",
+            "1,0,1,0,0\n",
+            "1,1,1,1,1\n"
         ]
 
         with open("tmp/test_and_use_stats_2D-J-iter.csv", "r") as f:
@@ -358,24 +378,44 @@ class TestFiberOperators(unittest.TestCase):
         z_m.getRankAttrs().setId("M")
 
         Metrics.beginCollect("tmp/test_lshift_metrics_fiber")
-        Metrics.trace("M", type_="populate_0_1")
+        Metrics.trace("M", type_="populate_read_0")
+        Metrics.trace("M", type_="populate_write_0")
+        Metrics.trace("M", type_="populate_1")
         for _, (z_ref, _) in z_m << a_m:
             z_ref += 1
         Metrics.endCollect()
 
-        corr = [
-            "M_pos,M,0_access,1_access\n",
-            "0,0,False,True\n",
-            "1,0,True,False\n",
-            "2,1,True,False\n",
-            "3,2,True,False\n",
-            "4,2,True,True\n",
-            "5,3,False,True\n",
-            "6,3,True,False\n"
+        corr_r0 = [
+            "M_pos,M,fiber_pos\n",
+            "2,1,0\n",
+            "3,2,1\n",
+            "4,2,2\n",
         ]
 
-        with open("tmp/test_lshift_metrics_fiber-M-populate_0_1.csv", "r") as f:
-            self.assertEqual(f.readlines(), corr)
+        corr_w0 = [
+            "M_pos,M,fiber_pos\n",
+            "1,0,0\n",
+            "2,1,1\n",
+            "3,2,2\n",
+            "5,2,2\n",
+            "7,3,3\n"
+        ]
+
+        corr_r1 = [
+            "M_pos,M,fiber_pos\n",
+            "0,0,0\n",
+            "4,2,1\n",
+            "6,3,2\n",
+        ]
+
+        with open("tmp/test_lshift_metrics_fiber-M-populate_read_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r0)
+
+        with open("tmp/test_lshift_metrics_fiber-M-populate_write_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_w0)
+
+        with open("tmp/test_lshift_metrics_fiber-M-populate_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r1)
 
     def test_lshift_metrics_tensor(self):
         """Test metrics collection on Fiber.__lshift__ from a tensor"""
@@ -386,24 +426,44 @@ class TestFiberOperators(unittest.TestCase):
         z_m = Z_M.getRoot()
 
         Metrics.beginCollect("tmp/test_lshift_metrics_tensor")
-        Metrics.trace("M", type_="populate_0_1")
+        Metrics.trace("M", type_="populate_read_0")
+        Metrics.trace("M", type_="populate_write_0")
+        Metrics.trace("M", type_="populate_1")
         for _, (z_ref, _) in z_m << a_m:
             z_ref += 1
         Metrics.endCollect()
 
-        corr = [
-            "M_pos,M,0_access,1_access\n",
-            "0,0,False,True\n",
-            "1,0,True,False\n",
-            "2,1,True,False\n",
-            "3,2,True,False\n",
-            "4,2,True,True\n",
-            "5,3,False,True\n",
-            "6,3,True,False\n"
+        corr_r0 = [
+            "M_pos,M,fiber_pos\n",
+            "2,1,0\n",
+            "3,2,1\n",
+            "4,2,2\n",
         ]
 
-        with open("tmp/test_lshift_metrics_tensor-M-populate_0_1.csv", "r") as f:
-            self.assertEqual(f.readlines(), corr)
+        corr_w0 = [
+            "M_pos,M,fiber_pos\n",
+            "1,0,0\n",
+            "2,1,1\n",
+            "3,2,2\n",
+            "5,2,2\n",
+            "7,3,3\n"
+        ]
+
+        corr_r1 = [
+            "M_pos,M,fiber_pos\n",
+            "0,0,0\n",
+            "4,2,1\n",
+            "6,3,2\n",
+        ]
+
+        with open("tmp/test_lshift_metrics_tensor-M-populate_read_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r0)
+
+        with open("tmp/test_lshift_metrics_tensor-M-populate_write_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_w0)
+
+        with open("tmp/test_lshift_metrics_tensor-M-populate_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r1)
 
     def test_lshift_metrics_many_fibers(self):
         """Test metrics collection on Fiber.__lshift__ with more than 2 fibers"""
@@ -415,35 +475,71 @@ class TestFiberOperators(unittest.TestCase):
         y_m.getRankAttrs().setId("M")
 
         Metrics.beginCollect("tmp/test_lshift_metrics_many_fibers")
-        Metrics.trace("M", type_="populate_0_1")
-        Metrics.trace("M", type_="populate_2_3")
+        Metrics.trace("M", type_="populate_read_0")
+        Metrics.trace("M", type_="populate_write_0")
+        Metrics.trace("M", type_="populate_1")
+        Metrics.trace("M", type_="populate_read_2")
+        Metrics.trace("M", type_="populate_write_2")
+        Metrics.trace("M", type_="populate_3")
         for _, (z_ref, (y_ref, _)) in z_m << (y_m << a_m):
             z_ref += 1
         Metrics.endCollect()
 
-        corr01 = [
-            "M_pos,M,0_access,1_access\n",
-            "0,0,False,True\n",
-            "1,0,True,False\n",
-            "2,1,True,False\n",
-            "3,2,True,False\n",
-            "4,2,True,True\n",
-            "5,3,False,True\n",
-            "6,3,True,False\n"
+        corr_r0 = [
+            "M_pos,M,fiber_pos\n",
+            "2,1,0\n",
+            "3,2,1\n",
+            "4,2,2\n",
         ]
 
-        corr23 = [
-            "M_pos,M,2_access,3_access\n",
-            "0,0,False,True\n",
-            "4,2,False,True\n",
-            "5,3,False,True\n"
+        corr_w0 = [
+            "M_pos,M,fiber_pos\n",
+            "1,0,0\n",
+            "2,1,1\n",
+            "3,2,2\n",
+            "5,2,2\n",
+            "7,3,3\n"
         ]
 
-        with open("tmp/test_lshift_metrics_many_fibers-M-populate_0_1.csv", "r") as f:
-            self.assertEqual(f.readlines(), corr01)
+        corr_r1 = [
+            "M_pos,M,fiber_pos\n",
+            "0,0,0\n",
+            "4,2,1\n",
+            "6,3,2\n",
+        ]
 
-        with open("tmp/test_lshift_metrics_many_fibers-M-populate_2_3.csv", "r") as f:
-            self.assertEqual(f.readlines(), corr23)
+        with open("tmp/test_lshift_metrics_many_fibers-M-populate_read_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r0)
+
+        with open("tmp/test_lshift_metrics_many_fibers-M-populate_write_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_w0)
+
+        with open("tmp/test_lshift_metrics_many_fibers-M-populate_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r1)
+
+        corr_r2 = [
+            "M_pos,M,fiber_pos\n",
+        ]
+
+        corr_w2 = [
+            "M_pos,M,fiber_pos\n",
+        ]
+
+        corr_r3 = [
+            "M_pos,M,fiber_pos\n",
+            "0,0,0\n",
+            "4,2,1\n",
+            "6,3,2\n",
+        ]
+
+        with open("tmp/test_lshift_metrics_many_fibers-M-populate_read_2.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r2)
+
+        with open("tmp/test_lshift_metrics_many_fibers-M-populate_write_2.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_w2)
+
+        with open("tmp/test_lshift_metrics_many_fibers-M-populate_3.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r3)
 
     def test_lshift_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__lshift__"""
@@ -457,23 +553,23 @@ class TestFiberOperators(unittest.TestCase):
         Metrics.trace("M")
         Metrics.registerRank("N")
         for n in range(3):
-            Metrics.addUse("N", n * 2)
+            Metrics.addUse("N", n * 2, n)
             for _ in z_m << a_m:
                 pass
             Metrics.incIter("N")
         Metrics.endCollect()
 
         corr = [
-            "N_pos,M_pos,N,M\n",
-            "0,0,0,0\n",
-            "0,1,0,2\n",
-            "0,2,0,3\n",
-            "1,0,2,0\n",
-            "1,1,2,2\n",
-            "1,2,2,3\n",
-            "2,0,4,0\n",
-            "2,1,4,2\n",
-            "2,2,4,3\n",
+            "N_pos,M_pos,N,M,fiber_pos\n",
+            "0,0,0,0,0\n",
+            "0,1,0,2,1\n",
+            "0,2,0,3,2\n",
+            "1,0,2,0,0\n",
+            "1,1,2,2,1\n",
+            "1,2,2,3,2\n",
+            "2,0,4,0,0\n",
+            "2,1,4,2,1\n",
+            "2,2,4,3,2\n",
         ]
 
         with open("tmp/test_lshift_use_stats_1D-M-iter.csv", "r") as f:
@@ -497,26 +593,26 @@ class TestFiberOperators(unittest.TestCase):
         Metrics.endCollect()
 
         M_corr = [
-            "J_pos,M_pos,J,M\n",
-            "0,0,0,0\n",
-            "0,1,0,2\n",
-            "1,0,1,0\n",
-            "1,1,1,1\n"
+            "J_pos,M_pos,J,M,fiber_pos\n",
+            "0,0,0,0,0\n",
+            "0,1,0,2,1\n",
+            "1,0,1,0,0\n",
+            "1,1,1,1,1\n"
         ]
 
         with open("tmp/test_lshift_use_stats_2D-M-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), M_corr)
 
         N_corr = [
-            "J_pos,M_pos,N_pos,J,M,N\n",
-            "0,0,0,0,0,0\n",
-            "0,0,1,0,0,2\n",
-            "0,1,0,0,2,0\n",
-            "0,1,1,0,2,1\n",
-            "1,0,0,1,0,0\n",
-            "1,0,1,1,0,1\n",
-            "1,0,2,1,0,2\n",
-            "1,1,0,1,1,2\n"
+            "J_pos,M_pos,N_pos,J,M,N,fiber_pos\n",
+            "0,0,0,0,0,0,0\n",
+            "0,0,1,0,0,2,1\n",
+            "0,1,0,0,2,0,0\n",
+            "0,1,1,0,2,1,1\n",
+            "1,0,0,1,0,0,0\n",
+            "1,0,1,1,0,1,1\n",
+            "1,0,2,1,0,2,2\n",
+            "1,1,0,1,1,2,0\n"
         ]
 
         with open("tmp/test_lshift_use_stats_2D-N-iter.csv", "r") as f:

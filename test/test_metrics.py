@@ -41,13 +41,13 @@ class TestMetrics(unittest.TestCase):
     def test_add_use_fails_if_not_collecting(self):
         """Test that addUse fails if collection is not on"""
         with self.assertRaises(AssertionError):
-            Metrics.addUse("K", 4)
+            Metrics.addUse("K", 4, 1)
 
     def test_add_use_none_traced(self):
         """Test that addUse only adds a file if the rank is traced"""
         Metrics.beginCollect("tmp/test_add_use_none_traced")
         Metrics.registerRank("K")
-        Metrics.addUse("K", 2)
+        Metrics.addUse("K", 2, 1)
         Metrics.endCollect()
 
         self.assertFalse(os.path.exists("tmp/test_add_use_none_traced-K-iter.csv"))
@@ -61,13 +61,13 @@ class TestMetrics(unittest.TestCase):
 
         Metrics.registerRank("M")
         for i, m in enumerate([2, 5]):
-            Metrics.addUse("M", m)
+            Metrics.addUse("M", m, i)
             Metrics.registerRank("K")
-            for k in ks[i]:
-                Metrics.addUse("K", k)
+            for j, k in enumerate(ks[i]):
+                Metrics.addUse("K", k, 2 * j + 1)
                 Metrics.registerRank("N")
                 for n in range(3):
-                    Metrics.addUse("N", n)
+                    Metrics.addUse("N", n, n)
                     Metrics.incIter("N")
                 Metrics.endIter("N")
                 Metrics.incIter("K")
@@ -78,10 +78,10 @@ class TestMetrics(unittest.TestCase):
         Metrics.endCollect()
 
         corr = [
-            "M_pos,K_pos,M,K\n",
-            "0,0,2,3\n",
-            "0,1,2,7\n",
-            "1,0,5,8\n"
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "0,0,2,3,1\n",
+            "0,1,2,7,3\n",
+            "1,0,5,8,1\n"
         ]
 
         with open("tmp/test_add_use_one_traced-K-iter.csv", "r") as f:
@@ -96,22 +96,22 @@ class TestMetrics(unittest.TestCase):
         ks = [[3, 7], [1, 8]]
 
         corr = [
-            "M_pos,K_pos,M,K\n",
-            "0,0,2,3\n",
-            "0,1,2,7\n",
-            "1,0,5,1\n",
-            "1,1,5,8\n"
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "0,0,2,3,10\n",
+            "0,1,2,7,14\n",
+            "1,0,5,1,8\n",
+            "1,1,5,8,15\n"
         ]
 
         Metrics.registerRank("M")
         for i, m in enumerate([2, 5]):
-            Metrics.addUse("M", m)
+            Metrics.addUse("M", m, i)
             Metrics.registerRank("K")
             for k in ks[i]:
-                Metrics.addUse("K", k)
+                Metrics.addUse("K", k, k + 7)
                 Metrics.registerRank("N")
                 for n in range(3):
-                    Metrics.addUse("N", n)
+                    Metrics.addUse("N", n, n)
                     Metrics.incIter("N")
                 Metrics.endIter("N")
                 Metrics.incIter("K")
@@ -131,19 +131,19 @@ class TestMetrics(unittest.TestCase):
     def test_add_use_other_type(self):
         """Test that addUse works with types other than "iter" """
         Metrics.beginCollect("tmp/test_add_use_other_type")
-        Metrics.trace("K", type_="other", info=["info1", "info2"])
+        Metrics.trace("K", type_="other")
 
         ks = [[3, 7], [8]]
 
         Metrics.registerRank("M")
         for i, m in enumerate([2, 5]):
-            Metrics.addUse("M", m)
+            Metrics.addUse("M", m, i)
             Metrics.registerRank("K")
             for k in ks[i]:
-                Metrics.addUse("K", k, type_="other", info=[str(m + 1), k - 1])
+                Metrics.addUse("K", k, k - 1, type_="other")
                 Metrics.registerRank("N")
                 for n in range(3):
-                    Metrics.addUse("N", n)
+                    Metrics.addUse("N", n, n)
                     Metrics.incIter("N")
                 Metrics.endIter("N")
                 Metrics.incIter("K")
@@ -154,10 +154,10 @@ class TestMetrics(unittest.TestCase):
         Metrics.endCollect()
 
         corr = [
-            "M_pos,K_pos,M,K,info1,info2\n",
-            "0,0,2,3,3,2\n",
-            "0,1,2,7,3,6\n",
-            "1,0,5,8,6,7\n"
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "0,0,2,3,2\n",
+            "0,1,2,7,6\n",
+            "1,0,5,8,7\n"
         ]
 
         with open("tmp/test_add_use_other_type-K-other.csv", "r") as f:

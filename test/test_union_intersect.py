@@ -79,20 +79,20 @@ class TestUnionIntersect(unittest.TestCase):
         Metrics.trace("K")
         Metrics.registerRank("M")
         for m in range(3):
-            Metrics.addUse("M", m + 1)
+            Metrics.addUse("M", m + 1, m)
             for _ in Fiber.intersection(a_k, b_k, c_k):
                 pass
             Metrics.incIter("M")
         Metrics.endCollect()
 
         corr = [
-            "M_pos,K_pos,M,K\n",
-            "0,3,1,2\n",
-            "0,5,1,4\n",
-            "1,3,2,2\n",
-            "1,5,2,4\n",
-            "2,3,3,2\n",
-            "2,5,3,4\n"
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "0,3,1,2,0\n",
+            "0,5,1,4,1\n",
+            "1,3,2,2,0\n",
+            "1,5,2,4,1\n",
+            "2,3,3,2,0\n",
+            "2,5,3,4,1\n"
         ]
 
         with open("tmp/test_intersection_metrics-K-iter.csv", "r") as f:
