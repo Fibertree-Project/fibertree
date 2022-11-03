@@ -96,14 +96,21 @@ class Traffic:
                 if stamp != last_stamp:
                     last_stamp = stamp
                     f_out.write(",".join(stamp) + "\n")
+    @staticmethod
+    def _buildPoint(split, mask, elems_per_line):
+        """Build the access into a tensor"""
+        point = list(itertools.compress(split[len(split) // 2:], mask))
+        point[-1] = str(int(point[-1]) // elems_per_line * elems_per_line)
+        return tuple(point)
 
     @staticmethod
-    def _buildNextUseTrace(ranks, input_fn, output_fn):
+    def _buildNextUseTrace(ranks, elems_per_line, input_fn, output_fn):
         """Build a trace of for each access to a tensor (as specified by its
         ranks), when the corresponding next use was"""
 
         out_split = os.path.splitext(output_fn)
-        tmp_fn = out_split[0] + "-reversed" + out_split[1]
+        comb_fn = out_split[0] + "-coalesced" + out_split[1]
+        rev_fn = out_split[0] + "-reversed" + out_split[1]
 
         # Build a mask specifying the locations of the interesting ranks
         with open(input_fn) as f_in:
@@ -111,10 +118,24 @@ class Traffic:
             iter_ranks = head_in[len(head_in) // 2:]
             mask = [rank in ranks for rank in iter_ranks]
 
+        # First coalesce together accesses onto a single line
+        last_point = None
+        with open(comb_fn, "w") as f_comb, open(input_fn, "r") as f_in:
+            f_comb.write(f_in.readline())
+            for line in f_in:
+                split = line[:-1].split(",")
+
+                # Get the tensor point and compute its corresponding line
+                point = Traffic._buildPoint(split, mask, elems_per_line)
+                if last_point != point:
+                    f_comb.write(line)
+
+                last_point = point
+
         # With each use, save the next use by iterating backwards
-        last_stamps = {}
-        with open(tmp_fn, "w") as f_tmp, FileReadBackwards(input_fn) as f_in:
-           for line in f_in:
+        last_points = {}
+        with open(rev_fn, "w") as f_rev, FileReadBackwards(comb_fn) as f_comp:
+           for line in f_comp:
                 # FileReadBackwards already removes the trailing newline
                 split = line.split(",")
 
@@ -122,30 +143,33 @@ class Traffic:
                 if not split[0].isdigit():
                     break
 
-                stamp = tuple(itertools.compress(split[len(head_in) // 2:], mask))
+                # Get the tensor point and compute its corresponding line
+                point = Traffic._buildPoint(split, mask, elems_per_line)
+
                 # If there is a last_use
-                if stamp in last_stamps:
-                    new_csv = line + "," + last_stamps[stamp]
+                if point in last_points:
+                    new_csv = line + "," + last_points[point]
                 else:
                     new_csv = line + "," + ",".join("None" for _ in split)
 
-                f_tmp.write(new_csv + "\n")
-                last_stamps[stamp] = line
+                f_rev.write(new_csv + "\n")
+                last_points[point] = line
 
         # Now reverse the file to make the output
-        with open(output_fn, "w") as f_out, FileReadBackwards(tmp_fn) as f_tmp:
+        with open(output_fn, "w") as f_out, FileReadBackwards(rev_fn) as f_rev:
             # First write the header
             head_out = ",".join(head_in + [val + "_next" for val in head_in])
             f_out.write(head_out + "\n")
 
             # Write the trace
-            for line in f_tmp:
+            for line in f_rev:
                 f_out.write(line + "\n")
 
-        os.remove(tmp_fn)
+        os.remove(comb_fn)
+        os.remove(rev_fn)
 
     @staticmethod
-    def buffetTraffic(bindings, formats, trace_fns, capacity):
+    def buffetTraffic(bindings, formats, trace_fns, capacity, line_sz):
         """Compute the traffic loading data into this buffet
 
         Parameters
@@ -163,17 +187,26 @@ class Traffic:
         capacity: int
             The number of bits that fit in the buffet
 
+        line_sz: int
+            The number of bits across which spatial locality is exploited
+            (e.g., buffer line size)
+
+        Note: assumes all fibers start at line boundaries and all elements
+        reside on exactly one line (if the footprint is not a multiple of the
+        line size, every line is padded)
         """
 
         # Build traces with the next use
         next_use_traces = {}
         for key, fn in trace_fns.items():
             rank_ids = formats[key[0]].tensor.getRankIds()
+            elems_per_line = line_sz // formats[key[0]].getElem(key[1], key[2])
+            assert elems_per_line > 0
 
             split_fn = os.path.splitext(fn)
-            next_fn = split_fn[0] + "-next" + split_fn[1]
+            next_fn = split_fn[0] + "-next-" + ",".join(key) + split_fn[1]
 
-            Traffic._buildNextUseTrace(rank_ids, fn, next_fn)
+            Traffic._buildNextUseTrace(rank_ids, elems_per_line, fn, next_fn)
             next_use_traces[key] = next_fn
 
         # Open all the traces
@@ -195,6 +228,12 @@ class Traffic:
         for binding in bindings:
             pos = order.index(binding["rank"])
             info = (binding["tensor"], binding["rank"], binding["type"], binding["evict-on"])
+
+            # Make sure that the correct type is used
+            assert (info[2] == "elem" and formats[info[0]].getLayout(info[1]) == "interleaved") \
+                or (info[2] == "coord" and formats[info[0]].getLayout(info[1]) == "contiguous") \
+                or (info[2] == "payload" and formats[info[0]].getLayout(info[1]) == "contiguous")
+
             bind_info[pos].append(info)
 
         # Flatten the binding info
@@ -206,6 +245,13 @@ class Traffic:
             end = order.index(info[1]) + 1
             ranks = formats[info[0]].tensor.getRankIds()
             mask = [rank in ranks for rank in order[:end]]
+
+        # Compute the number of elements per line for each binding
+        elems_per_line = []
+        for tensor, rank, type_, _ in bind_info:
+            footprint = formats[tensor].getElem(rank, type_)
+            elems_per_line.append(line_sz // footprint)
+            assert elems_per_line[-1] > 1
 
         # Order the traces in the order they occur
         next_keys = []
@@ -229,14 +275,16 @@ class Traffic:
 
             # Get the tensor access
             trace = next_traces[i]
-            access = tuple(itertools.compress(trace[len(trace) // 4:len(trace) // 2], mask))
-            obj = (tensor, type_, access)
+            access = list(itertools.compress(trace[len(trace) // 4:len(trace) // 2], mask))
+
+            # Compute the corresponding line
+            access[-1] = access[-1] // elems_per_line[i] * elems_per_line[i]
+            obj = (tensor, type_, tuple(access))
 
             # Record the access if needed
             new_traffic = obj not in objs
-            footprint = formats[tensor].getElem(rank, type_)
             if new_traffic:
-                traffic += footprint
+                traffic += line_sz
 
             # Check if the next use is within the exploited reuse distance (ERD)
             if evict_on == "root":
@@ -252,7 +300,7 @@ class Traffic:
             if curr_stamp == next_stamp and new_traffic \
                     and trace[len(trace) // 2] is not None:
                 objs.add(obj)
-                occupancy += footprint
+                occupancy += line_sz
 
                 # Track overflows
                 if occupancy > capacity:
@@ -261,7 +309,7 @@ class Traffic:
             # If the object will not be used again within the ERD, evict it
             elif curr_stamp != next_stamp and not new_traffic:
                 objs.remove(obj)
-                occupancy -= footprint
+                occupancy -= line_sz
 
             # Advance the relevant trace
             del next_keys[0]
@@ -274,6 +322,10 @@ class Traffic:
         # Close all files
         for file_ in traces.values():
             file_.close()
+
+        # Remove all of the newly created files
+        for fn in next_use_traces.values():
+            os.remove(fn)
 
         return traffic, overflows
 

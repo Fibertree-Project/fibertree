@@ -234,7 +234,7 @@ class TestTraffic(unittest.TestCase):
             "tmp/test_traffic_single_stage-N-populate_0_1.csv",
             "tmp/test_buildNextUseTrace_raw_trace.csv",
             trace_type="populate", access_type="read", tensor=1)
-        Traffic._buildNextUseTrace(["K", "N"], "tmp/test_buildNextUseTrace_raw_trace.csv", "tmp/test_buildNextUseTrace_next_uses.csv")
+        Traffic._buildNextUseTrace(["K", "N"], 4, "tmp/test_buildNextUseTrace_raw_trace.csv", "tmp/test_buildNextUseTrace_next_uses.csv")
 
         with open("tmp/test_buildNextUseTrace_next_uses.csv", "r") as f_test, \
              open("test_traffic-test_buildNextUseTrace-corr.csv", "r") as f_corr:
@@ -250,8 +250,8 @@ class TestTraffic(unittest.TestCase):
         """)
         traces = {("A", "M", "payload"): "tmp/test_traffic_stage0-M-iter.csv"}
 
-        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0)
-        self.assertEqual(bits, 6 * 32)
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0, 4 * 32)
+        self.assertEqual(bits, 8 * 32)
         self.assertEqual(overflows, 0)
 
     def test_buffetTraffic_multiple_bindings(self):
@@ -290,8 +290,8 @@ class TestTraffic(unittest.TestCase):
             ("A", "K", "payload"): "tmp/test_buffetTraffic_multiple_bindings-K_payload.csv"
         }
 
-        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0)
-        self.assertEqual(bits, 6 * 32 + 14 * 32 + 14 * 64)
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0, 4 * 32)
+        self.assertEqual(bits, 8 * 32 + 12 * 4 * 32 + 13 * 4 * 32)
         self.assertEqual(overflows, 0)
 
     def test_buffetTraffic_multiple_tensors(self):
@@ -319,8 +319,8 @@ class TestTraffic(unittest.TestCase):
             ("B", "K", "payload"): "tmp/test_buffetTraffic_multiple_tensors.csv"
         }
 
-        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 8 * 32)
-        self.assertEqual(bits, 14 * 64 + 6 * 32)
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 8 * 32, 4 * 32)
+        self.assertEqual(bits, 13 * 4 * 32 + 8 * 32)
         self.assertEqual(overflows, 0)
 
     def test_buffetTraffic_overflow(self):
@@ -347,9 +347,9 @@ class TestTraffic(unittest.TestCase):
             ("B", "K", "payload"): "tmp/test_buffetTraffic_multiple_tensors.csv"
         }
 
-        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 4 * 32)
-        self.assertEqual(bits, 14 * 64 + 6 * 32)
-        self.assertEqual(overflows, 2)
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 4 * 32, 4 * 32)
+        self.assertEqual(bits, 13 * 4 * 32 + 8 * 32)
+        self.assertEqual(overflows, 1)
 
 
     def test_buffetTraffic_old(self):
