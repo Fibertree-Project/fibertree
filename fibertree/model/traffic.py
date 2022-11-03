@@ -19,88 +19,65 @@ class Traffic:
     """Class for computing the memory traffic of a tensor"""
 
     @staticmethod
-    def buildTrace(rank, input_fn, output_fn, tensor=None, trace_type="iter", access_type="read"):
-        """Compute a trace just for the given trace and filename
+    def filterTrace(input_fn, filter_fn, output_fn):
+        """Filter a trace by keeping only accesses that occur at least once
+        in the filter
 
         Parameters
         ----------
 
-        rank: str
-            Rank whose trace to build
-
         input_fn: str
-            Input trace filename
+            Filename of the input trace
+
+        filter_fn: str
+            Filename of the filter trace
 
         output_fn: str
-            Output trace filename
-
-        tensor: Optional[int]
-            Tensor number whose information to extract, None if irrelevant
-
-        trace_type: str
-            Type of the trace given; one of iter, intersect, or populate
-
-        access_type: str
-            Type of access to worry about; one of read or write
-
+            Filename of the output trace
         """
+        def get_data(line):
+            if line:
+                full = line[:-1].split(",")[:-1]
+                return tuple(int(val) for val in full[len(full) // 2:])
 
-        assert trace_type == "iter" or tensor is not None
+            return ()
 
-        with open(input_fn, "r") as f_in, open(output_fn, "w") as f_out:
-            head_in = f_in.readline()[:-1].split(",")
+        with open(input_fn, "r") as f_in, open(filter_fn, "r") as f_fil, \
+                open(output_fn, "w") as f_out:
+            f_out.write(f_in.readline())
+            f_fil.readline()
 
-            # Find the start and end of the relevant names
-            for coord_start, head in enumerate(head_in):
-                if not head.endswith("_pos"):
-                    break
+            line_in = f_in.readline()
+            line_fil = f_fil.readline()
 
-            coord_end = head_in.index(rank) + 1
-            iter_end = head_in.index(rank + "_pos") + 1
+            data_in = get_data(line_in)
+            data_fil = get_data(line_fil)[:len(data_in)]
 
-            other = None
-            used = None
-            if trace_type == "intersect":
-                used = head_in.index(str(tensor) + "_match")
+            while line_in and line_fil:
+                if data_in == data_fil:
+                    f_out.write(line_in)
 
-            elif trace_type == "populate":
-                used = head_in.index(str(tensor) + "_access")
+                    line_in = f_in.readline()
+                    line_fil = f_fil.readline()
 
-                if tensor % 2 == 0:
-                    other = used + 1
+                    data_in = get_data(line_in)
+                    data_fil = get_data(line_fil)[:len(data_in)]
+
+                elif data_in < data_fil:
+                    line_in = f_in.readline()
+                    data_in = get_data(line_in)
+
                 else:
-                    other = used - 1
+                    line_fil = f_fil.readline()
+                    data_fil = get_data(line_fil)[:len(data_in)]
 
-            f_out.write(",".join(head_in[:iter_end] + head_in[coord_start:coord_end]) + "\n")
-
-            # Build the trace, coalescing together consecutive accesses of the
-            # same element
-            last_stamp = None
-            for line in f_in:
-
-                split = line[:-1].split(",")
-
-                # If not used continue
-                if trace_type == "intersect" and split[used] == "False":
-                    continue
-
-                if trace_type == "populate" and split[used] == "False":
-                    continue
-
-                # If we only care about reads, don't track the writes on the output
-                if trace_type == "populate" and access_type == "read" \
-                        and tensor % 2 == 0 and split[other] == "False":
-                    continue
-
-                stamp = split[:iter_end] + split[coord_start:coord_end]
-                if stamp != last_stamp:
-                    last_stamp = stamp
-                    f_out.write(",".join(stamp) + "\n")
     @staticmethod
     def _buildPoint(split, mask, elems_per_line):
-        """Build the access into a tensor"""
-        point = list(itertools.compress(split[len(split) // 2:], mask))
-        point[-1] = str(int(point[-1]) // elems_per_line * elems_per_line)
+        """Build the access into a tensor for the form (coord, ... coord, pos),
+        where (coord, ... coord) describes the fiber and pos describes the
+        location within the fiber"""
+        point = list(itertools.compress(split[len(split) // 2:-1], mask))
+        point[-1] = str(int(split[-1]) // elems_per_line * elems_per_line)
         return tuple(point)
 
     @staticmethod
