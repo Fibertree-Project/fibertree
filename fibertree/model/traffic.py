@@ -218,11 +218,19 @@ class Traffic:
         """
         # First combine read and write traces
         read_write_traces = {}
+        traffic = {}
         for (tensor, rank, type_, access), fn in trace_fns.items():
+            # Initialize the traffic array
+            if tensor not in traffic:
+                traffic[tensor] = {}
+            traffic[tensor][access] = 0
+
+            # Make sure we have not combined the accesses yet
             key = tensor, rank, type_
             if key in read_write_traces:
                 continue
 
+            # Combine
             split_fn = os.path.splitext(fn)
             comb_fn = split_fn[0] + "-comb-" + "-".join(key) + split_fn[1]
             args = {access + "_fn": fn, "comb_fn": comb_fn}
@@ -233,6 +241,7 @@ class Traffic:
 
             Traffic._combineTraces(**args)
             read_write_traces[key] = comb_fn
+
 
         # Build traces with the next use
         next_use_traces = {}
@@ -305,7 +314,6 @@ class Traffic:
         # Simulate the buffet
         objs = {}
         occupancy = 0
-        traffic = 0
         overflows = 0
 
         # While at least one of the traces is still going
@@ -326,7 +334,7 @@ class Traffic:
             # Record the access if needed
             new_traffic = obj not in objs
             if new_traffic and not is_write:
-                traffic += line_sz
+                traffic[tensor]["read"] += line_sz
 
             # Check if the next use is within the exploited reuse distance (ERD)
             if evict_on == "root":
@@ -351,13 +359,13 @@ class Traffic:
 
                 # If new traffic and not buffered, add the write traffic
                 elif is_write:
-                    traffic += line_sz
+                    traffic[tensor]["write"] += line_sz
 
             # If the object will not be used again within the ERD, evict it
             elif curr_stamp != next_stamp:
                 # If the line has been mutated, write it first
                 if objs[obj] or is_write:
-                    traffic += line_sz
+                    traffic[tensor]["write"] += line_sz
 
                 del objs[obj]
                 occupancy -= line_sz
@@ -380,11 +388,9 @@ class Traffic:
 
         # Remove all of the newly created files
         for fn in read_write_traces.values():
-            break
             os.remove(fn)
 
         for fn in next_use_traces.values():
-            break
             os.remove(fn)
 
         return traffic, overflows

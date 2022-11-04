@@ -250,7 +250,7 @@ class TestTraffic(unittest.TestCase):
         traces = {("A", "M", "payload", "read"): "tmp/test_traffic_stage0-M-populate_1.csv"}
 
         bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 8 * 32, 4 * 32)
-        self.assertEqual(bits, 8 * 32)
+        self.assertEqual(bits, {"A": {"read": 8 * 32}})
         self.assertEqual(overflows, 0)
 
     def test_buffetTraffic_multiple_bindings(self):
@@ -286,7 +286,7 @@ class TestTraffic(unittest.TestCase):
         }
 
         bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 8 * 32 + 4 * 32 + 4 * 64, 4 * 32)
-        self.assertEqual(bits, 8 * 32 + 6 * 4 * 32 + 8 * 4 * 32)
+        self.assertEqual(bits, {"A": {"read": 8 * 32 + 6 * 4 * 32 + 8 * 4 * 32}})
         self.assertEqual(overflows, 0)
 
     def test_buffetTraffic_multiple_tensors(self):
@@ -324,7 +324,7 @@ class TestTraffic(unittest.TestCase):
         }
 
         bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 2 * 8 * 32, 4 * 32)
-        self.assertEqual(bits, 8 * 4 * 32 + 8 * 32)
+        self.assertEqual(bits, {"A": {"read": 8 * 4 * 32}, "B": {"read": 8 * 32}})
         self.assertEqual(overflows, 0)
 
     def test_buffetTraffic_overflow(self):
@@ -361,7 +361,7 @@ class TestTraffic(unittest.TestCase):
         }
 
         bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0, 4 * 32)
-        self.assertEqual(bits, 8 * 4 * 32 + 8 * 32)
+        self.assertEqual(bits, {"A": {"read": 8 * 4 * 32}, "B": {"read": 8 * 32}})
         self.assertEqual(overflows, 8)
 
     def test_buffetTraffic_writes(self):
@@ -379,7 +379,7 @@ class TestTraffic(unittest.TestCase):
         }
 
         bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 16 * 32, 4 * 32)
-        self.assertEqual(bits, 52 * 4 * 32)
+        self.assertEqual(bits, {"Z": {"read": 17 * 4 * 32, "write": 35 * 4 * 32}})
         self.assertEqual(overflows, 0)
 
 #     def test_cacheTraffic(self):
