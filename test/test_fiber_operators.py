@@ -387,16 +387,16 @@ class TestFiberOperators(unittest.TestCase):
 
         corr_r0 = [
             "M_pos,M,fiber_pos\n",
+            "1,2,1\n",
             "2,1,0\n",
-            "3,2,1\n",
             "4,2,2\n",
         ]
 
         corr_w0 = [
             "M_pos,M,fiber_pos\n",
-            "1,0,0\n",
+            "1,2,2\n",
             "2,1,1\n",
-            "3,2,2\n",
+            "3,0,0\n",
             "5,2,2\n",
             "7,3,3\n"
         ]
@@ -435,16 +435,16 @@ class TestFiberOperators(unittest.TestCase):
 
         corr_r0 = [
             "M_pos,M,fiber_pos\n",
+            "1,2,1\n",
             "2,1,0\n",
-            "3,2,1\n",
             "4,2,2\n",
         ]
 
         corr_w0 = [
             "M_pos,M,fiber_pos\n",
-            "1,0,0\n",
+            "1,2,2\n",
             "2,1,1\n",
-            "3,2,2\n",
+            "3,0,0\n",
             "5,2,2\n",
             "7,3,3\n"
         ]
@@ -487,16 +487,16 @@ class TestFiberOperators(unittest.TestCase):
 
         corr_r0 = [
             "M_pos,M,fiber_pos\n",
+            "1,2,1\n",
             "2,1,0\n",
-            "3,2,1\n",
             "4,2,2\n",
         ]
 
         corr_w0 = [
             "M_pos,M,fiber_pos\n",
-            "1,0,0\n",
+            "1,2,2\n",
             "2,1,1\n",
-            "3,2,2\n",
+            "3,0,0\n",
             "5,2,2\n",
             "7,3,3\n"
         ]

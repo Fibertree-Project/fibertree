@@ -1020,20 +1020,28 @@ def __lshift__(self, other):
                     if a_pos is None:
                         a_pos = 0
 
-                    Metrics.addUse(rank, b_coord, a_pos, type_=a_write_trace)
-                    Metrics.incIter(rank)
-
-                    # If this is an insert into a compressed fiber, move
-                    # the following elements forward one
-                    if self.a_fiber.getRankAttrs().getFormat() != "U":
+                    # If we just inserted into a compressed fiber, we need to move
+                    # everything over one
+                    if new_a_payload \
+                            and self.a_fiber.getRankAttrs().getFormat() != "U":
+                        new_pos_coord = []
                         for c, p in self.a_fiber.iterRange(b_coord + 1, None,
                                         tick=False, start_pos=a_pos):
-                            a_pos = self.a_fiber.getSavedPos()
+                            ins_a_pos = self.a_fiber.getSavedPos()
+                            new_pos_coord.append((ins_a_pos, c))
+
+                        # Move the last element first
+                        for i, c in reversed(new_pos_coord):
                             # Read at the position before the insertion
-                            Metrics.addUse(rank, c, a_pos - 1, type_=a_read_trace)
+                            Metrics.addUse(rank, c, i - 1, type_=a_read_trace)
+
                             # Write at the position after the insertion
-                            Metrics.addUse(rank, c, a_pos, type_=a_write_trace)
+                            Metrics.addUse(rank, c, i, type_=a_write_trace)
                             Metrics.incIter(rank)
+
+                    # Write the new value
+                    Metrics.addUse(rank, b_coord, a_pos, type_=a_write_trace)
+                    Metrics.incIter(rank)
 
             return
 

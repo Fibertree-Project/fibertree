@@ -114,6 +114,8 @@ class TestTraffic(unittest.TestCase):
         Metrics.trace("K", type_="intersect_0")
         Metrics.trace("K", type_="intersect_1")
         Metrics.trace("N")
+        Metrics.trace("N", type_="populate_read_0")
+        Metrics.trace("N", type_="populate_write_0")
         Metrics.trace("N", type_="populate_1")
         for m, (z_n, a_k) in z_m << a_m:
             for k, (a_val, b_n) in a_k & b_k:
@@ -192,9 +194,46 @@ class TestTraffic(unittest.TestCase):
         with open("tmp/test_filter_trace_leader_follower-test.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
+    def test_combineTraces_one(self):
+        """Call combineTraces when there is only a read"""
+        Traffic._combineTraces(
+            read_fn="tmp/test_traffic_stage0-M-populate_1.csv",
+            comb_fn="tmp/test_combineTraces_one.csv")
+
+        corr = [
+            "M_pos,M,fiber_pos,is_write\n",
+            "0,0,0,False\n",
+            "2,1,1,False\n",
+            "4,2,2,False\n",
+            "6,3,3,False\n",
+            "8,4,4,False\n",
+            "10,5,5,False\n"
+        ]
+
+        with open("tmp/test_combineTraces_one.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+    def test_combineTraces_both(self):
+        """Call combineTraces when there is both read and write files"""
+        Traffic._combineTraces(
+            read_fn="tmp/test_traffic_single_stage-N-populate_read_0.csv",
+            write_fn="tmp/test_traffic_single_stage-N-populate_write_0.csv",
+            comb_fn="tmp/test_combineTraces_both.csv")
+
+        with open("tmp/test_combineTraces_both.csv", "r") as f_test, \
+            open("test_traffic-test_combineTraces_both-corr.csv", "r") as f_corr:
+            self.assertEqual(f_test.readlines(), f_corr.readlines())
+
+
     def test_buildNextUseTrace(self):
         """Build a trace for each use that includes when the next use is"""
-        Traffic._buildNextUseTrace(["K", "N"], 2, "tmp/test_traffic_single_stage-N-populate_1.csv", "tmp/test_buildNextUseTrace_next_uses.csv")
+        Traffic._combineTraces(
+            read_fn="tmp/test_traffic_single_stage-N-populate_1.csv",
+            comb_fn="tmp/test_buildNextUseTrace-comb.csv")
+
+        Traffic._buildNextUseTrace(["K", "N"], 2,
+            "tmp/test_buildNextUseTrace-comb.csv",
+            "tmp/test_buildNextUseTrace_next_uses.csv")
 
         with open("tmp/test_buildNextUseTrace_next_uses.csv", "r") as f_test, \
              open("test_traffic-test_buildNextUseTrace-corr.csv", "r") as f_corr:
@@ -206,11 +245,11 @@ class TestTraffic(unittest.TestCase):
         - tensor: A
           rank: M
           type: payload
-          evict-on: M
+          evict-on: root
         """)
         traces = {("A", "M", "payload", "read"): "tmp/test_traffic_stage0-M-populate_1.csv"}
 
-        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0, 4 * 32)
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 8 * 32, 4 * 32)
         self.assertEqual(bits, 8 * 32)
         self.assertEqual(overflows, 0)
 
@@ -220,7 +259,7 @@ class TestTraffic(unittest.TestCase):
         - tensor: A
           rank: M
           type: payload
-          evict-on: M
+          evict-on: root
 
         - tensor: A
           rank: K
@@ -246,7 +285,7 @@ class TestTraffic(unittest.TestCase):
             ("A", "K", "payload", "read"): "tmp/test_buffetTraffic_multiple_bindings-K_payload.csv"
         }
 
-        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0, 4 * 32)
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 8 * 32 + 4 * 32 + 4 * 64, 4 * 32)
         self.assertEqual(bits, 8 * 32 + 6 * 4 * 32 + 8 * 4 * 32)
         self.assertEqual(overflows, 0)
 
@@ -284,7 +323,7 @@ class TestTraffic(unittest.TestCase):
             ("B", "K", "payload", "read"): "tmp/test_buffetTraffic_multiple_tensors-K_3.csv"
         }
 
-        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 8 * 32, 4 * 32)
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 2 * 8 * 32, 4 * 32)
         self.assertEqual(bits, 8 * 4 * 32 + 8 * 32)
         self.assertEqual(overflows, 0)
 
@@ -321,53 +360,28 @@ class TestTraffic(unittest.TestCase):
             ("B", "K", "payload", "read"): "tmp/test_buffetTraffic_overflow-K_3.csv"
         }
 
-        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 4 * 32, 4 * 32)
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 0, 4 * 32)
         self.assertEqual(bits, 8 * 4 * 32 + 8 * 32)
-        self.assertEqual(overflows, 1)
+        self.assertEqual(overflows, 8)
 
-#     def test_buffetTraffic_writes(self):
-#         """Test the buffet traffic of writes"""
-#         bindings = yaml.safe_load("""
-#         - tensor: Z
-#           rank: N
-#           type: payload
-#           evict-on: K
-#         """)
-#
-#         Traffic.buildTrace(
-#             "N",
-#             "tmp/test_traffic_single_stage-N-populate_0_1.csv",
-#             "tmp/test_buffetTraffic_writes_read.csv",
-#             trace_type="populate", tensor=0)
-#
-#         Traffic.buildTrace(
-#             "N",
-#             "tmp/test_traffic_single_stage-N-populate_0_1.csv",
-#             "tmp/test_buffetTraffic_writes_write.csv",
-#             trace_type="populate", access_type="write", tensor=0)
-#
-#         traces = {
-#             ("Z", "N", "payload", "read"): "tmp/test_buffetTraffic_writes_read.csv",
-#             ("Z", "N", "payload", "write"): "tmp/test_buffetTraffic_writes_write.csv"
-#         }
-#
-#         # bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, , 4 * 32)
-#         # self.assertEqual(bits, )
-#         # self.assertEqual(overflows, )
-#
-#     def test_buffetTraffic_old(self):
-#         """Test buffetTraffic"""
-#         bits = Traffic.buffetTraffic_old(
-#             "tmp/test_traffic_stage0", self.B_KN, "K", self.B_format)
-#         corr = 480 + 288 + 288 + 480 + 480 + 288 + 288 + 96 + 480 + 96 + 288 + 288 + 288 + 288
-#         self.assertEqual(bits, corr)
-#
-#     def test_buffetTraffic_fiber(self):
-#         bits = Traffic.buffetTraffic_old(
-#             "tmp/test_traffic_stage0", self.B_KN, "M", self.B_format, mode="fiber")
-#         corr = 6 * 8 * 32
-#         self.assertEqual(bits, corr)
-#
+    def test_buffetTraffic_writes(self):
+        """Test the buffet traffic of writes"""
+        bindings = yaml.safe_load("""
+        - tensor: Z
+          rank: N
+          type: payload
+          evict-on: K
+        """)
+
+        traces = {
+            ("Z", "N", "payload", "read"): "tmp/test_traffic_single_stage-N-populate_read_0.csv",
+            ("Z", "N", "payload", "write"): "tmp/test_traffic_single_stage-N-populate_write_0.csv"
+        }
+
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 16 * 32, 4 * 32)
+        self.assertEqual(bits, 52 * 4 * 32)
+        self.assertEqual(overflows, 0)
+
 #     def test_cacheTraffic(self):
 #         """Test cacheTraffic"""
 #         bits = Traffic.cacheTraffic_old(
