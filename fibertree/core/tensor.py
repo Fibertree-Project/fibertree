@@ -1301,7 +1301,7 @@ class Tensor:
         copied = copy.deepcopy(self)
 
         if old_rank_ids == rank_ids:
-            copied.setName(f"{swizzled_name}+swizzled")
+            copied.setName(f"{old_name}+swizzled")
             return copied
 
         # Find the point after which the two lists are the same
@@ -1366,7 +1366,6 @@ class Tensor:
             fibers[-1].append(coord[-1], payloads[coord])
 
             last_coord = coord
-
 
         # Build the new tensor
         kwargs = {"fiber": root, "rank_ids": rank_ids}

@@ -339,6 +339,20 @@ class TestTensorTransform(unittest.TestCase):
         self.assertEqual(Z_MNOP.getRankIds(), ["M", "N", "O", "P"])
         self.assertEqual(Z_PNMO.getRankIds(), ["P", "N", "M", "O"])
 
+    def test_swizzleRanks_same(self):
+        """Test swizzleRanks does nothing"""
+        A_MK = Tensor.fromUncompressed(["M", "K"],
+                               [[0, 0, 4, 0, 0, 5],
+                                [3, 2, 0, 3, 0, 2],
+                                [0, 2, 0, 0, 1, 2],
+                                [0, 0, 0, 0, 0, 0],
+                                [2, 5, 0, 0, 0, 5],
+                                [4, 1, 0, 0, 0, 0],
+                                [5, 0, 0, 1, 0, 0],
+                                [4, 0, 0, 5, 1, 3]])
+        new_A_MK = A_MK.swizzleRanks(["M", "K"])
+        self.assertEqual(A_MK, new_A_MK)
+
 
     def test_flattenRanks_0(self):
         """ Test flattenRanks - depth=0 """
