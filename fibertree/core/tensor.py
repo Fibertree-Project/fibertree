@@ -1293,27 +1293,90 @@ class Tensor:
             New tensor with ranks swizzed
 
         """
+        # Ensure that these old and new rank_ids are permutations of each other
+        old_rank_ids = self.getRankIds()
+        assert sorted(old_rank_ids) == sorted(rank_ids)
 
-        swizzled = self
-        swizzled_rank_ids = swizzled.getRankIds()
-        swizzled_name = swizzled.getName()
+        old_name = self.getName()
+        copied = copy.deepcopy(self)
 
-        for target_rank_idx, target_rank_id in enumerate(rank_ids):
-            #
-            # While target rank is not in desired place
-            #
-            while target_rank_idx != swizzled_rank_ids.index(target_rank_id):
-                #
-                # Swap the target rank id up one level
-                #
-                swizzled_rank_idx = next(idx
-                                         for idx, id in enumerate(swizzled_rank_ids)
-                                         if id == target_rank_id)
+        if old_rank_ids == rank_ids:
+            copied.setName(f"{swizzled_name}+swizzled")
+            return copied
 
-                swizzled = swizzled.swapRanks(depth=swizzled_rank_idx - 1)
-                swizzled_rank_ids = swizzled.getRankIds()
+        # Find the point after which the two lists are the same
+        for i, (old, new) in \
+                enumerate(zip(reversed(old_rank_ids), reversed(rank_ids))):
+            if old != new:
+                break
+        swiz_len = len(rank_ids) - i
 
-        swizzled.setName(f"{swizzled_name}+swizzled")
+        # Figure out where each coordinate in the input needs to be moved
+        guide = []
+        for rank_id in rank_ids:
+            guide.append(old_rank_ids.index(rank_id))
+
+        coords = []
+        payloads = {}
+        frontier = [(copied.getRoot(), None, -1)]
+        frontier_coords = [None] * swiz_len
+
+        # Depth-first search through the fibertree and extract the coordinate
+        # payload pairs
+        while frontier:
+            head, coord, depth = frontier.pop()
+            if coord is not None:
+                frontier_coords[depth] = coord
+
+            # If this is the last point we need to swizzle, save the payload
+            if depth == swiz_len - 1:
+                new_c = tuple(frontier_coords[guide[i]] for i in range(swiz_len))
+
+                coords.append(new_c)
+                payloads[new_c] = head
+                continue
+
+            # Otherwise, add this fiber to the frontier
+            for c, p in zip(head.coords, head.payloads):
+                frontier.append((p, c, depth + 1))
+
+        # Sort the coordinates
+        coords.sort(reverse=True)
+
+
+        # Add back all of the payloads
+        root = Fiber()
+        fibers = [root] + [None] * (swiz_len - 1)
+        last_coord = (None,) * swiz_len
+        while coords:
+            coord = coords.pop()
+
+            # Reuse the payloads we have gotten so far
+            same = True
+            for i, c in enumerate(coord[:-1]):
+                same = same and c == last_coord[i]
+
+                # Get a new payload if we are on a new tree
+                if not same:
+                    child = Fiber()
+                    fibers[i].append(c, child)
+                    fibers[i + 1] = child
+
+            # Append the payload
+            fibers[-1].append(coord[-1], payloads[coord])
+
+            last_coord = coord
+
+
+        # Build the new tensor
+        kwargs = {"fiber": root, "rank_ids": rank_ids}
+        old_shape = self.getShape(authoritative=True)
+        if old_shape:
+            new_shape = [old_shape[guide[i]] for i in range(swiz_len)] \
+                + old_shape[swiz_len:]
+            kwargs["shape"] = new_shape
+        swizzled = Tensor.fromFiber(**kwargs)
+        swizzled.setName(f"{old_name}+swizzled")
 
         return swizzled
 

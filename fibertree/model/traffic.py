@@ -8,6 +8,7 @@ A class for computing the memory traffic incurred by a tensor
 import heapq
 import itertools
 import os
+from queue import Queue
 
 import bisect
 from file_read_backwards import FileReadBackwards
@@ -300,7 +301,7 @@ class Traffic:
         for tensor, rank, type_, _ in bind_info:
             footprint = formats[tensor].getElem(rank, type_)
             elems_per_line.append(line_sz // footprint)
-            assert elems_per_line[-1] > 1
+            assert elems_per_line[-1] > 0
 
         # Order the traces in the order they occur
         next_keys = []
@@ -311,15 +312,22 @@ class Traffic:
             next_traces.append(next_trace)
         next_keys.sort()
 
+        # Prepare the fill queues
+        fill_queues = {}
+        for tensor, rank, type_, _ in bind_info:
+            fill_queues[tensor, rank, type_] = Queue()
+
         # Simulate the buffet
         objs = {}
         occupancy = 0
         overflows = 0
+        ready_to_drain = set()
 
         # While at least one of the traces is still going
         while next_keys[0][:-1] != (float("inf"),) * len(order):
             i = next_keys[0][-1]
             tensor, rank, type_, evict_on = bind_info[i]
+            key = tensor, rank, type_
 
             # Get the tensor access
             trace = next_traces[i]
@@ -352,6 +360,7 @@ class Traffic:
                         and trace[num_ranks * 2 + 2] is not None:
                     objs[obj] = is_write
                     occupancy += line_sz
+                    fill_queues[key].put(obj)
 
                     # Track overflows
                     if occupancy > capacity:
@@ -363,16 +372,24 @@ class Traffic:
 
             # If the object will not be used again within the ERD, evict it
             elif curr_stamp != next_stamp:
-                # If the line has been mutated, write it first
-                if objs[obj] or is_write:
-                    traffic[tensor]["write"] += line_sz
-
-                del objs[obj]
-                occupancy -= line_sz
+                ready_to_drain.add(obj)
 
             # Otherwise, it was in the buffer and will be used again
             else:
                 objs[obj] = objs[obj] or is_write
+
+            # Drain all available elements
+            while not fill_queues[key].empty() \
+                    and fill_queues[key].queue[0] in ready_to_drain:
+                drain_obj = fill_queues[key].get()
+
+                # If the line has been mutated, write it first
+                if objs[drain_obj] or is_write:
+                    traffic[tensor]["write"] += line_sz
+
+                del objs[drain_obj]
+                ready_to_drain.remove(drain_obj)
+                occupancy -= line_sz
 
             # Advance the relevant trace
             del next_keys[0]
