@@ -163,6 +163,41 @@ class TestMetrics(unittest.TestCase):
         with open("tmp/test_add_use_other_type-K-other.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
+    def test_add_use_explicit_iteration(self):
+        """Add use works with an explicit iteration stamp"""
+        Metrics.beginCollect("tmp/test_add_use_explicit_iteration")
+        Metrics.trace("K")
+        Metrics.registerRank("M")
+
+        ks = [[3, 7], [8]]
+
+        for i, m in enumerate([2, 5]):
+            Metrics.addUse("M", m, i)
+            Metrics.registerRank("K")
+            for k in ks[i]:
+                Metrics.addUse("K", k, k - 1, iteration_num=(i + 1, k + 2))
+                Metrics.registerRank("N")
+                for n in range(3):
+                    Metrics.addUse("N", n, n)
+                    Metrics.incIter("N")
+                Metrics.endIter("N")
+                Metrics.incIter("K")
+            Metrics.endIter("K")
+            Metrics.incIter("M")
+        Metrics.endIter("M")
+
+        Metrics.endCollect()
+
+        corr = [
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "1,5,2,3,2\n",
+            "1,9,2,7,6\n",
+            "2,10,5,8,7\n"
+        ]
+
+        with open("tmp/test_add_use_explicit_iteration-K-iter.csv") as f:
+            self.assertEqual(f.readlines(), corr)
+
 
     def test_end_iter_fails_if_not_collecting(self):
         """Test that endIter fails if collection is not on"""
@@ -285,6 +320,45 @@ class TestMetrics(unittest.TestCase):
         self.assertEqual(Metrics.getLabel("K"), 0)
 
         Metrics.endCollect()
+
+    def test_match_ranks(self):
+        """Test that ranks are matched correctly"""
+        Metrics.beginCollect("tmp/test_match_ranks")
+        Metrics.trace("M", "match_ranks")
+
+        # At least one must be in the loop order
+        with self.assertRaises(AssertionError):
+            Metrics.matchRanks("K", "M")
+
+        # Either rank can be in either position
+        Metrics.registerRank("K")
+        Metrics.matchRanks("K", "M")
+        Metrics.matchRanks("N", "K")
+
+        # Metrics.getLabel still works correctly
+        self.assertEqual(Metrics.getLabel("K"), 0)
+        self.assertEqual(Metrics.getLabel("M"), 1)
+        self.assertEqual(Metrics.getLabel("N"), 2)
+
+        # Metrics.addUse() still works correctly
+        Metrics.addUse("M", 5, 2, type_="match_ranks")
+        Metrics.addUse("K", 2, 1, type_="iter")
+        Metrics.incIter("K")
+        Metrics.addUse("M", 4, 5, type_="match_ranks")
+        Metrics.endIter("K")
+        Metrics.addUse("M", 8, 7, type_="match_ranks")
+
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K,fiber_pos\n",
+            "0,0,2\n",
+            "1,2,5\n",
+            "0,2,7\n"
+        ]
+
+        with open("tmp/test_match_ranks-M-match_ranks.csv") as f:
+            self.assertEqual(f.readlines(), corr)
 
     def test_register_rank_fails_if_not_collecting(self):
         """Test that registerRank fails if collection is not on"""

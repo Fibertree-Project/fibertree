@@ -2254,6 +2254,55 @@ class TestFiber(unittest.TestCase):
         f_i = f_k.project(lambda k: k + 1)
         self.assertEqual(f_i.getRankAttrs().getId(), "Unknown")
 
+    def test_project_trace_dst_in_loop_order(self):
+        """Test that project works correctly if the destination is in the loop
+        order"""
+        f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_project_trace_dst_in_loop_order")
+        Metrics.trace("K", "project_0")
+        for m, p in f_k.project(trans_fn=lambda k: k + 3, rank_id="M", start_pos=1):
+            pass
+        Metrics.endCollect()
+
+        corr = [
+            "M_pos,M,fiber_pos\n",
+            "0,7,1\n",
+            "1,9,2\n",
+            "2,11,3\n"
+        ]
+
+        with open("tmp/test_project_trace_dst_in_loop_order-K-project_0.csv") as f:
+            self.assertEqual(f.readlines(), corr)
+
+    def test_project_trace_src_in_loop_order(self):
+        """Test that project works correctly if the source is in the loop
+        order"""
+        f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_project_trace_src_in_loop_order")
+        Metrics.trace("K", "project_0")
+
+        for m, p in \
+                f_k.project(
+                    trans_fn=lambda k: k + 3, rank_id="M", interval=(6,100),
+                    tick=True
+                ).iterOccupancy(tick=False):
+            pass
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K,fiber_pos\n",
+            "0,4,1\n",
+            "1,6,2\n",
+            "2,8,3\n"
+        ]
+
+        with open("tmp/test_project_trace_src_in_loop_order-K-project_0.csv") as f:
+            self.assertEqual(f.readlines(), corr)
+
     def test_prune(self):
         """Test pruning a fiber"""
 

@@ -1046,7 +1046,8 @@ class Fiber:
         return index
 
 
-    def project(self, trans_fn=None, interval=None, rank_id=None, start_pos=None, coord_ex=None):
+    def project(self, trans_fn=None, interval=None, rank_id=None,
+                start_pos=None, coord_ex=None, tick=False):
         """Create a new fiber with coordinates projected according to `trans_fn`
 
         This method creates a new fiber with the same payloads as the
@@ -1071,6 +1072,9 @@ class Fiber:
 
         coord_ex: Optional[Union[int, tuple]]
             An example of a coordinate that should appear in the input tensor
+
+        tick: bool
+            True if the iteration counter should tick as this iterator moves
 
         Returns
         -------
@@ -1140,6 +1144,7 @@ class Fiber:
         # Build the iterator
         class project_iterator:
             fbr = fiber
+            tck = tick
             trans = lambda self, c: trans_fn(c)
             interv = interval
             start = start_pos
@@ -1150,8 +1155,26 @@ class Fiber:
                 assert not is_collecting or self.rank is not None
 
             def __iter__(self):
-                fiter = self.fbr.__iter__(tick=False, start_pos=self.start)
-                for old_c, p in fiter:
+                is_collecting = Metrics.isCollecting()
+                if is_collecting:
+                    # Associate the src and dst ranks
+                    src_rank = self.fbr.getRankAttrs().getId()
+                    if tick:
+                        Metrics.registerRank(src_rank)
+                    Metrics.matchRanks(src_rank, self.rank)
+
+                    label = str(Metrics.getLabel(src_rank))
+                    trace = "project_" + label
+
+                    if self.start is None:
+                        i = 0
+                    else:
+                        i = self.start
+
+                    iteration = Metrics.getIter()
+
+                fiter = self.fbr.__iter__(tick=self.tck, start_pos=self.start)
+                for j, (old_c, p) in enumerate(fiter):
                     c = self.trans(old_c)
                     if self.interv is not None and c >= self.interv[1]:
                         break
@@ -1159,6 +1182,13 @@ class Fiber:
                     if self.interv is None \
                             or (c >= self.interv[0] and c < self.interv[1]):
                         yield c, p
+
+                        if is_collecting:
+                            Metrics.addUse(src_rank, old_c, i + j,
+                                type_=trace, iteration_num=iteration)
+
+                        if is_collecting:
+                            iteration = Metrics.getIter()
 
         if interval:
             min_, max_ = interval

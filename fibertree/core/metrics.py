@@ -35,13 +35,14 @@ class Metrics:
     num_cached_uses = 1000
     point = None
     prefix = None
+    rank_matches = {}
     traces = {}
 
     def __init__(self):
         raise NotImplementedError
 
     @classmethod
-    def addUse(cls, rank, coord, pos, type_="iter"):
+    def addUse(cls, rank, coord, pos, type_="iter", iteration_num=None):
         """Add a use of all tensors at the given rank and coord
 
         Parameters
@@ -56,6 +57,10 @@ class Metrics:
         type_: str
             Description of the information this trace is collecting
 
+        iteration_num: Optional[Tuple[int...]]
+            The iteration number this use occurs on
+            If none, use the default iteration number
+
         Returns
         -------
 
@@ -63,10 +68,16 @@ class Metrics:
 
         """
         assert cls.collecting
+        assert rank in cls.line_order or rank in cls.rank_matches
 
         # Update the point
-        i = cls.line_order[rank]
-        cls.point[i] = coord
+        if rank in cls.line_order:
+            i = cls.line_order[rank]
+            cls.point[i] = coord
+
+        # Otherwise, set i based on the rank this rank matches
+        else:
+            i = cls.line_order[cls.rank_matches[rank]]
 
         # Make sure we are tracking this rank and type_
         if rank not in cls.traces.keys():
@@ -75,16 +86,19 @@ class Metrics:
         if type_ not in cls.traces[rank].keys():
             return
 
+        if iteration_num is None:
+            iteration_num = cls.iteration
+
         # Add the trace
-        iteration = ",".join(str(j) for j in cls.iteration[:(i + 1)])
+        iteration = ",".join(str(j) for j in iteration_num[:(i + 1)])
         point = ",".join(str(j) for j in cls.point[:(i + 1)])
 
         data = [iteration, point, str(pos)]
-        cls.traces[rank][type_].append(",".join(data) + "\n")
+        cls.traces[rank][type_][0].append(",".join(data) + "\n")
 
         # If we are at the limit of the number of cached uses, write the data
         # to disk
-        if len(cls.traces[rank][type_]) == cls.num_cached_uses:
+        if len(cls.traces[rank][type_][0]) == cls.num_cached_uses:
             cls._writeTrace(rank, type_)
 
     @classmethod
@@ -113,6 +127,7 @@ class Metrics:
         cls.metrics = {}
         cls.point = []
         cls.prefix = prefix
+        cls.rank_matches = {}
         cls.traces = {}
 
     @classmethod
@@ -218,6 +233,9 @@ class Metrics:
         rank: str
             The rank whose fiber we want to label
 
+        loop_rank: str
+            The rank we want to
+
         Returns
         -------
 
@@ -225,10 +243,15 @@ class Metrics:
 
         """
         assert cls.collecting
-        assert rank in cls.line_order.keys()
+        assert rank in cls.line_order or rank in cls.rank_matches
 
-        cls.fiber_label[rank] += 1
-        return cls.fiber_label[rank] - 1
+        if rank in cls.line_order:
+            iter_rank = rank
+        else:
+            iter_rank = cls.rank_matches[rank]
+
+        cls.fiber_label[iter_rank] += 1
+        return cls.fiber_label[iter_rank] - 1
 
     @classmethod
     def incCount(cls, line, metric, inc):
@@ -312,6 +335,41 @@ class Metrics:
         return cls.collecting
 
     @classmethod
+    def matchRanks(cls, rank1, rank2):
+        """Register the fact that rank1 and rank2 are associated with the same
+        level of the loop nest
+
+        Parameters
+        ----------
+
+        rank1, rank2: str
+            Ranks to match
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert rank1 in cls.line_order or rank2 in cls.line_order
+
+        if rank1 in cls.line_order:
+            loop_rank = rank1
+            new_rank = rank2
+
+        else:
+            loop_rank = rank2
+            new_rank = rank1
+
+        cls.rank_matches[new_rank] = loop_rank
+
+        # Start any traces that can now be started
+        if new_rank in cls.traces:
+            for type_ in cls.traces[new_rank]:
+                if not cls.traces[new_rank][type_][1]:
+                    cls._startTrace(new_rank, type_)
+
+    @classmethod
     def registerRank(cls, rank):
         """Register a rank as a part of the loop order
 
@@ -383,9 +441,14 @@ class Metrics:
         None
 
         """
-        assert rank in cls.line_order.keys()
+        assert rank in cls.line_order or rank in cls.rank_matches
 
-        end = cls.line_order[rank] + 1
+        if rank in cls.line_order:
+            end = cls.line_order[rank] + 1
+        else:
+            end = cls.line_order[cls.rank_matches[rank]] + 1
+
+        cls.traces[rank][type_] = ([], True)
 
         with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "w") as f:
             f.write("")
@@ -394,7 +457,7 @@ class Metrics:
         coord = ",".join(r for r in cls.loop_order[:end])
 
         headings = [pos, coord, "fiber_pos"]
-        cls.traces[rank][type_].append(",".join(headings) + "\n")
+        cls.traces[rank][type_][0].append(",".join(headings) + "\n")
 
 
     @classmethod
@@ -424,7 +487,7 @@ class Metrics:
         if rank not in cls.traces.keys():
             cls.traces[rank] = {}
 
-        cls.traces[rank][type_] = []
+        cls.traces[rank][type_] = ([], False)
 
     @classmethod
     def _writeTrace(cls, rank, type_):
@@ -446,7 +509,7 @@ class Metrics:
 
         """
         with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "a") as f:
-           for use in cls.traces[rank][type_]:
+           for use in cls.traces[rank][type_][0]:
                 f.write(use)
 
-        cls.traces[rank][type_] = []
+        cls.traces[rank][type_] = ([], True)
