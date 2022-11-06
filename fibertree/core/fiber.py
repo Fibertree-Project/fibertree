@@ -2549,7 +2549,9 @@ class Fiber:
         assert isinstance(coord, tuple) or isinstance(coord, int)
 
         if isinstance(coord, tuple):
-            return coord[:-1] + Fiber._nextCoord(coord[-1])
+            new = list(coord[:-1])
+            new.append(Fiber._nextCoord(coord[-1]))
+            return tuple(new)
 
         return coord + 1
 

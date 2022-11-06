@@ -1025,7 +1025,6 @@ def __lshift__(self, other):
                     if new_a_payload \
                             and self.a_fiber.getRankAttrs().getFormat() != "U":
                         new_pos_coord = []
-                        print("foo")
                         next_b_coord = self.b_fiber._nextCoord(b_coord)
                         for c, p in self.a_fiber.iterRange(next_b_coord, None,
                                         tick=False, start_pos=a_pos):

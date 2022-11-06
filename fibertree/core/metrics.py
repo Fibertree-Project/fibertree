@@ -243,12 +243,21 @@ class Metrics:
 
         """
         assert cls.collecting
-        assert rank in cls.line_order or rank in cls.rank_matches
 
         if rank in cls.line_order:
             iter_rank = rank
-        else:
+
+        elif rank in cls.rank_matches:
             iter_rank = cls.rank_matches[rank]
+
+        # If the correct rank has not been registered yet, create a new
+        # Fiber label and combine later
+        elif rank in cls.fiber_label:
+            iter_rank = rank
+
+        else:
+            cls.fiber_label[rank] = 0
+            iter_rank = rank
 
         cls.fiber_label[iter_rank] += 1
         return cls.fiber_label[iter_rank] - 1
@@ -362,6 +371,11 @@ class Metrics:
             new_rank = rank1
 
         cls.rank_matches[new_rank] = loop_rank
+
+        # Combine fiber labels
+        if new_rank in cls.fiber_label:
+            cls.fiber_label[loop_rank] += cls.fiber_label[new_rank]
+            del cls.fiber_label[new_rank]
 
         # Start any traces that can now be started
         if new_rank in cls.traces:

@@ -3,7 +3,7 @@
 import unittest
 import yaml
 
-from fibertree import Metrics, Tensor
+from fibertree import Fiber, Metrics, Tensor
 from fibertree.model import Format, Traffic
 
 class TestTraffic(unittest.TestCase):
@@ -381,6 +381,41 @@ class TestTraffic(unittest.TestCase):
         bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 16 * 32, 4 * 32)
         self.assertEqual(bits, {"Z": {"read": 17 * 4 * 32, "write": 35 * 4 * 32}})
         self.assertEqual(overflows, 0)
+
+    def test_buffetTraffic_project(self):
+        """Test the buffet traffic of a projected fiber"""
+        f_k = Fiber([2, 4, 6, 8], [4, 8, 12, 16])
+        f_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_buffetTraffic_project")
+        Metrics.trace("K", "project_0")
+        for m, p in f_k.project(trans_fn=lambda k: k + 3, rank_id="M", start_pos=1):
+            pass
+        Metrics.endCollect()
+
+        bindings = yaml.safe_load("""
+        - tensor: F
+          rank: K
+          type: payload
+          evict-on: root
+        """)
+
+        F_K = Tensor.fromFiber(fiber=f_k, rank_ids=["K"])
+        formats = {"F": Format(F_K, yaml.safe_load("""
+            K:
+                pbits: 64
+            """))
+        }
+
+        traces = {
+            ("F", "K", "payload", "read"): "tmp/test_buffetTraffic_project-K-project_0.csv"
+        }
+
+        bits, overflows = Traffic.buffetTraffic(bindings, formats, traces, 8 * 32, 64,
+                            loop_ranks={"K": "M"})
+        self.assertEqual(bits, {"F": {"read": 3 * 64}})
+        self.assertEqual(overflows, 0)
+
 
 #     def test_cacheTraffic(self):
 #         """Test cacheTraffic"""

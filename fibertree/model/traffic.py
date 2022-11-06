@@ -138,7 +138,6 @@ class Traffic:
     def _buildNextUseTrace(ranks, elems_per_line, input_fn, output_fn):
         """Build a trace of for each access to a tensor (as specified by its
         ranks), when the corresponding next use was"""
-
         out_split = os.path.splitext(output_fn)
         comb_fn = out_split[0] + "-coalesced" + out_split[1]
         rev_fn = out_split[0] + "-reversed" + out_split[1]
@@ -188,7 +187,8 @@ class Traffic:
         os.remove(rev_fn)
 
     @staticmethod
-    def buffetTraffic(bindings, formats, trace_fns, capacity, line_sz):
+    def buffetTraffic(bindings, formats, trace_fns, capacity, line_sz, \
+            loop_ranks=None):
         """Compute the traffic loading data into this buffet
 
         Parameters
@@ -213,10 +213,27 @@ class Traffic:
             The number of bits across which spatial locality is exploited
             (e.g., buffer line size)
 
+        loop_ranks: Optional[Dict[str, str]]
+            A map from the original rank to the rank it corresponds to in
+            the loop order
+
         Note: assumes all fibers start at line boundaries and all elements
         reside on exactly one line (if the footprint is not a multiple of the
         line size, every line is padded)
         """
+        # Get the loop ranks of each tensor
+        if loop_ranks is None:
+            loop_ranks = {}
+
+        loop_rank_ids = {}
+        for tensor in formats:
+            loop_rank_ids[tensor] = []
+            for rank in formats[tensor].tensor.getRankIds():
+                new_rank = rank
+                if rank in loop_ranks:
+                    new_rank = loop_ranks[rank]
+                loop_rank_ids[tensor].append(new_rank)
+
         # First combine read and write traces
         read_write_traces = {}
         traffic = {}
@@ -248,14 +265,13 @@ class Traffic:
         next_use_traces = {}
         for key, fn in read_write_traces.items():
             tensor, rank, type_ = key
-            rank_ids = formats[tensor].tensor.getRankIds()
             elems_per_line = line_sz // formats[tensor].getElem(rank, type_)
             assert elems_per_line > 0
 
             split_fn = os.path.splitext(fn)
             next_fn = split_fn[0] + "-next-" + "-".join(key) + split_fn[1]
 
-            Traffic._buildNextUseTrace(rank_ids, elems_per_line, fn, next_fn)
+            Traffic._buildNextUseTrace(loop_rank_ids[tensor], elems_per_line, fn, next_fn)
             next_use_traces[key] = next_fn
 
         # Open all the traces
@@ -272,10 +288,14 @@ class Traffic:
             if start > len(order):
                 order = line[start:(start * 2)]
 
+        # Fill the loop ranks
+        for rank in order:
+            loop_ranks[rank] = rank
+
         # Order the binding information, and get rid of the keys
         bind_info = [[] for _ in order]
         for binding in bindings:
-            pos = order.index(binding["rank"])
+            pos = order.index(loop_ranks[binding["rank"]])
             tensor, rank, type_, evict_on = \
                 binding["tensor"], binding["rank"], binding["type"], binding["evict-on"]
 
@@ -292,9 +312,8 @@ class Traffic:
         # Compute index masks for each bound tensor
         masks = []
         for tensor, rank, _, _ in bind_info:
-            end = order.index(rank) + 1
-            ranks = formats[tensor].tensor.getRankIds()
-            masks.append(list(r in ranks for r in order[:end]))
+            end = order.index(loop_ranks[rank]) + 1
+            masks.append(list(r in loop_rank_ids[tensor] for r in order[:end]))
 
         # Compute the number of elements per line for each binding
         elems_per_line = []
@@ -348,7 +367,7 @@ class Traffic:
             if evict_on == "root":
                 evict_end = 0
             else:
-                evict_end = order.index(evict_on) + 1
+                evict_end = order.index(loop_ranks[evict_on]) + 1
 
             # Currently using the iteration stamp
             curr_stamp = trace[:evict_end]

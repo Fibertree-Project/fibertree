@@ -360,6 +360,20 @@ class TestMetrics(unittest.TestCase):
         with open("tmp/test_match_ranks-M-match_ranks.csv") as f:
             self.assertEqual(f.readlines(), corr)
 
+    def test_match_rank_unmatched_label(self):
+        """Test that match rank correctly combines labels"""
+        Metrics.beginCollect()
+
+        self.assertEqual(Metrics.getLabel("K"), 0)
+        self.assertEqual(Metrics.getLabel("K"), 1)
+
+        Metrics.registerRank("M")
+        Metrics.matchRanks("M", "K")
+
+        self.assertEqual(Metrics.getLabel("M"), 2)
+
+        Metrics.endCollect()
+
     def test_register_rank_fails_if_not_collecting(self):
         """Test that registerRank fails if collection is not on"""
         with self.assertRaises(AssertionError):
