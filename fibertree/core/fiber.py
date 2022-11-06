@@ -2522,10 +2522,36 @@ class Fiber:
             The coordinate with the function applied to all integers
 
         """
+        assert isinstance(coord, tuple) or isinstance(coord, int)
+
         if isinstance(coord, tuple):
             return tuple(Fiber._transCoord(c, trans_fn) for c in coord)
 
         return trans_fn(coord)
+
+    @staticmethod
+    def _nextCoord(coord):
+        """Get the very next coordinate, applying recursively for tuples
+
+        Parameters
+        ----------
+
+        coord: Union[int, tuple]
+            The coordinate to increment
+
+        Returns
+        -------
+
+        new_coord: Union[int, tuple]
+            The coordinate incremented
+
+        """
+        assert isinstance(coord, tuple) or isinstance(coord, int)
+
+        if isinstance(coord, tuple):
+            return coord[:-1] + Fiber._nextCoord(coord[-1])
+
+        return coord + 1
 
 
 #
