@@ -1,4 +1,5 @@
 #cython: language_level=3
+#cython: profile=True
 """Iterator
 
 A module storing the implementations of all of the iterators of the Fiber class

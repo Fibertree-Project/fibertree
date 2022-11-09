@@ -1,5 +1,5 @@
 #cython: language_level=3
-#cython: profile=False
+#cython: profile=True
 """Traffic
 
 A class for computing the memory traffic incurred by a tensor
@@ -8,7 +8,6 @@ A class for computing the memory traffic incurred by a tensor
 import heapq
 import itertools
 import os
-from queue import Queue
 
 import bisect
 from file_read_backwards import FileReadBackwards
@@ -331,16 +330,22 @@ class Traffic:
             next_traces.append(next_trace)
         next_keys.sort()
 
-        # Prepare the fill queues
-        fill_queues = {}
+        # Prepare the drain queue info: for each key, what is the queue index
+        # of the next element to be filled and the next element to be drained
+        drain_info = {}
+        ready_to_drain = {}
+        objs = {}
         for tensor, rank, type_, _ in bind_info:
-            fill_queues[tensor, rank, type_] = Queue()
+            drain_info[tensor, rank, type_] = [0, 0]
+            ready_to_drain[tensor, rank, type_] = {}
+
+            if tensor not in objs:
+                objs[tensor] = {}
+            objs[tensor][type_] = {}
 
         # Simulate the buffet
-        objs = {}
         occupancy = 0
         overflows = 0
-        ready_to_drain = set()
 
         # While at least one of the traces is still going
         while next_keys[0][:-1] != (float("inf"),) * len(order):
@@ -356,10 +361,10 @@ class Traffic:
 
             # Compute the corresponding line if the access is not "root"
             point[-1] = trace[num_ranks * 2] // elems_per_line[i] * elems_per_line[i]
-            obj = (tensor, type_, tuple(point))
+            obj = tuple(point)
 
             # Record the access if needed
-            new_traffic = obj not in objs
+            new_traffic = obj not in objs[tensor][type_]
             if new_traffic and not is_write:
                 traffic[tensor]["read"] += line_sz
 
@@ -377,9 +382,9 @@ class Traffic:
                 # Add an object only if it will be used within the ERD
                 if curr_stamp == next_stamp \
                         and trace[num_ranks * 2 + 2] is not None:
-                    objs[obj] = is_write
+                    objs[tensor][type_][obj] = [is_write, drain_info[key][0]]
                     occupancy += line_sz
-                    fill_queues[key].put(obj)
+                    drain_info[key][0] += 1
 
                     # Track overflows
                     if occupancy > capacity:
@@ -391,23 +396,24 @@ class Traffic:
 
             # If the object will not be used again within the ERD, evict it
             elif curr_stamp != next_stamp:
-                ready_to_drain.add(obj)
+                objs[tensor][type_][obj][0] = objs[tensor][type_][obj][0] or is_write
+                ready_to_drain[key][objs[tensor][type_][obj][1]] = obj
 
             # Otherwise, it was in the buffer and will be used again
             else:
-                objs[obj] = objs[obj] or is_write
+                objs[tensor][type_][obj][0] = objs[tensor][type_][obj][0] or is_write
 
             # Drain all available elements
-            while not fill_queues[key].empty() \
-                    and fill_queues[key].queue[0] in ready_to_drain:
-                drain_obj = fill_queues[key].get()
+            while drain_info[key][1] in ready_to_drain[key]:
+                drain_obj = ready_to_drain[key][drain_info[key][1]]
 
                 # If the line has been mutated, write it first
-                if objs[drain_obj] or is_write:
+                if objs[tensor][type_][drain_obj][0]:
                     traffic[tensor]["write"] += line_sz
 
-                del objs[drain_obj]
-                ready_to_drain.remove(drain_obj)
+                del objs[tensor][type_][drain_obj]
+                del ready_to_drain[key][drain_info[key][1]]
+                drain_info[key][1] += 1
                 occupancy -= line_sz
 
             # Advance the relevant trace
