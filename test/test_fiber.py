@@ -2278,9 +2278,9 @@ class TestFiber(unittest.TestCase):
 
         corr = [
             "M_pos,M,fiber_pos\n",
-            "0,7,1\n",
-            "1,9,2\n",
-            "2,11,3\n"
+            "0,4,1\n",
+            "1,6,2\n",
+            "2,8,3\n"
         ]
 
         with open("tmp/test_project_trace_dst_in_loop_order-K-project_0.csv") as f:

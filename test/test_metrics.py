@@ -198,12 +198,38 @@ class TestMetrics(unittest.TestCase):
         with open("tmp/test_add_use_explicit_iteration-K-iter.csv") as f:
             self.assertEqual(f.readlines(), corr)
 
+    def test_add_use_matched_ranks(self):
+        Metrics.beginCollect("tmp/test_add_use_matched_ranks")
+        Metrics.trace("K", "matched")
+        Metrics.registerRank("N")
+        Metrics.registerRank("M")
+        Metrics.matchRanks("K", "M")
+        for i, n in enumerate([2, 4]):
+            Metrics.addUse("N", n, i)
+            for j, m in enumerate([7, 9, 11]):
+                Metrics.addUse("M", m, j)
+                Metrics.addUse("K", m - 3, j + 1, type_="matched")
+                Metrics.incIter("M")
+            Metrics.endIter("M")
+            Metrics.incIter("N")
+        Metrics.endIter("N")
+        Metrics.endCollect()
+
+        corr = [
+            "N_pos,M_pos,N,M,fiber_pos\n",
+            "0,0,2,4,1\n",
+            "0,1,2,6,2\n",
+            "0,2,2,8,3\n",
+            "1,0,4,4,1\n",
+            "1,1,4,6,2\n",
+            "1,2,4,8,3\n"
+        ]
+
 
     def test_end_iter_fails_if_not_collecting(self):
         """Test that endIter fails if collection is not on"""
         with self.assertRaises(AssertionError):
             Metrics.endIter("K")
-
 
     def test_empty_dump(self):
         """Test that if no metrics have been collected, the dump is empty"""
@@ -211,6 +237,24 @@ class TestMetrics(unittest.TestCase):
         Metrics.endCollect()
 
         self.assertEqual(Metrics.dump(), {})
+
+    def test_getIndex(self):
+        """Test that getIndex works"""
+        Metrics.beginCollect()
+        Metrics.registerRank("M")
+        Metrics.registerRank("N")
+
+        self.assertEqual(Metrics.getIndex("M"), 0)
+        self.assertEqual(Metrics.getIndex("N"), 1)
+
+        Metrics.matchRanks("K", "M")
+
+        self.assertEqual(Metrics.getIndex("K"), 0)
+
+        with self.assertRaises(AssertionError):
+            Metrics.getIndex("J")
+
+        Metrics.endCollect()
 
     def test_inc_count_fails_if_not_collecting(self):
         """Test that incCount fails if collection is not on"""
@@ -253,18 +297,18 @@ class TestMetrics(unittest.TestCase):
         Metrics.beginCollect()
         Metrics.registerRank("N")
         Metrics.registerRank("M")
-        self.assertEqual(Metrics.getIter(), (0, 0))
+        self.assertEqual(Metrics.getIter(), [0, 0])
 
         Metrics.incIter("M")
-        self.assertEqual(Metrics.getIter(), (0, 1))
+        self.assertEqual(Metrics.getIter(), [0, 1])
 
         Metrics.incIter("N")
         Metrics.incIter("N")
         Metrics.incIter("N")
-        self.assertEqual(Metrics.getIter(), (3, 1))
+        self.assertEqual(Metrics.getIter(), [3, 1])
 
         Metrics.endIter("M")
-        self.assertEqual(Metrics.getIter(), (3, 0))
+        self.assertEqual(Metrics.getIter(), [3, 0])
 
         Metrics.endCollect()
 
@@ -278,7 +322,7 @@ class TestMetrics(unittest.TestCase):
         Metrics.endIter("M")
         Metrics.incIter("N")
 
-        self.assertEqual(Metrics.getIter(), (1, 0))
+        self.assertEqual(Metrics.getIter(), [1, 0])
 
         Metrics.endCollect()
 
@@ -352,9 +396,9 @@ class TestMetrics(unittest.TestCase):
 
         corr = [
             "K_pos,K,fiber_pos\n",
-            "0,0,2\n",
-            "1,2,5\n",
-            "0,2,7\n"
+            "0,5,2\n",
+            "1,4,5\n",
+            "0,8,7\n"
         ]
 
         with open("tmp/test_match_ranks-M-match_ranks.csv") as f:

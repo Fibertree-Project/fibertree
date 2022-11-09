@@ -89,9 +89,9 @@ class Metrics:
         if iteration_num is None:
             iteration_num = cls.iteration
 
-        # Add the trace
+
         iteration = ",".join(str(j) for j in iteration_num[:(i + 1)])
-        point = ",".join(str(j) for j in cls.point[:(i + 1)])
+        point = ",".join(str(j) for j in cls.point[:i] + [coord])
 
         data = [iteration, point, str(pos)]
         cls.traces[rank][type_][0].append(",".join(data) + "\n")
@@ -221,7 +221,7 @@ class Metrics:
         None
 
         """
-        return tuple(cls.iteration)
+        return cls.iteration
 
     @classmethod
     def getLabel(cls, rank):
@@ -261,6 +261,30 @@ class Metrics:
 
         cls.fiber_label[iter_rank] += 1
         return cls.fiber_label[iter_rank] - 1
+
+    @classmethod
+    def getIndex(cls, rank):
+        """Get the index in the line order of this rank
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank whose index to get
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.collecting
+        assert rank in cls.line_order or rank in cls.rank_matches
+
+        if rank in cls.line_order:
+            return cls.line_order[rank]
+        else:
+            return cls.line_order[cls.rank_matches[rank]]
 
     @classmethod
     def incCount(cls, line, metric, inc):

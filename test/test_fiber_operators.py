@@ -556,6 +556,58 @@ class TestFiberOperators(unittest.TestCase):
         with open("tmp/test_lshift_metrics_many_fibers-M-populate_3.csv", "r") as f:
             self.assertEqual(f.readlines(), corr_r3)
 
+    def test_lshift_metrics_fiber_project(self):
+        """Test metrics collection on Fiber.__lshift__ from a fiber"""
+        a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        a_m.getRankAttrs().setId("M")
+        z_n = Fiber.fromUncompressed([0, 2, 3, 0, 0])
+        z_n.getRankAttrs().setId("N")
+
+        Metrics.beginCollect("tmp/test_lshift_metrics_fiber_project")
+        Metrics.trace("N", type_="populate_read_0")
+        Metrics.trace("N", type_="populate_write_0")
+        Metrics.trace("N", type_="populate_1")
+        for _, (z_ref, _) in (z_n << a_m.project(tick=True, rank_id="N")).iterOccupancy(tick=False):
+            z_ref += 1
+        Metrics.endCollect()
+
+        corr_r0 = [
+            "M_pos,M,fiber_pos\n",
+            "2,1,0\n",
+            "3,2,1\n",
+            "7,3,6\n",
+            "8,2,1\n",
+            "9,1,0\n",
+            "10,0,5\n"
+        ]
+
+        corr_w0 = [
+            "M_pos,M,fiber_pos\n",
+            "1,0,5\n",
+            "4,2,1\n",
+            "6,3,6\n",
+            "7,3,3\n",
+            "8,2,2\n",
+            "9,1,1\n",
+            "10,0,0\n"
+        ]
+
+        corr_r1 = [
+            "M_pos,M,fiber_pos\n",
+            "0,0,0\n",
+            "2,2,1\n",
+            "5,3,2\n"
+        ]
+
+        with open("tmp/test_lshift_metrics_fiber_project-N-populate_read_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r0)
+
+        with open("tmp/test_lshift_metrics_fiber_project-N-populate_write_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_w0)
+
+        with open("tmp/test_lshift_metrics_fiber_project-N-populate_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_r1)
+
     def test_lshift_use_stats_1D(self):
         """Test reuse statistics collected on a 1D fiber during Fiber.__lshift__"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])

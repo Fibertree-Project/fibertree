@@ -1171,7 +1171,7 @@ class Fiber:
                     else:
                         i = self.start
 
-                    iteration = Metrics.getIter()
+                    iteration = Metrics.getIter().copy()
 
                 fiter = self.fbr.__iter__(tick=self.tck, start_pos=self.start)
                 for j, (old_c, p) in enumerate(fiter):
@@ -1188,7 +1188,7 @@ class Fiber:
                                 type_=trace, iteration_num=iteration)
 
                         if is_collecting:
-                            iteration = Metrics.getIter()
+                            iteration = Metrics.getIter().copy()
 
         if interval:
             min_, max_ = interval

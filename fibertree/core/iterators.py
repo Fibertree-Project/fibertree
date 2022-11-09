@@ -993,6 +993,9 @@ def __lshift__(self, other):
                             Metrics.addUse(rank, c, read_pos, type_=a_read_trace)
                             Metrics.incIter(rank)
 
+                    # Save the iteration
+                    iteration = Metrics.getIter().copy()
+
                 # Find the position this coordinate should be inserted into
                 get_payload_pos = None
                 if self.a_fiber.coords:
@@ -1056,16 +1059,21 @@ def __lshift__(self, other):
                         write_pos = a_pos - len(to_insert)
 
                     # Write the new value
-                    Metrics.addUse(rank, b_coord, write_pos, type_=a_write_trace)
+                    iteration[Metrics.getIndex(rank)] += 1
+                    Metrics.addUse(rank, b_coord, write_pos, type_=a_write_trace,
+                        iteration_num=iteration)
                     Metrics.incIter(rank)
                     a_pos += 1
 
             # Finally, if we were inserting, move everything to the appropriate
             # location
             if inserting and len(to_insert) > 0:
+                iteration = list(iteration)
                 for i, (c, p) in enumerate(reversed(list(self.a_fiber.iterOccupancy(
                                         tick=False, start_pos=insert_start_pos)))):
                     write_pos = len(self.a_fiber) - i - 1
+                    iteration[Metrics.getIndex(rank)] += 1
+
                     # If this is an element we inserted, we need to read it
                     # from somewhere else
                     if c == to_insert[-1]:
@@ -1076,9 +1084,8 @@ def __lshift__(self, other):
                     else:
                         read_pos = write_pos - len(to_insert)
 
-                    Metrics.addUse(rank, c, read_pos, type_=a_read_trace)
-                    Metrics.addUse(rank, c, write_pos, type_=a_write_trace)
-                    Metrics.incIter(rank)
+                    Metrics.addUse(rank, c, read_pos, type_=a_read_trace, iteration_num=iteration)
+                    Metrics.addUse(rank, c, write_pos, type_=a_write_trace, iteration_num=iteration)
 
             return
 
