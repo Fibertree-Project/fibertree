@@ -387,25 +387,30 @@ class TestFiberOperators(unittest.TestCase):
 
         corr_r0 = [
             "M_pos,M,fiber_pos\n",
-            "1,2,1\n",
             "2,1,0\n",
-            "4,2,2\n",
+            "3,2,1\n",
+            "7,3,6\n",
+            "8,2,1\n",
+            "9,1,0\n",
+            "10,0,5\n"
         ]
 
         corr_w0 = [
             "M_pos,M,fiber_pos\n",
-            "1,2,2\n",
-            "2,1,1\n",
-            "3,0,0\n",
-            "5,2,2\n",
-            "7,3,3\n"
+            "1,0,5\n",
+            "4,2,1\n",
+            "6,3,6\n",
+            "7,3,3\n",
+            "8,2,2\n",
+            "9,1,1\n",
+            "10,0,0\n"
         ]
 
         corr_r1 = [
             "M_pos,M,fiber_pos\n",
             "0,0,0\n",
-            "4,2,1\n",
-            "6,3,2\n",
+            "2,2,1\n",
+            "5,3,2\n"
         ]
 
         with open("tmp/test_lshift_metrics_fiber-M-populate_read_0.csv", "r") as f:
@@ -435,25 +440,30 @@ class TestFiberOperators(unittest.TestCase):
 
         corr_r0 = [
             "M_pos,M,fiber_pos\n",
-            "1,2,1\n",
             "2,1,0\n",
-            "4,2,2\n",
+            "3,2,1\n",
+            "7,3,6\n",
+            "8,2,1\n",
+            "9,1,0\n",
+            "10,0,5\n"
         ]
 
         corr_w0 = [
             "M_pos,M,fiber_pos\n",
-            "1,2,2\n",
-            "2,1,1\n",
-            "3,0,0\n",
-            "5,2,2\n",
-            "7,3,3\n"
+            "1,0,5\n",
+            "4,2,1\n",
+            "6,3,6\n",
+            "7,3,3\n",
+            "8,2,2\n",
+            "9,1,1\n",
+            "10,0,0\n"
         ]
 
         corr_r1 = [
             "M_pos,M,fiber_pos\n",
             "0,0,0\n",
-            "4,2,1\n",
-            "6,3,2\n",
+            "2,2,1\n",
+            "5,3,2\n"
         ]
 
         with open("tmp/test_lshift_metrics_tensor-M-populate_read_0.csv", "r") as f:
@@ -487,25 +497,30 @@ class TestFiberOperators(unittest.TestCase):
 
         corr_r0 = [
             "M_pos,M,fiber_pos\n",
-            "1,2,1\n",
             "2,1,0\n",
-            "4,2,2\n",
+            "3,2,1\n",
+            "7,3,6\n",
+            "8,2,1\n",
+            "9,1,0\n",
+            "10,0,5\n"
         ]
 
         corr_w0 = [
             "M_pos,M,fiber_pos\n",
-            "1,2,2\n",
-            "2,1,1\n",
-            "3,0,0\n",
-            "5,2,2\n",
-            "7,3,3\n"
+            "1,0,5\n",
+            "4,2,1\n",
+            "6,3,6\n",
+            "7,3,3\n",
+            "8,2,2\n",
+            "9,1,1\n",
+            "10,0,0\n"
         ]
 
         corr_r1 = [
             "M_pos,M,fiber_pos\n",
             "0,0,0\n",
-            "4,2,1\n",
-            "6,3,2\n",
+            "2,2,1\n",
+            "5,3,2\n"
         ]
 
         with open("tmp/test_lshift_metrics_many_fibers-M-populate_read_0.csv", "r") as f:
@@ -528,8 +543,8 @@ class TestFiberOperators(unittest.TestCase):
         corr_r3 = [
             "M_pos,M,fiber_pos\n",
             "0,0,0\n",
-            "4,2,1\n",
-            "6,3,2\n",
+            "2,2,1\n",
+            "5,3,2\n",
         ]
 
         with open("tmp/test_lshift_metrics_many_fibers-M-populate_read_2.csv", "r") as f:

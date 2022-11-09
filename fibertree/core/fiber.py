@@ -2393,7 +2393,7 @@ class Fiber:
 # Shape-related methods
 #
 
-    def getShape(self, all_ranks=True):
+    def getShape(self, all_ranks=True, authoritative=False):
         """Return the shape of a fibertree
 
         Find the **shape** of the current fiber (`all_ranks`=False) or
@@ -2404,23 +2404,29 @@ class Fiber:
 
         all_ranks: Bool, default=True
 
+        authoritative: Boolean, default=False
+            Control whether to return an estimated (non-authoritative) shape
+
         Returns
         -------
 
         shape: integer or list of integers
             The shape of the current fiber or the entire tree
 
+        Note:
+
         """
         owner = self.getOwner()
+        assert owner is not None or not all_ranks or not authoritative
 
         # If we have an owner, we can just use that value
         if owner is not None:
-            shape = owner.getShape(all_ranks=all_ranks)
+            shape = owner.getShape(all_ranks=all_ranks, authoritative=authoritative)
 
         else:
             shape = self.getRankAttrs().getShape()
 
-        if shape is not None:
+        if shape is not None or authoritative:
             return shape
 
         #

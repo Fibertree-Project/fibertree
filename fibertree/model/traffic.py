@@ -321,6 +321,18 @@ class Traffic:
             elems_per_line.append(line_sz // footprint)
             assert elems_per_line[-1] > 0
 
+        # Compute the last lines for all writable traces whose intermediate
+        # writes we can ignore
+        shapes = []
+        for i, (tensor, rank, type_, evict_on) in enumerate(bind_info):
+            if rank != evict_on and (tensor, rank, type_, "write") in trace_fns:
+                shape = formats[tensor].tensor.getShape(authoritative=True)
+                assert shape is not None
+                shapes.append(shape[formats[tensor].tensor.getRankIds().index(rank)])
+
+            else:
+                shapes.append(None)
+
         # Order the traces in the order they occur
         next_keys = []
         next_traces = []
@@ -356,8 +368,12 @@ class Traffic:
             # Get the tensor access
             trace = next_traces[i]
             num_ranks = (len(trace) - 4) // 4
-            is_write = trace[num_ranks * 2 + 1]
             point = list(itertools.compress(trace[num_ranks:num_ranks * 2], masks[i]))
+
+            # We need to write this data if it was a write, and is not an
+            # intermediate write that should never be written back
+            is_write = trace[num_ranks * 2 + 1]
+            write_back = is_write and (shapes[i] is None or trace[num_ranks * 2] < shapes[i])
 
             # Compute the corresponding line if the access is not "root"
             point[-1] = trace[num_ranks * 2] // elems_per_line[i] * elems_per_line[i]
@@ -382,7 +398,7 @@ class Traffic:
                 # Add an object only if it will be used within the ERD
                 if curr_stamp == next_stamp \
                         and trace[num_ranks * 2 + 2] is not None:
-                    objs[tensor][type_][obj] = [is_write, drain_info[key][0]]
+                    objs[tensor][type_][obj] = [write_back, drain_info[key][0]]
                     occupancy += line_sz
                     drain_info[key][0] += 1
 
@@ -391,23 +407,23 @@ class Traffic:
                         overflows += 1
 
                 # If new traffic and not buffered, add the write traffic
-                elif is_write:
+                elif write_back:
                     traffic[tensor]["write"] += line_sz
 
             # If the object will not be used again within the ERD, evict it
             elif curr_stamp != next_stamp:
-                objs[tensor][type_][obj][0] = objs[tensor][type_][obj][0] or is_write
+                objs[tensor][type_][obj][0] = objs[tensor][type_][obj][0] or write_back
                 ready_to_drain[key][objs[tensor][type_][obj][1]] = obj
 
             # Otherwise, it was in the buffer and will be used again
             else:
-                objs[tensor][type_][obj][0] = objs[tensor][type_][obj][0] or is_write
+                objs[tensor][type_][obj][0] = objs[tensor][type_][obj][0] or write_back
 
             # Drain all available elements
             while drain_info[key][1] in ready_to_drain[key]:
                 drain_obj = ready_to_drain[key][drain_info[key][1]]
 
-                # If the line has been mutated, write it first
+                # If the line has been mutated and it needs to be saved, write it first
                 if objs[tensor][type_][drain_obj][0]:
                     traffic[tensor]["write"] += line_sz
 
@@ -430,9 +446,11 @@ class Traffic:
 
         # Remove all of the newly created files
         for fn in read_write_traces.values():
+            break
             os.remove(fn)
 
         for fn in next_use_traces.values():
+            break
             os.remove(fn)
 
         return traffic, overflows

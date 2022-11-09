@@ -2015,6 +2015,16 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(s, [0])
 
+    def test_shape_authoritative(self):
+        """Test the authoritative parameter for getShape"""
+        a = Fiber([1, 2, 3], [3, 4, 5])
+        s = a.getShape(all_ranks=False, authoritative=True)
+        self.assertIsNone(s)
+
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml", shape=5)
+        s = a.getShape(all_ranks=False, authoritative=True)
+        self.assertEqual(s, 5)
+
     def test_estimateShape_eager_only(self):
         """Test determining shape of a fiber, eager mode only"""
 

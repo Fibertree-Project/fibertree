@@ -29,7 +29,7 @@ class TestTraffic(unittest.TestCase):
 
         b_k = self.B_KN.getRoot()
         a_m = self.A_MK.getRoot()
-        T_MKN = Tensor(rank_ids=["M", "K", "N"])
+        T_MKN = Tensor(rank_ids=["M", "K", "N"], shape=[M, K, N])
         t_m = T_MKN.getRoot()
 
         Metrics.beginCollect("tmp/test_traffic_stage0")
@@ -46,7 +46,7 @@ class TestTraffic(unittest.TestCase):
         a_m = self.A_MK.getRoot()
         self.T_MNK = T_MKN.swizzleRanks(rank_ids=["M", "N", "K"])
         t_m = self.T_MNK.getRoot()
-        self.Z_MN = Tensor(rank_ids=["M", "N"])
+        self.Z_MN = Tensor(rank_ids=["M", "N"], shape=[M, N])
         z_m = self.Z_MN.getRoot()
 
         Metrics.beginCollect("tmp/test_traffic_stage1")
@@ -107,7 +107,7 @@ class TestTraffic(unittest.TestCase):
         # We can also have a single-stage version of Gustavson's
         b_k = self.B_KN.getRoot()
         a_m = self.A_MK.getRoot()
-        Z_MN = Tensor(rank_ids=["M", "N"])
+        Z_MN = Tensor(rank_ids=["M", "N"], shape=[M, N])
         z_m = Z_MN.getRoot()
 
         Metrics.beginCollect("tmp/test_traffic_single_stage")
@@ -378,7 +378,7 @@ class TestTraffic(unittest.TestCase):
             ("Z", "N", "payload", "write"): "tmp/test_traffic_single_stage-N-populate_write_0.csv"
         }
 
-        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 16 * 32, 4 * 32)
+        bits, overflows = Traffic.buffetTraffic(bindings, self.formats, traces, 20 * 32, 4 * 32)
         self.assertEqual(bits, {"Z": {"read": 17 * 4 * 32, "write": 35 * 4 * 32}})
         self.assertEqual(overflows, 0)
 

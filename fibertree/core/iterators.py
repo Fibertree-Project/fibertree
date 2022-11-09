@@ -962,14 +962,39 @@ def __lshift__(self, other):
             # Add coordinates/payloads to a_fiber where necessary
             maybe_remove = False
             b = self.b_fiber.__iter__(tick=False)
+
+            # Insertion information tracing
+            inserting = False
+            old_end = 0
+            a_pos = 0
+            to_insert = []
+            insert_pos = self.a_fiber.getShape(all_ranks=False, authoritative=True)
+            insert_start_pos = None
+
             for b_pos, (b_coord, b_payload) in enumerate(b):
                 # Read the b coordinate
                 if is_collecting:
+                    # First establish if we are inserting or only appending
+                    a_max = self.a_fiber.maxCoord()
+                    if b_pos == 0 and a_max is not None \
+                            and self.a_fiber.getRankAttrs().getFormat() == "C":
+                        inserting = b_coord < a_max
+                        assert insert_pos is not None
+
+                    # Read the B coordinate
                     Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
+
+                    # If we are inserting into a compressed fiber, we need
+                    # to search for the coordinate
+                    if inserting and a_pos < len(self.a_fiber):
+                        for c, p in self.a_fiber.iterRange(
+                                old_end, b_coord, tick=False, start_pos=a_pos):
+                            read_pos = self.a_fiber.getSavedPos() - len(to_insert)
+                            Metrics.addUse(rank, c, read_pos, type_=a_read_trace)
+                            Metrics.incIter(rank)
 
                 # Find the position this coordinate should be inserted into
                 get_payload_pos = None
-                a_pos = None
                 if self.a_fiber.coords:
                     a_pos = bisect.bisect_left(self.a_fiber.coords, b_coord)
 
@@ -989,7 +1014,7 @@ def __lshift__(self, other):
 
                 # Read the a coordinate
                 elif is_collecting:
-                    Metrics.addUse(rank, b_coord, a_pos, type_=a_read_trace)
+                    Metrics.addUse(rank, b_coord, a_pos - len(to_insert), type_=a_read_trace)
 
                 else:
                     maybe_remove = False
@@ -1015,34 +1040,44 @@ def __lshift__(self, other):
                         # middle and we actually popped off the correct fiber
                         assert id(a_payload) == id(popped)
 
-                # If this is a new payload, we may have to track the insert/append
+                # If this is a new payload, we may have to track the
+                # insert/append
                 elif is_collecting:
-                    # Track the update
-                    if a_pos is None:
-                        a_pos = 0
+                    # If we just inserted into a compressed fiber, save the
+                    # relevant information
+                    if inserting and new_a_payload:
+                        old_end = b_coord + 1
+                        write_pos = insert_pos + len(to_insert)
+                        to_insert.append(b_coord)
 
-                    # If we just inserted into a compressed fiber, we need to move
-                    # everything over one
-                    if new_a_payload \
-                            and self.a_fiber.getRankAttrs().getFormat() != "U":
-                        new_pos_coord = []
-                        next_b_coord = self.b_fiber._nextCoord(b_coord)
-                        for c, p in self.a_fiber.iterRange(next_b_coord, None,
-                                        tick=False, start_pos=a_pos):
-                            ins_a_pos = self.a_fiber.getSavedPos()
-                            new_pos_coord.append((ins_a_pos, c))
-
-                        # Move the last element first
-                        for i, c in reversed(new_pos_coord):
-                            # Read at the position before the insertion
-                            Metrics.addUse(rank, c, i - 1, type_=a_read_trace)
-
-                            # Write at the position after the insertion
-                            Metrics.addUse(rank, c, i, type_=a_write_trace)
-                            Metrics.incIter(rank)
+                        if len(to_insert) == 1:
+                            insert_start_pos = a_pos
+                    else:
+                        write_pos = a_pos - len(to_insert)
 
                     # Write the new value
-                    Metrics.addUse(rank, b_coord, a_pos, type_=a_write_trace)
+                    Metrics.addUse(rank, b_coord, write_pos, type_=a_write_trace)
+                    Metrics.incIter(rank)
+                    a_pos += 1
+
+            # Finally, if we were inserting, move everything to the appropriate
+            # location
+            if inserting and len(to_insert) > 0:
+                for i, (c, p) in enumerate(reversed(list(self.a_fiber.iterOccupancy(
+                                        tick=False, start_pos=insert_start_pos)))):
+                    write_pos = len(self.a_fiber) - i - 1
+                    # If this is an element we inserted, we need to read it
+                    # from somewhere else
+                    if c == to_insert[-1]:
+                        read_pos = insert_pos + len(to_insert) - 1
+                        to_insert.pop()
+
+                    # Otherwise, read it from the location it was before
+                    else:
+                        read_pos = write_pos - len(to_insert)
+
+                    Metrics.addUse(rank, c, read_pos, type_=a_read_trace)
+                    Metrics.addUse(rank, c, write_pos, type_=a_write_trace)
                     Metrics.incIter(rank)
 
             return

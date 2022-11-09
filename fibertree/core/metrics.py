@@ -318,11 +318,13 @@ class Metrics:
 
         """
         assert cls.collecting
+        assert line in cls.line_order or line in cls.rank_matches
 
-        if line not in cls.line_order.keys():
-            return
+        if line in cls.line_order.keys():
+            cls.iteration[cls.line_order[line]] += 1
 
-        cls.iteration[cls.line_order[line]] += 1
+        else:
+            cls.iteration[cls.line_order[cls.rank_matches[line]]] += 1
 
     @classmethod
     def isCollecting(cls):
