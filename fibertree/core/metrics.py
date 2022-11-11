@@ -1,4 +1,5 @@
 #cython: language_level=3
+# cython: profile=True
 class Metrics:
     """A globally available class for tracking metrics.
 
@@ -90,11 +91,12 @@ class Metrics:
             iteration_num = cls.iteration
 
 
-        iteration = ",".join(str(j) for j in iteration_num[:(i + 1)])
-        point = ",".join(str(j) for j in cls.point[:i] + [coord])
+        iteration = iteration_num[:(i + 1)]
+        point = cls.point[:i] + [coord]
 
-        data = [iteration, point, str(pos)]
-        cls.traces[rank][type_][0].append(",".join(data) + "\n")
+        data = iteration + point + [pos]
+        data_str = ",".join(map(str, data))
+        cls.traces[rank][type_][0].append(data_str + "\n")
 
         # If we are at the limit of the number of cached uses, write the data
         # to disk
@@ -549,7 +551,6 @@ class Metrics:
 
         """
         with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "a") as f:
-           for use in cls.traces[rank][type_][0]:
-                f.write(use)
+            f.write("".join(cls.traces[rank][type_][0]))
 
         cls.traces[rank][type_] = ([], True)

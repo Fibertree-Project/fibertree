@@ -975,7 +975,6 @@ class Tensor:
         Note: The tenor's names and colors do not need to match
 
         """
-
         rankid_match = (self.getRankIds() == other.getRankIds())
         fiber_match = (self.getRoot() == other.getRoot())
 

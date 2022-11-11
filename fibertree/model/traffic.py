@@ -446,11 +446,9 @@ class Traffic:
 
         # Remove all of the newly created files
         for fn in read_write_traces.values():
-            break
             os.remove(fn)
 
         for fn in next_use_traces.values():
-            break
             os.remove(fn)
 
         return traffic, overflows

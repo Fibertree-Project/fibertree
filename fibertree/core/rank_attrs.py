@@ -180,6 +180,11 @@ class RankAttrs:
         #
         # Return a copy of the default
         #
+        value = Payload.get(self._default)
+
+        if isinstance(value, int):
+            return Payload(value)
+
         return deepcopy(self._default)
 
     def setFormat(self, fmt):

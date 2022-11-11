@@ -175,7 +175,7 @@ class TestMetrics(unittest.TestCase):
             Metrics.addUse("M", m, i)
             Metrics.registerRank("K")
             for k in ks[i]:
-                Metrics.addUse("K", k, k - 1, iteration_num=(i + 1, k + 2))
+                Metrics.addUse("K", k, k - 1, iteration_num=[i + 1, k + 2])
                 Metrics.registerRank("N")
                 for n in range(3):
                     Metrics.addUse("N", n, n)

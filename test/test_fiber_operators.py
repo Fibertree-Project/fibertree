@@ -370,6 +370,29 @@ class TestFiberOperators(unittest.TestCase):
         with self.assertRaises(AssertionError):
             next(iter_)
 
+    def test_lshift_with_start_pos(self):
+        """Test that lshift works with a starting position"""
+        a_m = Fiber([3, 4, 7], [1, 2, 3])
+        z_m = Fiber([1, 2, 4, 8], [1, 2, 3, 4])
+
+        for m, (z_ref, a_val) in z_m.__lshift__(a_m, start_pos=2):
+            z_ref += 1
+
+        z_corr = Fiber([1, 2, 3, 4, 7, 8], [1, 2, 1, 4, 1, 4])
+        self.assertEqual(z_m, z_corr)
+        self.assertEqual(z_m.getSavedPos(), 4)
+
+    def test_lshift_bad_start_pos(self):
+        """Test the failure modes for start_pos"""
+        a_m = Fiber([3, 4, 7], [1, 2, 3])
+        z_m = Fiber([1, 2, 4, 8], [1, 2, 3, 4])
+
+        with self.assertRaises(AssertionError):
+            next(z_m.__lshift__(a_m, start_pos=3).__iter__())
+
+        with self.assertRaises(AssertionError):
+            next(z_m.__lshift__(a_m, start_pos=10).__iter__())
+
     def test_lshift_metrics_fiber(self):
         """Test metrics collection on Fiber.__lshift__ from a fiber"""
         a_m = Fiber.fromUncompressed([1, 0, 3, 4, 0])

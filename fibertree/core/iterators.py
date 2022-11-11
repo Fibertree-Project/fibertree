@@ -659,7 +659,7 @@ def __and__(self, other):
             a_coord, a_payload = _get_next(a)
             b_coord, b_payload = _get_next(b)
 
-            while not (a_coord is None or b_coord is None):
+            while a_coord is not None and b_coord is not None:
                 if a_coord == b_coord:
 
                     if is_collecting:
@@ -888,7 +888,7 @@ def __xor__(self, other):
 
 
 
-def __lshift__(self, other):
+def __lshift__(self, other, start_pos=None):
     """Fiber assignment
 
     Return the "assignment" of `other` to `self` by considering
@@ -942,6 +942,7 @@ def __lshift__(self, other):
     class lshift_iterator:
         a_fiber = self
         b_fiber = other
+        spec_pos = start_pos
 
         def __iter__(self):
             """
@@ -954,6 +955,7 @@ def __lshift__(self, other):
                 rank = self.a_fiber.getRankAttrs().getId()
                 a_label = str(Metrics.getLabel(rank))
                 b_label = str(Metrics.getLabel(rank))
+                compressed_output = self.a_fiber.getRankAttrs().getFormat() == "C"
 
                 a_read_trace = "populate_read_" + a_label
                 a_write_trace = "populate_write_" + a_label
@@ -963,21 +965,33 @@ def __lshift__(self, other):
             maybe_remove = False
             b = self.b_fiber.__iter__(tick=False)
 
+            # Track the fiber position
+            a_pos = self.spec_pos
+            if a_pos is None:
+                a_pos = 0
+
             # Insertion information tracing
             inserting = False
             old_end = 0
-            a_pos = 0
             to_insert = []
             insert_pos = self.a_fiber.getShape(all_ranks=False, authoritative=True)
             insert_start_pos = None
 
             for b_pos, (b_coord, b_payload) in enumerate(b):
+                # Error check the starting position
+                assert b_pos > 0 or a_pos == 0 \
+                    or (a_pos <= len(self.a_fiber.coords) \
+                        and b_coord > self.a_fiber.coords[a_pos - 1])
+                # if b_pos == 0 and a_pos != 0 \
+                #         and (a_pos > len(self.a_fiber.coords) \
+                #         or b_coord <= self.a_fiber.coords[a_pos - 1]):
+                #    print("Error check", a_pos, self.a_fiber.coords, b_coord)
+
                 # Read the b coordinate
                 if is_collecting:
                     # First establish if we are inserting or only appending
                     a_max = self.a_fiber.maxCoord()
-                    if b_pos == 0 and a_max is not None \
-                            and self.a_fiber.getRankAttrs().getFormat() == "C":
+                    if b_pos == 0 and a_max is not None and compressed_output:
                         inserting = b_coord < a_max
                         assert insert_pos is not None
 
@@ -999,21 +1013,33 @@ def __lshift__(self, other):
                 # Find the position this coordinate should be inserted into
                 get_payload_pos = None
                 if self.a_fiber.coords:
-                    a_pos = bisect.bisect_left(self.a_fiber.coords, b_coord)
+                    a_pos += bisect.bisect_left(self.a_fiber.coords[a_pos:], b_coord)
+
+                    # If we have already found the location of the coordinate,
+                    # we can go directly to that location
+                    if a_pos < len(self.a_fiber.coords) \
+                            and self.a_fiber.coords[a_pos] == b_coord:
+                        get_payload_pos = a_pos
 
                     # The start_pos for get_payload needs to be before the
-                    # place to insert
-                    if a_pos:
+                    # place to insert if the payload does not exist
+                    elif a_pos:
                         get_payload_pos = a_pos - 1
 
                 a_payload = self.a_fiber.getPayload(b_coord,
                                 allocate=False, start_pos=get_payload_pos)
 
                 new_a_payload = a_payload is None
+                # if not new_a_payload and self.a_fiber.getSavedPos() != a_pos:
+                #     print("Update", a_pos, self.a_fiber.getSavedPos(), b_coord, self.a_fiber.coords)
+
                 if new_a_payload:
+                    # if b_coord in self.a_fiber.coords:
+                    #     print("b_coord in self.a_fiber.coords", a_pos, b_coord)
                     # Do not actually insert the payload into the tensor
                     a_payload = self.a_fiber._create_payload(b_coord, pos=a_pos)
                     maybe_remove = True
+                    self.a_fiber.setSavedPos(a_pos)
 
                 # Read the a coordinate
                 elif is_collecting:
@@ -1043,6 +1069,11 @@ def __lshift__(self, other):
                         # middle and we actually popped off the correct fiber
                         assert id(a_payload) == id(popped)
 
+                    # We did not actually insert anything, we need to undo the
+                    # += 1 from later
+                    a_pos -= 1
+                    self.a_fiber.setSavedPos(a_pos)
+
                 # If this is a new payload, we may have to track the
                 # insert/append
                 elif is_collecting:
@@ -1055,6 +1086,7 @@ def __lshift__(self, other):
 
                         if len(to_insert) == 1:
                             insert_start_pos = a_pos
+
                     else:
                         write_pos = a_pos - len(to_insert)
 
@@ -1063,7 +1095,8 @@ def __lshift__(self, other):
                     Metrics.addUse(rank, b_coord, write_pos, type_=a_write_trace,
                         iteration_num=iteration)
                     Metrics.incIter(rank)
-                    a_pos += 1
+
+                a_pos += 1
 
             # Finally, if we were inserting, move everything to the appropriate
             # location
@@ -1076,6 +1109,8 @@ def __lshift__(self, other):
 
                     # If this is an element we inserted, we need to read it
                     # from somewhere else
+                    # if len(to_insert) == 0:
+                    #     print(self.a_fiber.coords, insert_start_pos, c)
                     if c == to_insert[-1]:
                         read_pos = insert_pos + len(to_insert) - 1
                         to_insert.pop()
@@ -1086,6 +1121,10 @@ def __lshift__(self, other):
 
                     Metrics.addUse(rank, c, read_pos, type_=a_read_trace, iteration_num=iteration)
                     Metrics.addUse(rank, c, write_pos, type_=a_write_trace, iteration_num=iteration)
+
+                # Reset the saved position since it just got messed up
+                if self.spec_pos is not None:
+                    self.a_fiber.setSavedPos(a_pos - 1)
 
             return
 

@@ -91,13 +91,11 @@ class Payload:
 
     def __new__(cls, value=None):
 
-        from .fiber import Fiber
-
         #
         # Since we do not wrap Fibers in a Payload, we check if we
         # just want to just return the Fiber.
         #
-        if isinstance(value, Fiber):
+        if type(value).__name__ == "Fiber":
             return value
 
         #
@@ -218,9 +216,7 @@ class Payload:
 
         """
 
-        from .fiber import Fiber
-
-        if isinstance(p, Fiber):
+        if type(p).__name__ == "Fiber":
             return p.isEmpty()
 
         if isinstance(p, tuple):

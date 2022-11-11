@@ -28,7 +28,7 @@ fibertree_model_pkg = []
 extensions = []
 
 # False=Python, True=Cython
-if False:
+if True:
     for py_core_f in os.listdir("./fibertree/core"):
           if py_core_f.endswith(".py"):
                 print("    Processing: ", py_core_f)
