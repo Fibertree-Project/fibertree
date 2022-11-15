@@ -372,6 +372,24 @@ class Metrics:
         return cls.collecting
 
     @classmethod
+    def isTraced(cls, rank, type_):
+        """Returns True if the given rank and trace is actually being collected
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank name in question
+
+        type_: str
+            The name of the trace in question
+
+        """
+        assert cls.collecting
+
+        return rank in cls.traces and type_ in cls.traces[rank]
+
+    @classmethod
     def matchRanks(cls, rank1, rank2):
         """Register the fact that rank1 and rank2 are associated with the same
         level of the loop nest

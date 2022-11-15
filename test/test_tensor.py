@@ -691,5 +691,28 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(t4.getFormat("K.1"), "C")
         self.assertEqual(t4.getFormat("K.0"), "U")
 
+    def test_flattenRanks_corr_shape(self):
+        """Test that flattenRanks sets the correct shape"""
+        t = Tensor(rank_ids=["J", "K", "M", "N", "O"], shape=[2, 3, 4, 5, 6])
+
+        tuple_ = t.flattenRanks(depth=1, levels=2, coord_style="tuple")
+        self.assertEqual(tuple_.getShape(), [2, (3, 4, 5), 6])
+
+        pair = t.flattenRanks(depth=1, levels=2, coord_style="pair")
+        self.assertEqual(pair.getShape(), [2, (3, (4, 5)), 6])
+
+        absolute = t.flattenRanks(depth=1, levels=2, coord_style="absolute")
+        self.assertEqual(absolute.getShape(), [2, 5, 6])
+
+        # Note, this does not really make sense because it is not a good use
+        # of relative; Imagine [10] relative partitioned with splitUniform(2);
+        # This should have shape [10, 2]; flattening should remake [10]
+        relative = t.flattenRanks(depth=1, levels=2, coord_style="relative")
+        self.assertEqual(relative.getShape(), [2, 3, 6])
+
+        linear = t.flattenRanks(depth=1, levels=2, coord_style="linear")
+        self.assertEqual(linear.getShape(), [2, 60, 6])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1156,6 +1156,7 @@ class Fiber:
 
             def __iter__(self):
                 is_collecting = Metrics.isCollecting()
+                traced = False
                 if is_collecting:
                     # Associate the src and dst ranks
                     src_rank = self.fbr.getRankAttrs().getId()
@@ -1165,6 +1166,7 @@ class Fiber:
 
                     label = str(Metrics.getLabel(src_rank))
                     trace = "project_" + label
+                    traced = Metrics.isTraced(src_rank, trace)
 
                     if self.start is None:
                         i = 0
@@ -1183,11 +1185,9 @@ class Fiber:
                             or (c >= self.interv[0] and c < self.interv[1]):
                         yield c, p
 
-                        if is_collecting:
+                        if traced:
                             Metrics.addUse(src_rank, old_c, i + j,
                                 type_=trace, iteration_num=iteration)
-
-                        if is_collecting:
                             iteration = Metrics.getIter().copy()
 
         if interval:
@@ -3964,7 +3964,7 @@ class Fiber:
         return swapped
 
 
-    def flattenRanks(self, levels=1, style="tuple"):
+    def flattenRanks(self, depth=0, levels=1, style="tuple"):
         """Flatten two ranks into one - COO-style
 
         Takes `levels` ranks and **flattens** them into a single
@@ -3975,14 +3975,18 @@ class Fiber:
         - pair - nested tuples of coordinates from all flattend ranks
         - absolute - the coordinate of the lowest rank
         - relative -  the sum of the corrdinate of the flattened ranks
+        - linear - linearized tuple, i.e., (up, low) -> up * LOW_SHAPE + low
 
         Parameters
         ----------
 
+        depth: integer, default=0
+            Level of fibertree to split
+
         levels: integer
             Number of levels to flatten into the top level
 
-        style: One of ['tuple', 'pair', 'absolute', 'relative'], default='tuple'
+        style: One of ['tuple', 'pair', 'absolute', 'relative', 'linear'], default='tuple'
 
 
         Returns
@@ -4003,9 +4007,13 @@ class Fiber:
 
         # Ensure that we only deepcopy once
         copied = copy.deepcopy(self)
-        copied.setOwner(None)
 
-        return copied._flattenRanksHelper(levels, style)
+        if depth == 0:
+            return copied._flattenRanksHelper(levels, style)
+
+        copied.updatePayloadsBelow(Fiber._flattenRanksHelper, levels=levels, style=style)
+        copied.setOwner(None)
+        return copied
 
     def _flattenRanksHelper(self, levels=1, style="tuple"):
         """ Flatten the top two ranks of self
@@ -4016,7 +4024,7 @@ class Fiber:
         levels: integer
             Number of levels to flatten into the top level
 
-        style: One of ['tuple', 'pair', 'absolute', 'relative'], default='tuple'
+        style: One of ['tuple', 'pair', 'absolute', 'relative', 'linear'], default='tuple'
 
 
         Returns
@@ -4048,6 +4056,8 @@ class Fiber:
         range_end = None
 
         default = Payload(0)
+        up_shape = self.getShape(all_ranks=False, authoritative=True)
+        low_shape = None
 
         for i, (c1, p1) in enumerate(zip(self.coords, cur_payloads)):
             if not Payload.contains(p1, Fiber):
@@ -4061,8 +4071,9 @@ class Fiber:
 
             default = p1.getDefault()
 
+            low_shape = p1.getShape(all_ranks=False, authoritative=True)
             for c0, p0 in p1:
-                coords.append(self._flattenCoords(c1, c0, style=style))
+                coords.append(self._flattenCoords(c1, c0, style=style, shape=low_shape))
                 payloads.append(p0)
 
             # Note: This commented out code is from an old version of the
@@ -4125,12 +4136,39 @@ class Fiber:
             range_start = 0
             range_end = float("inf")
 
-        active_range = ((self.getActive()[0], range_start), (self.getActive()[1], range_end))
-        return Fiber(coords, payloads, default=default, active_range=active_range)
+        shape = None
+        if style == "absolute" or style == "relative":
+            shape = low_shape
+        elif style == "linear":
+            shape = up_shape * low_shape
+
+        active_range = None
+        if style == "tuple" or style == "pair":
+            active_range = ((self.getActive()[0], range_start), (self.getActive()[1], range_end))
+        elif style == "absolute" or style == "relative":
+            active_range = self.getActive()
+        elif style == "linear":
+            active_range = (0, float("inf"))
+
+        return Fiber(coords, payloads, default=default, active_range=active_range, shape=shape)
 
     @staticmethod
-    def _flattenCoords(c1, c0, style="nested"):
-        """_flattenCoords"""
+    def _flattenCoords(c1, c0, style="nested", shape=None):
+        """_flattenCoords
+
+        Parameters
+        ----------
+
+        c1, c0: int
+            Unflattened coordinates
+
+        style: One of ['tuple', 'pair', 'absolute', 'relative', 'linear'], default='tuple'
+
+        shape: Optional[int]
+            Shape of the bottom rank being flattened, required for linearizing
+            the coordinate
+
+        """
 
         if style == "tuple":
             #
@@ -4152,18 +4190,26 @@ class Fiber:
             # Concatenate the two coordinates
             #
             c1_c0 = c1 + c0
+
         elif style == "pair":
             #
             # Create a new coordinate as a two element tuple
             #
             c1_c0 = (c1, c0)
+
         elif style == "absolute":
             c1_c0 = c0
+
         elif style == "relative":
             c1_c0 = c1 + c0
+
+        elif style == "linear":
+            assert shape is not None
+            c1_c0 = c1 * shape + c0
+
         else:
             assert False, \
-                f"Supported coordinate styles are: tuple, pair, absolute, relative. Got: {style}"
+                f"Supported coordinate styles are: tuple, pair, absolute, relative, and linear. Got: {style}"
 
         return c1_c0
 

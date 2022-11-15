@@ -138,8 +138,6 @@ class Traffic:
         """Build a trace of for each access to a tensor (as specified by its
         ranks), when the corresponding next use was"""
         out_split = os.path.splitext(output_fn)
-        comb_fn = out_split[0] + "-coalesced" + out_split[1]
-        rev_fn = out_split[0] + "-reversed" + out_split[1]
 
         # Build a mask specifying the locations of the interesting ranks
         with open(input_fn) as f_in:
@@ -149,7 +147,7 @@ class Traffic:
 
         # With each use, save the next use by iterating backwards
         last_points = {}
-        with open(rev_fn, "w") as f_rev, FileReadBackwards(input_fn) as f_in:
+        with open(output_fn, "w") as f_out, FileReadBackwards(input_fn) as f_in:
             for line in f_in:
                 # FileReadBackwards already removes the trailing newline
                 split = line.split(",")
@@ -169,21 +167,11 @@ class Traffic:
                 else:
                     new_csv = line + "," + ",".join("None" for _ in split)
 
-                f_rev.write(new_csv + "\n")
+                f_out.write(new_csv + "\n")
                 last_points[point] = line
 
-        # Now reverse the file to make the output
-        with open(output_fn, "w") as f_out, FileReadBackwards(rev_fn) as f_rev:
-            # First write the header
             head_out = ",".join(head_in + [val + "_next" for val in head_in])
             f_out.write(head_out + "\n")
-
-            # Write the trace
-            for line in f_rev:
-                f_out.write(line + "\n")
-
-        # os.remove(comb_fn)
-        os.remove(rev_fn)
 
     @staticmethod
     def buffetTraffic(bindings, formats, trace_fns, capacity, line_sz, \
@@ -276,7 +264,7 @@ class Traffic:
         # Open all the traces
         traces = {}
         for key, fn in next_use_traces.items():
-            traces[key] = open(fn, "r")
+            traces[key] = FileReadBackwards(fn)
 
         # Get the loop order and pop off the headers
         order = []

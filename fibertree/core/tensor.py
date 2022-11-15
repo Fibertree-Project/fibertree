@@ -1239,7 +1239,7 @@ class Tensor:
         #
         # Create new shape list
         #
-        shape = self.getShape(authoritative=True)
+        shape = copy.deepcopy(self.getShape(authoritative=True))
         if shape:
             shape.insert(depth + 1, shape[depth])
 
@@ -1448,10 +1448,7 @@ class Tensor:
         Parameters
         ----------
 
-        depth: integer, default=0
-            Level of fibertree to split
-
-        See `Fiber.flattenRanks()` for other arguments.
+        See `Fiber.flattenRanks()` for arguments.
 
         Returns
         -------
@@ -1486,19 +1483,62 @@ class Tensor:
         #
         # Create new shape list
         #
-        # TBD: Create shape
-        #
-        shape = None
+        old_shape = self.getShape(authoritative=True)
+        new_shape = None
+        if old_shape:
+            new_shape = []
+            curr_shape = ()
+            for i, shape in enumerate(old_shape):
+                if i < depth:
+                    new_shape.append(shape)
 
-        root = self._modifyRoot(Fiber.flattenRanks,
-                                Fiber.flattenRanksBelow,
-                                depth=depth,
-                                levels=levels,
-                                style=coord_style)
+                elif i > depth + levels:
+                    new_shape.append(shape)
+
+                # Shape: [S0, S1, ... SN] -> (S0, S1, ... SN)
+                elif coord_style == "tuple":
+                    curr_shape += (shape,)
+                    if i == depth + levels:
+                        new_shape.append(curr_shape)
+
+                # Shape: [S0, S1, ... SN] -> (S0, (S1, (... (SN-1, SN))))
+                elif coord_style == "pair":
+                    curr_shape += (shape,)
+
+                    if i == depth + levels:
+                        # Nest the shape:
+                        nested = curr_shape[-2:]
+                        for val in reversed(curr_shape[:-2]):
+                            nested = (val, nested)
+                        new_shape.append(nested)
+
+                # Shape: [S0, S1, ... SN] -> SN
+                elif coord_style == "absolute":
+                    if i == depth + levels:
+                       new_shape.append(shape)
+
+                # Shape: [S0, S1, ... SN] -> S0
+                elif coord_style == "relative":
+                    if i == depth:
+                        new_shape.append(shape)
+
+                # Shape: [S0, S1, ... SN] -> S0 * S1 * ... * SN
+                elif coord_style == "linear":
+                    if i == depth:
+                        new_shape.append(shape)
+                    else:
+                        new_shape[-1] *= shape
+
+                else:
+                    assert False, \
+                        f"Supported coordinate styles are: tuple, pair, absolute, relative, and linear. Got: {coord_style}"
+
+        root = self.getRoot().flattenRanks(depth=depth, levels=levels, style=coord_style)
+
         #
         # Create Tensor from rank_ids and root fiber
         #
-        tensor = Tensor.fromFiber(rank_ids, root, shape)
+        tensor = Tensor.fromFiber(rank_ids, root, new_shape)
         tensor.setName(self.getName() + "+flattened")
         tensor.setColor(self.getColor())
         tensor.setMutable(self.isMutable())

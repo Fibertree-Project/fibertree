@@ -158,7 +158,7 @@ class TestTraffic(unittest.TestCase):
         corr = [
             "M_pos,M,fiber_pos\n",
             "1,3,1\n",
-            "4,5,3\n"
+            "3,5,3\n"
         ]
 
         Traffic.filterTrace("tmp/test_filterTrace-M-populate_1.csv",
@@ -177,18 +177,18 @@ class TestTraffic(unittest.TestCase):
             "M_pos,K_pos,M,K,fiber_pos\n",
             "0,1,0,1,1\n",
             "0,7,0,7,7\n",
-            "2,0,1,0,0\n",
-            "2,5,1,5,5\n",
-            "4,1,2,1,1\n",
-            "4,6,2,6,6\n",
-            "6,0,3,0,0\n",
-            "6,2,3,2,2\n",
-            "6,5,3,5,5\n",
-            "8,2,4,2,2\n",
-            "8,6,4,6,6\n",
-            "8,7,4,7,7\n",
-            "10,0,5,0,0\n",
-            "10,6,5,6,6\n"
+            "1,0,1,0,0\n",
+            "1,5,1,5,5\n",
+            "2,1,2,1,1\n",
+            "2,6,2,6,6\n",
+            "3,0,3,0,0\n",
+            "3,2,3,2,2\n",
+            "3,5,3,5,5\n",
+            "4,2,4,2,2\n",
+            "4,6,4,6,6\n",
+            "4,7,4,7,7\n",
+            "5,0,5,0,0\n",
+            "5,6,5,6,6\n"
         ]
 
         with open("tmp/test_filter_trace_leader_follower-test.csv", "r") as f:
@@ -203,11 +203,11 @@ class TestTraffic(unittest.TestCase):
         corr = [
             "M_pos,M,fiber_pos,is_write\n",
             "0,0,0,False\n",
-            "2,1,1,False\n",
-            "4,2,2,False\n",
-            "6,3,3,False\n",
-            "8,4,4,False\n",
-            "10,5,5,False\n"
+            "1,1,1,False\n",
+            "2,2,2,False\n",
+            "3,3,3,False\n",
+            "4,4,4,False\n",
+            "5,5,5,False\n"
         ]
 
         with open("tmp/test_combineTraces_one.csv", "r") as f:

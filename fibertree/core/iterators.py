@@ -641,6 +641,8 @@ def __and__(self, other):
             Iterator simulating the intersection operator
             """
             is_collecting = Metrics.isCollecting()
+            a_traced = False
+            b_traced = False
             if is_collecting:
                 rank = self.a_fiber.getRankAttrs().getId()
                 a_label = str(Metrics.getLabel(rank))
@@ -648,6 +650,9 @@ def __and__(self, other):
 
                 a_trace = "intersect_" + a_label
                 b_trace = "intersect_" + b_label
+
+                a_traced = Metrics.isTraced(rank, a_trace)
+                b_traced = Metrics.isTraced(rank, b_trace)
 
                 a_pos = 0
                 b_pos = 0
@@ -662,11 +667,12 @@ def __and__(self, other):
             while a_coord is not None and b_coord is not None:
                 if a_coord == b_coord:
 
-                    if is_collecting:
+                    if a_traced:
                         Metrics.addUse(rank, a_coord, a_pos, type_=a_trace)
-                        Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
-
                         a_pos += 1
+
+                    if b_traced:
+                        Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
                         b_pos += 1
 
                     yield a_coord, (a_payload, b_payload)
@@ -677,20 +683,24 @@ def __and__(self, other):
                     continue
 
                 if a_coord < b_coord:
-                    if is_collecting:
+                    if a_traced:
                         Metrics.addUse(rank, a_coord, a_pos, type_=a_trace)
-                        Metrics.incIter(rank)
                         a_pos += 1
+
+                    if is_collecting:
+                        Metrics.incIter(rank)
 
                     a_coord, a_payload = _get_next(a)
 
                     continue
 
                 if a_coord > b_coord:
-                    if is_collecting:
+                    if b_traced:
                         Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
-                        Metrics.incIter(rank)
                         b_pos += 1
+
+                    if is_collecting:
+                        Metrics.incIter(rank)
 
                     b_coord, b_payload = _get_next(b)
 
@@ -950,7 +960,9 @@ def __lshift__(self, other, start_pos=None):
             """
 
             is_collecting = Metrics.isCollecting()
-
+            a_read_traced = False
+            a_write_traced = False
+            b_traced = False
             if is_collecting:
                 rank = self.a_fiber.getRankAttrs().getId()
                 a_label = str(Metrics.getLabel(rank))
@@ -960,6 +972,10 @@ def __lshift__(self, other, start_pos=None):
                 a_read_trace = "populate_read_" + a_label
                 a_write_trace = "populate_write_" + a_label
                 b_trace = "populate_" + b_label
+
+                a_read_traced = Metrics.isTraced(rank, a_read_trace)
+                a_write_traced = Metrics.isTraced(rank, a_write_trace)
+                b_traced = Metrics.isTraced(rank, b_trace)
 
             # Add coordinates/payloads to a_fiber where necessary
             maybe_remove = False
@@ -982,10 +998,6 @@ def __lshift__(self, other, start_pos=None):
                 assert b_pos > 0 or a_pos == 0 \
                     or (a_pos <= len(self.a_fiber.coords) \
                         and b_coord > self.a_fiber.coords[a_pos - 1])
-                # if b_pos == 0 and a_pos != 0 \
-                #         and (a_pos > len(self.a_fiber.coords) \
-                #         or b_coord <= self.a_fiber.coords[a_pos - 1]):
-                #    print("Error check", a_pos, self.a_fiber.coords, b_coord)
 
                 # Read the b coordinate
                 if is_collecting:
@@ -996,11 +1008,12 @@ def __lshift__(self, other, start_pos=None):
                         assert insert_pos is not None
 
                     # Read the B coordinate
-                    Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
+                    if b_traced:
+                        Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
 
                     # If we are inserting into a compressed fiber, we need
                     # to search for the coordinate
-                    if inserting and a_pos < len(self.a_fiber):
+                    if inserting and a_pos < len(self.a_fiber) and a_read_traced:
                         for c, p in self.a_fiber.iterRange(
                                 old_end, b_coord, tick=False, start_pos=a_pos):
                             read_pos = self.a_fiber.getSavedPos() - len(to_insert)
@@ -1030,20 +1043,17 @@ def __lshift__(self, other, start_pos=None):
                                 allocate=False, start_pos=get_payload_pos)
 
                 new_a_payload = a_payload is None
-                # if not new_a_payload and self.a_fiber.getSavedPos() != a_pos:
-                #     print("Update", a_pos, self.a_fiber.getSavedPos(), b_coord, self.a_fiber.coords)
 
                 if new_a_payload:
-                    # if b_coord in self.a_fiber.coords:
-                    #     print("b_coord in self.a_fiber.coords", a_pos, b_coord)
                     # Do not actually insert the payload into the tensor
                     a_payload = self.a_fiber._create_payload(b_coord, pos=a_pos)
                     maybe_remove = True
                     self.a_fiber.setSavedPos(a_pos)
 
                 # Read the a coordinate
-                elif is_collecting:
+                elif a_read_traced:
                     Metrics.addUse(rank, b_coord, a_pos - len(to_insert), type_=a_read_trace)
+                    maybe_remove = False
 
                 else:
                     maybe_remove = False
@@ -1076,7 +1086,7 @@ def __lshift__(self, other, start_pos=None):
 
                 # If this is a new payload, we may have to track the
                 # insert/append
-                elif is_collecting:
+                elif a_write_traced:
                     # If we just inserted into a compressed fiber, save the
                     # relevant information
                     if inserting and new_a_payload:
@@ -1100,7 +1110,7 @@ def __lshift__(self, other, start_pos=None):
 
             # Finally, if we were inserting, move everything to the appropriate
             # location
-            if inserting and len(to_insert) > 0:
+            if inserting and len(to_insert) > 0 and (a_read_traced or a_write_traced):
                 iteration = list(iteration)
                 for i, (c, p) in enumerate(reversed(list(self.a_fiber.iterOccupancy(
                                         tick=False, start_pos=insert_start_pos)))):
@@ -1109,8 +1119,6 @@ def __lshift__(self, other, start_pos=None):
 
                     # If this is an element we inserted, we need to read it
                     # from somewhere else
-                    # if len(to_insert) == 0:
-                    #     print(self.a_fiber.coords, insert_start_pos, c)
                     if c == to_insert[-1]:
                         read_pos = insert_pos + len(to_insert) - 1
                         to_insert.pop()
@@ -1119,8 +1127,11 @@ def __lshift__(self, other, start_pos=None):
                     else:
                         read_pos = write_pos - len(to_insert)
 
-                    Metrics.addUse(rank, c, read_pos, type_=a_read_trace, iteration_num=iteration)
-                    Metrics.addUse(rank, c, write_pos, type_=a_write_trace, iteration_num=iteration)
+                    if a_read_traced:
+                        Metrics.addUse(rank, c, read_pos, type_=a_read_trace, iteration_num=iteration)
+
+                    if a_write_traced:
+                        Metrics.addUse(rank, c, write_pos, type_=a_write_trace, iteration_num=iteration)
 
                 # Reset the saved position since it just got messed up
                 if self.spec_pos is not None:

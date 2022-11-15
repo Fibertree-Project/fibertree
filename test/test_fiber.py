@@ -2987,5 +2987,35 @@ class TestFiber(unittest.TestCase):
         # TBD
         pass
 
+    def test_flatten_style_linear(self):
+        """Test the linear flattening style"""
+        u_t = [[[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 2, 3, 4],
+                [1, 2, 0, 4]],
+               [[0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]],
+               [[1, 2, 3, 0],
+                [1, 0, 3, 4],
+                [0, 0, 0, 0],
+                [1, 2, 0, 4]]]
+
+        f = Fiber.fromUncompressed(u_t)
+
+        ff = f.flattenRanks(levels=2, style="linear")
+
+        ref_coords = [0, 1, 2, 4, 6, 7, 9, 10, 11, 12, 13, 15,
+                      32, 33, 34, 36, 38, 39, 44, 45, 47]
+
+        ref_payloads = [1, 2, 3, 1, 3, 4, 2, 3, 4, 1, 2, 4, 1, 2,
+                        3, 1, 3, 4, 1, 2, 4]
+
+        ff_ref = Fiber(coords=ref_coords, payloads=ref_payloads)
+
+        self.assertEqual(ff, ff_ref)
+
+
 if __name__ == '__main__':
     unittest.main()
