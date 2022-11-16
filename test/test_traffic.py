@@ -416,6 +416,114 @@ class TestTraffic(unittest.TestCase):
         self.assertEqual(bits, {"F": {"read": 3 * 64}})
         self.assertEqual(overflows, 0)
 
+    def test_cacheTraffic_basic(self):
+        """Test cacheTraffic"""
+        bindings = yaml.safe_load("""
+        - tensor: B
+          rank: K
+          type: payload
+        """)
+        traces = {("B", "K", "payload", "read"): "tmp/test_traffic_single_stage-K-intersect_1.csv"}
+
+        bits, overflows = Traffic.cacheTraffic(bindings, self.formats, traces, 8 * 32, 4 * 32)
+        self.assertEqual(bits, {"B": {"read": 8 * 32}})
+        self.assertEqual(overflows, 0)
+
+    def test_cacheTraffic_multiple_bindings(self):
+        """Test cacheTraffic multiple bindings"""
+        bindings = yaml.safe_load("""
+        - tensor: B
+          rank: K
+          type: payload
+
+        - tensor: B
+          rank: N
+          type: coord
+
+        - tensor: B
+          rank: N
+          type: payload
+        """)
+
+        traces = {
+            ("B", "K", "payload", "read"): "tmp/test_traffic_single_stage-K-intersect_1.csv",
+            ("B", "N", "coord", "read"): "tmp/test_traffic_single_stage-N-populate_1.csv",
+            ("B", "N", "payload", "read"): "tmp/test_traffic_single_stage-N-populate_1.csv"
+        }
+
+        bits, overflows = Traffic.cacheTraffic(bindings, self.formats, traces, 8 * 32 + 4 * 32 + 4 * 64, 4 * 32)
+        self.assertEqual(bits, {"B": {"read": 5888}})
+        self.assertEqual(overflows, 0)
+
+    def test_cacheTraffic_multiple_tensors(self):
+        bindings = yaml.safe_load("""
+        - tensor: A
+          rank: K
+          type: payload
+
+        # Pin the K fiber of B
+        - tensor: B
+          rank: K
+          type: payload
+        """)
+
+        # The payloads are needed only when they are used (in the inner-most loop)
+        Traffic.filterTrace(
+            "tmp/test_traffic_stage0-K-intersect_2.csv",
+            "tmp/test_traffic_stage0-N-iter.csv",
+            "tmp/test_cacheTraffic_multiple_tensors-K_2.csv"
+        )
+
+        Traffic.filterTrace(
+            "tmp/test_traffic_stage0-K-intersect_3.csv",
+            "tmp/test_traffic_stage0-N-iter.csv",
+            "tmp/test_cacheTraffic_multiple_tensors-K_3.csv"
+        )
+
+
+        traces = {
+            ("A", "K", "payload", "read"): "tmp/test_cacheTraffic_multiple_tensors-K_2.csv",
+            ("B", "K", "payload", "read"): "tmp/test_cacheTraffic_multiple_tensors-K_3.csv"
+        }
+
+        bits, overflows = Traffic.cacheTraffic(bindings, self.formats, traces, 3 * 4 * 32, 4 * 32)
+        self.assertEqual(bits, {"A": {"read": 8 * 4 * 32}, "B": {"read": 8 * 32}})
+        self.assertEqual(overflows, 0)
+
+    def test_cacheTraffic_writes(self):
+        """Test the cache traffic of writes"""
+        bindings = yaml.safe_load("""
+        - tensor: Z
+          rank: N
+          type: payload
+        """)
+
+        traces = {
+            ("Z", "N", "payload", "read"): "tmp/test_traffic_single_stage-N-populate_read_0.csv",
+            ("Z", "N", "payload", "write"): "tmp/test_traffic_single_stage-N-populate_write_0.csv"
+        }
+
+        bits, overflows = Traffic.cacheTraffic(bindings, self.formats, traces, 12 * 32, 4 * 32)
+        self.assertEqual(bits, {"Z": {"read": 1024, "write": 3200}})
+        self.assertEqual(overflows, 0)
+
+    def test_cacheTraffic_overflows(self):
+        """Test the cache traffic when there are overflows"""
+        bindings = yaml.safe_load("""
+        - tensor: Z
+          rank: N
+          type: payload
+        """)
+
+        traces = {
+            ("Z", "N", "payload", "read"): "tmp/test_traffic_single_stage-N-populate_read_0.csv",
+            ("Z", "N", "payload", "write"): "tmp/test_traffic_single_stage-N-populate_write_0.csv"
+        }
+
+        bits, overflows = Traffic.cacheTraffic(bindings, self.formats, traces, 4 * 32, 4 * 32)
+        self.assertEqual(bits, {"Z": {"read": 4224, "write": 7040}})
+        self.assertEqual(overflows, 4)
+
 
 #     def test_cacheTraffic(self):
 #         """Test cacheTraffic"""

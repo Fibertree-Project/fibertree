@@ -5,6 +5,7 @@
 A class for computing the memory traffic incurred by a tensor
 """
 
+import functools
 import heapq
 import itertools
 import os
@@ -174,7 +175,7 @@ class Traffic:
             f_out.write(head_out + "\n")
 
     @staticmethod
-    def buffetTraffic(bindings, formats, trace_fns, capacity, line_sz, \
+    def buffetTraffic(bindings, formats, trace_fns, capacity, line_sz,
             loop_ranks=None):
         """Compute the traffic loading data into this buffet
 
@@ -227,37 +228,41 @@ class Traffic:
 
             return drain_info, ready_to_drain
 
-        def to_be_buffered(info, order, loop_ranks, trace, num_ranks):
+        def to_be_buffered(bind_info, bind_pos, capacity, loop_ranks,
+                num_ranks, obj, objs, occupancy, order, shapes, sim_info, trace):
             # Check if the next use is within the exploited reuse distance (ERD)
-            if info[3] == "root":
+            evict_on = bind_info[bind_pos][3]
+            if evict_on == "root":
                 evict_end = 0
             else:
-                evict_end = order.index(loop_ranks[info[3]]) + 1
+                evict_end = order.index(loop_ranks[evict_on]) + 1
 
             # Currently using the iteration stamp
             curr_stamp = trace[:evict_end]
             next_stamp = trace[num_ranks * 2 + 2:num_ranks * 2 + 2 + evict_end]
 
-            return curr_stamp == next_stamp and trace[num_ranks * 2 + 2] is not None
+            return curr_stamp == next_stamp and trace[num_ranks * 2 + 2] is not None, sim_info
 
-        def add_elem(pre_sim_info, info, objs, obj, line_sz, occupancy,
-                capacity, overflows):
-            drain_info, ready_to_drain = pre_sim_info
+        def add_elem(bind_info, bind_pos, capacity, line_sz, num_ranks, obj, objs,
+                occupancy, overflows, shapes, sim_info, trace, traffic):
+            tensor, rank, type_, _ = bind_info[bind_pos]
+            key = tensor, rank, type_
+            drain_info, ready_to_drain = sim_info
             # Write-back info will be filled in later
-            objs[info[0]][info[2]][obj] = [False, drain_info[info[:3]][0]]
-            drain_info[info[:3]][0] += 1
+            objs[tensor][type_][obj] = [False, drain_info[key][0]]
+            drain_info[key][0] += 1
             occupancy += line_sz
 
             # Track overflows
             if occupancy > capacity:
                 overflows += 1
 
-            pre_sim_info = drain_info, ready_to_drain
-            return pre_sim_info, objs, occupancy, overflows
+            sim_info = drain_info, ready_to_drain
+            return objs, occupancy, overflows, sim_info, traffic
 
-        def evict_elem(pre_sim_info, key, objs, obj, traffic, line_sz, occupancy):
+        def evict_elem(key, line_sz, obj, objs, occupancy, sim_info, traffic):
             # Evict the element
-            drain_info, ready_to_drain = pre_sim_info
+            drain_info, ready_to_drain = sim_info
             tensor, _, type_ = key
             ready_to_drain[key][objs[tensor][type_][obj][1]] = obj
 
@@ -274,8 +279,8 @@ class Traffic:
                 drain_info[key][1] += 1
                 occupancy -= line_sz
 
-            pre_sim_info = drain_info, ready_to_drain
-            return pre_sim_info, objs, traffic, occupancy
+            sim_info = drain_info, ready_to_drain
+            return objs, occupancy, sim_info, traffic
 
         return Traffic._bufferTraffic(bindings, formats, trace_fns, capacity,
             line_sz, loop_ranks, extract_binding, pin_intermediate_writes,
@@ -313,41 +318,30 @@ class Traffic:
             A map from the original rank to the rank it corresponds to in
             the loop order
 
-        extract_binding: Callable[[Dict[str, int]], Tuple[int, ...]]
+        extract_binding: Callable
             extract_binding(binding) -> info
-            A callback that extracts a tuple from the binding information
 
-        pin_intermediate_writes: Callable[Tuple[int, ...], bool]
+        pin_intermediate_writes: Callable
             pin_intermediate_writes(info) -> is_pinned
-            A callback that determines whether intermediate writes should be pinned
 
-        pre_sim_hook: Callable[[List[Tuple[int, ...]], Any]
-            pre_sim_hook(bind_info) -> pre_sim_info
-            A callback that does any other pre-buffer simulation processing necessary
+        pre_sim_hook: Callable
+            pre_sim_hook(bind_info) -> sim_info
 
-        to_be_buffered: Callable[[Tuple[int, ...], List[str], Dict[str, str],
-                Tuple[Optional[int], ...], int], bool]
-            to_be_buffered(info, order, loop_ranks, trace, num_ranks) -> to_buffer
-            A callback that determines whether the given access (as specificed
-            by its trace) shoudl be buffered
+        to_be_buffered: Callable
+            to_be_buffered(bind_info, bind_pos, capacity, loop_ranks,
+                    num_ranks, obj, objs, occupancy, order, shapes, sim_info,
+                    trace) ->
+                to_buffer, sim_info
 
-        add_elem: Callable[[Any, Tuple[int, ...],
-                    Dict[str, Dict[str, Dict[Tuple[int, ...], list]]],
-                    Tuple[int, ...], int, int, int, int],
-                Tuple[Any, Dict[str, Dict[str, Dict[Tuple[int, ...], list]]],
-                    int, int]
-            add_elem(pre_sim_info, info, objs, obj, line_sz, occupancy,
-                capacity, overflows)
-            A callback to add an element to the buffer
+        add_elem: Callable
+            add_elem(bind_info, bind_pos, capacity, line_sz, num_ranks, obj,
+                    objs, occupancy, overflows, shapes, sim_info, trace,
+                    traffic) ->
+               objs, occupancy, overflows, sim_info, traffic
 
-        evict_elem: Callable[[Any, Tuple[int, ...],
-                    Dict[str, Dict[str, Dict[Tuple[int, ...], list]]],
-                    Tuple[int, ...], Dict[str, Dict[str, int]], int, int]
-                Tuple[Any, Dict[str, Dict[str, Dict[Tuple[int, ...], list]]],
-                    Dict[str, Dict[str, int]], int]
-            evict_elem(pre_sim_info, key, objs, obj, traffic, line_sz,
-                occupancy) -> pre_sim_info, objs, traffic, occupancy
-            A callback to evict an element
+        evict_elem: Callable
+            evict_elem(key, line_sz, obj, objs, occupancy, sim_info, traffic) ->
+                objs, occupancy, sim_info, traffic
 
         Note: assumes all fibers start at line boundaries and all elements
         reside on exactly one line (if the footprint is not a multiple of the
@@ -461,7 +455,7 @@ class Traffic:
         for info in bind_info:
             all_num_ranks.append(order.index(loop_ranks[info[1]]) + 1)
 
-        pre_sim_info = pre_sim_hook(bind_info)
+        sim_info = pre_sim_hook(bind_info)
 
         # Order the traces in the order they occur
         next_keys = []
@@ -486,7 +480,9 @@ class Traffic:
 
         # Prepare the buffer
         objs = {}
-        for tensor, rank, type_, _ in bind_info:
+        for info in bind_info:
+            tensor = info[0]
+            type_ = info[2]
             if tensor not in objs:
                 objs[tensor] = {}
             objs[tensor][type_] = {}
@@ -520,13 +516,16 @@ class Traffic:
             if new_traffic and not is_write:
                 traffic[tensor]["read"] += line_sz
 
-            to_buffer = to_be_buffered(bind_info[i], order, loop_ranks, trace, num_ranks)
+            to_buffer, sim_info = to_be_buffered(bind_info, i, capacity,
+                loop_ranks, num_ranks, obj, objs, occupancy, order, shapes,
+                sim_info, trace)
             if new_traffic:
                 # Add an object only if it will be used within the ERD
                 if to_buffer:
-                    pre_sim_info, objs, occupancy, overflows = \
-                        add_elem(pre_sim_info, bind_info[i], objs, obj, line_sz,
-                            occupancy, capacity, overflows)
+                    objs, occupancy, overflows, sim_info, traffic = \
+                        add_elem(bind_info, i, capacity, line_sz, num_ranks,
+                            obj, objs, occupancy, overflows, shapes, sim_info,
+                            trace, traffic)
                     objs[tensor][type_][obj][0] = write_back
 
                 # If new traffic and not buffered, add the write traffic
@@ -536,8 +535,9 @@ class Traffic:
             # If the object will not be used again within the ERD, evict it
             elif not to_buffer:
                 objs[tensor][type_][obj][0] = objs[tensor][type_][obj][0] or write_back
-                pre_sim_info, objs, traffic, occupancy = \
-                    evict_elem(pre_sim_info, key, objs, obj, traffic, line_sz, occupancy)
+                objs, occupancy, sim_info, traffic = \
+                    evict_elem(key, line_sz, obj, objs, occupancy, sim_info,
+                        traffic)
 
             # Otherwise, it was in the buffer and will be used again
             else:
@@ -599,6 +599,208 @@ class Traffic:
         key = tuple(key)
 
         return key, trace
+
+    @staticmethod
+    def cacheTraffic(bindings, formats, trace_fns, capacity, line_sz,
+            loop_ranks=None):
+        """Compute the traffic loading data into this buffet
+
+        Parameters
+        ----------
+
+        bindings: List[dict]
+            A list of the binding information
+
+        formats: Dict[str, Format]
+            A dictionary from tensor names to their corresponding format objects
+
+        trace_fns: Dict[Tuple[str, str, str, str], str]]]
+            A nested dictionary of traces of the form
+            {(tensor, rank, type, access): trace_fn}}}
+            where type is one of "elem", "coord", or "payload" and access is
+            "read" or "write"
+
+        capacity: int
+            The number of bits that fit in the buffet
+
+        line_sz: int
+            The number of bits across which spatial locality is exploited
+            (e.g., buffer line size)
+
+        loop_ranks: Optional[Dict[str, str]]
+            A map from the original rank to the rank it corresponds to in
+            the loop order
+
+        Note: assumes all fibers start at line boundaries and all elements
+        reside on exactly one line (if the footprint is not a multiple of the
+        line size, every line is padded)
+        """
+        @functools.total_ordering
+        class HeapElem:
+            def __init__(self, bind_pos, next_access, obj):
+                self.next_access = next_access
+                self.obj = obj
+                self.pos = bind_pos
+
+            def __eq__(self, other):
+                return self.next_access == other.next_access and self.pos == other.pos
+
+            def __lt__(self, other):
+                # We want to implement a maxheap, so less than is actually
+                # greater than
+                if self.next_access != other.next_access:
+                    return self.next_access > other.next_access
+
+                # Fall back on the position if the next access is at the same point
+                return self.pos > other.pos
+
+            def __repr__(self):
+                return str((self.next_access, self.obj, self.pos))
+
+        def extract_binding(binding):
+            return binding["tensor"], binding["rank"], binding["type"]
+
+        def pin_intermediate_writes(info):
+            return info + ("write",) in trace_fns
+
+        def pre_sim_hook(bind_info):
+            next_evict_heap = []
+            heapq.heapify(next_evict_heap)
+            heap_elem = None
+
+            pinned = {}
+            for tensor, _, type_ in bind_info:
+                if tensor not in pinned:
+                    pinned[tensor] = {}
+
+                if type_ not in pinned[tensor]:
+                    pinned[tensor][type_] = set()
+
+            return next_evict_heap, pinned, heap_elem
+
+        def to_be_buffered(bind_info, bind_pos, capacity, loop_ranks,
+                num_ranks, obj, objs, occupancy, order, shapes, sim_info, trace):
+            next_evict_heap, pinned, _ = sim_info
+            next_access = trace[num_ranks * 2 + 2:num_ranks * 3 + 2]
+            tensor, _, type_ = bind_info[bind_pos]
+
+            # Do not buffer if never used again
+            if trace[num_ranks * 2 + 2] is None:
+                # Update the element if it was previously buffered
+                if obj in objs[tensor][type_]:
+                    heap_elem = objs[tensor][type_][obj][1]
+                    heap_elem.next_access = [float("inf")]
+                    heapq.heapify(next_evict_heap)
+
+                else:
+                    heap_elem = None
+
+                sim_info = next_evict_heap, pinned, heap_elem
+                return False, sim_info
+
+            # Definitely buffer if it is already in the cache
+            if obj in objs[tensor][type_]:
+                heap_elem = objs[tensor][type_][obj][1]
+                heap_elem.next_access = next_access
+
+                # If this element is not pinned, reorganize the heap
+                if obj not in pinned[tensor][type_]:
+                    heapq.heapify(next_evict_heap)
+
+                sim_info = next_evict_heap, pinned, heap_elem
+
+                return True, sim_info
+
+            heap_elem = HeapElem(bind_pos, next_access, obj)
+            sim_info = next_evict_heap, pinned, heap_elem
+            # Definitely buffer if there is space in the buffer
+            if occupancy + line_sz <= capacity:
+                to_buffer = True
+
+            # Definitely buffer if this is a pinned element
+            elif shapes[bind_pos] is not None and trace[num_ranks * 2] >= shapes[bind_pos]:
+                to_buffer = True
+
+            # Do not buffer if we are full of pinned elements
+            elif not next_evict_heap:
+                to_buffer = False
+
+            # Otherwise, make sure the next thing to evict is not the element
+            # we would have buffered
+            else:
+                to_buffer = heap_elem >= next_evict_heap[0]
+
+            return to_buffer, sim_info
+
+        def add_elem(bind_info, bind_pos, capacity, line_sz, num_ranks, obj, objs,
+                occupancy, overflows, shapes, sim_info, trace, traffic):
+
+            next_evict_heap, pinned, heap_elem = sim_info
+            # Evict if necessary to make space
+            while occupancy + line_sz > capacity:
+                if next_evict_heap:
+                    evict_elem = heapq.heappop(next_evict_heap)
+
+                    # If the line has been mutated and it needs to be saved, write it first
+                    evict_tensor, _, evict_type = bind_info[evict_elem.pos]
+                    if objs[evict_tensor][evict_type][evict_elem.obj][0]:
+                        traffic[evict_tensor]["write"] += line_sz
+
+                    # Evict and drain the element
+                    del objs[evict_tensor][evict_type][evict_elem.obj]
+
+                    occupancy -= line_sz
+
+                # The pinned data has filled the cache
+                else:
+                    overflows += 1
+                    break
+
+            # If this element is not pinned, add it to the heap
+            tensor, _, type_ = bind_info[bind_pos]
+            if shapes[bind_pos] is None or trace[num_ranks * 2] < shapes[bind_pos]:
+                heapq.heappush(next_evict_heap, heap_elem)
+
+            # Otherwise pin the element
+            else:
+                pinned[tensor][type_].add(obj)
+
+            objs[tensor][type_][obj] = [False, heap_elem]
+            occupancy += line_sz
+
+            sim_info = next_evict_heap, pinned, None
+            return objs, occupancy, overflows, sim_info, traffic
+
+        def evict_elem(key, line_sz, obj, objs, occupancy, sim_info, traffic):
+            next_evict_heap, pinned, heap_elem = sim_info
+            tensor, _, type_ = key
+            if obj not in pinned[tensor][type_]:
+                evicted_elem = heapq.heappop(next_evict_heap)
+            else:
+                evicted_elem = heap_elem
+
+            # Ensure that there has been no error
+            assert evicted_elem.obj == obj and evicted_elem.obj == heap_elem.obj \
+                and evicted_elem == heap_elem
+
+            # If the line has been mutated and it needs to be saved, write it first
+            if objs[tensor][type_][evicted_elem.obj][0]:
+                traffic[tensor]["write"] += line_sz
+
+            # Remove the object from objs and pinned if it is there
+            del objs[tensor][type_][obj]
+            if obj in pinned[tensor][type_]:
+                pinned[tensor][type_].remove(obj)
+
+            occupancy -= line_sz
+
+            sim_info = next_evict_heap, pinned, None
+
+            return objs, occupancy, sim_info, traffic
+
+        return Traffic._bufferTraffic(bindings, formats, trace_fns, capacity,
+            line_sz, loop_ranks, extract_binding, pin_intermediate_writes,
+            pre_sim_hook, to_be_buffered, add_elem, evict_elem)
 
     @staticmethod
     def cacheTraffic_old(prefix, tensor, rank, format_, capacity):
