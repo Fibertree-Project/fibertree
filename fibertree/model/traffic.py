@@ -313,8 +313,41 @@ class Traffic:
             A map from the original rank to the rank it corresponds to in
             the loop order
 
-        extract_binding: Callable[[binding], Tuple[int, ...]]
-            A function that extracts a tuple from the binding information
+        extract_binding: Callable[[Dict[str, int]], Tuple[int, ...]]
+            extract_binding(binding) -> info
+            A callback that extracts a tuple from the binding information
+
+        pin_intermediate_writes: Callable[Tuple[int, ...], bool]
+            pin_intermediate_writes(info) -> is_pinned
+            A callback that determines whether intermediate writes should be pinned
+
+        pre_sim_hook: Callable[[List[Tuple[int, ...]], Any]
+            pre_sim_hook(bind_info) -> pre_sim_info
+            A callback that does any other pre-buffer simulation processing necessary
+
+        to_be_buffered: Callable[[Tuple[int, ...], List[str], Dict[str, str],
+                Tuple[Optional[int], ...], int], bool]
+            to_be_buffered(info, order, loop_ranks, trace, num_ranks) -> to_buffer
+            A callback that determines whether the given access (as specificed
+            by its trace) shoudl be buffered
+
+        add_elem: Callable[[Any, Tuple[int, ...],
+                    Dict[str, Dict[str, Dict[Tuple[int, ...], list]]],
+                    Tuple[int, ...], int, int, int, int],
+                Tuple[Any, Dict[str, Dict[str, Dict[Tuple[int, ...], list]]],
+                    int, int]
+            add_elem(pre_sim_info, info, objs, obj, line_sz, occupancy,
+                capacity, overflows)
+            A callback to add an element to the buffer
+
+        evict_elem: Callable[[Any, Tuple[int, ...],
+                    Dict[str, Dict[str, Dict[Tuple[int, ...], list]]],
+                    Tuple[int, ...], Dict[str, Dict[str, int]], int, int]
+                Tuple[Any, Dict[str, Dict[str, Dict[Tuple[int, ...], list]]],
+                    Dict[str, Dict[str, int]], int]
+            evict_elem(pre_sim_info, key, objs, obj, traffic, line_sz,
+                occupancy) -> pre_sim_info, objs, traffic, occupancy
+            A callback to evict an element
 
         Note: assumes all fibers start at line boundaries and all elements
         reside on exactly one line (if the footprint is not a multiple of the
