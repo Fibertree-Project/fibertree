@@ -208,6 +208,118 @@ class Traffic:
         reside on exactly one line (if the footprint is not a multiple of the
         line size, every line is padded)
         """
+        def extract_binding(binding):
+            return binding["tensor"], binding["rank"], binding["type"], binding["evict-on"]
+
+        def pin_intermediate_writes(info):
+            tensor, rank, type_, evict_on = info
+            return rank != evict_on and (tensor, rank, type_, "write") in trace_fns
+
+        def pre_sim_hook(bind_info):
+            drain_info = {}
+            ready_to_drain = {}
+
+            # Prepare the drain queue info: for each key, what is the queue index
+            # of the next element to be filled and the next element to be drained
+            for tensor, rank, type_, _ in bind_info:
+                drain_info[tensor, rank, type_] = [0, 0]
+                ready_to_drain[tensor, rank, type_] = {}
+
+            return drain_info, ready_to_drain
+
+        def to_be_buffered(info, order, loop_ranks, trace, num_ranks):
+            # Check if the next use is within the exploited reuse distance (ERD)
+            if info[3] == "root":
+                evict_end = 0
+            else:
+                evict_end = order.index(loop_ranks[info[3]]) + 1
+
+            # Currently using the iteration stamp
+            curr_stamp = trace[:evict_end]
+            next_stamp = trace[num_ranks * 2 + 2:num_ranks * 2 + 2 + evict_end]
+
+            return curr_stamp == next_stamp and trace[num_ranks * 2 + 2] is not None
+
+        def add_elem(pre_sim_info, info, objs, obj, line_sz, occupancy,
+                capacity, overflows):
+            drain_info, ready_to_drain = pre_sim_info
+            # Write-back info will be filled in later
+            objs[info[0]][info[2]][obj] = [False, drain_info[info[:3]][0]]
+            drain_info[info[:3]][0] += 1
+            occupancy += line_sz
+
+            # Track overflows
+            if occupancy > capacity:
+                overflows += 1
+
+            pre_sim_info = drain_info, ready_to_drain
+            return pre_sim_info, objs, occupancy, overflows
+
+        def evict_elem(pre_sim_info, key, objs, obj, traffic, line_sz, occupancy):
+            # Evict the element
+            drain_info, ready_to_drain = pre_sim_info
+            tensor, _, type_ = key
+            ready_to_drain[key][objs[tensor][type_][obj][1]] = obj
+
+            # Drain all available elements
+            while drain_info[key][1] in ready_to_drain[key]:
+                drain_obj = ready_to_drain[key][drain_info[key][1]]
+
+                # If the line has been mutated and it needs to be saved, write it first
+                if objs[tensor][type_][drain_obj][0]:
+                    traffic[tensor]["write"] += line_sz
+
+                del objs[tensor][type_][drain_obj]
+                del ready_to_drain[key][drain_info[key][1]]
+                drain_info[key][1] += 1
+                occupancy -= line_sz
+
+            pre_sim_info = drain_info, ready_to_drain
+            return pre_sim_info, objs, traffic, occupancy
+
+        return Traffic._bufferTraffic(bindings, formats, trace_fns, capacity,
+            line_sz, loop_ranks, extract_binding, pin_intermediate_writes,
+            pre_sim_hook, to_be_buffered, add_elem, evict_elem)
+
+    @staticmethod
+    def _bufferTraffic(bindings, formats, trace_fns, capacity, line_sz,
+            loop_ranks, extract_binding, pin_intermediate_writes,
+            pre_sim_hook, to_be_buffered, add_elem, evict_elem):
+        """Generic buffer traffic function
+
+        Parameters
+        ----------
+
+        bindings: List[dict]
+            A list of the binding information
+
+        formats: Dict[str, Format]
+            A dictionary from tensor names to their corresponding format objects
+
+        trace_fns: Dict[Tuple[str, str, str, str], str]]]
+            A nested dictionary of traces of the form
+            {(tensor, rank, type, access): trace_fn}}}
+            where type is one of "elem", "coord", or "payload" and access is
+            "read" or "write"
+
+        capacity: int
+            The number of bits that fit in the buffet
+
+        line_sz: int
+            The number of bits across which spatial locality is exploited
+            (e.g., buffer line size)
+
+        loop_ranks: Optional[Dict[str, str]]
+            A map from the original rank to the rank it corresponds to in
+            the loop order
+
+        extract_binding: Callable[[binding], Tuple[int, ...]]
+            A function that extracts a tuple from the binding information
+
+        Note: assumes all fibers start at line boundaries and all elements
+        reside on exactly one line (if the footprint is not a multiple of the
+        line size, every line is padded)
+        """
         # Get the loop ranks of each tensor
         if loop_ranks is None:
             loop_ranks = {}
@@ -283,43 +395,40 @@ class Traffic:
         bind_info = [[] for _ in order]
         for binding in bindings:
             pos = order.index(loop_ranks[binding["rank"]])
-            tensor, rank, type_, evict_on = \
-                binding["tensor"], binding["rank"], binding["type"], binding["evict-on"]
+            info = extract_binding(binding)
+            tensor, rank, type_ = info[:3]
 
             # Make sure that the correct type is used
             assert (type_ == "elem" and formats[tensor].getLayout(rank) == "interleaved") \
                 or (type_ == "coord" and formats[tensor].getLayout(rank) == "contiguous") \
                 or (type_ == "payload" and formats[tensor].getLayout(rank) == "contiguous")
 
-            bind_info[pos].append((tensor, rank, type_, evict_on))
+            bind_info[pos].append(info)
 
         # Flatten the binding info
         bind_info = [info for infos in bind_info for info in infos]
 
         # Compute index masks for each bound tensor
         masks = []
-        for tensor, rank, _, _ in bind_info:
+        for info in bind_info:
+            tensor, rank = info[:2]
             end = order.index(loop_ranks[rank]) + 1
             masks.append(list(r in loop_rank_ids[tensor] for r in order[:end]))
 
         # Compute the number of elements per line for each binding
         elems_per_line = []
-        for tensor, rank, type_, _ in bind_info:
+        for info in bind_info:
+            tensor, rank, type_ = info[:3]
             footprint = formats[tensor].getElem(rank, type_)
             elems_per_line.append(line_sz // footprint)
             assert elems_per_line[-1] > 0
 
-        # Compute the last lines for all writable traces whose intermediate
-        # writes we can ignore
-        shapes = []
-        for i, (tensor, rank, type_, evict_on) in enumerate(bind_info):
-            if rank != evict_on and (tensor, rank, type_, "write") in trace_fns:
-                shape = formats[tensor].tensor.getShape(authoritative=True)
-                assert shape is not None
-                shapes.append(shape[formats[tensor].tensor.getRankIds().index(rank)])
+        # Compute the number of ranks listed in each file
+        all_num_ranks = []
+        for info in bind_info:
+            all_num_ranks.append(order.index(loop_ranks[info[1]]) + 1)
 
-            else:
-                shapes.append(None)
+        pre_sim_info = pre_sim_hook(bind_info)
 
         # Order the traces in the order they occur
         next_keys = []
@@ -330,15 +439,21 @@ class Traffic:
             next_traces.append(next_trace)
         next_keys.sort()
 
-        # Prepare the drain queue info: for each key, what is the queue index
-        # of the next element to be filled and the next element to be drained
-        drain_info = {}
-        ready_to_drain = {}
+        # Compute the last lines for all writable traces whose intermediate
+        # writes we can ignore
+        shapes = []
+        for i, info in enumerate(bind_info):
+            if pin_intermediate_writes(info):
+                shape = formats[tensor].tensor.getShape(authoritative=True)
+                assert shape is not None
+                shapes.append(shape[formats[tensor].tensor.getRankIds().index(rank)])
+
+            else:
+                shapes.append(None)
+
+        # Prepare the buffer
         objs = {}
         for tensor, rank, type_, _ in bind_info:
-            drain_info[tensor, rank, type_] = [0, 0]
-            ready_to_drain[tensor, rank, type_] = {}
-
             if tensor not in objs:
                 objs[tensor] = {}
             objs[tensor][type_] = {}
@@ -350,12 +465,12 @@ class Traffic:
         # While at least one of the traces is still going
         while next_keys[0][:-1] != (float("inf"),) * len(order):
             i = next_keys[0][-1]
-            tensor, rank, type_, evict_on = bind_info[i]
-            key = tensor, rank, type_
+            key = bind_info[i][:3]
+            tensor, rank, type_ = key
 
             # Get the tensor access
             trace = next_traces[i]
-            num_ranks = (len(trace) - 4) // 4
+            num_ranks = all_num_ranks[i]
             point = list(itertools.compress(trace[num_ranks:num_ranks * 2], masks[i]))
 
             # We need to write this data if it was a write, and is not an
@@ -372,53 +487,28 @@ class Traffic:
             if new_traffic and not is_write:
                 traffic[tensor]["read"] += line_sz
 
-            # Check if the next use is within the exploited reuse distance (ERD)
-            if evict_on == "root":
-                evict_end = 0
-            else:
-                evict_end = order.index(loop_ranks[evict_on]) + 1
-
-            # Currently using the iteration stamp
-            curr_stamp = trace[:evict_end]
-            next_stamp = trace[num_ranks * 2 + 2:num_ranks * 2 + 2 + evict_end]
-
+            to_buffer = to_be_buffered(bind_info[i], order, loop_ranks, trace, num_ranks)
             if new_traffic:
                 # Add an object only if it will be used within the ERD
-                if curr_stamp == next_stamp \
-                        and trace[num_ranks * 2 + 2] is not None:
-                    objs[tensor][type_][obj] = [write_back, drain_info[key][0]]
-                    occupancy += line_sz
-                    drain_info[key][0] += 1
-
-                    # Track overflows
-                    if occupancy > capacity:
-                        overflows += 1
+                if to_buffer:
+                    pre_sim_info, objs, occupancy, overflows = \
+                        add_elem(pre_sim_info, bind_info[i], objs, obj, line_sz,
+                            occupancy, capacity, overflows)
+                    objs[tensor][type_][obj][0] = write_back
 
                 # If new traffic and not buffered, add the write traffic
                 elif write_back:
                     traffic[tensor]["write"] += line_sz
 
             # If the object will not be used again within the ERD, evict it
-            elif curr_stamp != next_stamp:
+            elif not to_buffer:
                 objs[tensor][type_][obj][0] = objs[tensor][type_][obj][0] or write_back
-                ready_to_drain[key][objs[tensor][type_][obj][1]] = obj
+                pre_sim_info, objs, traffic, occupancy = \
+                    evict_elem(pre_sim_info, key, objs, obj, traffic, line_sz, occupancy)
 
             # Otherwise, it was in the buffer and will be used again
             else:
                 objs[tensor][type_][obj][0] = objs[tensor][type_][obj][0] or write_back
-
-            # Drain all available elements
-            while drain_info[key][1] in ready_to_drain[key]:
-                drain_obj = ready_to_drain[key][drain_info[key][1]]
-
-                # If the line has been mutated and it needs to be saved, write it first
-                if objs[tensor][type_][drain_obj][0]:
-                    traffic[tensor]["write"] += line_sz
-
-                del objs[tensor][type_][drain_obj]
-                del ready_to_drain[key][drain_info[key][1]]
-                drain_info[key][1] += 1
-                occupancy -= line_sz
 
             # Advance the relevant trace
             del next_keys[0]
