@@ -636,7 +636,7 @@ class Traffic:
         line size, every line is padded)
         """
         @functools.total_ordering
-        class HeapElem:
+        class ListElem:
             def __init__(self, bind_pos, next_access, obj):
                 self.next_access = next_access
                 self.obj = obj
@@ -646,13 +646,11 @@ class Traffic:
                 return self.next_access == other.next_access and self.pos == other.pos
 
             def __lt__(self, other):
-                # We want to implement a maxheap, so less than is actually
-                # greater than
                 if self.next_access != other.next_access:
-                    return self.next_access > other.next_access
+                    return self.next_access < other.next_access
 
                 # Fall back on the position if the next access is at the same point
-                return self.pos > other.pos
+                return self.pos < other.pos
 
             def __repr__(self):
                 return str((self.next_access, self.obj, self.pos))
@@ -664,9 +662,7 @@ class Traffic:
             return info + ("write",) in trace_fns
 
         def pre_sim_hook(bind_info):
-            next_evict_heap = []
-            heapq.heapify(next_evict_heap)
-            heap_elem = None
+            next_evict = SortedList()
 
             pinned = {}
             for tensor, _, type_ in bind_info:
@@ -676,43 +672,54 @@ class Traffic:
                 if type_ not in pinned[tensor]:
                     pinned[tensor][type_] = set()
 
-            return next_evict_heap, pinned, heap_elem
+            return next_evict, pinned, None
 
         def to_be_buffered(bind_info, bind_pos, capacity, loop_ranks,
                 num_ranks, obj, objs, occupancy, order, shapes, sim_info, trace):
-            next_evict_heap, pinned, _ = sim_info
+            next_evict, pinned, _ = sim_info
             next_access = trace[num_ranks * 2 + 2:num_ranks * 3 + 2]
             tensor, _, type_ = bind_info[bind_pos]
 
             # Do not buffer if never used again
             if trace[num_ranks * 2 + 2] is None:
-                # Update the element if it was previously buffered
                 if obj in objs[tensor][type_]:
-                    heap_elem = objs[tensor][type_][obj][1]
-                    heap_elem.next_access = [float("inf")]
-                    heapq.heapify(next_evict_heap)
+                    if next_evict and next_evict[0].obj == obj:
+                        list_elem = next_evict.pop(0)
+                    else:
+                        assert obj in pinned[tensor][type_]
+                        list_elem = objs[tensor][type_][obj][1]
+
+                    list_elem.next_access = [float("inf")]
 
                 else:
-                    heap_elem = None
+                    list_elem = None
 
-                sim_info = next_evict_heap, pinned, heap_elem
+                sim_info = next_evict, pinned, list_elem
                 return False, sim_info
 
-            # Definitely buffer if it is already in the cache
-            if obj in objs[tensor][type_]:
-                heap_elem = objs[tensor][type_][obj][1]
-                heap_elem.next_access = next_access
+            # If this element is in the cache, but not pinned
+            if next_evict and next_evict[0].obj == obj \
+                    and next_evict[0].pos == bind_pos:
+                list_elem = next_evict.pop(0)
+                list_elem.next_access = next_access
 
-                # If this element is not pinned, reorganize the heap
-                if obj not in pinned[tensor][type_]:
-                    heapq.heapify(next_evict_heap)
-
-                sim_info = next_evict_heap, pinned, heap_elem
+                next_evict.add(list_elem)
+                sim_info = next_evict, pinned, list_elem
 
                 return True, sim_info
 
-            heap_elem = HeapElem(bind_pos, next_access, obj)
-            sim_info = next_evict_heap, pinned, heap_elem
+            # If the element is pinned
+            elif obj in pinned[tensor][type_]:
+                list_elem = objs[tensor][type_][obj][1]
+                list_elem.next_access = next_access
+
+                sim_info = next_evict, pinned, list_elem
+                return True, sim_info
+
+            assert obj not in objs[tensor][type_]
+
+            list_elem = ListElem(bind_pos, next_access, obj)
+            sim_info = next_evict, pinned, list_elem
             # Definitely buffer if there is space in the buffer
             if occupancy + line_sz <= capacity:
                 to_buffer = True
@@ -722,24 +729,24 @@ class Traffic:
                 to_buffer = True
 
             # Do not buffer if we are full of pinned elements
-            elif not next_evict_heap:
+            elif not next_evict:
                 to_buffer = False
 
             # Otherwise, make sure the next thing to evict is not the element
             # we would have buffered
             else:
-                to_buffer = heap_elem >= next_evict_heap[0]
+                to_buffer = list_elem <= next_evict[-1]
 
             return to_buffer, sim_info
 
         def add_elem(bind_info, bind_pos, capacity, line_sz, num_ranks, obj, objs,
                 occupancy, overflows, shapes, sim_info, trace, traffic):
 
-            next_evict_heap, pinned, heap_elem = sim_info
+            next_evict, pinned, list_elem = sim_info
             # Evict if necessary to make space
             while occupancy + line_sz > capacity:
-                if next_evict_heap:
-                    evict_elem = heapq.heappop(next_evict_heap)
+                if next_evict:
+                    evict_elem = next_evict.pop(-1)
 
                     # If the line has been mutated and it needs to be saved, write it first
                     evict_tensor, _, evict_type = bind_info[evict_elem.pos]
@@ -759,32 +766,27 @@ class Traffic:
             # If this element is not pinned, add it to the heap
             tensor, _, type_ = bind_info[bind_pos]
             if shapes[bind_pos] is None or trace[num_ranks * 2] < shapes[bind_pos]:
-                heapq.heappush(next_evict_heap, heap_elem)
+                next_evict.add(list_elem)
 
             # Otherwise pin the element
             else:
                 pinned[tensor][type_].add(obj)
 
-            objs[tensor][type_][obj] = [False, heap_elem]
+            objs[tensor][type_][obj] = [False, list_elem]
             occupancy += line_sz
 
-            sim_info = next_evict_heap, pinned, None
+            sim_info = next_evict, pinned, None
             return objs, occupancy, overflows, sim_info, traffic
 
         def evict_elem(key, line_sz, obj, objs, occupancy, sim_info, traffic):
-            next_evict_heap, pinned, heap_elem = sim_info
+            next_evict, pinned, list_elem = sim_info
             tensor, _, type_ = key
-            if obj not in pinned[tensor][type_]:
-                evicted_elem = heapq.heappop(next_evict_heap)
-            else:
-                evicted_elem = heap_elem
 
             # Ensure that there has been no error
-            assert evicted_elem.obj == obj and evicted_elem.obj == heap_elem.obj \
-                and evicted_elem == heap_elem
+            assert list_elem.next_access == [float("inf")]
 
             # If the line has been mutated and it needs to be saved, write it first
-            if objs[tensor][type_][evicted_elem.obj][0]:
+            if objs[tensor][type_][list_elem.obj][0]:
                 traffic[tensor]["write"] += line_sz
 
             # Remove the object from objs and pinned if it is there
@@ -794,7 +796,7 @@ class Traffic:
 
             occupancy -= line_sz
 
-            sim_info = next_evict_heap, pinned, None
+            sim_info = next_evict, pinned, None
 
             return objs, occupancy, sim_info, traffic
 
