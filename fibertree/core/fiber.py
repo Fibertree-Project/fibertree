@@ -4011,7 +4011,7 @@ class Fiber:
         if depth == 0:
             return copied._flattenRanksHelper(levels, style)
 
-        copied.updatePayloadsBelow(Fiber._flattenRanksHelper, levels=levels, style=style)
+        copied.updatePayloadsBelow(Fiber._flattenRanksHelper, depth=depth - 1, levels=levels, style=style)
         copied.setOwner(None)
         return copied
 
