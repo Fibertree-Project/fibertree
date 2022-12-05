@@ -125,7 +125,8 @@ class TestFiberOperators(unittest.TestCase):
             "0,0,0\n",
             "2,3,1\n",
             "3,4,2\n",
-            "4,5,3\n"
+            "4,5,3\n",
+            "5,6,4\n"
         ]
 
         corr1 = [
@@ -158,7 +159,8 @@ class TestFiberOperators(unittest.TestCase):
             "0,0,0\n",
             "2,3,1\n",
             "3,4,2\n",
-            "4,5,3\n"
+            "4,5,3\n",
+            "5,6,4\n"
         ]
 
         corr1 = [
