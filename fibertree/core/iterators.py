@@ -8,6 +8,7 @@ A module storing the implementations of all of the iterators of the Fiber class
 
 import bisect
 
+from .any import ANY
 from .coord_payload import CoordPayload
 from .metrics import Metrics
 from .payload import Payload
@@ -664,6 +665,49 @@ def __and__(self, other):
             a_coord, a_payload = _get_next(a)
             b_coord, b_payload = _get_next(b)
 
+            len_a = len(a_coord) if isinstance(a_coord, tuple) else 1
+            len_b = len(b_coord) if isinstance(b_coord, tuple) else 1
+
+            if len_a == len_b:
+                def succ_next(a, a_coord, a_payload, b, b_coord, b_payload):
+                    return *_get_next(a), *_get_next(b)
+
+                def succ_yield(a_coord, b_coord):
+                    return a_coord
+
+            elif len_a < len_b:
+                if isinstance(a_coord, int):
+                    extra = (ANY,) * (len_b - 1)
+                    a = self.a_fiber.project(trans_fn=lambda c: (c,) + extra).__iter__(tick=False)
+                else:
+                    extra = (ANY,) * (len_b - len_a)
+                    a = self.a_fiber.project(trans_fn=lambda c: c + extra).__iter__(tick=False)
+
+                a_coord, a_payload = _get_next(a)
+
+                def succ_next(a, a_coord, a_payload, b, b_coord, b_payload):
+                    return a_coord, a_payload, *_get_next(b)
+
+                def succ_yield(a_coord, b_coord):
+                    return b_coord
+
+            # len_a > len_b
+            else:
+                if isinstance(b_coord, int):
+                    extra = (ANY,) * (len_a - 1)
+                    b = self.b_fiber.project(trans_fn=lambda c: (c,) + extra).__iter__(tick=False)
+                else:
+                    extra = (ANY,) * (len_a - len_b)
+                    b = self.b_fiber.project(trans_fn=lambda c: c + extra).__iter__(tick=False)
+
+                b_coord, b_payload = _get_next(b)
+
+                def succ_next(a, a_coord, a_payload, b, b_coord, b_payload):
+                    return *_get_next(a), b_coord, b_payload
+
+                def succ_yield(a_coord, b_coord):
+                    return a_coord
+
             while a_coord is not None and b_coord is not None:
                 if a_coord == b_coord:
 
@@ -675,10 +719,10 @@ def __and__(self, other):
                         Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
                         b_pos += 1
 
-                    yield a_coord, (a_payload, b_payload)
+                    yield succ_yield(a_coord, b_coord), (a_payload, b_payload)
 
-                    a_coord, a_payload = _get_next(a)
-                    b_coord, b_payload = _get_next(b)
+                    a_coord, a_payload, b_coord, b_payload = \
+                        succ_next(a, a_coord, a_payload, b, b_coord, b_payload)
 
                     continue
 
@@ -705,6 +749,15 @@ def __and__(self, other):
                     b_coord, b_payload = _get_next(b)
 
                     continue
+
+            if a_traced and a_coord is not None:
+                Metrics.addUse(rank, a_coord, a_pos, type_=a_trace)
+
+            if b_traced and b_coord is not None:
+                Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
+
+            if is_collecting:
+                Metrics.incIter(rank)
 
             return
 

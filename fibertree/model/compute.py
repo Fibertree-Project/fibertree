@@ -58,6 +58,98 @@ class Compute:
         return isects
 
     @staticmethod
+    def numIsectNaive(fn0, fn1):
+        """ Compute the number of intersection attempts with a naive
+        intersection unit
+
+        Parameters
+        ----------
+
+        fn0, fn1: str
+            The filenames of the intersection traces
+
+        Returns
+        ------
+
+        num_isects: int
+            Number of intersection tests
+
+        """
+        def get_data(f, stamp_len):
+            line = f.readline()
+            if line:
+                data = tuple(int(val) for val in line[:-1].split(",")[:-1])
+            else:
+                data = (float("inf"),)
+
+            return line, data, data[stamp_len:-1]
+
+        def get_next(f0, line0, data0, f1, line1, data1, stamp_len, advance0, advance1):
+            if data0:
+                stamp0 = data0[stamp_len:-1]
+            else:
+                stamp0 = None
+
+            if data1:
+                stamp1 = data1[stamp_len:-1]
+            else:
+                stamp1 = None
+
+            if advance0:
+                old_stamp0 = stamp0
+                line0, data0, stamp0 = get_data(f0, stamp_len)
+
+            if advance1:
+                old_stamp1 = stamp1
+                line1, data1, stamp1 = get_data(f1, stamp_len)
+
+            while line0 and line1:
+                if stamp0 == stamp1:
+                    break
+
+                elif stamp0 < stamp1:
+                    line0, data0, stamp0 = get_data(f0, stamp_len)
+
+                # stamp0 > stamp1
+                else:
+                    line1, data1, stamp1 = get_data(f1, stamp_len)
+
+            return line0, data0, line1, data1
+
+
+        with open(fn0, "r") as f0, open(fn1, "r") as f1:
+            # Throw away headers
+            line0 = f0.readline()
+            f1.readline()
+
+            isects = 0
+
+            stamp_len = (len(line0.split(",")) - 1) // 2
+            line0, data0, line1, data1, = \
+                get_next(f0, None, None, f1, None, None, stamp_len, True, True)
+
+            while line0 and line1:
+                isects += 1
+
+                if data0 == data1:
+                    line0, data0, line1, data1 = \
+                        get_next(f0, line0, data0, f1, line1, data1, stamp_len, True, True)
+
+                elif data0 < data1:
+                    line0, data0, line1, data1 = \
+                        get_next(f0, line0, data0, f1, line1, data1, stamp_len, True, False)
+
+
+                # data0 > data1
+                else:
+                    line0, data0, line1, data1 = \
+                        get_next(f0, line0, data0, f1, line1, data1, stamp_len, False, True)
+
+
+        return isects
+
+
+    @staticmethod
     def numIsectSkipAhead(fn0, fn1):
         """ Compute the number of intersection attempts with skip-ahead
         intersection
@@ -75,52 +167,98 @@ class Compute:
             Number of intersection tests
 
         """
-        def get_data(line):
+        def get_data(f, stamp_len):
+            line = f.readline()
             if line:
-                return tuple(int(val) for val in line[:-1].split(",")[:-1])
+                data = tuple(int(val) for val in line[:-1].split(",")[:-1])
             else:
-                return (float("inf"),)
+                data = (float("inf"),)
+
+            return line, data, data[stamp_len:-1]
+
+        def get_next(f0, line0, data0, f1, line1, data1, stamp_len, advance0, advance1):
+            new_fiber = False
+            if data0:
+                stamp0 = data0[stamp_len:-1]
+            else:
+                stamp0 = None
+
+            if data1:
+                stamp1 = data1[stamp_len:-1]
+            else:
+                stamp1 = None
+
+            if advance0:
+                old_stamp0 = stamp0
+                line0, data0, stamp0 = get_data(f0, stamp_len)
+
+                if old_stamp0 != stamp0:
+                    new_fiber = True
+
+            if advance1:
+                old_stamp1 = stamp1
+                line1, data1, stamp1 = get_data(f1, stamp_len)
+
+                if old_stamp1 != stamp1:
+                    new_fiber = True
+
+            while line0 and line1:
+                if stamp0 == stamp1:
+                    break
+
+                elif stamp0 < stamp1:
+                    line0, data0, stamp0 = get_data(f0, stamp_len)
+                    new_fiber = True
+
+                # stamp0 > stamp1
+                else:
+                    line1, data1, stamp1 = get_data(f1, stamp_len)
+                    new_fiber = True
+
+            return line0, data0, line1, data1, new_fiber
 
         with open(fn0, "r") as f0, open(fn1, "r") as f1:
             # Throw away headers
-            f0.readline()
+            line0 = f0.readline()
             f1.readline()
 
             isects = 0
             curr = None
 
-            line0 = f0.readline()
-            line1 = f1.readline()
-            data0 = get_data(line0)
-            data1 = get_data(line1)
-            while line0 or line1:
+            stamp_len = (len(line0.split(",")) - 1) // 2
+            line0, data0, line1, data1, _ = \
+                get_next(f0, None, None, f1, None, None, stamp_len, True, True)
+
+            while line0 and line1:
                 # If both matched, there is nothing to skip
                 if data0 == data1:
                     curr = None
                     isects += 1
 
-                    line0 = f0.readline()
-                    line1 = f1.readline()
-                    data0 = get_data(line0)
-                    data1 = get_data(line1)
+                    line0, data0, line1, data1, new_fiber = \
+                        get_next(f0, line0, data0, f1, line1, data1, stamp_len, True, True)
 
-                # If only 0 matched, intersect if not skipped
+                # Intersect or skip tensor 0
                 elif data0 < data1:
                     if curr != 0:
                         curr = 0
                         isects += 1
 
-                    line0 = f0.readline()
-                    data0 = get_data(line0)
+                    line0, data0, line1, data1, new_fiber = \
+                        get_next(f0, line0, data0, f1, line1, data1, stamp_len, True, False)
 
-                # If only 1 matched, intersect if not skipped
+                # Intersect or skip tensor 1
+                # elif data0 > data1
                 else:
                     if curr != 1:
                         curr = 1
                         isects += 1
 
-                    line1 = f1.readline()
-                    data1 = get_data(line1)
+                    line0, data0, line1, data1, new_fiber = \
+                        get_next(f0, line0, data0, f1, line1, data1, stamp_len, False, True)
+
+                if new_fiber:
+                    curr = None
 
         return isects
 

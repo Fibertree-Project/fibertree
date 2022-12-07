@@ -96,6 +96,7 @@ class TestFiberOperators(unittest.TestCase):
 
         cc = [0, 3]
         cp = [(1, 9), (4, 8)]
+        self.assertEqual(len(cc), len(a_k & b_k))
         for i, (c, p) in enumerate(a_k & b_k):
             self.assertEqual(cc[i], c)
             self.assertEqual(cp[i], p)
@@ -105,6 +106,70 @@ class TestFiberOperators(unittest.TestCase):
         self.assertEqual(id_, "K")
         self.assertEqual((a_k & b_k).getActive(), (0, 7))
 
+    def test_and_tuple_coords(self):
+        """Test __and__ with tuple coordinates"""
+        a_km = Fiber([(0, 0), (0, 2), (3, 5), (4, 8)], [1, 2, 3, 4])
+        b_km = Fiber([(0, 0), (0, 1), (4, 8), (4, 9)], [1, 2, 3, 4])
+
+        cc = [(0, 0), (4, 8)]
+        cp = [(1, 1), (4, 3)]
+        self.assertEqual(len(cc), len(a_km & b_km))
+
+        for i, (c, p) in enumerate(a_km & b_km):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
+    def test_and_tuple_a_longer(self):
+        """Test __and__ with tuple coords, but a's tuple is longer"""
+        a_km = Fiber([(0, 0), (0, 2), (3, 5), (4, 8)], [1, 2, 3, 4])
+        b_k = Fiber([(0,), (1,), (2,), (3,)], [1, 2, 3, 4], active_range=((0,), (4,)))
+
+        cc = [(0, 0), (0, 2), (3, 5)]
+        cp = [(1, 1), (2, 1), (3, 4)]
+        self.assertEqual(len(cc), len(a_km & b_k))
+
+        for i, (c, p) in enumerate(a_km & b_k):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
+    def test_and_a_tuple(self):
+        """Test __and__ with a having tuple coordinates"""
+        a_km = Fiber([(0, 0), (0, 2), (3, 5), (4, 8)], [1, 2, 3, 4])
+        b_k = Fiber([0, 1, 2, 3], [1, 2, 3, 4])
+
+        cc = [(0, 0), (0, 2), (3, 5)]
+        cp = [(1, 1), (2, 1), (3, 4)]
+        self.assertEqual(len(cc), len(a_km & b_k))
+
+        for i, (c, p) in enumerate(a_km & b_k):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
+    def test_and_tuple_b_longer(self):
+        """Test __and__ with tuple coords, but b's tuple is longer"""
+        a_k = Fiber([(0,), (1,), (2,), (3,)], [1, 2, 3, 4], active_range=((0,), (4,)))
+        b_km = Fiber([(0, 0), (0, 2), (3, 5), (4, 8)], [1, 2, 3, 4])
+
+        cc = [(0, 0), (0, 2), (3, 5)]
+        cp = [(1, 1), (1, 2), (4, 3)]
+        self.assertEqual(len(cc), len(a_k & b_km))
+
+        for i, (c, p) in enumerate(a_k & b_km):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
+    def test_and_tuple_b_tuple(self):
+        """Test __and__ with b having tuple coordinates"""
+        a_k = Fiber([0, 1, 2, 3], [1, 2, 3, 4])
+        b_km = Fiber([(0, 0), (0, 2), (3, 5), (4, 8)], [1, 2, 3, 4])
+
+        cc = [(0, 0), (0, 2), (3, 5)]
+        cp = [(1, 1), (1, 2), (4, 3)]
+        self.assertEqual(len(cc), len(a_k & b_km))
+
+        for i, (c, p) in enumerate(a_k & b_km):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
 
     def test_and_metrics_fiber(self):
         """Test metrics collected during Fiber.__and__ on unowned fibers"""

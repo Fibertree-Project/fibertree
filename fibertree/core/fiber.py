@@ -18,6 +18,7 @@ import random
 
 import yaml
 
+from .any import Any
 from .coord_payload import CoordPayload
 from .iterators import coiterShape, coiterShapeRef, coiterActiveShape, \
     coiterActiveShapeRef, coiterRangeShape, coiterRangeShapeRef, intersection, \
@@ -2528,10 +2529,13 @@ class Fiber:
             The coordinate with the function applied to all integers
 
         """
-        assert isinstance(coord, tuple) or isinstance(coord, int)
+        assert isinstance(coord, tuple) or isinstance(coord, int) or isinstance(coord, Any)
 
         if isinstance(coord, tuple):
             return tuple(Fiber._transCoord(c, trans_fn) for c in coord)
+
+        elif isinstance(coord, Any):
+            return coord
 
         return trans_fn(coord)
 
