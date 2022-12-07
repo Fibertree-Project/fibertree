@@ -4217,6 +4217,172 @@ class Fiber:
 
         return c1_c0
 
+    def mergeRanks(self, depth=0, levels=1, style="tuple", merge_fn=None):
+        """Merge multiple ranks into one, fibers at the same coordinate are
+        merged with union, and payloads at the same coordinate are merged
+        with the merge function
+
+        - tuple - flattened tuple of coordinates from all flattend ranks
+        - pair - nested tuples of coordinates from all flattend ranks
+        - absolute - the coordinate of the lowest rank
+        - relative -  the sum of the corrdinate of the flattened ranks
+        - linear - linearized tuple, i.e., (up, low) -> up * LOW_SHAPE + low
+
+        Parameters
+        ----------
+
+        levels: integer
+            Number of levels to flatten into the top level
+
+        style: One of ['tuple', 'pair', 'absolute', 'relative', 'linear'], default='tuple'
+
+        merge_fn: Optional[Callable[[Iterable[Payload]], Payload]]
+            Function to merge two elements at the same coordinate
+            Default: add the two payloads
+
+        Returns
+        -------
+
+        result: Fiber
+            Fiber with `level` ranks flattened into the current rank
+        """
+        assert not self.isLazy()
+        assert self._ordered and self._unique
+
+        if merge_fn is None:
+            merge_fn = lambda ps: sum(ps)
+
+        # Ensure that we only deepcopy once
+        copied = copy.deepcopy(self)
+
+        if depth == 0:
+            return copied._mergeRanksHelper(levels=levels, style=style, merge_fn=merge_fn)
+
+        copied.updatePayloadsBelow(Fiber._mergeRanksHelper, depth=depth - 1, levels=levels, style=style, merge_fn=merge_fn)
+        copied.setOwner(None)
+        return copied
+
+    def _mergeRanksHelper(self, levels=1, style="tuple", merge_fn=None):
+        """ Merge the top two ranks of self
+
+        Parameters
+        ----------
+
+        levels: integer
+            Number of levels to merge into the top level
+
+        style: One of ['tuple', 'pair', 'absolute', 'relative', 'linear'], default='tuple'
+
+        merge_fn: Callable[[Iterable[Payload]], Payload]
+            Function to merge two elements at the same coordinate
+
+        Returns
+        -------
+
+        result: Fiber
+            Fiber with `level` ranks merged into the current rank
+        """
+        assert merge_fn is not None
+        #
+        # Merge deeper levels first, if requested
+        #
+        if levels == 1:
+            cur_payloads = self.payloads
+        else:
+            assert Payload.contains(self.payloads[0], Fiber), \
+                "Insuffient levels to merge"
+
+            cur_payloads = []
+
+            for p in self.payloads:
+                cur_payloads.append(p._mergeRanksHelper(
+                                        levels=levels - 1, style=style, merge_fn=merge_fn))
+
+        coords = []
+        payloads = []
+
+        range_start = None
+        range_end = None
+
+        default = Payload(0)
+        up_shape = self.getShape(all_ranks=False, authoritative=True)
+        low_shape = None
+
+        for i, (c1, p1) in enumerate(zip(self.coords, cur_payloads)):
+            if not Payload.contains(p1, Fiber):
+                raise PayloadError
+
+            if i == 0:
+                range_start, range_end = p1.getActive()
+            else:
+                range_start = min(range_start, p1.getActive()[0])
+                range_end = max(range_end, p1.getActive()[1])
+
+            default = p1.getDefault()
+
+            low_shape = p1.getShape(all_ranks=False, authoritative=True)
+            for c0, p0 in p1:
+                new_coord = self._flattenCoords(c1, c0, style=style, shape=low_shape)
+
+                j = bisect.bisect_left(coords, new_coord)
+                if j < len(coords) and new_coord == coords[j]:
+                    payloads[j].append(p0)
+                else:
+                    coords.insert(j, new_coord)
+                    payloads.insert(j, [p0])
+
+        merged_payloads = [Fiber._mergeToFibertree(ps, merge_fn) for ps in payloads]
+
+        # Compute the shape
+        shape = None
+        if style == "absolute" or style == "relative":
+            shape = low_shape
+        elif style == "linear":
+            shape = up_shape * low_shape
+
+        # Compute the active range
+        active_range = None
+
+        if range_start is None:
+            range_start = 0
+            range_end = float("inf")
+
+        if style == "tuple" or style == "pair":
+            active_range = ((self.getActive()[0], range_start), (self.getActive()[1], range_end))
+        elif style == "absolute" or style == "relative":
+            active_range = self.getActive()
+        elif style == "linear":
+            active_range = (0, float("inf"))
+
+        return Fiber(coords, merged_payloads, default=default, active_range=active_range, shape=shape)
+
+    @staticmethod
+    def _mergeToFibertree(to_merge, merge_fn):
+        """Merge the given list of payloads into a single payload
+
+        Warning: this subroutine does NOT deepcopy anything
+        """
+        assert len(to_merge) > 0
+
+        if len(to_merge) == 1:
+            return to_merge[0]
+
+        # If we are merging together leaves, use the merge function
+        if not isinstance(to_merge[0], Fiber):
+            return merge_fn(to_merge)
+
+        # Merge fibers together
+        coords = []
+        payloads = []
+        union_fiber = union(*to_merge)
+        for c, ps in union_fiber:
+            coords.append(c)
+            new_merge = Payload.get(ps)[1:]
+            payloads.append(Fiber._mergeToFibertree(new_merge, merge_fn))
+
+        result = Fiber(coords, payloads, active_range=union_fiber.getActive())
+        return result
+
 
     def unflattenRanks(self, levels=1):
         """Unflatten a ranks into two or more ranks
