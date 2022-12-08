@@ -448,6 +448,99 @@ class TestTensorTransform(unittest.TestCase):
 
         self.assertEqual(f4, t0)
 
+    def test_merge(self):
+        """Test that mergeRanks merges together fibers"""
+        f = Fiber([0, 1, 4, 5],
+                  [Fiber([0, 1, 2], [1, 2, 3], shape=10),
+                   Fiber([1, 3, 4], [4, 5, 6], shape=10),
+                   Fiber([4, 7], [7, 8], shape=10),
+                   Fiber([5, 7], [9, 10], shape=10)],
+                  shape=10)
+        t = Tensor.fromFiber(fiber=f)
+        mt = t.mergeRanks(coord_style="absolute")
+
+        corr = Fiber([0, 1, 2, 3, 4, 5, 7], [1, 6, 3, 5, 13, 9, 18])
+        self.assertEqual(mt.getRoot(), corr)
+        self.assertEqual(mt.getShape(), [10])
+
+    def test_merge_max(self):
+        """Test mergeRanks with a custom merge function"""
+        f = Fiber([0, 1, 4, 5],
+                  [Fiber([0, 1, 2], [1, 2, 3], shape=10),
+                   Fiber([1, 3, 4], [4, 5, 6], shape=10),
+                   Fiber([4, 7], [7, 8], shape=10),
+                   Fiber([5, 7], [9, 10], shape=10)],
+                  shape=10)
+        t = Tensor.fromFiber(fiber=f)
+        mt = t.mergeRanks(coord_style="absolute", merge_fn=lambda ps: max(ps))
+
+        corr = Fiber([0, 1, 2, 3, 4, 5, 7], [1, 4, 3, 5, 7, 9, 10])
+        self.assertEqual(mt.getRoot(), corr)
+        self.assertEqual(mt.getShape(), [10])
+
+    def test_merge_two_levels(self):
+        """Test merging more than one level"""
+        f = Fiber([0, 4],
+                  [Fiber([0, 1],
+                         [Fiber([0, 1, 2], [1, 2, 3], shape=10),
+                          Fiber([1, 3, 4], [4, 5, 6], shape=10)],
+                         shape=10),
+                   Fiber([4, 5],
+                         [Fiber([4, 7], [7, 8], shape=10),
+                          Fiber([5, 7], [9, 10], shape=10)],
+                         shape=10)],
+                  shape=10)
+        t = Tensor.fromFiber(fiber=f)
+        mt = t.mergeRanks(levels=2, coord_style="absolute")
+
+        corr = Fiber([0, 1, 2, 3, 4, 5, 7], [1, 6, 3, 5, 13, 9, 18])
+        self.assertEqual(mt.getRoot(), corr)
+        self.assertEqual(mt.getShape(), [10])
+
+    def test_merge_depth_gt_zero(self):
+        """Test that we can merge tensors with depth > 1"""
+        f = Fiber([0, 4],
+                  [Fiber([0, 1],
+                         [Fiber([0, 1, 2], [1, 2, 3], shape=10),
+                          Fiber([1, 3, 4], [4, 5, 6], shape=10)],
+                         shape=10),
+                   Fiber([4, 5],
+                         [Fiber([4, 7], [7, 8], shape=10),
+                          Fiber([5, 7], [9, 10], shape=10)],
+                         shape=10)],
+                  shape=5)
+        t = Tensor.fromFiber(fiber=f)
+        mt = t.mergeRanks(depth=1, coord_style="absolute")
+
+        corr = Fiber([0, 4],
+                     [Fiber([0, 1, 2, 3, 4], [1, 6, 3, 5, 6]),
+                      Fiber([4, 5, 7], [7, 9, 18])])
+        self.assertEqual(mt.getRoot(), corr)
+        self.assertEqual(mt.getShape(), [5, 10])
+
+    def test_merge_fibers(self):
+        """Test that the merge works to correctly combine fibers"""
+        f = Fiber([0, 4],
+                  [Fiber([0, 1],
+                         [Fiber([0, 1, 2], [1, 2, 3], shape=10),
+                          Fiber([1, 3, 4], [4, 5, 6], shape=10)],
+                         shape=10),
+                   Fiber([1, 5],
+                         [Fiber([4, 7], [7, 8], shape=10),
+                          Fiber([5, 7], [9, 10], shape=10)],
+                         shape=10)],
+                  shape=7)
+        t = Tensor.fromFiber(fiber=f)
+        mt = t.mergeRanks(coord_style="absolute")
+
+        corr = Fiber([0, 1, 5],
+                     [Fiber([0, 1, 2], [1, 2, 3]),
+                      Fiber([1, 3, 4, 7], [4, 5, 13, 8]),
+                      Fiber([5, 7], [9, 10])])
+
+        self.assertEqual(mt.getRoot(), corr)
+        self.assertEqual(mt.getShape(), [10, 10])
+
     def test_unflattenRanks_empty(self):
         t = Tensor(rank_ids=["X", "Y", "Z"])
         t2 = t.flattenRanks()

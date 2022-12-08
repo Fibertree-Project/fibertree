@@ -322,6 +322,11 @@ class Tensor:
                      color=color)
 
         tensor.setRoot(fiber)
+
+        # setRoot may modify the shape, fix the shape if authoritative
+        if shape:
+            tensor.setShape(shape)
+
         tensor.setMutable(False)
 
         return tensor
@@ -493,6 +498,25 @@ class Tensor:
 
         return self
 
+    def setShape(self, shape):
+        """Set the shape of the tensor
+
+        Parameters
+        ----------
+
+        shape: list
+            List of rank shapes
+
+        Returns
+        -------
+
+        None
+        """
+        assert len(shape) == len(self.ranks)
+
+        for rank, rank_shape in zip(self.ranks, shape):
+            rank.getAttrs().setShape(rank_shape)
+
 
     def getShape(self, rank_ids=[], authoritative=False):
         """Get the shape of the tensor.
@@ -624,7 +648,6 @@ class Tensor:
         Nothing
 
         """
-
         #
         # Note: rank 0 tensors are not allowed in this path
         #
@@ -650,6 +673,15 @@ class Tensor:
 
     def _addFiber(self, fiber, level=0):
         """Recursively fill in ranks from "fiber"."""
+        shape = fiber.getShape(authoritative=True, all_ranks=False)
+        if shape:
+            attrs = self.ranks[level].getAttrs()
+            if attrs.getShape():
+                attrs.setShape(max(attrs.getShape(), shape))
+            else:
+                attrs.setShape(shape)
+                attrs.setEstimatedShape(False)
+
         self.ranks[level].append(fiber)
 
         # Note: The code below handles the (probably abandoned)
@@ -1457,7 +1489,70 @@ class Tensor:
              A new tensor with some ranks flattened
 
         """
+        rank_ids, shape = self._flattenRankIdsShape(depth=depth, levels=levels, coord_style=coord_style)
 
+        root = self.getRoot().flattenRanks(depth=depth, levels=levels, style=coord_style)
+
+        #
+        # Create Tensor from rank_ids and root fiber
+        #
+        tensor = Tensor.fromFiber(rank_ids, root, shape)
+        tensor.setName(self.getName() + "+flattened")
+        tensor.setColor(self.getColor())
+        tensor.setMutable(self.isMutable())
+
+        # Maintain the formats for unflattened rank_ids
+        # Compress everything else
+        for rank_id in tensor.getRankIds():
+            if rank_id in self.getRankIds():
+                tensor.setFormat(rank_id, self.getFormat(rank_id))
+            else:
+                tensor.setFormat(rank_id, "C")
+
+        return tensor
+
+    def mergeRanks(self, depth=0, levels=1, coord_style="tuple", merge_fn=None):
+        """Merge ranks in the  tensor's fibertree.
+
+        Tensor-level version of method that operates on the tensor's fibertree
+        at depth `depth`. See `Fiber.mergeRanks()` for more details.
+
+        Parameters
+        ----------
+
+        See `Fiber.mergeRanks()` for arguments.
+
+        Returns
+        -------
+
+        merged_tensor: Tensor
+             A new tensor with some ranks merged
+
+        """
+        rank_ids, shape = self._flattenRankIdsShape(depth=depth, levels=levels, coord_style=coord_style)
+
+        root = self.getRoot().mergeRanks(depth=depth, levels=levels, style=coord_style, merge_fn=merge_fn)
+
+        #
+        # Create Tensor from rank_ids and root fiber
+        #
+        tensor = Tensor.fromFiber(rank_ids, root, shape)
+        tensor.setName(self.getName() + "+merged")
+        tensor.setColor(self.getColor())
+        tensor.setMutable(self.isMutable())
+
+        # Maintain the formats for unmerged rank_ids
+        # Compress everything else
+        for rank_id in tensor.getRankIds():
+            if rank_id in self.getRankIds():
+                tensor.setFormat(rank_id, self.getFormat(rank_id))
+            else:
+                tensor.setFormat(rank_id, "C")
+
+        return tensor
+
+    def _flattenRankIdsShape(self, depth, levels, coord_style):
+        """Compute the rank ids and shape after a flattening"""
         #
         # Create new list of rank ids
         #
@@ -1533,26 +1628,7 @@ class Tensor:
                     assert False, \
                         f"Supported coordinate styles are: tuple, pair, absolute, relative, and linear. Got: {coord_style}"
 
-        root = self.getRoot().flattenRanks(depth=depth, levels=levels, style=coord_style)
-
-        #
-        # Create Tensor from rank_ids and root fiber
-        #
-        tensor = Tensor.fromFiber(rank_ids, root, new_shape)
-        tensor.setName(self.getName() + "+flattened")
-        tensor.setColor(self.getColor())
-        tensor.setMutable(self.isMutable())
-
-        # Maintain the formats for unflattened rank_ids
-        # Compress everything else
-        for rank_id in tensor.getRankIds():
-            if rank_id in self.getRankIds():
-                tensor.setFormat(rank_id, self.getFormat(rank_id))
-            else:
-                tensor.setFormat(rank_id, "C")
-
-        return tensor
-
+        return rank_ids, new_shape
 
     def unflattenRanks(self, depth=0, levels=1):
         """Unflatten ranks in the  tensor's fibertree.

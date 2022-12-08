@@ -50,6 +50,14 @@ class TestTensorShape(unittest.TestCase):
 
         # Note: We cannot override the shape of shape from a YAML file
 
+    def test_setShape(self):
+        """Test setShape"""
+        t1 = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        self.assertEqual(t1.getShape(), [7, 4])
+
+        t1.setShape([100, 200])
+        self.assertEqual(t1.getShape(), [100, 200])
+
 
     def test_shape_fromUncompressed_1D(self):
         """Test shape of a tensor from 1D nested lists"""
@@ -203,12 +211,12 @@ class TestTensorShape(unittest.TestCase):
             self.assertEqual(t1.getShape("K"), 4)
 
         with self.subTest(test="Check authoritative"):
-            self.assertIsNone(t1.getShape(authoritative=True))
-            self.assertIsNone(t1.getShape(["M", "K"], authoritative=True))
-            self.assertIsNone(t1.getShape(["M"], authoritative=True))
-            self.assertIsNone(t1.getShape(["K"], authoritative=True))
-            self.assertIsNone(t1.getShape("M", authoritative=True))
-            self.assertIsNone(t1.getShape("K", authoritative=True))
+            self.assertEqual(t1.getShape(authoritative=True), [7, 4])
+            self.assertEqual(t1.getShape(["M", "K"], authoritative=True), [7, 4])
+            self.assertEqual(t1.getShape(["M"], authoritative=True), [7])
+            self.assertEqual(t1.getShape(["K"], authoritative=True), [4])
+            self.assertEqual(t1.getShape("M", authoritative=True), 7)
+            self.assertEqual(t1.getShape("K", authoritative=True), 4)
 
 
     def test_shape_fromFiber_authoritative(self):

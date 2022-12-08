@@ -283,6 +283,25 @@ class RankAttrs:
         """
         return self._shape
 
+    def setEstimatedShape(self, estimated_shape):
+        """Get whether the shape was estimated or specified
+
+        Parameters
+        ----------
+        estimated_shape: bool
+            True if the shape was estimated
+
+        Returns
+        -------
+
+        None
+
+        Raises
+        ------
+        None
+        """
+        self._estimated_shape = estimated_shape
+
 
     def getEstimatedShape(self):
         """Get whether the shape was estimated or specified

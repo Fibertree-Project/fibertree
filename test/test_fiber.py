@@ -2820,6 +2820,8 @@ class TestFiber(unittest.TestCase):
                         Fiber([0, 1, 3], [1, 2, 4])])
 
         self.assertEqual(ff, ff_ref)
+        self.assertEqual(ff.getShape(), [(3, 4), 4])
+        self.assertEqual(ff.getActive(), ((0, 0), (3, 4)))
 
         fu = ff.unflattenRanks()
 
@@ -3028,7 +3030,7 @@ class TestFiber(unittest.TestCase):
 
         corr = Fiber([0, 1, 2, 3, 4, 5, 7], [1, 6, 3, 5, 13, 9, 18])
         self.assertEqual(mf, corr)
-        self.assertEqual(mf.getShape(), 10)
+        self.assertEqual(mf.getShape(), [10])
         self.assertEqual(mf.getActive(), (0, 10))
 
     def test_merge_max(self):
@@ -3043,7 +3045,7 @@ class TestFiber(unittest.TestCase):
 
         corr = Fiber([0, 1, 2, 3, 4, 5, 7], [1, 4, 3, 5, 7, 9, 10])
         self.assertEqual(mf, corr)
-        self.assertEqual(mf.getShape(), 10)
+        self.assertEqual(mf.getShape(), [10])
         self.assertEqual(mf.getActive(), (0, 10))
 
     def test_merge_two_levels(self):
@@ -3062,7 +3064,7 @@ class TestFiber(unittest.TestCase):
 
         corr = Fiber([0, 1, 2, 3, 4, 5, 7], [1, 6, 3, 5, 13, 9, 18])
         self.assertEqual(mf, corr)
-        self.assertEqual(mf.getShape(), 10)
+        self.assertEqual(mf.getShape(), [10])
         self.assertEqual(mf.getActive(), (0, 10))
 
     def test_merge_depth_gt_zero(self):
@@ -3076,15 +3078,15 @@ class TestFiber(unittest.TestCase):
                          [Fiber([4, 7], [7, 8], shape=10),
                           Fiber([5, 7], [9, 10], shape=10)],
                          shape=10)],
-                  shape=10)
+                  shape=5)
         mf = f.mergeRanks(depth=1, style="absolute")
 
         corr = Fiber([0, 4],
                      [Fiber([0, 1, 2, 3, 4], [1, 6, 3, 5, 6]),
                       Fiber([4, 5, 7], [7, 9, 18])])
         self.assertEqual(mf, corr)
-        self.assertEqual(mf.getShape(), 10)
-        self.assertEqual(mf.getActive(), (0, 10))
+        self.assertEqual(mf.getShape(), [5, 10])
+        self.assertEqual(mf.getActive(), (0, 5))
 
     def test_merge_fibers(self):
         """Test that the merge works to correctly combine fibers"""
@@ -3097,7 +3099,7 @@ class TestFiber(unittest.TestCase):
                          [Fiber([4, 7], [7, 8], shape=10),
                           Fiber([5, 7], [9, 10], shape=10)],
                          shape=10)],
-                  shape=10)
+                  shape=7)
         mf = f.mergeRanks(style="absolute")
 
         corr = Fiber([0, 1, 5],
@@ -3106,9 +3108,8 @@ class TestFiber(unittest.TestCase):
                       Fiber([5, 7], [9, 10])])
 
         self.assertEqual(mf, corr)
-        self.assertEqual(mf.getShape(), 10)
+        self.assertEqual(mf.getShape(), [10, 10])
         self.assertEqual(mf.getActive(), (0, 10))
-
 
 
 if __name__ == '__main__':

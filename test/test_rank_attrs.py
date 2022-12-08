@@ -45,6 +45,9 @@ class TestRankAttrs(unittest.TestCase):
         attrs = RankAttrs("K")
         self.assertTrue(attrs.getEstimatedShape())
 
+        attrs.setEstimatedShape(False)
+        self.assertFalse(attrs.getEstimatedShape())
+
         attrs = RankAttrs("K", 10)
         self.assertFalse(attrs.getEstimatedShape())
 

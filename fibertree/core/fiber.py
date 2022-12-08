@@ -1369,10 +1369,12 @@ class Fiber:
         if self._active_range:
             return self._active_range
 
-        if self.getRankAttrs().getShape():
-            return (0, self.getRankAttrs().getShape())
+        shape = self.getRankAttrs().getShape()
+        if not shape:
+            shape = self.estimateShape(all_ranks=False)
 
-        return (0, self.estimateShape(all_ranks=False))
+        start = Fiber._transCoord(shape, lambda c: 0)
+        return (start, shape)
 
     #
     # Default payload methods
@@ -2426,6 +2428,24 @@ class Fiber:
 
         else:
             shape = self.getRankAttrs().getShape()
+            if shape and all_ranks:
+                # Not authoritative
+                rest = []
+                for _, p in self:
+                    if not isinstance(p, Fiber):
+                        continue
+
+                    new_shape = p.getShape(all_ranks=all_ranks, authoritative=authoritative)
+                    for i, ns in enumerate(new_shape):
+                        # If the new shape has more ranks
+                        if i >= len(rest):
+                            rest.append(ns)
+
+                        else:
+                            rest[i] = max(rest[i], ns)
+
+                shape = [shape] + rest
+
 
         if shape is not None or authoritative:
             return shape
@@ -4192,8 +4212,18 @@ class Fiber:
         shape = None
         if style == "absolute" or style == "relative":
             shape = low_shape
-        elif style == "linear":
-            shape = up_shape * low_shape
+        elif up_shape and low_shape:
+            if style == "linear":
+                shape = up_shape * low_shape
+            elif style == "pair":
+                shape = (up_shape, low_shape)
+            elif style == "tuple":
+                if isinstance(low_shape, tuple):
+                    shape = (up_shape,) + low_shape
+                else:
+                    shape = (up_shape, low_shape)
+
+
 
         # Compute the active range
         active_range = None
@@ -4204,8 +4234,10 @@ class Fiber:
 
         if style == "tuple" or style == "pair":
             active_range = ((self.getActive()[0], range_start), (self.getActive()[1], range_end))
-        elif style == "absolute" or style == "relative":
+        elif style == "relative":
             active_range = self.getActive()
+        elif style == "absolute":
+            active_range = (range_start, range_end)
         elif style == "linear":
             active_range = (0, float("inf"))
 
@@ -4417,7 +4449,6 @@ class Fiber:
 
         Note: explict zeros do not result in inequality
         """
-
         if not isinstance(other, Fiber):
             return False
 

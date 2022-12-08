@@ -35,11 +35,13 @@ class TestConstructor(unittest.TestCase):
 
         fs.append(Fiber(self.input["c1"], self.input["p1"]))
         fs.append(Fiber(self.input["c1"], self.input["p1"], default=-1))
-        fs.append(Fiber(self.input["c1"], self.input["p1"], shape=[20]))
-        fs.append(Fiber(self.input["c1"], self.input["p1"], shape=[20], default=-2))
+        fs.append(Fiber(self.input["c1"], self.input["p1"], shape=20))
+        fs.append(Fiber(self.input["c1"], self.input["p1"], shape=20, default=-2))
 
         for test, f in enumerate(fs):
             with self.subTest(test=test):
+                if test != 2:
+                    continue
                 f_attr = self.attributes(f)
 
                 for n, (c, p)  in enumerate(f):
@@ -78,15 +80,15 @@ class TestConstructor(unittest.TestCase):
         attrs = []
         attrs.append([[Fiber, 0], 2, None, [3,3]])
         attrs.append([[Fiber, 0], 2, None, [3,3]])
-        attrs.append([[Fiber, 0], 2, None, [8,8]])
-        attrs.append([[Fiber, 0], 2, None, [8,8]])
+        attrs.append([[Fiber, 0], 2, None, [8,3]])
+        attrs.append([[Fiber, 0], 2, None, [8,3]])
 
         fs = []
 
         fs.append(Fiber(self.input["c2"], self.input["p2"]))
         fs.append(Fiber(self.input["c2"], self.input["p2"], default=-1))
-        fs.append(Fiber(self.input["c2"], self.input["p2"], shape=[8, 8]))
-        fs.append(Fiber(self.input["c2"], self.input["p2"], shape=[8, 8], default=-2))
+        fs.append(Fiber(self.input["c2"], self.input["p2"], shape=8))
+        fs.append(Fiber(self.input["c2"], self.input["p2"], shape=8, default=-2))
 
 
         for test, f in enumerate(fs):
