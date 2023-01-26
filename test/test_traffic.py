@@ -1,5 +1,6 @@
 """Tests of the Traffic class"""
 
+import os
 import unittest
 import yaml
 
@@ -10,6 +11,10 @@ class TestTraffic(unittest.TestCase):
     """Tests of the Traffic class"""
 
     def setUp(self):
+        # Make sure we have a tmp directory to write to
+        if not os.path.exists("tmp"):
+            os.makedirs("tmp")
+
         K = 8
         M = 6
         N = 7
