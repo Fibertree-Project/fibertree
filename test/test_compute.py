@@ -1,5 +1,6 @@
 """Tests of the Compute class"""
 
+import os
 import unittest
 
 from fibertree import Metrics
@@ -10,6 +11,11 @@ from fibertree.model import Compute
 
 class TestCompute(unittest.TestCase):
     """Tests of the Compute class"""
+
+    def setUp(self):
+        # Make sure we have a tmp directory to write to
+        if not os.path.exists("tmp"):
+            os.makedirs("tmp")
 
     def test_num_ops(self):
         """Test Compute.numOps()"""
