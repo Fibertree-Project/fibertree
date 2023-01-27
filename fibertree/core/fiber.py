@@ -1871,7 +1871,7 @@ class Fiber:
                 key += len(self)
 
             if key < 0 or key >= len(self):
-                raise(IndexError, f"The index ({key}) is out of range")
+                raise IndexError(f"The index ({key}) is out of range")
 
             new_payload = self.payloads[key]
 
@@ -1898,7 +1898,7 @@ class Fiber:
 
             return Fiber(coords, payloads)
 
-        raise(TypeError, "Invalid key type.")
+        raise TypeError("Invalid key type.")
 
 
     def __setitem__(self, key, newvalue):

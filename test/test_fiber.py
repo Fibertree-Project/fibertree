@@ -1293,6 +1293,24 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(a, b)
         self.assertFalse(a.isLazy())
 
+    def test_getitem_index_error(self):
+        Z_MN = Tensor(rank_ids=["M", "N"])
+        z_m = Z_MN.getRoot()
+
+        with self.assertRaises(IndexError) as cm:
+            z_m[0]
+
+        self.assertEqual(str(cm.exception), "The index (0) is out of range")
+
+    def test_getitem_type_error(self):
+        Z_MN = Tensor(rank_ids=["M", "N"])
+        z_m = Z_MN.getRoot()
+
+        with self.assertRaises(TypeError) as cm:
+            z_m["foo"]
+
+        self.assertEqual(str(cm.exception), "Invalid key type.")
+
     def test_getitem_simple(self):
         """Get item - simple"""
 
