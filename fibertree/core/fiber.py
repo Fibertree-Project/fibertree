@@ -3381,8 +3381,11 @@ class Fiber:
 
         """
         assert not self.isLazy()
+        if isinstance(splits, Fiber):
+            splits = splits.getCoords()
+
         assert isinstance(halo, int) and all(isinstance(split, int) for split in splits)
-        assert halo <= min(splits[i + 1] - splits[i] for i in range(len(splits) - 1))
+        assert len(splits) < 2 or halo <= min(splits[i + 1] - splits[i] for i in range(len(splits) - 1))
 
         class _SplitterNonUniform():
 
