@@ -360,6 +360,66 @@ class TestFiberSplit(unittest.TestCase):
         # another level to the empty fiber
         self.assertIsInstance(split.getDefault(), Fiber)
 
+    def test_split_nonuniform_empty_split(self):
+        """Test that splitNonUniform works when the split list has no elements"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+
+        #
+        # Do the split
+        #
+        splits = []
+        split = f.splitNonUniform(splits)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(split, Fiber())
+
+    def test_split_nonuniform_one_split(self):
+        """Test that splitNonUniform works when the split list has one element"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 31, 41 ] ]
+
+        pss = [ [ 310, 410 ] ]
+
+        ranges = [(20, 42)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        splits = [20]
+        split = f.splitNonUniform(splits)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, splits[i])
+            self.assertEqual(sp, split_ref[i])
+            self.assertEqual(sp.getActive(), split_ref[i].getActive())
+
     def test_split_nonuniform_all_before(self):
         """Test splitNonUniform - all coordinates are before the first split"""
 
@@ -466,6 +526,50 @@ class TestFiberSplit(unittest.TestCase):
         for i, (sc, sp)  in enumerate(split):
             self.assertEqual(sc, splits[i])
             self.assertEqual(sp, split_ref[i])
+
+    def test_split_nonuniform_fiber(self):
+        """Test splitNonUniform - where the input is a fiber"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p)
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 0, 1, 9, 10 ],
+              [ 12 ],
+              [ 31, 41 ] ]
+
+        pss = [ [ 1, 10, 20, 100 ],
+                [ 120 ],
+                [ 310, 410 ] ]
+
+        ranges = [(0, 12), (12, 31), (31, 42)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        splits = Fiber([0, 12, 31], [1, 1, 1])
+        split = f.splitNonUniform(splits)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, splits.coords[i])
+            self.assertEqual(sp, split_ref[i])
+            self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
     def test_split_nonuniform_active_only(self):
         """Test splitNonUniform only iterates over the active_range of the fiber"""
@@ -706,6 +810,7 @@ class TestFiberSplit(unittest.TestCase):
         for i, (sc, sp)  in enumerate(split):
             self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
+
     def test_split_nonuniform_valid_halo(self):
         """Test that splitNonUniform only accepts valid halos"""
         #
