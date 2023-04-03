@@ -1,5 +1,6 @@
 import unittest
 
+from fibertree import Fiber
 from fibertree import Metrics
 from fibertree import Payload
 
@@ -141,6 +142,13 @@ class TestPayload(unittest.TestCase):
         self.assertFalse(8 != c)
         self.assertTrue(1 != c)
 
+    def test_isEmpty(self):
+        self.assertTrue(Payload.isEmpty(Fiber()))
+        self.assertFalse(Payload.isEmpty(Fiber([0, 1, 3], [4, 3, 6])))
+
+        self.assertTrue(Payload.isEmpty(0))
+        self.assertFalse(Payload.isEmpty(5))
+        self.assertTrue(Payload.isEmpty(5, default=5))
 
 
 if __name__ == '__main__':

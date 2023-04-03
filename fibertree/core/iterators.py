@@ -167,7 +167,7 @@ def iterRange(self, start, end, tick=True, start_pos=None):
 
         # If we are within the range, emit the non-default elements
         elif start is None or coord >= start:
-            if not Payload.isEmpty(payload):
+            if not Payload.isEmpty(payload, default=self.getDefault()):
                 if start_pos is not None:
                     self.setSavedPos(i + j, distance=j)
 

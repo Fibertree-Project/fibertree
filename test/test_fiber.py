@@ -14,7 +14,6 @@ class TestFiber(unittest.TestCase):
         if not os.path.exists("tmp"):
             os.makedirs("tmp")
 
-
     def test_new_1d(self):
         """Create a 1d fiber"""
 
@@ -293,6 +292,12 @@ class TestFiber(unittest.TestCase):
         c = Fiber([0, 1], [0, 1])
         self.assertFalse(c.isEmpty())
 
+    def test_isempty_obeys_default(self):
+        """Test that isEmpty obeys the default"""
+
+        f = Fiber([0, 1], [7, 7], default=7)
+        self.assertTrue(f.isEmpty())
+
 
     def test_isempty_eager_only(self):
         """Test for empty fiber only in eager mode"""
@@ -338,6 +343,22 @@ class TestFiber(unittest.TestCase):
         ne_ref = Fiber([3], [ne3])
 
         self.assertEqual(ne, ne_ref)
+
+    def test_nonempty_obeys_default(self):
+        """Test nonEmpty() obeys default"""
+        c = [0, 1, 3]
+        p = [4, 3, 6]
+        f = Fiber(c, p)
+        f.getRankAttrs().setDefault(3)
+
+        self.assertEqual(f.coords, c)
+        self.assertEqual(f.payloads, p)
+
+        ne = f.nonEmpty()
+
+        self.assertEqual(ne.coords, [0, 3])
+        self.assertEqual(ne.payloads, [4, 6])
+        self.assertEqual(ne.getDefault(), 3)
 
     def test_nonempty_eager_only(self):
         """Get non-empty elements only in eager mode"""
@@ -470,6 +491,12 @@ class TestFiber(unittest.TestCase):
         a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
 
         self.assertEqual(a.countValues(), 6)
+
+    def test_count_values_obeys_default(self):
+        """Count values with a non-zero default"""
+        f = Fiber([0, 1, 3], [4, 3, 6])
+        f.getRankAttrs().setDefault(3)
+        self.assertEqual(f.countValues(), 2)
 
 
     def test_count_values_eager_only(self):
@@ -774,6 +801,25 @@ class TestFiber(unittest.TestCase):
         for i, (c, p) in enumerate(a.iterRange(2, 9)):
             self.assertEqual(c, c1[i])
             self.assertEqual(p, p1[i])
+
+    def test_iterRange_obeys_default(self):
+        """
+        Test that iterRange obeys the explit default
+        """
+        c0 = [1, 4, 8, 9]
+        p0 = [0, 0, 0, 0]
+        a = Fiber(c0, p0, default=float("inf"))
+
+        c1 = [4, 8]
+        p1 = [0, 0]
+
+        iters = 0
+        for i, (c, p) in enumerate(a.iterRange(2, 9)):
+            self.assertEqual(c, c1[i])
+            self.assertEqual(p, p1[i])
+            iters += 1
+
+        self.assertEqual(iters, 2)
 
     def test_iterRange_start_pos_eager_only(self):
         """Test iterRange start_pos only works with eager fibers"""
@@ -1837,6 +1883,24 @@ class TestFiber(unittest.TestCase):
         b <<= a
 
         self.assertEqual(a, b)
+
+    def test_ilshift_obeys_default(self):
+        """<<= infix operator only copies non-default values"""
+        coords = [2, 4, 6, 8, 9, 12, 15, 16, 17, 20 ]
+        payloads = [3, 5, 7, 9, 5, 13, 5, 17, 18, 5]
+
+        a = Fiber(coords, payloads)
+        a.getRankAttrs().setDefault(5)
+        b = Fiber()
+
+        b <<= a
+
+        c = [2, 6, 8, 12, 16, 17]
+        p = [3, 7, 9, 13, 17, 18]
+        corr = Fiber(c, p, default=5)
+
+        self.assertEqual(b, corr)
+        self.assertEqual(b.getDefault(), 5)
 
     def test_ilshift_multiple_ranks(self):
         """ <<= infix operator with multiple ranks"""
