@@ -189,7 +189,7 @@ class Payload:
 # Static methods
 #
     @staticmethod
-    def isEmpty(p):
+    def isEmpty(p, default=0):
         """Check if a fiber element's payload is empty.
 
         Selectively look into the given argument (`p`) to see if it is
@@ -219,10 +219,7 @@ class Payload:
         if type(p).__name__ == "Fiber":
             return p.isEmpty()
 
-        if isinstance(p, tuple):
-            assert isinstance(p, tuple)
-
-        if (p == 0):
+        if p == default:
             return True
 
         return False

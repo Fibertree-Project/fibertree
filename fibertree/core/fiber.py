@@ -1781,7 +1781,7 @@ class Fiber:
             if Payload.contains(p, Fiber):
                 count += Payload.get(p).countValues()
             else:
-                count += 1 if not Payload.isEmpty(p) else 0
+                count += 1 if not Payload.isEmpty(p, default=self.getDefault()) else 0
 
         return count
 
@@ -2014,7 +2014,7 @@ class Fiber:
         """
         assert not self.isLazy()
 
-        return all(map(Payload.isEmpty, self.payloads))
+        return all(map(lambda p: Payload.isEmpty(p, default=self.getDefault()), self.payloads))
 
 
     def nonEmpty(self):
@@ -2038,7 +2038,7 @@ class Fiber:
         payloads = []
 
         for c, p in zip(self.coords, self.payloads):
-            if not Payload.isEmpty(p):
+            if not Payload.isEmpty(p, default=self.getDefault()):
                 coords.append(c)
                 if Payload.contains(p, Fiber):
                     payloads.append(p.nonEmpty())
@@ -2807,14 +2807,6 @@ class Fiber:
 
         self._setDefault(other.getDefault())
         for c, p in other:
-            #
-            # For each non-empty element of other, insert it into the
-            # target, note that this works regardless of whether p is
-            # a Fiber or a Payload
-            #
-            if Payload.isEmpty(p):
-                continue
-
             ref = self.getPayloadRef(c)
             ref <<= p
 
@@ -4456,10 +4448,10 @@ class Fiber:
             return False
 
         for c, (mask, ps, po) in self | other:
-            if mask == "A" and not Payload.isEmpty(ps):
+            if mask == "A":
                 return False
 
-            if mask == "B" and not Payload.isEmpty(po):
+            if mask == "B":
                 return False
 
             if mask == "AB" and not (ps == po):
