@@ -277,7 +277,8 @@ class Tensor:
                   fiber=None,
                   shape=None,
                   name="",
-                  color="red"):
+                  color="red",
+                  default=0):
         """Construct a tensor from a fiber
 
         Parameters
@@ -319,7 +320,8 @@ class Tensor:
         tensor = cls(rank_ids=rank_ids,
                      shape=shape,
                      name=name,
-                     color=color)
+                     color=color,
+                     default=default)
 
         tensor.setRoot(fiber)
 
@@ -1287,6 +1289,7 @@ class Tensor:
         tensor.setName(self.getName() + "+split")
         tensor.setColor(self.getColor())
         tensor.setMutable(self.isMutable())
+        tensor.setDefault(self.getDefault())
 
         # Maintain the formats
         for rank_id in tensor.getRankIds():

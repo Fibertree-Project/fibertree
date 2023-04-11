@@ -94,6 +94,20 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
+    def test_split_uniform_preserves_default(self):
+        """Split uniform preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        t = Tensor.fromFiber(rank_ids=["M"], fiber=f, default=float("inf"))
+        split = t.splitUniform(10)
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
     def test_splitNonUniform_0(self):
         """ Test splitNonUniform - depth=0 """
 
@@ -146,6 +160,21 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
+
+    def test_split_nonuniform_preserves_default(self):
+        """Split non-uniform preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        t = Tensor.fromFiber(rank_ids=["M"], fiber=f, default=float("inf"))
+        split = t.splitNonUniform([0, 11, 20])
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
 
     def test_floordiv(self):
         """ Test /, the __floordiv__ operator """
@@ -211,6 +240,21 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
+    def test_split_equal_preserves_default(self):
+        """Split equal preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        t = Tensor.fromFiber(rank_ids=["M"], fiber=f, default=float("inf"))
+        split = t.splitEqual(5)
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
+
     def test_splitUnEqual_0(self):
         """ Test splitUnEqual - depth=0 """
 
@@ -265,6 +309,19 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
+    def test_split_unequal_preserves_default(self):
+        """Split un-equal preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        t = Tensor.fromFiber(rank_ids=["M"], fiber=f, default=float("inf"))
+        split = t.splitUnEqual([3, 4, 5])
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
 
     def test_swapRanks_0(self):
         """ Test swapRanks - depth=0 """

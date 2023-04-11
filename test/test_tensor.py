@@ -225,6 +225,17 @@ class TestTensor(unittest.TestCase):
 
         self.assertEqual(tensor, tensor_ref)
 
+    def test_fromFiber_non_zero_default(self):
+        """Test the construction of a tensor from a fiber includes correct
+        propagation of defaults"""
+
+        tensor_ref = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+
+        root = tensor_ref.getRoot()
+
+        tensor = Tensor.fromFiber(["M", "K"], root, default=float("inf"))
+        self.assertEqual(tensor.getPayload(1, 0), 100)
+        self.assertEqual(tensor.getPayload(1, 3), float("inf"))
 
     def test_fromRandom(self):
         """Test construction of a random tensor"""

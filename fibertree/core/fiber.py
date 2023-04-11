@@ -3858,7 +3858,7 @@ class Fiber:
         upper = Fiber(default=Fiber(), active_range=self.getActive())
 
         for part, coords, payloads, active_range in splitter(self):
-            lower = Fiber(coords=coords, payloads=payloads, active_range=active_range)
+            lower = Fiber(coords=coords, payloads=payloads, active_range=active_range, default=self.getDefault())
             upper.coords.append(part)
             upper.payloads.append(lower)
 
