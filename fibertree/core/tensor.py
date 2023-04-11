@@ -1503,6 +1503,7 @@ class Tensor:
         tensor.setName(self.getName() + "+flattened")
         tensor.setColor(self.getColor())
         tensor.setMutable(self.isMutable())
+        tensor.setDefault(self.getDefault())
 
         # Maintain the formats for unflattened rank_ids
         # Compress everything else
@@ -1543,6 +1544,7 @@ class Tensor:
         tensor.setName(self.getName() + "+merged")
         tensor.setColor(self.getColor())
         tensor.setMutable(self.isMutable())
+        tensor.setDefault(self.getDefault())
 
         # Maintain the formats for unmerged rank_ids
         # Compress everything else

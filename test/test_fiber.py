@@ -3193,6 +3193,17 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(mf.getShape(), [10, 10])
         self.assertEqual(mf.getActive(), (0, 10))
 
+    def test_merge_preserves_default(self):
+        """Test that mergeRanks merges together fibers while preserving an explicit default"""
+        f = Fiber([0, 1, 4, 5],
+                  [Fiber([0, 1, 2], [1, 2, 3], shape=10, default=float("inf")),
+                   Fiber([1, 3, 4], [4, 5, 6], shape=10, default=float("inf")),
+                   Fiber([4, 7], [7, 8], shape=10, default=float("inf")),
+                   Fiber([5, 7], [9, 10], shape=10, default=float("inf"))],
+                  shape=10)
+        mf = f.mergeRanks()
+
+        self.assertEqual(mf.getDefault(), float("inf"))
 
 if __name__ == '__main__':
     unittest.main()
