@@ -411,6 +411,7 @@ class Payload:
 
     def __iadd__(self, other):
         """__iadd__"""
+        old = self.value
 
         if isinstance(other, Payload):
             self.value = self.value + other.value
@@ -419,8 +420,9 @@ class Payload:
 
         # Collect metrics
         if Metrics.isCollecting():
-            Metrics.incCount("Compute", "payload_add", 1)
             Metrics.incCount("Compute", "payload_update", 1)
+            if old != 0:
+                Metrics.incCount("Compute", "payload_add", 1)
 
         return self
 
