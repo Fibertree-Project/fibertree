@@ -818,36 +818,79 @@ def __or__(self, other):
         b_fiber = other
 
         def __iter__(self):
-            a = self.a_fiber.__iter__()
-            b = self.b_fiber.__iter__()
+            is_collecting = Metrics.isCollecting()
+            a_traced = False
+            b_traced = False
+            if is_collecting:
+                rank = self.a_fiber.getRankAttrs().getId()
+                a_label = str(Metrics.getLabel(rank))
+                b_label = str(Metrics.getLabel(rank))
+
+                a_trace = "union_" + a_label
+                b_trace = "union_" + b_label
+
+                a_traced = Metrics.isTraced(rank, a_trace)
+                b_traced = Metrics.isTraced(rank, b_trace)
+
+                a_pos = 0
+                b_pos = 0
+
+            a = self.a_fiber.__iter__(tick=False)
+            b = self.b_fiber.__iter__(tick=False)
 
             a_coord, a_payload = _get_next(a)
             b_coord, b_payload = _get_next(b)
 
             while a_coord is not None and b_coord is not None:
                 if a_coord == b_coord:
+                    if a_traced:
+                        Metrics.addUse(rank, a_coord, a_pos, type_=a_trace)
+                        a_pos += 1
+
+                    if b_traced:
+                        Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
+                        b_pos += 1
+
                     yield a_coord, ("AB", a_payload, b_payload)
 
                     a_coord, a_payload = _get_next(a)
                     b_coord, b_payload = _get_next(b)
 
+
+
                 elif a_coord < b_coord:
+                    if a_traced:
+                        Metrics.addUse(rank, a_coord, a_pos, type_=a_trace)
+                        a_pos += 1
+
                     b_default = self.b_fiber._createDefault()
                     yield a_coord, ("A", a_payload, b_default)
                     a_coord, a_payload = _get_next(a)
 
                 # a_coord > b_coord
                 else:
+                    if b_traced:
+                        Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
+                        b_pos += 1
+
                     a_default = self.a_fiber._createDefault()
                     yield b_coord, ("B", a_default, b_payload)
                     b_coord, b_payload = _get_next(b)
 
             while a_coord is not None:
+                if a_traced:
+                    Metrics.addUse(rank, a_coord, a_pos, type_=a_trace)
+                    a_pos += 1
+
                 b_default = self.b_fiber._createDefault()
                 yield a_coord, ("A", a_payload, b_default)
                 a_coord, a_payload = _get_next(a)
 
             while b_coord is not None:
+                    if b_traced:
+                        Metrics.addUse(rank, b_coord, b_pos, type_=b_trace)
+                        b_pos += 1
+
                     a_default = self.a_fiber._createDefault()
                     yield b_coord, ("B", a_default, b_payload)
                     b_coord, b_payload = _get_next(b)

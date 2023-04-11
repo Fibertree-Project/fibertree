@@ -875,5 +875,73 @@ class TestFiberOperators(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f_in *= 2
 
+    def test_or_fiber(self):
+        """Test __or__ fiber"""
+        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 0, 7])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([9, 0, 3, 8, 0, 6, 0])
+        b_k.getRankAttrs().setId("K")
+
+        cc = [0, 2, 3, 4, 5, 6]
+        cp = [("AB", 1, 9), ("B", 0, 3), ("AB", 4, 8), ("A", 5, 0), ("B", 0, 6), ("A", 7, 0)]
+        self.assertEqual(len(cc), len(a_k | b_k))
+        for i, (c, p) in enumerate(a_k | b_k):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
+        # Check the fiber attributes
+        id_ = (a_k | b_k).getRankAttrs().getId()
+        self.assertEqual(id_, "K")
+        self.assertEqual((a_k | b_k).getActive(), (0, 7))
+
+    def test_or_fiber_metrics(self):
+        """Test __or__ fiber"""
+        a_k = Fiber.fromUncompressed([1, 0, 0, 4, 5, 0, 7])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([9, 0, 3, 8, 0, 6, 0])
+        b_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_or_fiber_metrics")
+        Metrics.trace("K", type_="union_0")
+        Metrics.trace("K", type_="union_1")
+        for _ in a_k | b_k:
+            pass
+        Metrics.endCollect()
+
+        corra = [
+            "K_pos,K,fiber_pos\n",
+            "0,0,0\n",
+            "2,3,1\n",
+            "3,4,2\n",
+            "5,6,3\n"
+        ]
+
+        corrb = [
+            "K_pos,K,fiber_pos\n",
+            "0,0,0\n",
+            "1,2,1\n",
+            "2,3,2\n",
+            "4,5,3\n"
+        ]
+
+        with open("tmp/test_or_fiber_metrics-K-union_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corra)
+
+        with open("tmp/test_or_fiber_metrics-K-union_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corrb)
+
+        Metrics.beginCollect("tmp/test_or_fiber_metrics")
+        Metrics.trace("K", type_="union_0")
+        Metrics.trace("K", type_="union_1")
+        for _ in b_k | a_k:
+            pass
+        Metrics.endCollect()
+
+        with open("tmp/test_or_fiber_metrics-K-union_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corrb)
+
+        with open("tmp/test_or_fiber_metrics-K-union_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corra)
+
 if __name__ == '__main__':
     unittest.main()
