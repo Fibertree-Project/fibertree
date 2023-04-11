@@ -348,6 +348,15 @@ class TestTensorTransform(unittest.TestCase):
         self.assertEqual(a_out.getRankIds(), ["M", "K", "N"])
         self.assertEqual(a_out.getShape(), [41, 10, 42])
 
+    def test_swapRanks_preserves_default(self):
+        """Test swapRanks preserves default"""
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a.setDefault(float("inf"))
+
+        a_out = a.swapRanks()
+
+        self.assertEqual(a_out.getDefault(), float("inf"))
+
 
     def test_swizzleRanks(self):
         """ Test swizzleRanks """
@@ -409,6 +418,21 @@ class TestTensorTransform(unittest.TestCase):
                                 [4, 0, 0, 5, 1, 3]])
         new_A_MK = A_MK.swizzleRanks(["M", "K"])
         self.assertEqual(A_MK, new_A_MK)
+
+    def test_swizzleRanks_same(self):
+        """Test swizzleRanks does nothing"""
+        A_MK = Tensor.fromUncompressed(["M", "K"],
+                               [[0, 0, 4, 0, 0, 5],
+                                [3, 2, 0, 3, 0, 2],
+                                [0, 2, 0, 0, 1, 2],
+                                [0, 0, 0, 0, 0, 0],
+                                [2, 5, 0, 0, 0, 5],
+                                [4, 1, 0, 0, 0, 0],
+                                [5, 0, 0, 1, 0, 0],
+                                [4, 0, 0, 5, 1, 3]])
+        A_MK.setDefault(float("inf"))
+        A_KM = A_MK.swizzleRanks(["K", "M"])
+        self.assertEqual(A_KM.getDefault(), float("inf"))
 
 
     def test_flattenRanks_0(self):

@@ -1402,7 +1402,7 @@ class Tensor:
             last_coord = coord
 
         # Build the new tensor
-        kwargs = {"fiber": root, "rank_ids": rank_ids}
+        kwargs = {"fiber": root, "rank_ids": rank_ids, "default": self.getDefault()}
         old_shape = self.getShape(authoritative=True)
         if old_shape:
             new_shape = [old_shape[guide[i]] for i in range(swiz_len)] \
@@ -1466,6 +1466,7 @@ class Tensor:
         tensor.setName(self.getName() + "+swapped")
         tensor.setColor(self.getColor())
         tensor.setMutable(self.isMutable())
+        tensor.setDefault(self.getDefault())
 
         # Maintain the formats
         for rank_id in tensor.getRankIds():

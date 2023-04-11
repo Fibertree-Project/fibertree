@@ -56,7 +56,7 @@ class TestPayload(unittest.TestCase):
         self.assertEqual(Metrics.dump(), {
             "Compute": {"payload_add": 4, "payload_update": 1}})
 
-        # Skip += 0
+        # Skip 0 += ...
         z = Payload(0)
         z += a
         self.assertEqual(Metrics.dump(), {"Compute": {"payload_add": 4, "payload_update": 2}})

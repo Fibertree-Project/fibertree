@@ -3970,16 +3970,13 @@ class Fiber:
         coords = [c for c, _ in sorted_cp]
         payloads = [p for _, p in sorted_cp]
 
-        flattened_sorted = Fiber(coords, payloads)
+        flattened_sorted = Fiber(coords, payloads, default=flattened.getDefault())
 
         #
         # Unflatten to get original coordinates in swapped ranks
         #
         swapped = flattened_sorted.unflattenRanks()
 
-        #
-        # TBD: set default
-        #
         return swapped
 
 
