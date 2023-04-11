@@ -472,6 +472,10 @@ class Payload:
 
         """
 
+        # Collect metrics
+        if Metrics.isCollecting():
+            Metrics.incCount("Compute", "payload_update", 1)
+
         if isinstance(other, Payload):
             self.value = other.value
         else:

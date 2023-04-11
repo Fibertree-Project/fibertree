@@ -122,6 +122,20 @@ class TestPayload(unittest.TestCase):
 
         Metrics.endCollect()
 
+    def test_ilshift_metrics(self):
+        a = Payload(1)
+
+        Metrics.beginCollect()
+        a <<= 5
+        self.assertEqual(Metrics.dump(), {"Compute": {"payload_update": 1}})
+
+        a <<= 4
+        self.assertEqual(Metrics.dump(), {"Compute": {"payload_update": 2}})
+
+        a <<= 6
+        self.assertEqual(Metrics.dump(), {"Compute": {"payload_update": 3}})
+        Metrics.endCollect()
+
     def test_equality(self):
         cv = 8
         dv = 8
