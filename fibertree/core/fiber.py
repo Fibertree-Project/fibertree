@@ -633,7 +633,7 @@ class Fiber:
 # others change the content of the fiber (mutating)
 #
 
-    def getPayload(self, *coords, default=None, allocate=True, start_pos=None):
+    def getPayload(self, *coords, default=None, allocate=True, start_pos=None, trace=None):
         """Get the payload at a **point** in a fibertree
 
         Return the final payload after recursively traversing the
@@ -717,6 +717,9 @@ class Fiber:
             payload = Payload.maybe_box(default)
             const_used = True
 
+        if Metrics.isCollecting():
+            Metrics.addUse(self.getRankAttrs().getId(), coords[0], index, type_=trace)
+
         if not const_used and len(coords) > 1:
             assert Payload.contains(payload, Fiber), \
                 "getPayload too many coordinates"
@@ -724,7 +727,8 @@ class Fiber:
             # Recurse to the next level's fiber
             return payload.getPayload(*coords[1:],
                                       default=default,
-                                      allocate=allocate)
+                                      allocate=allocate,
+                                      trace=trace)
 
         if start_pos is not None:
             if existing or index == 0:
@@ -739,7 +743,7 @@ class Fiber:
         return payload
 
 
-    def getPayloadRef(self, *coords, start_pos=None):
+    def getPayloadRef(self, *coords, start_pos=None, trace=None):
         """Get a (mutable) reference to a payload in a fibertree
 
         Return the final payload after recursively traversing the
@@ -786,11 +790,14 @@ class Fiber:
         else:
             payload = self._create_payload(coords[0])
 
+        if Metrics.isCollecting():
+            Metrics.addUse(self.getRankAttrs().getId(), coords[0], index, type_=trace)
+
         if len(coords) > 1:
             # Recurse to the next level's fiber
             assert Payload.contains(payload, Fiber), "Too many coordinates"
 
-            return payload.getPayloadRef(*coords[1:])
+            return payload.getPayloadRef(*coords[1:], trace=trace)
 
         if start_pos is not None:
             self.setSavedPos(index, distance=index - start_pos)
