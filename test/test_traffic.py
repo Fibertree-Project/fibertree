@@ -229,6 +229,19 @@ class TestTraffic(unittest.TestCase):
             open("test_traffic-test_combineTraces_both-corr.csv", "r") as f_corr:
             self.assertEqual(f_test.readlines(), f_corr.readlines())
 
+    def test_buildPoint(self):
+        """Build a point in the format-specific tensor"""
+        point = Traffic._buildPoint("1,2,3,4,5,False".split(","), [False, True], 1, "C")
+        self.assertEqual(point, ("5",))
+
+        point = Traffic._buildPoint("1,2,3,4,5,False".split(","), [True, True], 1, "C")
+        self.assertEqual(point, ("3", "5"))
+
+        point = Traffic._buildPoint("1,2,3,4,1,False".split(","), [True, True], 2, "C")
+        self.assertEqual(point, ("3", "0"))
+
+        point = Traffic._buildPoint("1,2,3,4,1,False".split(","), [True, True], 2, "U")
+        self.assertEqual(point, ("3", "4"))
 
     def test_buildNextUseTrace(self):
         """Build a trace for each use that includes when the next use is"""
@@ -236,7 +249,7 @@ class TestTraffic(unittest.TestCase):
             read_fn="tmp/test_traffic_single_stage-N-populate_1.csv",
             comb_fn="tmp/test_buildNextUseTrace-comb.csv")
 
-        Traffic._buildNextUseTrace(["K", "N"], 2,
+        Traffic._buildNextUseTrace(["K", "N"], 2, "C",
             "tmp/test_buildNextUseTrace-comb.csv",
             "tmp/test_buildNextUseTrace_next_uses.csv")
 
@@ -421,6 +434,38 @@ class TestTraffic(unittest.TestCase):
         self.assertEqual(bits, {"F": {"read": 3 * 64}})
         self.assertEqual(overflows, 0)
 
+    def test_buffetTraffic_format(self):
+        """Test buffetTraffic obeys format"""
+        format_yaml = yaml.safe_load("""
+            K:
+                format: C
+                pbits: 32
+        """)
+        formats = {"C": Format(Tensor(rank_ids=["K"]), format_yaml)}
+
+        bindings = yaml.safe_load("""
+        - tensor: C
+          rank: K
+          type: payload
+          evict-on: M
+        """)
+        traces = {("C", "K", "payload", "read"): "tmp/test_traffic_stage0-K-intersect_2.csv"}
+
+        bits, overflows = Traffic.buffetTraffic(bindings, formats, traces, 8 * 32, 4 * 32)
+        self.assertEqual(bits, {"C": {"read": 6 * 4 * 32}})
+        self.assertEqual(overflows, 0)
+
+        format_yaml = yaml.safe_load("""
+            K:
+                format: U
+                pbits: 32
+        """)
+        formats = {"C": Format(Tensor(rank_ids=["K"]), format_yaml)}
+
+        bits, overflows = Traffic.buffetTraffic(bindings, formats, traces, 8 * 32, 4 * 32)
+        self.assertEqual(bits, {"C": {"read": 6 * 2 * 4 * 32}})
+        self.assertEqual(overflows, 0)
+
     def test_cacheTraffic_basic(self):
         """Test cacheTraffic"""
         bindings = yaml.safe_load("""
@@ -529,4 +574,35 @@ class TestTraffic(unittest.TestCase):
         self.assertEqual(bits, {"Z": {"read": 4224, "write": 7040}})
         self.assertEqual(overflows, 4)
 
+
+    def test_cacheTraffic_format(self):
+        """Test cacheTraffic obeys format"""
+        format_yaml = yaml.safe_load("""
+            K:
+                format: C
+                pbits: 32
+        """)
+        formats = {"C": Format(Tensor(rank_ids=["K"]), format_yaml)}
+
+        bindings = yaml.safe_load("""
+        - tensor: C
+          rank: K
+          type: payload
+        """)
+        traces = {("C", "K", "payload", "read"): "tmp/test_traffic_stage0-K-intersect_2.csv"}
+
+        bits, overflows = Traffic.cacheTraffic(bindings, formats, traces, 8 * 32, 4 * 32)
+        self.assertEqual(bits, {"C": {"read": 4 * 32}})
+        self.assertEqual(overflows, 0)
+
+        format_yaml = yaml.safe_load("""
+            K:
+                format: U
+                pbits: 32
+        """)
+        formats = {"C": Format(Tensor(rank_ids=["K"]), format_yaml)}
+
+        bits, overflows = Traffic.cacheTraffic(bindings, formats, traces, 8 * 32, 4 * 32)
+        self.assertEqual(bits, {"C": {"read": 2 * 4 * 32}})
+        self.assertEqual(overflows, 0)
 

@@ -126,16 +126,25 @@ class Traffic:
                 f_write.close()
 
     @staticmethod
-    def _buildPoint(split, mask, elems_per_line):
+    def _buildPoint(split, mask, elems_per_line, format_):
         """Build the access into a tensor for the form (coord, ... coord, pos),
         where (coord, ... coord) describes the fiber and pos describes the
         location within the fiber"""
         point = list(itertools.compress(split[(len(split) - 2) // 2:-2], mask))
-        point[-1] = str(int(split[-2]) // elems_per_line * elems_per_line)
+
+        # If the fiber is uncompressed, the position is the coordinate
+        if format_ == "U":
+            pos = split[-3]
+
+        # Otherwise, the position is the fiber position
+        else:
+            pos = split[-2]
+
+        point[-1] = str(int(pos) // elems_per_line * elems_per_line)
         return tuple(point)
 
     @staticmethod
-    def _buildNextUseTrace(ranks, elems_per_line, input_fn, output_fn):
+    def _buildNextUseTrace(ranks, elems_per_line, format_, input_fn, output_fn):
         """Build a trace of for each access to a tensor (as specified by its
         ranks), when the corresponding next use was"""
         out_split = os.path.splitext(output_fn)
@@ -158,7 +167,7 @@ class Traffic:
                     break
 
                 # Get the tensor point and compute its corresponding line
-                point = Traffic._buildPoint(split, mask, elems_per_line)
+                point = Traffic._buildPoint(split, mask, elems_per_line, format_)
 
                 # If there is a last_use
                 line_split = line.split(",")
@@ -397,7 +406,7 @@ class Traffic:
             split_fn = os.path.splitext(fn)
             next_fn = split_fn[0] + "-next-" + "-".join(key) + split_fn[1]
 
-            Traffic._buildNextUseTrace(loop_rank_ids[tensor], elems_per_line, fn, next_fn)
+            Traffic._buildNextUseTrace(loop_rank_ids[tensor], elems_per_line, formats[tensor].getFormat(rank), fn, next_fn)
             next_use_traces[key] = next_fn
 
         # Open all the traces
@@ -500,7 +509,6 @@ class Traffic:
             # Get the tensor access
             trace = next_traces[i]
             num_ranks = all_num_ranks[i]
-            point = list(itertools.compress(trace[num_ranks:num_ranks * 2], masks[i]))
 
             # We need to write this data if it was a write, and is not an
             # intermediate write that should never be written back
@@ -508,7 +516,13 @@ class Traffic:
             write_back = is_write and (shapes[i] is None or trace[num_ranks * 2] < shapes[i])
 
             # Compute the corresponding line if the access is not "root"
-            point[-1] = trace[num_ranks * 2] // elems_per_line[i] * elems_per_line[i]
+            point = list(itertools.compress(trace[num_ranks:num_ranks * 2], masks[i]))
+            if formats[tensor].getFormat(rank) == "U":
+                pos = trace[num_ranks * 2 - 1]
+            else:
+                pos = trace[num_ranks * 2]
+
+            point[-1] = pos // elems_per_line[i] * elems_per_line[i]
             obj = tuple(point)
 
             # Record the access if needed

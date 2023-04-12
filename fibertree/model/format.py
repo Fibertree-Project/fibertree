@@ -108,6 +108,10 @@ class Format:
 
         return self.spec[rank]["fhbits"]
 
+    def getFormat(self, rank):
+        """Get the format of the given rank; either "C" or "U" """
+        return self.spec[rank]["format"]
+
     def getLayout(self, rank):
         """Get the layout of this rank"""
         return self.spec[rank]["layout"]
