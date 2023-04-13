@@ -927,6 +927,23 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(a.coords, c0)
             self.assertEqual(a.payloads, p0)
 
+    def test_iterRangeShape_metrics(self):
+        """Test that iterRangeShape correctly registers the rank"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+
+        c0_ans = [2, 4, 6, 8]
+        p0_ans = [0, 3, 0, 0]
+
+        a = Fiber(c0, p0)
+        a.getRankAttrs().setId("M")
+
+        Metrics.beginCollect("tmp/test_iterRangeShape_metrics")
+        for _ in a.iterRangeShape(2, 9, 2):
+            self.assertEqual(Metrics.loop_order, ["M"])
+        Metrics.endCollect()
+
     def test_iterRangeShape_eager_only(self):
         """Test iterRangeShape only works in eager mode"""
 
@@ -975,6 +992,22 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             next(a.iterRangeShapeRef(2, 9))
 
+    def test_iterRangeShapeRef_metrics(self):
+        """Test that iterRangeShapeRef correctly registers the rank"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+
+        c0_ans = [2, 4, 6, 8]
+        p0_ans = [0, 3, 0, 0]
+
+        a = Fiber(c0, p0)
+        a.getRankAttrs().setId("M")
+
+        Metrics.beginCollect("tmp/test_iterRangeShape_metrics")
+        for _ in a.iterRangeShapeRef(2, 9, 2):
+            self.assertEqual(Metrics.loop_order, ["M"])
+        Metrics.endCollect()
     def test_coiterShape(self):
         """Test coiterShape"""
         c0 = [1, 4, 8, 9]

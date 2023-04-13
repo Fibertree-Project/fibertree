@@ -207,7 +207,7 @@ def iterRangeShape(self, start, end, step=1, tick=True):
     is_collecting, rank = _prep_metrics_inc(self)
 
     if is_collecting and tick:
-        self.registerRank(rank)
+        Metrics.registerRank(rank)
 
     for c in range(start, end, step):
         p = self.getPayload(c)
@@ -241,7 +241,7 @@ def iterRangeShapeRef(self, start, end, step=1, tick=True):
     is_collecting, rank = _prep_metrics_inc(self)
 
     if is_collecting and tick:
-        self.registerRank(rank)
+        Metrics.registerRank(rank)
 
     for c in range(start, end, step):
         p = self.getPayloadRef(c)
