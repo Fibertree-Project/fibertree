@@ -151,6 +151,9 @@ class TreeImage():
                              Payload.get(root),
                              hl)
             region_end = 1
+        elif root.countValues() == 0:
+            self._draw_coord(0, 0, "R")
+            region_end = 1
         else:
             #
             # Draw a non-0-D tensor or a fiber, i.e., the fiber tree
