@@ -717,7 +717,7 @@ class Fiber:
             payload = Payload.maybe_box(default)
             const_used = True
 
-        if Metrics.isCollecting():
+        if Metrics.isCollecting() and trace is not None:
             Metrics.addUse(self.getRankAttrs().getId(), coords[0], index, type_=trace)
 
         if not const_used and len(coords) > 1:
@@ -2810,7 +2810,6 @@ class Fiber:
             #
             self.coords = []
             self.payloads = []
-
 
         self._setDefault(other.getDefault())
         for c, p in other:
