@@ -128,6 +128,41 @@ class TestTraffic(unittest.TestCase):
                     z_ref += a_val * b_val
         Metrics.endCollect()
 
+    def test_buildFiberTrace(self):
+        "Test buildFiberTrace"""
+        Traffic.buildFiberTrace(
+            "tmp/test_traffic_single_stage-N-populate_read_0.csv",
+            ["M", "N"],
+            "tmp/test_buildFiberTrace-test.csv")
+
+        corr = [
+            "M_pos,K_pos,N_pos,M,K,N,fiber_pos\n",
+            "0,7,0,0,7,0,0\n",
+            "1,5,2,1,5,2,0\n",
+            "2,6,0,2,6,0,0\n",
+            "3,2,2,3,2,6,0\n",
+            "4,6,0,4,6,0,0\n",
+            "5,6,2,5,6,2,0\n"
+        ]
+
+        with open("tmp/test_buildFiberTrace-test.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+    def test_buildFiberTrace_top(self):
+        "Test buildFiberTrace for the top-level fiber"""
+        Traffic.buildFiberTrace(
+            "tmp/test_traffic_single_stage-N-populate_read_0.csv",
+            ["M"],
+            "tmp/test_buildFiberTrace_top-test.csv")
+
+        corr = [
+            "M_pos,K_pos,N_pos,M,K,N,fiber_pos\n",
+            "0,7,0,0,7,0,0\n",
+        ]
+
+        with open("tmp/test_buildFiberTrace_top-test.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
     def test_filterTrace_more_ranks(self):
         """Test filterTrace"""
         K = 8
