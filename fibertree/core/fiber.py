@@ -343,7 +343,7 @@ class Fiber:
 
 
     @classmethod
-    def fromUncompressed(cls, payload_list):
+    def fromUncompressed(cls, payload_list, default=0):
         """Construct a Fiber from an uncompressed nest of lists.
 
         The coordinates of the Fiber will be infered from the postions
@@ -370,20 +370,20 @@ class Fiber:
 
         """
 
-        f = Fiber._makeFiber(payload_list)
+        f = Fiber._makeFiber(payload_list, default=default)
 
         #
-        # Check if the list was all zeros, so return an empty fiber
+        # Check if the list was all defaults, so return an empty fiber
         #
         if f is None:
             # Return something for an entirely empty input
-            return Fiber([], [])
+            return Fiber([], [], shape=len(payload_list), default=default)
 
         return f
 
 
     @staticmethod
-    def _makeFiber(payload_list):
+    def _makeFiber(payload_list, default=0):
         """Recursively make a fiber out of an uncompressed nest of lists"""
 
         assert(isinstance(payload_list, list))
@@ -396,7 +396,7 @@ class Fiber:
                        "All lists must be the same length"
 
         # Create zipped list of (non-empty) coordinates/payloads
-        zipped = [(c, p) for c, p in enumerate(payload_list) if p != 0]
+        zipped = [(c, p) for c, p in enumerate(payload_list) if p != default]
 
         #
         # Recursively unzip the lists into a Fiber
@@ -410,7 +410,7 @@ class Fiber:
             payloads = []
 
             for c, p in zipped:
-                real_p = Fiber._makeFiber(p)
+                real_p = Fiber._makeFiber(p, default=default)
                 if real_p is not None:
                     coords.append(c)
                     payloads.append(real_p)
@@ -427,7 +427,7 @@ class Fiber:
         # Note: max_coord dervived from input argument list and
         #       assuming coordinates start at 0
         #
-        return Fiber(coords, payloads, shape=len(payload_list))
+        return Fiber(coords, payloads, shape=len(payload_list), default=default)
 
 
     @classmethod

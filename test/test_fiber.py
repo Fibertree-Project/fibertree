@@ -153,6 +153,16 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(f, f_ref)
 
+    def test_fromUncompressed_1D_default(self):
+        """Create from uncompressed 1-D with custom default"""
+
+        f_ref = Fiber([0, 1, 3, 4], [1, 2, 4, 5], default=-1)
+
+        f = Fiber.fromUncompressed([1, 2, -1, 4, 5, -1], default=-1)
+
+        self.assertEqual(f, f_ref)
+        self.assertEqual(f.getDefault(), f_ref.getDefault())
+
     def test_fromUncompressed_2D(self):
         """Create from uncompressed 2-D"""
 
@@ -166,6 +176,22 @@ class TestFiber(unittest.TestCase):
                                     [0, 0, 3, 4, 0, 0]])
 
         self.assertEqual(f, f_ref)
+
+    def test_fromUncompressed_2D_default(self):
+        """Create from uncompressed 2-D with custom default"""
+
+        a1 = Fiber([0, 1, 3, 4], [1, 2, 4, 5], default=-1)
+        a2 = Fiber([2, 3], [3, 4], default=-1)
+
+        f_ref = Fiber([0, 2], [a1, a2], default=-1)
+
+        f = Fiber.fromUncompressed([[1, 2, -1, 4, 5, -1],
+                                    [-1, -1, -1, -1, -1, -1],
+                                    [-1, -1, 3, 4, -1, -1]],
+                                   default=-1)
+
+        self.assertEqual(f, f_ref)
+        self.assertEqual(f.getDefault(), f_ref.getDefault())
 
     def test_fromUncompressed_3D(self):
         """Create from uncomrpessed 3-D"""
@@ -197,6 +223,17 @@ class TestFiber(unittest.TestCase):
         f = Fiber.fromUncompressed([0, 0, 0, 0, 0])
 
         self.assertEqual(f, f_ref)
+
+    def test_fromUncompressed_1D_empty_default(self):
+        """Create from uncompressed 1-D empty fiber with custom default"""
+
+        f_ref = Fiber([], [], shape=6, default=-1)
+
+        f = Fiber.fromUncompressed([-1] * 6, default=-1)
+
+        self.assertEqual(f, f_ref)
+        self.assertEqual(f.getDefault(), f_ref.getDefault())
+        self.assertEqual(f.getShape(), f_ref.getShape())
 
     def test_fromUncompressed_2D_empty(self):
         """Create empty tensor from uncompressed 2-D"""
