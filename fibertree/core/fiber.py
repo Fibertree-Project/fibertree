@@ -4457,7 +4457,7 @@ class Fiber:
             if mask == "B":
                 return False
 
-            if mask == "AB" and not (ps == po):
+            if mask == "AB" and ps != po:
                 return False
 
         return True
