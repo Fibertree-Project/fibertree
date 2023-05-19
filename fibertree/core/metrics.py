@@ -90,7 +90,6 @@ class Metrics:
         if iteration_num is None:
             iteration_num = cls.iteration
 
-
         iteration = iteration_num[:(i + 1)]
         point = cls.point[:i] + [coord]
 

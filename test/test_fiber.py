@@ -927,6 +927,23 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(a.coords, c0)
             self.assertEqual(a.payloads, p0)
 
+    def test_iterRangeShape_metrics(self):
+        """Test that iterRangeShape correctly registers the rank"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+
+        c0_ans = [2, 4, 6, 8]
+        p0_ans = [0, 3, 0, 0]
+
+        a = Fiber(c0, p0)
+        a.getRankAttrs().setId("M")
+
+        Metrics.beginCollect("tmp/test_iterRangeShape_metrics")
+        for _ in a.iterRangeShape(2, 9, 2):
+            self.assertEqual(Metrics.loop_order, ["M"])
+        Metrics.endCollect()
+
     def test_iterRangeShape_eager_only(self):
         """Test iterRangeShape only works in eager mode"""
 
@@ -975,6 +992,22 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             next(a.iterRangeShapeRef(2, 9))
 
+    def test_iterRangeShapeRef_metrics(self):
+        """Test that iterRangeShapeRef correctly registers the rank"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 3, 0, 10]
+
+        c0_ans = [2, 4, 6, 8]
+        p0_ans = [0, 3, 0, 0]
+
+        a = Fiber(c0, p0)
+        a.getRankAttrs().setId("M")
+
+        Metrics.beginCollect("tmp/test_iterRangeShape_metrics")
+        for _ in a.iterRangeShapeRef(2, 9, 2):
+            self.assertEqual(Metrics.loop_order, ["M"])
+        Metrics.endCollect()
     def test_coiterShape(self):
         """Test coiterShape"""
         c0 = [1, 4, 8, 9]
@@ -1659,6 +1692,68 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             a.getPayload(3)
 
+    def test_getPayload_metrics_1D(self):
+        """Test the tracing of metrics when there is a getPayload"""
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+        a.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_getPayload_metrics_1D")
+        Metrics.trace("K", type_="A")
+        Metrics.registerRank("K")
+
+        a.getPayload(2)
+        Metrics.incIter("K")
+        a.getPayload(2, trace="A")
+        Metrics.incIter("K")
+        a.getPayload(5, trace="A")
+
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K,fiber_pos\n",
+            "1,2,0\n",
+            "2,5,2\n"
+        ]
+
+        with open("tmp/test_getPayload_metrics_1D-K-A.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+
+    def test_getPayload_metrics_2D(self):
+        """Test the tracing of metrics when there is a getPayload in 2D"""
+        a1 = [[1, 2, 3, 0],
+              [1, 0, 3, 4],
+              [0, 2, 3, 4],
+              [1, 2, 0, 4]]
+
+        t = Tensor.fromUncompressed(rank_ids=["K", "M"], root=a1)
+        a = t.getRoot()
+
+        Metrics.beginCollect("tmp/test_getPayload_metrics_2D")
+        Metrics.trace("M", type_="A")
+        Metrics.registerRank("K")
+        Metrics.registerRank("M")
+
+        a.getPayload(2, 1)
+        Metrics.incIter("K")
+        a.getPayload(2, 3, trace="A")
+        Metrics.incIter("M")
+        a.getPayload(1, 2, trace="A")
+
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,M_pos,K,M,fiber_pos\n",
+            "1,0,2,3,2\n",
+            "1,1,1,2,1\n"
+        ]
+
+        with open("tmp/test_getPayload_metrics_2D-M-A.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
 
     def test_getPayloadRef_update(self):
         """Update payload references"""
@@ -1691,6 +1786,68 @@ class TestFiber(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             a.getPayloadRef(3)
+
+    def test_getPayloadRef_metrics_1D(self):
+        """Test the tracing of metrics when there is a getPayloadRef"""
+        coords = [2, 4, 6]
+        payloads = [3, 5, 7]
+
+        a = Fiber(coords, payloads)
+        a.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_getPayloadRef_metrics_1D")
+        Metrics.trace("K", type_="A")
+        Metrics.registerRank("K")
+
+        a.getPayloadRef(2)
+        Metrics.incIter("K")
+        a.getPayloadRef(2, trace="A")
+        Metrics.incIter("K")
+        a.getPayloadRef(5, trace="A")
+
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,K,fiber_pos\n",
+            "1,2,0\n",
+            "2,5,2\n"
+        ]
+
+        with open("tmp/test_getPayloadRef_metrics_1D-K-A.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+
+    def test_getPayloadRef_metrics_2D(self):
+        """Test the tracing of metrics when there is a getPayloadRef in 2D"""
+        a1 = [[1, 2, 3, 0],
+              [1, 0, 3, 4],
+              [0, 2, 3, 4],
+              [1, 2, 0, 4]]
+
+        t = Tensor.fromUncompressed(rank_ids=["K", "M"], root=a1)
+        a = t.getRoot()
+
+        Metrics.beginCollect("tmp/test_getPayloadRef_metrics_2D")
+        Metrics.trace("M", type_="A")
+        Metrics.registerRank("K")
+        Metrics.registerRank("M")
+
+        a.getPayloadRef(2, 1)
+        Metrics.incIter("K")
+        a.getPayloadRef(2, 3, trace="A")
+        Metrics.incIter("M")
+        a.getPayloadRef(1, 2, trace="A")
+
+        Metrics.endCollect()
+
+        corr = [
+            "K_pos,M_pos,K,M,fiber_pos\n",
+            "1,0,2,3,2\n",
+            "1,1,1,2,1\n"
+        ]
+
+        with open("tmp/test_getPayloadRef_metrics_2D-M-A.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
     def test_getPayload_2(self):
         """Access payloads - multilevel"""
@@ -3193,6 +3350,17 @@ class TestFiber(unittest.TestCase):
         self.assertEqual(mf.getShape(), [10, 10])
         self.assertEqual(mf.getActive(), (0, 10))
 
+    def test_merge_preserves_default(self):
+        """Test that mergeRanks merges together fibers while preserving an explicit default"""
+        f = Fiber([0, 1, 4, 5],
+                  [Fiber([0, 1, 2], [1, 2, 3], shape=10, default=float("inf")),
+                   Fiber([1, 3, 4], [4, 5, 6], shape=10, default=float("inf")),
+                   Fiber([4, 7], [7, 8], shape=10, default=float("inf")),
+                   Fiber([5, 7], [9, 10], shape=10, default=float("inf"))],
+                  shape=10)
+        mf = f.mergeRanks()
+
+        self.assertEqual(mf.getDefault(), float("inf"))
 
 if __name__ == '__main__':
     unittest.main()

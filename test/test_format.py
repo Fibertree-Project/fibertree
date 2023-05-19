@@ -149,6 +149,12 @@ class TestFormat(unittest.TestCase):
         self.assertEqual(f.getFHBits("M"), 32)
         self.assertEqual(f.getFHBits("K"), 0)
 
+    def test_get_format(self):
+        """Test getFormat"""
+        f = Format(self.t, self.spec)
+        self.assertEqual(f.getFormat("M"), "U")
+        self.assertEqual(f.getFormat("K"), "C")
+
     def test_get_pbits(self):
         """Test getPBits"""
         f = Format(self.t, self.spec)

@@ -172,6 +172,20 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(split.flattenRanks(style="relative"), f)
 
+    def test_split_uniform_preserves_default(self):
+        """Split uniform preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        split = f.splitUniform(10)
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
+
     def test_split_uniform_halo(self):
         """splitUniform with halo"""
         # Original Fiber
@@ -629,6 +643,19 @@ class TestFiberSplit(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f.splitNonUniform(splits)
 
+    def test_split_nonuniform_preserves_default(self):
+        """Split non-uniform preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        split = f.splitNonUniform([0, 11, 20])
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
     def test_split_nonuniform_halo(self):
         """Test splitNonUniform with a halo"""
 
@@ -1051,6 +1078,19 @@ class TestFiberSplit(unittest.TestCase):
 
         self.assertEqual(split, corr)
 
+    def test_split_equal_preserves_default(self):
+        """Split equal preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        split = f.splitEqual(5)
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
     def test_split_equal_halo(self):
         """splitEqual with halo"""
         # Original Fiber
@@ -1354,6 +1394,20 @@ class TestFiberSplit(unittest.TestCase):
         # Check the split
         #
         self.assertEqual(split, ans)
+
+    def test_split_unequal_preserves_default(self):
+        """Split un-equal preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        split = f.splitUnEqual([3, 4, 6])
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
 
 
     def test_split_unequal_halo(self):

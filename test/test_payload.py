@@ -56,6 +56,11 @@ class TestPayload(unittest.TestCase):
         self.assertEqual(Metrics.dump(), {
             "Compute": {"payload_add": 4, "payload_update": 1}})
 
+        # Skip 0 += ...
+        z = Payload(0)
+        z += a
+        self.assertEqual(Metrics.dump(), {"Compute": {"payload_add": 4, "payload_update": 2}})
+
         Metrics.endCollect()
 
     def test_minus(self):
@@ -115,6 +120,20 @@ class TestPayload(unittest.TestCase):
         self.assertEqual(Metrics.dump(), {
             "Compute": {"payload_mul": 4, "payload_update": 1}})
 
+        Metrics.endCollect()
+
+    def test_ilshift_metrics(self):
+        a = Payload(1)
+
+        Metrics.beginCollect()
+        a <<= 5
+        self.assertEqual(Metrics.dump(), {"Compute": {"payload_update": 1}})
+
+        a <<= 4
+        self.assertEqual(Metrics.dump(), {"Compute": {"payload_update": 2}})
+
+        a <<= 6
+        self.assertEqual(Metrics.dump(), {"Compute": {"payload_update": 3}})
         Metrics.endCollect()
 
     def test_equality(self):

@@ -94,6 +94,20 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
+    def test_split_uniform_preserves_default(self):
+        """Split uniform preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        t = Tensor.fromFiber(rank_ids=["M"], fiber=f, default=float("inf"))
+        split = t.splitUniform(10)
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
     def test_splitNonUniform_0(self):
         """ Test splitNonUniform - depth=0 """
 
@@ -146,6 +160,21 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out, a_verify)
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
+
+    def test_split_nonuniform_preserves_default(self):
+        """Split non-uniform preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        t = Tensor.fromFiber(rank_ids=["M"], fiber=f, default=float("inf"))
+        split = t.splitNonUniform([0, 11, 20])
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
 
     def test_floordiv(self):
         """ Test /, the __floordiv__ operator """
@@ -211,6 +240,21 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
+    def test_split_equal_preserves_default(self):
+        """Split equal preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        t = Tensor.fromFiber(rank_ids=["M"], fiber=f, default=float("inf"))
+        split = t.splitEqual(5)
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
+
+
     def test_splitUnEqual_0(self):
         """ Test splitUnEqual - depth=0 """
 
@@ -265,6 +309,19 @@ class TestTensorTransform(unittest.TestCase):
                 self.assertEqual(a_out.getRankIds(), ["M", "N", "K.1", "K.0"])
                 self.assertEqual(a_out.getShape(), [41, 42, 10, 10])
 
+    def test_split_unequal_preserves_default(self):
+        """Split un-equal preserves default"""
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber(c,p, default=float("inf"))
+        t = Tensor.fromFiber(rank_ids=["M"], fiber=f, default=float("inf"))
+        split = t.splitUnEqual([3, 4, 5])
+
+        self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
 
     def test_swapRanks_0(self):
         """ Test swapRanks - depth=0 """
@@ -290,6 +347,15 @@ class TestTensorTransform(unittest.TestCase):
         self.assertEqual(a_out, a_verify)
         self.assertEqual(a_out.getRankIds(), ["M", "K", "N"])
         self.assertEqual(a_out.getShape(), [41, 10, 42])
+
+    def test_swapRanks_preserves_default(self):
+        """Test swapRanks preserves default"""
+        a = Tensor.fromYAMLfile("./data/tensor_transform-a.yaml")
+        a.setDefault(float("inf"))
+
+        a_out = a.swapRanks()
+
+        self.assertEqual(a_out.getDefault(), float("inf"))
 
 
     def test_swizzleRanks(self):
@@ -352,6 +418,21 @@ class TestTensorTransform(unittest.TestCase):
                                 [4, 0, 0, 5, 1, 3]])
         new_A_MK = A_MK.swizzleRanks(["M", "K"])
         self.assertEqual(A_MK, new_A_MK)
+
+    def test_swizzleRanks_same(self):
+        """Test swizzleRanks does nothing"""
+        A_MK = Tensor.fromUncompressed(["M", "K"],
+                               [[0, 0, 4, 0, 0, 5],
+                                [3, 2, 0, 3, 0, 2],
+                                [0, 2, 0, 0, 1, 2],
+                                [0, 0, 0, 0, 0, 0],
+                                [2, 5, 0, 0, 0, 5],
+                                [4, 1, 0, 0, 0, 0],
+                                [5, 0, 0, 1, 0, 0],
+                                [4, 0, 0, 5, 1, 3]])
+        A_MK.setDefault(float("inf"))
+        A_KM = A_MK.swizzleRanks(["K", "M"])
+        self.assertEqual(A_KM.getDefault(), float("inf"))
 
 
     def test_flattenRanks_0(self):
@@ -448,6 +529,23 @@ class TestTensorTransform(unittest.TestCase):
 
         self.assertEqual(f4, t0)
 
+    def test_flattenRanks_preserves_default(self):
+        """Test flattenRanks - levels=3, coord_style=absolute"""
+        t0 = Tensor.fromUncompressed(rank_ids=["A"], root=list(range(16)))
+        t0.setDefault(float("inf"))
+        self.assertEqual(t0.getDefault(), float("inf"))
+
+        s1 = t0.splitUniform(8, depth=0)
+        s2 = s1.splitUniform(4, depth=1)
+        s3 = s2.splitUniform(2, depth=2)
+        self.assertEqual(s3.getDefault(), float("inf"))
+
+        f4 = s3.flattenRanks(levels=3, coord_style="absolute")
+        f4.setRankIds(["A"])
+
+        self.assertEqual(f4, t0)
+        self.assertEqual(f4.getDefault(), float("inf"))
+
     def test_merge(self):
         """Test that mergeRanks merges together fibers"""
         f = Fiber([0, 1, 4, 5],
@@ -540,6 +638,19 @@ class TestTensorTransform(unittest.TestCase):
 
         self.assertEqual(mt.getRoot(), corr)
         self.assertEqual(mt.getShape(), [10, 10])
+
+    def test_merge_preserves_default(self):
+        """Test that mergeRanks merges together fibers while preserving an explicit default"""
+        f = Fiber([0, 1, 4, 5],
+                  [Fiber([0, 1, 2], [1, 2, 3], shape=10, default=float("inf")),
+                   Fiber([1, 3, 4], [4, 5, 6], shape=10, default=float("inf")),
+                   Fiber([4, 7], [7, 8], shape=10, default=float("inf")),
+                   Fiber([5, 7], [9, 10], shape=10, default=float("inf"))],
+                  shape=10)
+        t = Tensor.fromFiber(rank_ids=["M", "N"], fiber=f, default=float("inf"))
+        mt = t.mergeRanks()
+
+        self.assertEqual(mt.getDefault(), float("inf"))
 
     def test_unflattenRanks_empty(self):
         t = Tensor(rank_ids=["X", "Y", "Z"])

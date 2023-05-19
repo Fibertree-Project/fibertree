@@ -500,7 +500,6 @@ class Traffic:
             # Get the tensor access
             trace = next_traces[i]
             num_ranks = all_num_ranks[i]
-            point = list(itertools.compress(trace[num_ranks:num_ranks * 2], masks[i]))
 
             # We need to write this data if it was a write, and is not an
             # intermediate write that should never be written back
@@ -508,6 +507,7 @@ class Traffic:
             write_back = is_write and (shapes[i] is None or trace[num_ranks * 2] < shapes[i])
 
             # Compute the corresponding line if the access is not "root"
+            point = list(itertools.compress(trace[num_ranks:num_ranks * 2], masks[i]))
             point[-1] = trace[num_ranks * 2] // elems_per_line[i] * elems_per_line[i]
             obj = tuple(point)
 

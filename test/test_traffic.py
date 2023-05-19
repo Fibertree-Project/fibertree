@@ -229,6 +229,16 @@ class TestTraffic(unittest.TestCase):
             open("test_traffic-test_combineTraces_both-corr.csv", "r") as f_corr:
             self.assertEqual(f_test.readlines(), f_corr.readlines())
 
+    def test_buildPoint(self):
+        """Build a point in the format-specific tensor"""
+        point = Traffic._buildPoint("1,2,3,4,5,False".split(","), [False, True], 1)
+        self.assertEqual(point, ("5",))
+
+        point = Traffic._buildPoint("1,2,3,4,5,False".split(","), [True, True], 1)
+        self.assertEqual(point, ("3", "5"))
+
+        point = Traffic._buildPoint("1,2,3,4,1,False".split(","), [True, True], 2)
+        self.assertEqual(point, ("3", "0"))
 
     def test_buildNextUseTrace(self):
         """Build a trace for each use that includes when the next use is"""

@@ -24,6 +24,14 @@ class TestFiberMutator(unittest.TestCase):
         with self.assertRaises(AssertionError):
             a.swapRanks()
 
+    def test_swapRanks_preserves_default(self):
+        a = Fiber.fromYAMLfile("./data/test_fiber-2.yaml")
+        for _, f in a:
+            f.getRankAttrs().setDefault(float("inf"))
+
+        b = a.swapRanks()
+        self.assertEqual(b[0].payload.getDefault(), float("inf"))
+
     def test_split_uniform_below(self):
         """Test splitUniformBelow"""
 
