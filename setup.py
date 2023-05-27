@@ -64,8 +64,8 @@ if False:
 #            Extension('fibertree.codec.formats', fibertree_formats)
 #           ]
 
-setup(name='fiber-tree',
-      version='0.1',
+setup(name='fibertree',
+      version='0.2',
       description='Fibertree style tensor simulator',
       long_description=readme(),
       classifiers=[
@@ -87,7 +87,9 @@ setup(name='fiber-tree',
                 'fibertree.notebook',
                 'fibertree.codec',
                 'fibertree.codec.formats'],
+
+      package_data={'fibertree': ["fonts/*.ttf"]},
+
       install_requires=[req for req in requirements if req[:2] != "# "],
       include_package_data=True,
-      zip_safe=False,
-)
+      zip_safe=False,)

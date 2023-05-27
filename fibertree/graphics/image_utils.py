@@ -3,6 +3,7 @@
 import logging
 import os
 import webcolors
+import importlib_resources
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -121,7 +122,7 @@ class ImageUtils():
 
 
     @staticmethod
-    def getFont():
+    def getFont(font_name=None, font_size=16):
         """Get a font for use in images.
 
         Get a standard font for various image classes to use. First
@@ -138,17 +139,39 @@ class ImageUtils():
 
         """
 
+        #
+        # Find the path to the data file within the package
+        #
+        if font_name is None:
+            font_name = "FreeMono"
+
+        data_file_path = f"fonts/{font_name}.ttf"
+
+        #
+        # Try getting location from environment
+        #
         font_file = os.getenv('FIBERTREE_FONT')
 
-        if font_file is None:
-            font_file = 'Pillow/Tests/fonts/FreeMono.ttf'
+        if font_file is not None:
+            try:
+                font = ImageFont.truetype(font_file, font_size)
+                return font
+            except Exception as e:
+                print(f"Could not find font file: {font_file}")
+                raise e
 
-        try:
-            font = ImageFont.truetype(font_file, 20)
-            return font
-        except Exception as e:
-            print(f"Could not find font file: {font_file}")
-            raise e
+        #
+        # Get ffile from installed package
+        #
+        ref = importlib_resources.files('fibertree') / data_file_path
+        with importlib_resources.as_file(ref) as font_file:
+            try:
+                font = ImageFont.truetype(str(font_file), font_size)
+                return font
+            except Exception as e:
+                print(f"Could not find font file: {font_file}")
+                raise e
+
 
     @staticmethod
     def pick_text_color(bg_color):

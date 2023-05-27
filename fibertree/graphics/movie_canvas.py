@@ -13,6 +13,7 @@ from fibertree import TensorImage
 from fibertree import UncompressedImage
 from fibertree import Fiber
 from fibertree import Payload
+from fibertree import ImageUtils
 
 #
 # Set up logging
@@ -77,7 +78,7 @@ class MovieCanvas():
         #
         # Font to use for text
         #
-        self.font = ImageFont.truetype('Pillow/Tests/fonts/DejaVuSans.ttf', 16)
+        self.font = ImageUtils.getFont('DejaVuSansMono', 16)
 
         #
         # Add an initial frame with nothing highlighted (it looks good)
