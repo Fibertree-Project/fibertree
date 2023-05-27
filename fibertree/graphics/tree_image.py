@@ -517,11 +517,13 @@ class TreeImage():
             #
             # Hack: drawing text twice looks better in PIL
             #
+            text_color = ImageUtils.pick_text_color(fill_color)
+
             for n in range(2):
                 self.draw.text((x_text, y_text),
                                str(v),
                                font=self.fnt,
-                               fill="white")
+                               fill=text_color)
 
 
     def _flatten_value(self, value, first=True):

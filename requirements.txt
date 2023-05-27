@@ -10,3 +10,4 @@ Cython
 pandas
 sortedcontainers
 file-read-backwards
+webcolors

@@ -2,6 +2,7 @@
 
 import logging
 import os
+import webcolors
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -148,3 +149,37 @@ class ImageUtils():
         except Exception as e:
             print(f"Could not find font file: {font_file}")
             raise e
+
+    @staticmethod
+    def pick_text_color(bg_color):
+        """
+        Selects a text color of black or white to best go with a given background color.
+
+        Args:
+          bg_color: The background color in string or RGB format.
+
+        Returns:
+          The text color, either 'black' or 'white'.
+        """
+
+        #
+        # Conditionally convert `bg_color` to RBG
+        #
+        if isinstance(bg_color, str):
+            bg_color = webcolors.name_to_rgb(bg_color)
+
+        #
+        # Calculate the brightness of the background color.
+        #
+        brightness = (bg_color[0] * 0.299 + bg_color[1] * 0.587 + bg_color[2] * 0.114) / 255
+
+        #
+        # If the brightness is less than 0.5, return 'white'.
+        #
+        if brightness < 0.5:
+            return 'white'
+        #
+        # Otherwise, return 'black'.
+        #
+        else:
+            return 'black'
