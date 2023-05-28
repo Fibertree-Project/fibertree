@@ -6,6 +6,7 @@ import webcolors
 import importlib_resources
 
 from PIL import Image, ImageDraw, ImageFont
+from functools import lru_cache
 
 #
 # Set up logging
@@ -174,6 +175,7 @@ class ImageUtils():
 
 
     @staticmethod
+    @lru_cache
     def pick_text_color(bg_color):
         """
         Selects a text color of black or white to best go with a given background color.
@@ -189,7 +191,13 @@ class ImageUtils():
         # Conditionally convert `bg_color` to RBG
         #
         if isinstance(bg_color, str):
-            bg_color = webcolors.name_to_rgb(bg_color)
+            if bg_color[0] != '#':
+                try:
+                    bg_color = webcolors.name_to_rgb(bg_color)
+                except Exception as err:
+                    return 'black'
+            else:
+                bg_color = ImageUtils.hex2rgb(bg_color)
 
         #
         # Calculate the brightness of the background color.
@@ -206,3 +214,21 @@ class ImageUtils():
         #
         else:
             return 'black'
+
+
+    @staticmethod
+    def hex2rgb(hex_value):
+
+        # Remove the '#' symbol if present
+        hex_value = hex_value.lstrip('#')
+
+        # Convert the hexadecimal string to integer
+        hex_int = int(hex_value, 16)
+
+        # Extract the RGB components
+        red = (hex_int >> 16) & 255
+        green = (hex_int >> 8) & 255
+        blue = hex_int & 255
+
+        # Return the RGB components as an array
+        return [red, green, blue]
