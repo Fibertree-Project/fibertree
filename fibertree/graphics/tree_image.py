@@ -52,7 +52,22 @@ class TreeImage():
         self.row_extent = extent[0]
         self.col_extent = extent[1]
 
-        level = self.object.getDepth()-1
+        #
+        # Deal with lazy fibers by instantiating them
+        #    Note: isLazy() and fromLazy() are not recursive...
+        #
+        if isinstance(self.object, Fiber):
+            if self.object.isLazy():
+                self.object = Fiber.fromLazy(self.object)
+        elif isinstance(self.object, Tensor):
+            root = self.object.getRoot()
+            if isinstance(root, Fiber) and root.isLazy():
+                self.object.setRoot(Fiber.fromLazy(root))
+
+        #
+        # Determine number of levels in fibertree, and create highlight manager
+        #
+        level = self.object.getDepth() - 1
         self.highlight_manager = HighlightManager(highlights, level=level)
 
         #
