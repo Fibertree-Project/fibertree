@@ -416,8 +416,17 @@ class TreeImage():
         y2 = y1 + height
         fill_color = (128,128,128) if not highlight else (233,198,109)
 
-        self.draw.ellipse(((x1, y1), (x2, y2)), fill_color, (0, 0, 0))
-
+        #
+        # Draw fiber as elipse
+        #
+        # self.draw.ellipse(((x1, y1), (x2, y2)), fill_color, (0, 0, 0))
+        #
+        # Draw fiber as rounded rectangle
+        #
+        self.draw.rounded_rectangle(((x1, y1), (x2, y2)),
+                                    radius=30,
+                                    fill=fill_color,
+                                    outline=(0, 0, 0))
 
     def _draw_coord(self, level, offset, coord, highlight=[]):
         """draw_coord"""
