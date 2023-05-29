@@ -204,7 +204,8 @@ class Tensor:
                          root=None,
                          shape=None,
                          name="",
-                         color="red"):
+                         color="red",
+                         default=0):
         """Construct a Tensor from uncompressed nest of lists
 
         Parameters
@@ -238,7 +239,7 @@ class Tensor:
 
         assert(rank_ids is not None)
 
-        fiber = Fiber.fromUncompressed(root)
+        fiber = Fiber.fromUncompressed(root, default=default)
 
         if shape is None:
             # TBD: Maybe this is not needed because fibers get a max_coord...
@@ -248,7 +249,8 @@ class Tensor:
                                 fiber,
                                 shape=shape,
                                 name=name,
-                                color=color)
+                                color=color,
+                                default=default)
 
 
     @staticmethod
