@@ -3,6 +3,7 @@
 #
 # Import standard libraries
 #
+import os
 import string
 import random
 import tempfile
@@ -17,6 +18,8 @@ from IPython.display import Image
 from IPython.display import HTML
 from IPython.display import Javascript
 from IPython.display import Video
+
+from base64 import b64encode
 
 #
 # Try to import ipywidgets
@@ -168,6 +171,22 @@ class TensorDisplay():
 
         final_attributes = f"{final_loop}{final_autoplay}{final_controls}"
 
+        if 'COLAB_JUPYTER_IP' in os.environ:
+            #
+            # Running in a Google Colab (note status is ignored)
+            #
+            video_file = open(posix_filename, "r+b").read()
+
+            video_url = f"data:video/mp4;base64,{b64encode(video_file).decode()}"
+
+#            video = HTML(f"""<video width=600 controls loop autoplay><source src="{video_url}"></video>""")
+            video = HTML(f"""<video width=800 {final_attributes}><source src="{video_url}"></video>""")
+            display(video)
+            return
+
+        #
+        # Running in a regular Jupyter notebook
+        #
         video = Video(f"./{posix_filename}", html_attributes=final_attributes, width=800)
         display(video)
 
