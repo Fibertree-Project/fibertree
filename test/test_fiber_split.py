@@ -355,16 +355,6 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
-    def test_split_uniform_halo_not_bigger_than_step(self):
-        """splitUniform, halo cannot be bigger than the step"""
-        # Original Fiber
-        c = [8, 9, 12, 15, 17, 32]
-        p = [3, 4,  5,  6,  7,  8]
-        f = Fiber(c, p)
-
-        with self.assertRaises(AssertionError):
-            f.splitUniform(3, halo=5)
-
     def test_split_nonuniform_empty(self):
         """Test splitNonUniform on empty fiber"""
         empty = Fiber()
@@ -853,9 +843,6 @@ class TestFiberSplit(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f.splitNonUniform(splits, halo=(10, 29))
 
-        with self.assertRaises(AssertionError):
-            f.splitNonUniform(splits, halo=100)
-
     def test_split_nonuniform_then_flatten(self):
         """Test that flattenRanks can undo splitNonUniform"""
 
@@ -1223,16 +1210,6 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
-    def test_split_equal_halo_not_bigger_than_step(self):
-        """splitEqual, halo cannot be bigger than the step"""
-        # Original Fiber
-        c = [8, 9, 12, 15, 17, 32]
-        p = [3, 4,  5,  6,  7,  8]
-        f = Fiber(c, p)
-
-        with self.assertRaises(AssertionError):
-            f.splitEqual(3, halo=5)
-
     def test_split_equal_then_flatten(self):
         """Test that flattenRanks can undo splitEqual"""
 
@@ -1518,9 +1495,6 @@ class TestFiberSplit(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             f_split.splitUnEqual([3, 4, (5, 6)])
-
-        with self.assertRaises(AssertionError):
-            f.splitUnEqual([3, 4, 5], halo=4)
 
         with self.assertRaises(AssertionError):
             f_flat.splitUnEqual([3, 4, 5], halo=2)
