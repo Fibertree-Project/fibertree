@@ -9,7 +9,7 @@ tensor:
   root:
   - fiber:
       coords:
-      - 10
+      - 0
       - 40
       payloads:
       - fiber:

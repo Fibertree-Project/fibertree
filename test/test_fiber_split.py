@@ -944,7 +944,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(len(split), len(css))
         for i, (sc, sp)  in enumerate(split):
-            self.assertEqual(sc, css[i][0])
+            self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
@@ -986,7 +986,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(len(split), len(css))
         for i, (sc, sp)  in enumerate(split):
-            self.assertEqual(sc, css[i][0])
+            self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
@@ -1326,7 +1326,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(len(split), len(css))
         for i, (sc, sp)  in enumerate(split):
-            self.assertEqual(sc, css[i][0])
+            self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 

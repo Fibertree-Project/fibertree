@@ -19,7 +19,7 @@ tensor:
           payloads:
           - fiber:
               coords:
-              - 6
+              - 0
               payloads:
               - fiber:
                   coords:
@@ -35,7 +35,7 @@ tensor:
           payloads:
           - fiber:
               coords:
-              - 1
+              - 0
               - 3
               - 8
               payloads:
@@ -58,7 +58,7 @@ tensor:
                   - 40
           - fiber:
               coords:
-              - 3
+              - 0
               - 5
               payloads:
               - fiber:
@@ -82,7 +82,7 @@ tensor:
           payloads:
           - fiber:
               coords:
-              - 1
+              - 0
               - 6
               - 8
               payloads:
@@ -116,7 +116,7 @@ tensor:
                   - 1
           - fiber:
               coords:
-              - 3
+              - 0
               - 5
               payloads:
               - fiber:
@@ -133,7 +133,7 @@ tensor:
                   - 50
           - fiber:
               coords:
-              - 1
+              - 0
               payloads:
               - fiber:
                   coords:
