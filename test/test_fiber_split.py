@@ -185,6 +185,51 @@ class TestFiberSplit(unittest.TestCase):
 
         self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
 
+    def test_split_uniform_pre_halo(self):
+        """splitUniform with pre_halo"""
+        # Original Fiber
+        c = [8, 9, 12, 15, 17, 32, 38]
+        p = [3, 4,  5,  6,  7,  8,  9]
+        f = Fiber(c, p, active_range=(0, 43))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [8, 16, 32, 40]
+
+        css = [ [ 8, 9, 12, 15],
+              [ 15, 17 ],
+              [ 32, 38 ],
+              [ 38 ] ]
+
+        pss = [ [ 3, 4, 5, 6],
+              [ 6, 7 ],
+              [ 8, 9 ],
+              [ 9 ] ]
+
+
+        ranges = [(8, 16), (16, 24), (32, 40), (40, 43)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        coords = 8
+        split = f.splitUniform(coords, pre_halo=2)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
 
     def test_split_uniform_post_halo(self):
         """splitUniform with post_halo"""
@@ -222,6 +267,100 @@ class TestFiberSplit(unittest.TestCase):
         #
         coords = 8
         split = f.splitUniform(coords, post_halo=2)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
+    def test_split_uniform_pre_post_halo(self):
+        """splitUniform with pre_halo and post_halo"""
+        # Original Fiber
+        c = [8, 9, 12, 15, 17, 32, 38]
+        p = [3, 4,  5,  6,  7,  8,  9]
+        f = Fiber(c, p, active_range=(0, 43))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [0, 8, 16, 24, 32, 40]
+
+        css = [ [ 8 ],
+              [ 8, 9, 12, 15],
+              [ 15, 17 ],
+              [ 32 ],
+              [ 32, 38 ],
+              [ 38 ] ]
+
+        pss = [ [ 3 ],
+              [ 3, 4, 5, 6],
+              [ 6, 7 ],
+              [ 8 ],
+              [ 8, 9 ],
+              [ 9 ] ]
+
+
+        ranges = [(0, 8), (8, 16), (16, 24), (24, 32), (32, 40), (40, 43)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        coords = 8
+        split = f.splitUniform(coords, pre_halo=2, post_halo=1)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
+    def test_split_uniform_pre_halo_active_only(self):
+        """splitUniform with pre_halo active only"""
+        # Original Fiber
+        c = [8, 9, 12, 15, 17, 32, 38]
+        p = [3, 4,  5,  6,  7,  8,  9]
+        f = Fiber(c, p, active_range=(13, 43))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [8, 16, 32, 40]
+
+        css = [ [ 12, 15],
+              [ 15, 17 ],
+              [ 32, 38 ],
+              [ 38 ] ]
+
+        pss = [ [ 5, 6],
+              [ 6, 7 ],
+              [ 8, 9 ],
+              [ 9 ] ]
+
+
+        ranges = [(13, 16), (16, 24), (32, 40), (40, 43)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        coords = 8
+        split = f.splitUniform(coords, pre_halo=2)
 
         #
         # Check the split
