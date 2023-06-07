@@ -1796,6 +1796,48 @@ class TestFiberSplit(unittest.TestCase):
 
 
 
+    def test_split_unequal_pre_halo(self):
+        """Test splitUnequal - with pre_halo"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41, 51]
+        p = [1, 10, 20, 100, 120, 310, 410, 510 ]
+
+        f = Fiber(c,p, active_range=(1, 41))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 0, 1, 9 ],
+                [ 9, 10, 12, 31 ] ]
+
+        pss = [ [ 1, 10, 20 ],
+                [ 20, 100, 120, 310 ] ]
+
+        ranges = [(1, 10), (10, 41)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        sizes = [2, 3]
+        split = f.splitUnEqual(sizes, pre_halo=1)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, ranges[i][0])
+            self.assertEqual(sp, split_ref[i])
+            self.assertEqual(sp.getActive(), split_ref[i].getActive())
+
     def test_split_unequal_post_halo(self):
         """Test splitUnequal - with post_halo (all parts are filled)"""
 
@@ -1836,7 +1878,51 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(len(split), len(css))
         for i, (sc, sp)  in enumerate(split):
-            self.assertEqual(sc, css[i][0])
+            self.assertEqual(sc, ranges[i][0])
+            self.assertEqual(sp, split_ref[i])
+            self.assertEqual(sp.getActive(), split_ref[i].getActive())
+
+    def test_split_unequal_pre_post_halo(self):
+        """Test splitUnequal with both pre_halo and post_halo"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41, 51]
+        p = [1, 10, 20, 100, 120, 310, 410, 510 ]
+
+        f = Fiber(c,p, active_range=(0, 41))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 0, 1 ],
+                [ 0, 1, 9, 10 ],
+                [ 9, 10, 12, 31, 41 ] ]
+
+        pss = [ [ 1, 10 ],
+                [ 1, 10, 20, 100 ],
+                [ 20, 100, 120, 310, 410 ] ]
+
+        ranges = [(0, 1), (1, 10), (10, 41)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        sizes = [1, 2, 3]
+        split = f.splitUnEqual(sizes, pre_halo=1, post_halo=1)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
