@@ -66,20 +66,32 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
 
-    def test_split_uniform_on_int_coords_only(self):
-        """Test that splitUnform works on integer coordinates only"""
+    def test_split_uniform_asserts(self):
+        """Test the splitUniform asserts"""
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
-        f = f.splitUniform(5)
-        f = f.flattenRanks(style="tuple")
+        split = f.splitUniform(5)
+        flattened = split.flattenRanks(style="tuple")
 
         with self.assertRaises(AssertionError):
-            f.splitUniform((1, 2))
+            flattened.splitUniform((1, 2))
 
         with self.assertRaises(AssertionError):
-            f.splitUniform(5)
+            flattened.splitUniform(5)
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(5, pre_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(5, post_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(5, pre_halo=-1)
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(5, post_halo=-1)
 
     def test_split_uniform_then_flatten(self):
         """Test that flattenRanks() can undo splitUniform"""
@@ -185,9 +197,54 @@ class TestFiberSplit(unittest.TestCase):
 
         self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
 
+    def test_split_uniform_pre_halo(self):
+        """splitUniform with pre_halo"""
+        # Original Fiber
+        c = [8, 9, 12, 15, 17, 32, 38]
+        p = [3, 4,  5,  6,  7,  8,  9]
+        f = Fiber(c, p, active_range=(0, 43))
 
-    def test_split_uniform_halo(self):
-        """splitUniform with halo"""
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [8, 16, 32, 40]
+
+        css = [ [ 8, 9, 12, 15],
+              [ 15, 17 ],
+              [ 32, 38 ],
+              [ 38 ] ]
+
+        pss = [ [ 3, 4, 5, 6],
+              [ 6, 7 ],
+              [ 8, 9 ],
+              [ 9 ] ]
+
+
+        ranges = [(8, 16), (16, 24), (32, 40), (40, 43)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        coords = 8
+        split = f.splitUniform(coords, pre_halo=2)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
+
+    def test_split_uniform_post_halo(self):
+        """splitUniform with post_halo"""
         # Original Fiber
         c = [8, 9, 12, 15, 17, 32]
         p = [3, 4,  5,  6,  7,  8]
@@ -221,7 +278,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         coords = 8
-        split = f.splitUniform(coords, halo=2)
+        split = f.splitUniform(coords, post_halo=2)
 
         #
         # Check the split
@@ -232,8 +289,102 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
-    def test_split_uniform_halo_active_only(self):
-        """splitUniform with halo, only active coordinates appear as non-halo elements"""
+    def test_split_uniform_pre_post_halo(self):
+        """splitUniform with pre_halo and post_halo"""
+        # Original Fiber
+        c = [8, 9, 12, 15, 17, 32, 38]
+        p = [3, 4,  5,  6,  7,  8,  9]
+        f = Fiber(c, p, active_range=(0, 43))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [0, 8, 16, 24, 32, 40]
+
+        css = [ [ 8 ],
+              [ 8, 9, 12, 15],
+              [ 15, 17 ],
+              [ 32 ],
+              [ 32, 38 ],
+              [ 38 ] ]
+
+        pss = [ [ 3 ],
+              [ 3, 4, 5, 6],
+              [ 6, 7 ],
+              [ 8 ],
+              [ 8, 9 ],
+              [ 9 ] ]
+
+
+        ranges = [(0, 8), (8, 16), (16, 24), (24, 32), (32, 40), (40, 43)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        coords = 8
+        split = f.splitUniform(coords, pre_halo=2, post_halo=1)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
+    def test_split_uniform_pre_halo_active_only(self):
+        """splitUniform with pre_halo active only"""
+        # Original Fiber
+        c = [8, 9, 12, 15, 17, 32, 38]
+        p = [3, 4,  5,  6,  7,  8,  9]
+        f = Fiber(c, p, active_range=(13, 43))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [8, 16, 32, 40]
+
+        css = [ [ 12, 15],
+              [ 15, 17 ],
+              [ 32, 38 ],
+              [ 38 ] ]
+
+        pss = [ [ 5, 6],
+              [ 6, 7 ],
+              [ 8, 9 ],
+              [ 9 ] ]
+
+
+        ranges = [(13, 16), (16, 24), (32, 40), (40, 43)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        coords = 8
+        split = f.splitUniform(coords, pre_halo=2)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
+    def test_split_uniform_post_halo_active_only(self):
+        """splitUniform with post_halo, only active coordinates appear as non-post_halo elements"""
         # Original Fiber
         c = [0, 9, 12, 15, 17, 18]
         p = [3, 4,  5,  6,  7,  8]
@@ -261,7 +412,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         coords = 4
-        split = f.splitUniform(coords, halo=2)
+        split = f.splitUniform(coords, post_halo=2)
 
         #
         # Check the split
@@ -272,8 +423,8 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
-    def test_split_uniform_halo_prev_active_halo(self):
-        """splitUniform with halo, inactive coordinates can be haloed even if
+    def test_split_uniform_post_halo_prev_active_post_halo(self):
+        """splitUniform with post_halo, inactive coordinates can be post_haloed even if
         they should have been inside the active part of a partition"""
         # Original Fiber
         c = [0, 9, 12, 14, 17, 18, 20]
@@ -304,7 +455,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         coords = 5
-        split = f.splitUniform(coords, halo=3)
+        split = f.splitUniform(coords, post_halo=3)
 
         #
         # Check the split
@@ -315,8 +466,8 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
-    def test_split_uniform_build_halo_once(self):
-        """splitUniform, make sure that if the halo for the last partition has already
+    def test_split_uniform_build_post_halo_once(self):
+        """splitUniform, make sure that if the post_halo for the last partition has already
         been built, we do not try to build it again"""
         c = [0, 9, 12, 14, 17, 19, 20]
         p = [3, 4,  5,  6,  7,  8, 9]
@@ -344,7 +495,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         coords = 10
-        split = f.splitUniform(coords, halo=3)
+        split = f.splitUniform(coords, post_halo=3)
 
         #
         # Check the split
@@ -354,16 +505,6 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sc, split_ref_coords[i])
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
-
-    def test_split_uniform_halo_not_bigger_than_step(self):
-        """splitUniform, halo cannot be bigger than the step"""
-        # Original Fiber
-        c = [8, 9, 12, 15, 17, 32]
-        p = [3, 4,  5,  6,  7,  8]
-        f = Fiber(c, p)
-
-        with self.assertRaises(AssertionError):
-            f.splitUniform(3, halo=5)
 
     def test_split_nonuniform_empty(self):
         """Test splitNonUniform on empty fiber"""
@@ -627,7 +768,7 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
-    def test_split_non_uniform_int_splits(self):
+    def test_split_non_uniform_asserts(self):
         """Test splitNonUniform only works with integer splits"""
 
         #
@@ -643,6 +784,21 @@ class TestFiberSplit(unittest.TestCase):
         with self.assertRaises(AssertionError):
             f.splitNonUniform(splits)
 
+        splits = [8, 19, 40]
+
+        with self.assertRaises(AssertionError):
+            f.splitNonUniform(splits, pre_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitNonUniform(splits, post_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitNonUniform(splits, pre_halo=-1)
+
+        with self.assertRaises(AssertionError):
+            f.splitNonUniform(splits, post_halo=-1)
+
+
     def test_split_nonuniform_preserves_default(self):
         """Split non-uniform preserves default"""
         #
@@ -656,8 +812,58 @@ class TestFiberSplit(unittest.TestCase):
 
         self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
 
-    def test_split_nonuniform_halo(self):
-        """Test splitNonUniform with a halo"""
+    def test_split_nonuniform_pre_halo(self):
+        """Test splitNonUniform with a pre_halo"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0,  7,  9,  10,  12,  13,  31,  41]
+        p = [1, 10, 20, 100, 120, 130, 310, 410 ]
+
+        f = Fiber(c,p, shape=50)
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 0 ],
+              [ 7 ],
+              [ 7, 9, 10],
+              [ 9, 10, 12, 13 ],
+              [ 13 ],
+              [ 31, 41 ] ]
+
+        pss = [ [ 1 ],
+                [ 10 ],
+                [ 10, 20, 100 ],
+                [ 20, 100, 120, 130 ],
+                [ 130 ],
+                [ 310, 410 ] ]
+
+        ranges = [(2, 4), (4, 8), (8, 11), (11, 15), (15, 20), (31, 50)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        splits = [2, 4, 8, 11, 15, 20, 31]
+        split = f.splitNonUniform(splits, pre_halo=2)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sp.getActive(), ranges[i])
+            self.assertEqual(sc, ranges[i][0])
+            self.assertEqual(sp, split_ref[i])
+
+    def test_split_nonuniform_post_halo(self):
+        """Test splitNonUniform with a post_halo"""
 
         #
         # Create the fiber to be split
@@ -691,18 +897,71 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         splits = [8, 11, 15, 20, 30]
-        split = f.splitNonUniform(splits, halo=2)
+        split = f.splitNonUniform(splits, post_halo=2)
 
         #
         # Check the split
         #
         self.assertEqual(len(split), len(css))
         for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sp.getActive(), ranges[i])
             self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
 
-    def test_split_nonuniform_halo_outside_active(self):
-        """Test splitNonUniform with a halo, allowing the halo to extend
+    def test_split_nonuniform_pre_post_halo(self):
+        """Test splitNonUniform with a pre_halo and a post_halo"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0,  7,  9,  10,  12,  13,  31,  41]
+        p = [1, 10, 20, 100, 120, 130, 310, 410 ]
+
+        f = Fiber(c,p, shape=50)
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 0 ],
+              [ 7 ],
+              [ 7, 9, 10],
+              [ 9, 10, 12, 13 ],
+              [ 13 ],
+              [ 31 ],
+              [ 31, 41 ] ]
+
+        pss = [ [ 1 ],
+                [ 10 ],
+                [ 10, 20, 100 ],
+                [ 20, 100, 120, 130 ],
+                [ 130 ],
+                [ 310 ],
+                [ 310, 410 ] ]
+
+        ranges = [(2, 4), (4, 8), (8, 11), (11, 15), (15, 20), (20, 31), (31, 50)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        splits = [2, 4, 8, 11, 15, 20, 31]
+        split = f.splitNonUniform(splits, pre_halo=2, post_halo=1)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sp.getActive(), ranges[i])
+            self.assertEqual(sc, ranges[i][0])
+            self.assertEqual(sp, split_ref[i])
+
+    def test_split_nonuniform_post_halo_outside_active(self):
+        """Test splitNonUniform with a post_halo, allowing the post_halo to extend
         outside the active_range"""
 
         #
@@ -736,7 +995,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         splits = [2, 8, 11, 20, 30, 40]
-        split = f.splitNonUniform(splits, halo=2)
+        split = f.splitNonUniform(splits, post_halo=2)
 
         #
         # Check the split
@@ -747,9 +1006,9 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
-    def test_split_nonuniform_halo_outside_active2(self):
-        """Test splitNonUniform with a halo, making normally active coordinates
-        halo coordinates"""
+    def test_split_nonuniform_post_halo_outside_active2(self):
+        """Test splitNonUniform with a post_halo, making normally active coordinates
+        post_halo coordinates"""
 
         #
         # Create the fiber to be split
@@ -781,7 +1040,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         splits = [8, 11, 20, 40]
-        split = f.splitNonUniform(splits, halo=2)
+        split = f.splitNonUniform(splits, post_halo=2)
 
         #
         # Check the split
@@ -792,8 +1051,8 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
-    def test_split_nonuniform_halo_outside_active3(self):
-        """Test splitNonUniform with a halo, ensure that the halo is only
+    def test_split_nonuniform_post_halo_outside_active3(self):
+        """Test splitNonUniform with a post_halo, ensure that the post_halo is only
         built once"""
 
         #
@@ -828,7 +1087,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         splits = [8, 11, 15, 20, 30, 50]
-        split = f.splitNonUniform(splits, halo=2)
+        split = f.splitNonUniform(splits, post_halo=2)
 
         #
         # Check the split
@@ -838,8 +1097,51 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
 
-    def test_split_nonuniform_valid_halo(self):
-        """Test that splitNonUniform only accepts valid halos"""
+    def test_split_nonuniform_pre_halo_outside_active(self):
+        """Test splitNonUniform with a pre_halo, making normally active coordinates
+        pre_halo coordinates"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 13, 31, 34, 41]
+        p = [ 1, 10, 20, 100, 120, 130, 310, 340, 410 ]
+
+        f = Fiber(c,p, active_range=(10, 30))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 9, 10],
+              [ 9, 10, 12, 13 ] ]
+
+        pss = [ [ 20, 100 ],
+                [ 20, 100, 120, 130 ] ]
+
+        ranges = [(10, 11), (11, 20)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        splits = [8, 11, 20, 40]
+        split = f.splitNonUniform(splits, pre_halo=2)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(split_ref))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, splits[i])
+            self.assertEqual(sp, split_ref[i])
+            self.assertEqual(sp.getActive(), split_ref[i].getActive())
+
+    def test_split_nonuniform_valid_post_halo(self):
+        """Test that splitNonUniform only accepts valid post_halos"""
         #
         # Create the fiber to be split
         #
@@ -851,10 +1153,7 @@ class TestFiberSplit(unittest.TestCase):
         splits = [8, 11, 30]
 
         with self.assertRaises(AssertionError):
-            f.splitNonUniform(splits, halo=(10, 29))
-
-        with self.assertRaises(AssertionError):
-            f.splitNonUniform(splits, halo=100)
+            f.splitNonUniform(splits, post_halo=(10, 29))
 
     def test_split_nonuniform_then_flatten(self):
         """Test that flattenRanks can undo splitNonUniform"""
@@ -957,7 +1256,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(len(split), len(css))
         for i, (sc, sp)  in enumerate(split):
-            self.assertEqual(sc, css[i][0])
+            self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
@@ -999,7 +1298,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(len(split), len(css))
         for i, (sc, sp)  in enumerate(split):
-            self.assertEqual(sc, css[i][0])
+            self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
@@ -1045,23 +1344,35 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(split, ans)
 
-    def test_split_equal_int_step_halo_only(self):
-        """Test that splitEqual only works on an integer step, integer halo, and no halo with tuple coordinates"""
+    def test_split_equal_asserts(self):
+        """Test that splitEqual only works on an integer step, integer post_halo, and no post_halo with tuple coordinates"""
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
-        f = f.splitUniform(5)
-        f = f.flattenRanks(style="tuple")
+        split = f.splitUniform(5)
+        flattened = split.flattenRanks(style="tuple")
 
         with self.assertRaises(AssertionError):
-            f.splitEqual((1, 2))
+            flattened.splitEqual((1, 2))
 
         with self.assertRaises(AssertionError):
-            f.splitEqual(5, halo=(1, 2))
+            flattened.splitEqual(5, post_halo=(1, 2))
 
         with self.assertRaises(AssertionError):
-            f.splitEqual(5, halo=3)
+            flattened.splitEqual(5, post_halo=3)
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual(5, pre_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual(5, post_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual(5, pre_halo=-1)
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual(5, post_halo=-1)
 
     def test_split_equal_tuple_coords(self):
         """Test that splitEqual works with tuple coordinates"""
@@ -1091,8 +1402,50 @@ class TestFiberSplit(unittest.TestCase):
 
         self.assertEqual(split.getPayload(0).getDefault(), float("inf"))
 
-    def test_split_equal_halo(self):
-        """splitEqual with halo"""
+    def test_split_equal_pre_halo(self):
+        """splitEqual with pre_halo"""
+        # Original Fiber
+        c = [0, 1, 8, 9, 12, 15, 17, 19]
+        p = [1, 2, 3, 4,  5,  6,  7,  8]
+        f = Fiber(c, p)
+
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [0, 9, 17]
+
+        css = [ [ 0, 1, 8 ],
+              [ 8, 9, 12, 15 ],
+              [ 15, 17, 19 ] ]
+
+        pss = [ [ 1, 2, 3 ],
+              [ 3, 4, 5, 6 ],
+              [ 6, 7, 8 ] ]
+
+        ranges = [(0, 9), (9, 17), (17, 20)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        size = 3
+        split = f.splitEqual(size, pre_halo=2)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
+    def test_split_equal_post_halo(self):
+        """splitEqual with post_halo"""
         # Original Fiber
         c = [0, 1, 8, 9, 12, 15, 17, 19]
         p = [1, 2, 3, 4,  5,  6,  7,  8]
@@ -1122,7 +1475,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         size = 3
-        split = f.splitEqual(size, halo=3)
+        split = f.splitEqual(size, post_halo=3)
 
         #
         # Check the split
@@ -1133,8 +1486,90 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
-    def test_split_equal_halo_active_only(self):
-        """splitEqual with halo"""
+    def test_split_equal_pre_post_halo(self):
+        """splitEqual with pre_halo and post_halo"""
+        # Original Fiber
+        c = [0, 1, 8, 9, 12, 15, 17, 19]
+        p = [1, 2, 3, 4,  5,  6,  7,  8]
+        f = Fiber(c, p)
+
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [0, 9, 17]
+
+        css = [ [ 0, 1, 8, 9 ],
+              [ 8, 9, 12, 15, 17, 19 ],
+              [ 15, 17, 19 ] ]
+
+        pss = [ [ 1, 2, 3, 4 ],
+              [ 3, 4, 5, 6, 7, 8 ],
+              [ 6, 7, 8 ] ]
+
+        ranges = [(0, 9), (9, 17), (17, 20)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        size = 3
+        split = f.splitEqual(size, pre_halo=2, post_halo=3)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
+    def test_split_equal_pre_halo_active_only(self):
+        """splitEqual with pre_halo"""
+        # Original Fiber
+        c = [0, 8, 9, 11, 12, 15, 17, 18, 25]
+        p = [1, 2, 3, 4,  5,  6,  7,  8,  9 ]
+        f = Fiber(c, p, active_range=(9, 16))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        split_ref_coords = [9, 15]
+
+        css = [ [ 8, 9, 11, 12],
+              [ 12, 15 ] ]
+
+        pss = [ [ 2, 3, 4, 5 ],
+              [ 5, 6 ] ]
+
+        ranges = [(9, 15), (15, 16)]
+
+        split_ref_payloads = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref_payloads.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        size = 3
+        split = f.splitEqual(size, pre_halo=3)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, split_ref_coords[i])
+            self.assertEqual(sp, split_ref_payloads[i])
+            self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
+    def test_split_equal_post_halo_active_only(self):
+        """splitEqual with post_halo"""
         # Original Fiber
         c = [0, 8, 9, 11, 12, 15, 17, 18, 25]
         p = [1, 2, 3, 4,  5,  6,  7,  8,  9 ]
@@ -1162,7 +1597,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         size = 3
-        split = f.splitEqual(size, halo=3)
+        split = f.splitEqual(size, post_halo=3)
 
         #
         # Check the split
@@ -1173,8 +1608,8 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
-    def test_split_equal_correct_final_halo(self):
-        """splitEqual - Correctly build the final halo"""
+    def test_split_equal_correct_final_post_halo(self):
+        """splitEqual - Correctly build the final post_halo"""
         c = list(range(40))
         p = list(range(40))
         p[0] = 100
@@ -1212,7 +1647,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         size = 5
-        split = f.splitEqual(size, halo=4)
+        split = f.splitEqual(size, post_halo=4)
 
         #
         # Check the split
@@ -1222,16 +1657,6 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sc, split_ref_coords[i])
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
-
-    def test_split_equal_halo_not_bigger_than_step(self):
-        """splitEqual, halo cannot be bigger than the step"""
-        # Original Fiber
-        c = [8, 9, 12, 15, 17, 32]
-        p = [3, 4,  5,  6,  7,  8]
-        f = Fiber(c, p)
-
-        with self.assertRaises(AssertionError):
-            f.splitEqual(3, halo=5)
 
     def test_split_equal_then_flatten(self):
         """Test that flattenRanks can undo splitEqual"""
@@ -1349,7 +1774,7 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(len(split), len(css))
         for i, (sc, sp)  in enumerate(split):
-            self.assertEqual(sc, css[i][0])
+            self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
@@ -1410,8 +1835,50 @@ class TestFiberSplit(unittest.TestCase):
 
 
 
-    def test_split_unequal_halo(self):
-        """Test splitUnequal - with halo (all parts are filled)"""
+    def test_split_unequal_pre_halo(self):
+        """Test splitUnequal - with pre_halo"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41, 51]
+        p = [1, 10, 20, 100, 120, 310, 410, 510 ]
+
+        f = Fiber(c,p, active_range=(1, 41))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 0, 1, 9 ],
+                [ 9, 10, 12, 31 ] ]
+
+        pss = [ [ 1, 10, 20 ],
+                [ 20, 100, 120, 310 ] ]
+
+        ranges = [(1, 10), (10, 41)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        sizes = [2, 3]
+        split = f.splitUnEqual(sizes, pre_halo=1)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, ranges[i][0])
+            self.assertEqual(sp, split_ref[i])
+            self.assertEqual(sp.getActive(), split_ref[i].getActive())
+
+    def test_split_unequal_post_halo(self):
+        """Test splitUnequal - with post_halo (all parts are filled)"""
 
         #
         # Create the fiber to be split
@@ -1443,19 +1910,63 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         sizes = [1, 2, 3]
-        split = f.splitUnEqual(sizes, halo=1)
+        split = f.splitUnEqual(sizes, post_halo=1)
 
         #
         # Check the split
         #
         self.assertEqual(len(split), len(css))
         for i, (sc, sp)  in enumerate(split):
-            self.assertEqual(sc, css[i][0])
+            self.assertEqual(sc, ranges[i][0])
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
-    def test_split_unequal_halo2(self):
-        """Test splitUnequal - With halo (last part does not finish) """
+    def test_split_unequal_pre_post_halo(self):
+        """Test splitUnequal with both pre_halo and post_halo"""
+
+        #
+        # Create the fiber to be split
+        #
+        c = [0, 1, 9, 10, 12, 31, 41, 51]
+        p = [1, 10, 20, 100, 120, 310, 410, 510 ]
+
+        f = Fiber(c,p, active_range=(0, 41))
+
+        #
+        # Create list of reference fibers after the split
+        #
+        css = [ [ 0, 1 ],
+                [ 0, 1, 9, 10 ],
+                [ 9, 10, 12, 31, 41 ] ]
+
+        pss = [ [ 1, 10 ],
+                [ 1, 10, 20, 100 ],
+                [ 20, 100, 120, 310, 410 ] ]
+
+        ranges = [(0, 1), (1, 10), (10, 41)]
+
+        split_ref = []
+
+        for cs, ps, range_ in zip(css, pss, ranges):
+            split_ref.append(Fiber(cs, ps, active_range=range_))
+
+        #
+        # Do the split
+        #
+        sizes = [1, 2, 3]
+        split = f.splitUnEqual(sizes, pre_halo=1, post_halo=1)
+
+        #
+        # Check the split
+        #
+        self.assertEqual(len(split), len(css))
+        for i, (sc, sp)  in enumerate(split):
+            self.assertEqual(sc, ranges[i][0])
+            self.assertEqual(sp, split_ref[i])
+            self.assertEqual(sp.getActive(), split_ref[i].getActive())
+
+    def test_split_unequal_post_halo2(self):
+        """Test splitUnequal - With post_halo (last part does not finish) """
 
         #
         # Create the fiber to be split
@@ -1487,7 +1998,7 @@ class TestFiberSplit(unittest.TestCase):
         # Do the split
         #
         sizes = [1, 2, 5, 16]
-        split = f.splitUnEqual(sizes, halo=1)
+        split = f.splitUnEqual(sizes, post_halo=1)
 
         #
         # Check the split
@@ -1508,22 +2019,31 @@ class TestFiberSplit(unittest.TestCase):
         f_flat = f_split.flattenRanks(style="tuple")
 
         with self.assertRaises(AssertionError):
-            f.splitUnEqual([3, 4, 5], halo=(2, 3))
+            f.splitUnEqual([3, 4, 5], post_halo=(2, 3))
 
         with self.assertRaises(AssertionError):
             f.splitUnEqual([3, 4, (5, 6)])
 
         with self.assertRaises(AssertionError):
-            f_flat.splitUnEqual([3, 4, 5], halo=(2, 3))
+            f_flat.splitUnEqual([3, 4, 5], post_halo=(2, 3))
 
         with self.assertRaises(AssertionError):
             f_split.splitUnEqual([3, 4, (5, 6)])
 
         with self.assertRaises(AssertionError):
-            f.splitUnEqual([3, 4, 5], halo=4)
+            f_flat.splitUnEqual([3, 4, 5], post_halo=2)
 
         with self.assertRaises(AssertionError):
-            f_flat.splitUnEqual([3, 4, 5], halo=2)
+            f.splitUnEqual([3, 4, 5], pre_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitUnEqual([3, 4, 5], post_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitUnEqual([3, 4, 5], pre_halo=-1)
+
+        with self.assertRaises(AssertionError):
+            f.splitUnEqual([3, 4, 5], post_halo=-1)
 
     def test_split_unequal_then_flatten(self):
         """Test that flattenRanks can undo splitUnequal"""

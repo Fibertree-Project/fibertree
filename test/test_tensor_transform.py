@@ -56,7 +56,7 @@ class TestTensorTransform(unittest.TestCase):
         I_W_cropped = Tensor.fromFiber(rank_ids=["W"], fiber=I_W.getRoot(), shape=[Q])
         self.assertEqual(I_W_cropped.getRoot().getActive(), (0, 36))
 
-        I_Q1W0 = I_W_cropped.getRoot().splitUniform(Q0, halo=S - 1)
+        I_Q1W0 = I_W_cropped.getRoot().splitUniform(Q0, post_halo=S - 1)
         self.assertEqual(I_Q1W0.getActive(), (0, 36))
 
 

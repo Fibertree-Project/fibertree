@@ -79,13 +79,13 @@ class TestFiberInfixSplit(unittest.TestCase):
 
         self.ans = {}
 
-        self.ans[2] = Fiber([3, 30],
+        self.ans[2] = Fiber([0, 30],
                             [Fiber([3, 6, 8, 9, 12, 16, 19, 20, 28],
                                    [8, 9, 6, 3, 5, 4, 1, 4, 6]),
                              Fiber([30, 32, 38, 40, 43, 46, 47, 48, 49],
                                    [4, 1, 6, 2, 6, 5, 9, 2, 5])])
 
-        self.ans[3] = Fiber([3, 19, 40],
+        self.ans[3] = Fiber([0, 19, 40],
                             [Fiber([3, 6, 8, 9, 12, 16],
                                    [8, 9, 6, 3, 5, 4]),
                              Fiber([19, 20, 28, 30, 32, 38],
@@ -93,7 +93,7 @@ class TestFiberInfixSplit(unittest.TestCase):
                              Fiber([40, 43, 46, 47, 48, 49],
                                    [2, 6, 5, 9, 2, 5])])
 
-        self.ans[4] = Fiber([3, 16, 32, 47],
+        self.ans[4] = Fiber([0, 16, 32, 47],
                             [Fiber([3, 6, 8, 9, 12],
                                    [8, 9, 6, 3, 5]),
                              Fiber([16, 19, 20, 28, 30],
@@ -103,7 +103,7 @@ class TestFiberInfixSplit(unittest.TestCase):
                              Fiber([47, 48, 49],
                                    [9, 2, 5])])
 
-        self.ans[5] = Fiber([3, 12, 28, 40, 48],
+        self.ans[5] = Fiber([0, 12, 28, 40, 48],
                             [Fiber([3, 6, 8, 9],
                                    [8, 9, 6, 3]),
                              Fiber([12, 16, 19, 20],
