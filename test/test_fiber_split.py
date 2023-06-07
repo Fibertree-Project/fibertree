@@ -66,20 +66,32 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
 
 
-    def test_split_uniform_on_int_coords_only(self):
-        """Test that splitUnform works on integer coordinates only"""
+    def test_split_uniform_asserts(self):
+        """Test the splitUniform asserts"""
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
-        f = f.splitUniform(5)
-        f = f.flattenRanks(style="tuple")
+        split = f.splitUniform(5)
+        flattened = split.flattenRanks(style="tuple")
 
         with self.assertRaises(AssertionError):
-            f.splitUniform((1, 2))
+            flattened.splitUniform((1, 2))
 
         with self.assertRaises(AssertionError):
-            f.splitUniform(5)
+            flattened.splitUniform(5)
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(5, pre_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(5, post_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(5, pre_halo=-1)
+
+        with self.assertRaises(AssertionError):
+            f.splitUniform(5, post_halo=-1)
 
     def test_split_uniform_then_flatten(self):
         """Test that flattenRanks() can undo splitUniform"""
@@ -756,7 +768,7 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sp, split_ref[i])
             self.assertEqual(sp.getActive(), split_ref[i].getActive())
 
-    def test_split_non_uniform_int_splits(self):
+    def test_split_non_uniform_asserts(self):
         """Test splitNonUniform only works with integer splits"""
 
         #
@@ -771,6 +783,21 @@ class TestFiberSplit(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             f.splitNonUniform(splits)
+
+        splits = [8, 19, 40]
+
+        with self.assertRaises(AssertionError):
+            f.splitNonUniform(splits, pre_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitNonUniform(splits, post_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitNonUniform(splits, pre_halo=-1)
+
+        with self.assertRaises(AssertionError):
+            f.splitNonUniform(splits, post_halo=-1)
+
 
     def test_split_nonuniform_preserves_default(self):
         """Split non-uniform preserves default"""
@@ -1317,23 +1344,35 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(split, ans)
 
-    def test_split_equal_int_step_post_halo_only(self):
+    def test_split_equal_asserts(self):
         """Test that splitEqual only works on an integer step, integer post_halo, and no post_halo with tuple coordinates"""
         c = [0, 1, 9, 10, 12, 31, 41]
         p = [1, 10, 20, 100, 120, 310, 410 ]
 
         f = Fiber(c,p)
-        f = f.splitUniform(5)
-        f = f.flattenRanks(style="tuple")
+        split = f.splitUniform(5)
+        flattened = split.flattenRanks(style="tuple")
 
         with self.assertRaises(AssertionError):
-            f.splitEqual((1, 2))
+            flattened.splitEqual((1, 2))
+
+        with self.assertRaises(AssertionError):
+            flattened.splitEqual(5, post_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            flattened.splitEqual(5, post_halo=3)
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual(5, pre_halo=(1, 2))
 
         with self.assertRaises(AssertionError):
             f.splitEqual(5, post_halo=(1, 2))
 
         with self.assertRaises(AssertionError):
-            f.splitEqual(5, post_halo=3)
+            f.splitEqual(5, pre_halo=-1)
+
+        with self.assertRaises(AssertionError):
+            f.splitEqual(5, post_halo=-1)
 
     def test_split_equal_tuple_coords(self):
         """Test that splitEqual works with tuple coordinates"""
@@ -1993,6 +2032,18 @@ class TestFiberSplit(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             f_flat.splitUnEqual([3, 4, 5], post_halo=2)
+
+        with self.assertRaises(AssertionError):
+            f.splitUnEqual([3, 4, 5], pre_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitUnEqual([3, 4, 5], post_halo=(1, 2))
+
+        with self.assertRaises(AssertionError):
+            f.splitUnEqual([3, 4, 5], pre_halo=-1)
+
+        with self.assertRaises(AssertionError):
+            f.splitUnEqual([3, 4, 5], post_halo=-1)
 
     def test_split_unequal_then_flatten(self):
         """Test that flattenRanks can undo splitUnequal"""

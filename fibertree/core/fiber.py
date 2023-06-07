@@ -3238,6 +3238,7 @@ class Fiber:
 
         assert not self.isLazy()
         assert isinstance(step, int) and isinstance(pre_halo, int) and isinstance(post_halo, int)
+        assert pre_halo >= 0 and post_halo >= 0
 
         class _SplitterUniform():
 
@@ -3366,7 +3367,9 @@ class Fiber:
         if isinstance(splits, Fiber):
             splits = splits.getCoords()
 
-        assert isinstance(post_halo, int) and all(isinstance(split, int) for split in splits)
+        assert all(isinstance(split, int) for split in splits)
+        assert isinstance(pre_halo, int) and isinstance(post_halo, int)
+        assert pre_halo >= 0 and post_halo >= 0
 
         class _SplitterNonUniform():
 
@@ -3545,8 +3548,9 @@ class Fiber:
 
         """
         assert not self.isLazy()
-        assert isinstance(post_halo, int)
         assert isinstance(step, int)
+        assert isinstance(pre_halo, int) and isinstance(post_halo, int)
+        assert pre_halo >= 0 and post_halo >= 0
 
         class _SplitterEqual():
 
@@ -3615,8 +3619,9 @@ class Fiber:
 
         """
         assert not self.isLazy()
-        assert isinstance(post_halo, int)
         assert all(isinstance(size, numbers.Number) for size in sizes)
+        assert isinstance(pre_halo, int) and isinstance(post_halo, int)
+        assert pre_halo >= 0 and post_halo >= 0
 
         class _SplitterUnEqual():
 
