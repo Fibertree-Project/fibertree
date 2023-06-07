@@ -3223,10 +3223,10 @@ class Fiber:
             the split, overrides the `depth` argument.
 
         pre_halo: integer
-            The size of the pre_halo before the partition
+            The size of the halo before the partition
 
         post_halo: integer
-            The size of the post_halo after the partition
+            The size of the halo after the partition
 
         Returns
         -------
@@ -3324,7 +3324,7 @@ class Fiber:
         return self._splitGeneric(splitter, depth=depth)
 
 
-    def splitNonUniform(self, splits, relativeCoords=False, depth=0, rankid=None, post_halo=0):
+    def splitNonUniform(self, splits, relativeCoords=False, depth=0, rankid=None, pre_halo=0, post_halo=0):
         """Split a fiber non-uniformly in coordinate space
 
         Parameters
@@ -3344,8 +3344,11 @@ class Fiber:
             The name of a rank, i.e., a rankid, at which to perform
             the split, overrides the `depth` argument.
 
+        pre_halo: integer
+            The size of the halo before the partition
+
         post_halo: integer
-            The size of the post_halo after the partition
+            The size of the halo after the partition
 
         Returns
         -------
@@ -3367,13 +3370,13 @@ class Fiber:
 
         class _SplitterNonUniform():
 
-            def __init__(self, fiber, splits, post_halo, relative):
+            def __init__(self, fiber, splits, pre_halo, post_halo, relative):
                 if Payload.contains(splits, Fiber):
                     splits = splits.coords.copy()
                 else:
                     splits = splits.copy()
 
-                self.iter = fiber._splitNonUniform_iter(splits, post_halo, relative)
+                self.iter = fiber._splitNonUniform_iter(splits, pre_halo, post_halo, relative)
 
 
             def __iter__(self):
@@ -3383,11 +3386,11 @@ class Fiber:
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
-        splitter = lambda f: _SplitterNonUniform(f, splits, post_halo, relativeCoords)
+        splitter = lambda f: _SplitterNonUniform(f, splits, pre_halo, post_halo, relativeCoords)
 
         return self._splitGeneric(splitter, depth=depth)
 
-    def _splitNonUniform_iter(self, splits, post_halo, relative):
+    def _splitNonUniform_iter(self, splits, pre_halo, post_halo, relative):
         """Iterator for splitting a fiber non-uniformly in coordinate space
 
         Parameters
@@ -3395,9 +3398,11 @@ class Fiber:
         splits: list of integers
             A list of the starting coordinates for each split
 
-        post_halo: integer
-            The size of the post_halo after the partition
+        pre_halo: integer
+            The size of the halo before the partition
 
+        post_halo: integer
+            The size of the halo after the partition
         relative: bool
             Should the coordinate in the split fibers match the
             original coordinates (`relativeCoords`=False) or always
@@ -3411,8 +3416,9 @@ class Fiber:
         """
         class _SplitterNonUniform_iter():
 
-            def __init__(self, fiber, splits, post_halo, relative):
+            def __init__(self, fiber, splits, pre_halo, post_halo, relative):
                 self.fiber = fiber
+                self.pre_halo = pre_halo
                 self.post_halo = post_halo
                 self.relative = relative
                 self.splits = splits.copy()
@@ -3421,11 +3427,10 @@ class Fiber:
                 if len(self.fiber) == 0:
                     return
 
-                assert isinstance(self.fiber.coords[0], int) or self.post_halo == 0
+                assert isinstance(self.fiber.coords[0], int) or \
+                    (self.post_halo == 0 and self.pre_halo == 0)
 
-                # If it is less than the first coordinate, there is no partition,
                 # If it is after the last coordinate, it is in the last partition
-                # self.splits.insert(0, Fiber._transCoord(self.fiber.coords[0], lambda c: None))
                 self.splits.append(Fiber._transCoord(self.fiber.coords[0], lambda c: float("inf")))
 
                 active_start, active_end = self.fiber.getActive()
@@ -3433,20 +3438,19 @@ class Fiber:
                 lower_coords = [[] for _ in splits]
                 lower_payloads = [[] for _ in splits]
 
+                halo_start = self.sub_pre_halo(active_start)
                 halo_end = self.add_post_halo(active_end)
 
                 search_start = 0
 
                 for c, p in self.fiber:
-                    # TODO: Fix for pre-halo
-                    if c < active_start:
+                    if c < halo_start:
                         continue
 
                     if c >= halo_end:
                         break
 
-                    # TODO: Fix for pre-halo
-                    if c < self.splits[search_start]:
+                    if c < self.sub_pre_halo(self.splits[search_start]):
                         continue
 
                     i = search_start
@@ -3464,8 +3468,7 @@ class Fiber:
                             i += 1
                             continue
 
-                        # TODO: Fix for pre-halo
-                        elif c < self.splits[i]:
+                        elif c < self.sub_pre_halo(self.splits[i]):
                             break
 
                         inds.append(i)
@@ -3495,10 +3498,15 @@ class Fiber:
 
                 return self.splits[ind], coords, payloads, active_range
 
-        return _SplitterNonUniform_iter(self, splits, post_halo, relative).__iter__()
+            def sub_pre_halo(self, coord):
+                if self.pre_halo != 0:
+                    return coord - self.pre_halo
+                return coord
+
+        return _SplitterNonUniform_iter(self, splits, pre_halo, post_halo, relative).__iter__()
 
 
-    def splitEqual(self, step, relativeCoords=False, depth=0, rankid=None, post_halo=0):
+    def splitEqual(self, step, relativeCoords=False, depth=0, rankid=None, pre_halo=0, post_halo=0):
         """Split a fiber equally in postion space
 
         Parameters
@@ -3518,16 +3526,22 @@ class Fiber:
             The name of a rank, i.e., a rankid, at which to perform
             the split, overrides the `depth` argument.
 
+        pre_halo: integer
+            The size of the halo before the partition
+
         post_halo: integer
-            The size of the post_halo (in coordinates) after the partition
-            Note: The current implementation performs a splitEqual pre-post_halo in
-            order to keep consistent semantics whether or not post_halo=0
+            The size of the halo after the partition
 
         Returns
         -------
         split_fiber: Fiber
             A fibertree with one more level corresponding to the
             splits of the original fiber
+
+        Notes
+        -----
+        The current implementation performs a splitEqual before the halo in
+        order to keep consistent semantics whether or not the halo is 0
 
         """
         assert not self.isLazy()
@@ -3536,7 +3550,7 @@ class Fiber:
 
         class _SplitterEqual():
 
-            def __init__(self, fiber, step, post_halo, relative):
+            def __init__(self, fiber, step, pre_halo, post_halo, relative):
                 splits = []
                 for i, (c, _) in enumerate(fiber.iterActive()):
                     if i == 0:
@@ -3545,7 +3559,7 @@ class Fiber:
                     elif i % step == 0:
                         splits.append(c)
 
-                self.iter = fiber._splitNonUniform_iter(splits, post_halo, relative)
+                self.iter = fiber._splitNonUniform_iter(splits, pre_halo, post_halo, relative)
 
             def __iter__(self):
                 return self.iter
@@ -3553,11 +3567,11 @@ class Fiber:
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
-        splitter = lambda f: _SplitterEqual(f, step, post_halo, relativeCoords)
+        splitter = lambda f: _SplitterEqual(f, step, pre_halo, post_halo, relativeCoords)
 
         return self._splitGeneric(splitter, depth=depth)
 
-    def splitUnEqual(self, sizes, relativeCoords=False, depth=0, rankid=None, post_halo=0):
+    def splitUnEqual(self, sizes, relativeCoords=False, depth=0, rankid=None, pre_halo=0, post_halo=0):
         """Split a fiber unequally in postion space
 
         Split a fiber by the sizes in `sizes`.
@@ -3579,11 +3593,11 @@ class Fiber:
             The name of a rank, i.e., a rankid, at which to perform
             the split, overrides the `depth` argument.
 
-        post_halo: integer
-            The size of the post_halo (in coordinates) after the partition
-            Note: The current implementation performs a splitUnEqual pre-post_halo in
-            order to keep consistent semantics whether or not post_halo=0
+        pre_halo: integer
+            The size of the halo before the partition
 
+        post_halo: integer
+            The size of the halo after the partition
 
         Returns
         -------
@@ -3596,6 +3610,9 @@ class Fiber:
         If there are more coordinates than the sum of the `sizes` all
         remaining coordinates are put into the final split.
 
+        The current implementation performs a splitEqual before the halo in
+        order to keep consistent semantics whether or not the halo is 0
+
         """
         assert not self.isLazy()
         assert isinstance(post_halo, int)
@@ -3603,7 +3620,7 @@ class Fiber:
 
         class _SplitterUnEqual():
 
-            def __init__(self, fiber, sizes, post_halo, relative):
+            def __init__(self, fiber, sizes, pre_halo, post_halo, relative):
                 splits = []
                 j = 0
                 base = 0
@@ -3619,7 +3636,7 @@ class Fiber:
                         j += 1
                         splits.append(c)
 
-                self.iter = fiber._splitNonUniform_iter(splits, post_halo, relative)
+                self.iter = fiber._splitNonUniform_iter(splits, pre_halo, post_halo, relative)
 
             def __iter__(self):
                 return self.iter
@@ -3627,7 +3644,7 @@ class Fiber:
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
-        splitter = lambda f: _SplitterUnEqual(f, sizes, post_halo, relativeCoords)
+        splitter = lambda f: _SplitterUnEqual(f, sizes, pre_halo, post_halo, relativeCoords)
 
         return self._splitGeneric(splitter, depth=depth)
 
