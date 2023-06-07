@@ -3263,23 +3263,30 @@ class Fiber:
                 search_start = 0
 
                 for c, p in self.fiber:
+                    # If the coordinate will not be in any partition, skip it
                     if c < active_start - self.pre_halo:
                         continue
 
                     if c >= active_end + self.post_halo:
                         break
 
+                    # Start at the partition where the coordinate will be in
+                    # the post-halo
                     part = (c - self.post_halo) // self.step * self.step
+                    # End at the partition where the coordinate will be in the
+                    # pre-halo
                     part_end = (c + self.pre_halo) // self.step * self.step + self.step
 
                     inds = []
                     while part < part_end:
+                        # Ensure that this partition is within the active range
                         if part + self.step <= active_start:
                             part += self.step
                             continue
                         elif part >= active_end:
                             break
 
+                        # Add the coordinate to the partition
                         if part in upper_coords[search_start:]:
                             i = upper_coords.index(part)
                         else:
