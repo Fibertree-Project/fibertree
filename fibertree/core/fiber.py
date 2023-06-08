@@ -2556,7 +2556,8 @@ class Fiber:
             The coordinate with the function applied to all integers
 
         """
-        assert isinstance(coord, tuple) or isinstance(coord, int) or isinstance(coord, Any)
+        assert isinstance(coord, tuple) or isinstance(coord, int) \
+            or isinstance(coord, float) or isinstance(coord, Any)
 
         if isinstance(coord, tuple):
             return tuple(Fiber._transCoord(c, trans_fn) for c in coord)
