@@ -3399,5 +3399,16 @@ class TestFiber(unittest.TestCase):
 
         self.assertEqual(mf.getDefault(), float("inf"))
 
+    def test_trans_coord(self):
+        """Test that Fiber._transCoord works on all desired datatypes"""
+        self.assertEqual(Fiber._transCoord((1, 2), lambda c: c + 1), (2, 3))
+        self.assertEqual(Fiber._transCoord(2, lambda c: c + 1), 3)
+        self.assertEqual(Fiber._transCoord(2.1, lambda c: c + 1), 3.1)
+        self.assertEqual(Fiber._transCoord(Any(), lambda c: c + 1), Any())
+
+        with self.assertRaises(AssertionError):
+            Fiber._transCoord("foo", lambda c: c + "bar")
+
+
 if __name__ == '__main__':
     unittest.main()
