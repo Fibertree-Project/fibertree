@@ -59,7 +59,7 @@ from fibertree import TensorImage, TensorCanvas
 class TensorDisplay():
     """ FibertreeDisplay """
 
-    def __init__(self, style=None, animation=None, have_ipywidgets=False):
+    def __init__(self, style=None, animation=None, have_ipywidgets=False, create_dialog=True):
         """ __init__ """
 
         self.have_ipywidgets = have_ipywidgets
@@ -67,13 +67,14 @@ class TensorDisplay():
         self.style = 'tree'
         self.animation = 'none'
 
-        self.setupWidgets()
+        if create_dialog:
+            self.setupWidgets()
 
-        if style is not None:
-            self.setStyle(style)
+            if style is not None:
+                self.setStyle(style)
 
-        if animation is not None:
-            self.setAnimation(animation)
+            if animation is not None:
+                self.setAnimation(animation)
 
         self.rand = random.Random()
 
