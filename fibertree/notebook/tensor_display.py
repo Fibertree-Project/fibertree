@@ -113,18 +113,33 @@ class TensorDisplay():
     #
     # Display actions
     #
-    def displayTensor(self, tensor, highlights=[], **kwargs):
+    def displayTensor(self, tensor, highlights=[], style=None, **kwargs):
         """ displayTensor """
 
-        im = TensorImage(tensor, style=self.style, highlights=highlights, **kwargs).im
+        if style is None:
+            style = self.style
 
-        display(im)
+        im = TensorImage(tensor,
+                         highlights=highlights,
+                         style=style,
+                         **kwargs)
+
+        display(im.im)
 
 
-    def createCanvas(self, *tensors, **kwargs):
+    def createCanvas(self, *tensors, style=None, animation=None, **kwargs):
         """ createCanvas """
 
-        return TensorCanvas(*tensors, animation=self.animation, style=self.style, **kwargs)
+        if style is None:
+            style = self.style
+
+        if animation is None:
+            animation = self.animation
+
+        return TensorCanvas(*tensors,
+                            style=style,
+                            animation=animation,
+                            **kwargs)
 
 
     def displayCanvas(self, canvas, filename=None, width="100%", loop=True, autoplay=True, controls=True, center=False):
