@@ -12,6 +12,8 @@ import logging
 import bisect
 import copy
 from functools import partialmethod
+from itertools import product
+
 import numbers
 import pickle
 import random
@@ -574,6 +576,89 @@ class Fiber:
         assert not self.isLazy()
 
         return self.coords
+
+    #
+    # The following two methods are workarounds for traversing
+    # a fiber with "tuple" coordinates for the uncompressed display
+    #
+    def iterUncompressed(self):
+        """ Temporary function """
+
+        index = 0
+        max_index = len(self.coords)-1
+
+        for c in self.iterShapeCoords():
+            if index <= max_index and c == self.coords[index]:
+                yield CoordPayload(c, self.payloads[index])
+                index += 1
+            else:
+                p = self._createDefault(addtorank=False)
+                yield CoordPayload(c, p)
+
+    def iterShapeCoords(self, start=None, end=None, shape=None):
+        """ Temporary function """
+
+        def recursive_product(sublist):
+            if isinstance(sublist, list) or isinstance(sublist, tuple):
+                ranges = [recursive_product(item) for item in sublist]
+                return [items for items in product(*ranges)]
+            else:
+                return range(sublist)
+
+        if shape is None:
+            shape = self.getShape(all_ranks=False)
+
+        #
+        # Handle case where shape is just an integer
+        # by converting it into a list
+        #
+        if isinstance(shape, int):
+            shape = [shape]
+
+        #
+        # Handle single-dimension shapes with integer coordinates
+        #
+        if len(shape) == 1 and isinstance(shape[0], int):
+
+            if start is None:
+                start = 0
+
+            if end is None:
+                end = shape[0]
+
+            for item in range(start, end, 1):
+                yield item
+            return
+
+        #
+        # Handle other cases
+        #
+        if len(shape) == 1:
+            #
+            # Handle single-dimension shape with non-integer coordinates
+            #
+            iterator = self.iterShapeCoords(shape=shape[0])
+        else:
+            #
+            # Handle multi-dimension shapes
+            #
+            ranges = [recursive_product(num) for num in shape]
+            iterator = product(*ranges)
+
+
+        started = start is None
+
+        for item in iterator:
+            if not started and item == start:
+                started = True
+
+            if started:
+                yield item
+
+                if item == end:
+                    return
+
+
 
     def getPayloads(self):
         """Return the list of payloads in fiber
@@ -3890,6 +3975,8 @@ class Fiber:
         ----
 
         Currently only supported for "ordered", "unique" fibers.
+
+        Note: tensor uses keyword `coord_style` instead of `style`
 
         """
         def merge_fn(ps):

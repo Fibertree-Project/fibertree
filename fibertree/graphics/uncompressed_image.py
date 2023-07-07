@@ -331,25 +331,14 @@ class UncompressedImage():
         row_first = True
 
         #
-        # For integer coordinates traverse all the coordinates in the shape
-        # otherwise traverse all the non-empty coordinates
+        # Traverse all the coordinates in the shape
         #
-        coords = range(shape[0])
-
-        if isinstance(fiber, Fiber):
-            if len(fiber) > 0 and not isinstance(fiber.coords[0], int):
-                coords = fiber.coords
-
-
-        for row_c in coords:
+        for row_c, row_p in fiber.iterUncompressed():
 
             if self.row_map:
                 coord_label = str(self.row_map[row_c])
             else:
                 coord_label = row_c
-
-            if fiber is not None:
-                row_p = fiber.getPayload(row_c)
 
             highlight_manager_next = highlight_manager.addFiber(row_c)
 
@@ -384,6 +373,11 @@ class UncompressedImage():
                          coord_label=None):
 
         #
+        # Check that we have a fiber to print
+        #
+        assert isinstance(fiber, Fiber)
+
+        #
         # Print out the rank information (if available)
         #
         # TBD: Align column more inteligently
@@ -394,10 +388,19 @@ class UncompressedImage():
             col_hack = 0
 
         if rank_label:
-            self._draw_label(row_origin, col_origin+col_hack, "Rank: "+self._getId(fiber))
+            self._draw_label(row_origin,
+                             col_origin + col_hack,
+                             "Rank: " + self._getId(fiber))
 
-            for c in range(fiber.getShape(all_ranks=False)):
-                self._draw_label(row_origin+1, col_origin+col_hack+c, f"{c:^3}")
+            for n, c in enumerate(fiber.iterShapeCoords()):
+                if isinstance(c, int):
+                    label = f"{c:^3}"
+                else:
+                    label = f"{c}"
+
+                self._draw_label(row_origin + 1,
+                                 col_origin + col_hack + n,
+                                 label)
 
             rank_label_offset = 2
         else:
@@ -451,45 +454,21 @@ class UncompressedImage():
         col_max = col_origin + coord_label_offset
 
         #
-        # Determine if coordinates are integers
-        #
-        if len(fiber) > 0 and isinstance(fiber.coords[0], int):
-            coord_is_int = True
-        else:
-            coord_is_int = False
-
-        #
         # Process each coordinate in the shape
         #
-        for coord in range(shape[0]):
+        for coord, payload in fiber.iterUncompressed():
+
+            #
+            # This must be the leaf elements of the tensor
+            #
+            assert not isinstance(payload, Fiber)
+
             #
             # Get highlighting information from highlight manager
             #
             color_coord = highlight_manager.getColorCoord(coord)
             color_subtensor = highlight_manager.getColorSubtensor()
             color_coord_or_subtensor = color_coord | color_subtensor
-
-            if isinstance(fiber, Fiber):
-                #
-                # For printing a non-empty row
-                #
-                if coord_is_int:
-                    payload = fiber.getPayload(coord)
-                else:
-                    #
-                    # Just show non-integer coordinates in order
-                    #
-                    try:
-                        payload = fiber.payloads[coord]
-                    except:
-                        payload = 0
-
-                assert not isinstance(payload, Fiber)
-            else:
-                #
-                # For printing a empty row
-                #
-                payload = 0
 
             row_count = self._draw_value(row_cur, col_cur, payload, color_coord_or_subtensor)
 
