@@ -1761,7 +1761,8 @@ class Tensor:
 
         # TBD: Fix to use a format from a fiber...
 
-        str = "T(%s)/[" % ",".join(self.getRankIds())
+        rankid_string = self._nested_list2string(self.getRankIds())
+        str = f"T({rankid_string})/["
 
         if self.ranks:
             str += "\n"
@@ -1781,7 +1782,8 @@ class Tensor:
 
         # TBD: Fix to use a repr from a fiber...
 
-        str = "T(%s)/[" % ",".join(self.getRankIds())
+        rankid_string = self._nested_list2string(self.getRankIds())
+        str = f"T({rankid_string})/["
 
         if self.ranks:
             str += "\n"
@@ -1793,6 +1795,20 @@ class Tensor:
         str += "]"
 
         return str
+
+    def _nested_list2string(self, nested_list):
+
+        result = []
+
+        for item in nested_list:
+            if isinstance(item, list):
+                # Recursively call the function for nested lists
+                result.append(self._nested_list2string(item))
+            else:
+                # Append the string leaf node with a newline character
+                result.append(str(item))
+
+        return "[" + ", ".join(result) + "]"
 
 #
 # Yaml input/output methods
