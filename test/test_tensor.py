@@ -306,7 +306,7 @@ class TestTensor(unittest.TestCase):
 
         self.assertEqual(a_s, a_s_ref)
 
-        a_r_ref = "T()/[Payload(2)]"
+        a_r_ref = "T([])/[Payload(2)]"
 
         a_r = f"{a!r}"
 
@@ -342,7 +342,7 @@ class TestTensor(unittest.TestCase):
 
         self.assertEqual(a_s, a_s_ref)
 
-        a_r_ref = "T(M,K)/[\n" + \
+        a_r_ref = "T([M, K])/[\n" + \
                   "  R(M)/[Fiber([0, 1, 3], [Fiber([0, 2], [1, 3], owner=K), Fiber([0, 3], [1, 4], owner=K), Fiber([2, 3], [3, 4], owner=K)], owner=M)]\n" + \
                   "  R(K)/[Fiber([0, 2], [1, 3], owner=K), Fiber([0, 3], [1, 4], owner=K), Fiber([2, 3], [3, 4], owner=K)]\n" + \
                   "]"
