@@ -121,21 +121,21 @@ class TreeImage():
             # Get tensor's name
             #
             name = object.getName()
+            if not name:
+                name = "ANON"
+            #
+            # Get rank_id, convert lists to a string
+            #
+            ranks = ", ".join([str(r) for r in object.getRankIds()])
+
+            self._draw_rank(0, f"Tensor: {name}[{ranks}]")
             #
             # Get tensor's color
             #
             self._color = object.getColor()
             #
             # Create rank_id string
-            #
-            # Note: if rank_id is a list, convert to a string
-            #
-            ranks = ", ".join([str(r) for r in object.getRankIds()])
 
-            if name:
-                self._draw_rank(0, f"Tensor: {name}[{ranks}]")
-            else:
-                self._draw_rank(0, f"File: {object.yamlfile}")
         elif isinstance(object, Fiber):
             #
             # Displaying a fiber
@@ -150,31 +150,10 @@ class TreeImage():
             self._color = "red"
 
         #
-        # Process appropriately if root has 0 dimensions or more
+        # Draw the tensor or a fiber, i.e., the fiber tree
         #
-        if not Payload.contains(root, Fiber):
-            #
-            # Draw a 0-D tensor, i.e., a value
-            #
-            hlm = self.highlight_manager
-            hl = hlm.getColorCoord(0)
-
-            self._draw_coord(0, 0, "R")
-            self._draw_line(0, 1/2, 1, 1/2)
-            self._draw_value(1,
-                             0,
-                             Payload.get(root),
-                             hl)
-            region_end = 1
-        elif root.countValues() == 0:
-            self._draw_coord(0, 0, "R")
-            region_end = 1
-        else:
-            #
-            # Draw a non-0-D tensor or a fiber, i.e., the fiber tree
-            #
-            region_end = self._traverse(root,
-                                       highlight_manager=self.highlight_manager)
+        region_end = self._traverse(root,
+                                    highlight_manager=self.highlight_manager)
 
         #
         # Crop the image
@@ -191,20 +170,49 @@ class TreeImage():
 
         self.im.show()
 
-
 #
 # Method to traverse (and draw) all the levels of the tree
 #
     def _traverse(self,
-                 fiber,
-                 level=0,
-                 offset=0,
-                 highlight_manager=None):
-        """traverse"""
+                  fiber,
+                  level=0,
+                  offset=0,
+                  highlight_manager=None):
+        """traverse tree
+
+        Internal method to recursively traverse and draw the
+        fibertree. It processes the root level (level 0) specially
+        then processes the other levels.
+
+        Parameters
+        ==========
+
+        fiber: Fiber
+        The fiber being displayed.
+
+        level: int, default=0
+        The level of the tree being processed (root==0).
+
+        offset: int, default=0
+        The horizontal offset in the "coordinate" space of
+        the `_draw_*()` methods.
+
+        highlight_manager: HighlightManager
+        The highlight information for the fiber
+
+        Notes
+        =====
+
+        The key variables are `region_{start,end}` which are
+        horizontal offests in the "coordinate" space used by the
+        `_draw_*()` methods.
+
+        """
 
 
         #
         # Check if this is level0, which may just be a payload
+        # TBD: Pull level0 processing out into a separate method
         #
         if level == 0:
             region_start = 0
@@ -213,9 +221,20 @@ class TreeImage():
                 #
                 # Draw a 0-D tensor, i.e., a value (NOT a fiber)
                 #
+                hl = highlight_manager.getColorCoord(0)
+
                 self._draw_coord(0, 0, "R")
                 self._draw_line(0, 1/2, 1, 1/2)
-                self._draw_value(1, 0, Payload.get(fiber))
+                self._draw_value(1,
+                                 0,
+                                 Payload.get(fiber),
+                                 hl)
+                region_end = 1
+            elif fiber.countValues() == 0:
+                #
+                # Draw an empty tensor or fiber
+                #
+                self._draw_coord(0, 0, "R")
                 region_end = 1
             else:
                 #
@@ -294,9 +313,14 @@ class TreeImage():
             coordinate_start = region_end
 
         #
+        # Calculate values for drawing fiber
+        #
+        fiber_size = fiber.countValues(recursive=False)
+
+        #
         # If the fiber was empty we still occupy a single space
         #
-        if len(fiber) == 0:
+        if fiber_size == 0:
             region_end += 1
 
         region_size = region_end - region_start
@@ -309,13 +333,12 @@ class TreeImage():
         #
         # Display fiber for this level
         #
-        fiber_size = len(fiber)
         fiber_start = region_start + (region_size - fiber_size)/2
 
         self._draw_fiber(level,
-                        fiber_start,
-                        fiber_start+fiber_size,
-                        highlight_subtensor)
+                         fiber_start,
+                         fiber_start+fiber_size,
+                         highlight_subtensor)
 
         pos = fiber_start
 

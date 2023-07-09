@@ -779,25 +779,40 @@ class Fiber:
         start_pos = Payload.get(start_pos)
         assert not start_pos or self.coords[start_pos] <= coords[0]
 
-        # If there is no saved shortcut, then do a log search
-        if start_pos is None:
-            index = bisect.bisect_left(self.coords, coords[0])
+        coord0 = coords[0]
 
-        # If there is a saved shortcut, then search linearly from that point
-        else:
-            index = len(self.coords)
-            for i in range(start_pos, len(self.coords)):
-                if self.coords[i] >= coords[0]:
-                    index = i
-                    break
-
+        do_search = True
         const_used = False
-        existing = index < len(self.coords) and self.coords[index] == coords[0]
+
+        # If the coord is empty skip the search
+        if isinstance(coord0, list) and len(coord0) == 1:
+            coord0_point = coord0[0]
+            if isinstance(coord0_point, tuple) and len(coord0_point) == 0:
+                do_search = False
+                existing = False
+                index = start_pos
+
+
+        if do_search:
+            # If there is no saved shortcut, then do a log search
+            if start_pos is None:
+                index = bisect.bisect_left(self.coords, coord0)
+
+            # If there is a saved shortcut, then search linearly from there
+            else:
+                index = len(self.coords)
+                for i in range(start_pos, len(self.coords)):
+                    if self.coords[i] >= coord0:
+                        index = i
+                        break
+
+            existing = index < len(self.coords) and self.coords[index] == coord0
 
         if existing:
             payload = self.payloads[index]
         elif allocate:
             payload = self._createDefault(addtorank=False)
+            const_used = not isinstance(payload, Fiber)
         else:
             payload = Payload.maybe_box(default)
             const_used = True
@@ -1843,26 +1858,31 @@ class Fiber:
             return max(self.coords)
 
 
-    def countValues(self):
+    def countValues(self, recursive=True):
         """Count values in the fiber tree
 
-        Count the number of leaf elements in the fibertree that are
-        not **empty** and have do not have the a payload with the
-        fiber's **default** value.
+        Count the number of leaf elements in the fibertree
+        (recursive=True) or in the current fiber (recursive=False)
+        that are not **empty** and have do not have the a payload with
+        the fiber's **default** value.
 
         Parameters
         ----------
-        None
+        recursive: Bool, default=True
+        Find values in leaf nodes (True) or current fiber (False)
 
         Returns
         -------
         value_count: integer
-            Number of non-empty, non-default values in the fibertee.
+            Number of non-empty, non-default values.
 
         Notes
         -----
 
-        An explcit zero scalar value will NOT count as a value in a
+        If all you actually care about is whether a fiber is empty use
+        `Fiber.isEmpty()`
+
+        An explcit zero scalar value will NOT count as a value.
 
         """
 
@@ -1870,7 +1890,7 @@ class Fiber:
 
         count = 0
         for p in self.payloads:
-            if Payload.contains(p, Fiber):
+            if recursive and Payload.contains(p, Fiber):
                 count += Payload.get(p).countValues()
             else:
                 count += 1 if not Payload.isEmpty(p, default=self.getDefault()) else 0
@@ -1879,6 +1899,7 @@ class Fiber:
 
 #
 # Manage eager vs lazy iteration
+#
     def _setIsLazy(self, is_lazy):
         """Set whether or not this fiber is lazily built
 
@@ -2072,7 +2093,34 @@ class Fiber:
 
 
     def __len__(self):
-        """__len__"""
+        """__len__
+
+        Find the number of positions in the current fiber. This allows
+        one to iterate over the positions in the fiber.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        count: int
+        Count of positions in the fiber
+
+        Raises
+        ------
+
+        None
+
+        Notes
+        ------
+
+        This count may contain **empty** (i.e., default)  payloads.
+
+        The semantics of this method for **lazy** fibers is suspect because
+        one cannot access laxy fibers by position anyway
+
+        """
 
         if self.isLazy():
             len_ = 0
