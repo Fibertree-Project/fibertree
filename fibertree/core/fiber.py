@@ -433,7 +433,7 @@ class Fiber:
 
 
     @classmethod
-    def fromRandom(cls, shape, density, interval=10, seed=None):
+    def fromRandom(cls, shape, density, interval=10, seed=None, default=0):
         """Create a fiber populated with random values.
 
         Multi-level fibers are supported by recursively creating
@@ -455,8 +455,22 @@ class Fiber:
             The range (from 0 to `interval`) of each value at the leaf
             level of the tree.
 
+        default: int or None, default=0
+            The default empty value
+
         seed: a valid argument for `random.seed`
             A seed to pass to `random.seed`.
+
+
+        Notes
+        =====
+
+        This method only creates tensors filled with integers.
+
+        The density always is referring to the density of zeros
+        irrespective of the `default` empty value for the tensor. Note
+        further, that if the `default` is not 0 then setting a non-unit
+        density for upper ranks does not make sense.
 
         """
 
@@ -470,6 +484,9 @@ class Fiber:
         assert len(shape) == len(density), \
                "Density and shape arrays must be same length"
 
+        assert len(density) == 1 or density[0] == 1.0 or default is not None, \
+            "Non-unit density for higher ranks illegal when default is None"
+
         if seed is not None:
             random.seed(seed)
 
@@ -480,19 +497,25 @@ class Fiber:
             if random.random() < density[0]:
                 if len(shape) == 1:
                     payload = random.randint(1, interval)
-                    if payload == 0:
+                    if payload == default:
                         break
                 else:
                     payload = Fiber.fromRandom(shape[1:],
                                                density[1:],
-                                               interval)
+                                               interval,
+                                               default=default)
                     if payload.isEmpty():
                         continue
+            else:
+                if default == 0:
+                    break
 
-                coords.append(c)
-                payloads.append(payload)
+                payload = 0
 
-        f = Fiber(coords, payloads)
+            coords.append(c)
+            payloads.append(payload)
+
+        f = Fiber(coords, payloads, default=default)
 
         return f
 

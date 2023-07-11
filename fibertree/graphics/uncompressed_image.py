@@ -57,6 +57,11 @@ class UncompressedImage():
         self.row_map = row_map
 
         #
+        # Instance variable to remember the default value for leaves
+        #
+        self.default = 0
+
+        #
         # Deal with lazy fibers by instantiating them
         #    Note: isLazy() and fromLazy() are not recursive...
         #
@@ -210,6 +215,10 @@ class UncompressedImage():
             elif dimensions == 2:
                 region_size = self._traverse_matrix(shape, fiber, highlight_manager=hl_manager)
             elif dimensions == 1:
+                #
+                # Remember the fiber's default for drawing
+                #
+                self.default = fiber.getDefault()
                 region_size = self._traverse_vector(shape, fiber, highlight_manager=hl_manager)
             else:
                 self.logger.info(f"Unsupported number of ranks for uncompressed image ({dimensions})")
@@ -329,6 +338,12 @@ class UncompressedImage():
         #
         row_p = Fiber([], [])
         row_first = True
+
+        #
+        # Remember the fiber's payloads's default for drawing
+        #
+        if len(fiber) > 0:
+            self.default = fiber[0].payload.getDefault()
 
         #
         # Traverse all the coordinates in the shape
@@ -570,13 +585,13 @@ class UncompressedImage():
 
         x2 = x1 + 40
         y2 = y1 + row_count*(font_y+10)
-        
+
         if y2 > self.max_y:
             self.max_y = y2
 
 
         if len(highlight) == 0:
-            fill_color = self._color if value != (0, ) else 0
+            fill_color = self._color if value != (self.default, ) else 0
             self.draw.rectangle(((x1,y1), (x2,y2)), fill_color, 1)
         else:
             step = (y2-y1) // len(highlight)

@@ -168,6 +168,45 @@ class Tensor:
 
 
     @classmethod
+    def makePopulated(cls, rank_ids, shape, initial=0, default=None, **kwargs):
+        """makePopulated
+
+        Construct a fully populated tensor with the given shape and
+        other attributes
+
+        Parameters
+        -----------
+
+        rank_ids: list of strings
+            List containing names of ranks.
+
+        shape: list of integers, default=None
+            A list of shapes of the ranks
+
+        initial:: value, default=0
+            A value to initialize all the elements to
+
+        default: value, default=None
+            A default value for elements in the leaf rank
+
+        See Tensor() for additional keyword arguments
+
+        """
+
+        root = initial
+
+        for size in reversed(shape):
+            root = size * [root]
+
+        t = Tensor.fromUncompressed(rank_ids=rank_ids,
+                                    shape=shape,
+                                    root=root,
+                                    default=default,
+                                    **kwargs)
+
+        return t
+
+    @classmethod
     def fromYAMLfile(cls, yamlfile):
         """Construct a tensor from a YAML file
 
@@ -344,7 +383,8 @@ class Tensor:
                    interval=10,
                    seed=None,
                    name="",
-                   color="red"):
+                   color="red",
+                   default=0):
         """Create a random tensor
 
         Parameters
@@ -364,18 +404,22 @@ class Tensor:
             The closed range [0:`interval`] of each value at the leaf
             level of the tree
 
+        default: int or None, default=0
+            The default empty value, None means no empty value
+
         seed: a valid argument for `random.seed`
             A seed to pass to `random.seed`
 
         """
 
-        f = Fiber.fromRandom(shape, density, interval, seed)
+        f = Fiber.fromRandom(shape, density, interval, seed, default=default)
 
         return Tensor.fromFiber(rank_ids=rank_ids,
                                 fiber=f,
                                 shape=shape,
                                 name=name,
-                                color=color)
+                                color=color,
+                                default=default)
 
 
 
