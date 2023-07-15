@@ -242,6 +242,7 @@ class UncompressedImage():
         row_cur = row_origin + 3
         row_max = row_origin + 3
         col_cur = col_origin
+        col_max = col_cur
 
         #
         # Just show the nonEmpty cubes
