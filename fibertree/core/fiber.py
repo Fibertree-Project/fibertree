@@ -498,7 +498,7 @@ class Fiber:
                 if len(shape) == 1:
                     payload = random.randint(1, interval)
                     if payload == default:
-                        break
+                        continue
                 else:
                     payload = Fiber.fromRandom(shape[1:],
                                                density[1:],
@@ -508,7 +508,7 @@ class Fiber:
                         continue
             else:
                 if default == 0:
-                    break
+                    continue
 
                 payload = 0
 
