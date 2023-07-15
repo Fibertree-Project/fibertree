@@ -608,7 +608,12 @@ class Fiber:
         """ Temporary function """
 
         index = 0
-        max_index = len(self.coords)-1
+        max_index = len(self.coords) - 1
+
+
+        shape = self.getShape(all_ranks=False)
+        assert max_index == 0 or isinstance(self.coords[0], type(shape)), \
+            "The type of coordinates must match type of shape"
 
         for c in self.iterShapeCoords():
             if index <= max_index and c == self.coords[index]:
@@ -2396,7 +2401,12 @@ class Fiber:
         return None
 
 
-    def updateCoords(self, func, depth=0, rankid=None):
+    def updateCoords(self,
+                     func,
+                     depth=0,
+                     rankid=None,
+                     new_shape=None,
+                     new_rank_id=None):
         """Update (rewrite) the values of the coordinates of a fiber
 
         Update each coordinate in the the fibers at a depth of `depth`
@@ -2416,7 +2426,13 @@ class Fiber:
 
         rankid: string, default=None
             The name of a rank, i.e., a rankid, at which to perform
-            the split, overrides the `depth` argument.
+            the update, overrides the `depth` argument.
+
+        new_rankid: string, default=None
+            A name of a rank, i.e., a rankid, to give the updated rank
+
+        new_shape: int or tuple, default=None
+            A shape specification to give the updated rank
 
         Returns
         --------
@@ -2431,9 +2447,15 @@ class Fiber:
         Notes
         -----
 
+        If the updated coordinates change the type of the shape of the
+        rank, then you must change the shape to match. For example, if
+        the original coordinates are tuples and they are converted to
+        integers, then you should pass in a new shape which will be
+        an integer.
+
         This method checks and that coordinates remain monotonically
-        increasing and re-orders to make sure
-        self.coords/self.payloads preserve monotonacity.
+        increasing and re-orders to make sure `self.coords` and
+        `self.payloads` preserve monotonacity.
 
         The "unique" property is not checked.
 
@@ -2441,36 +2463,55 @@ class Fiber:
 
         assert not self.isLazy()
 
+        if len(self.coords) == 0:
+            # Nothing to do
+            return None
+
         if rankid is not None:
             depth = self._rankid2depth(rankid)
 
         if depth > 0:
             # Recurse down to depth...
             for p in self.payloads:
-                p.updateCoords(func, depth=depth - 1)
-        else:
-            # Update my coordinates
+                p.updateCoords(func, depth=depth - 1, shape=shape)
+                return None
 
-            no_sort_needed = True
+        # Update my coordinates
 
-            last_coord = None
+        no_sort_needed = True
 
-            for i in range(len(self.coords)):
-                new_coord = func(i, self.coords[i], self.payloads[i])
-                self.coords[i] = new_coord
+        last_coord = None
 
-                no_sort_needed = no_sort_needed and ((last_coord is None) or (last_coord <= new_coord))
-                last_coord = new_coord
+        for i in range(len(self.coords)):
+            new_coord = func(i, self.coords[i], self.payloads[i])
+            self.coords[i] = new_coord
 
-            if self._ordered and not no_sort_needed:
-                #
-                # Resort the coords/payloads
-                #
-                # self.logger.debug("Fiber.updateCoords() - sort needed")
+            no_sort_needed = no_sort_needed and ((last_coord is None) or (last_coord <= new_coord))
+            last_coord = new_coord
 
-                zipped_cp = zip(self.coords, self.payloads)
-                sorted_cp = sorted(zipped_cp)
-                self.coords, self.payloads = [ list(tuple) for tuple in zip(*sorted_cp)]
+        if self._ordered and not no_sort_needed:
+            #
+            # Resort the coords/payloads
+            #
+            # self.logger.debug("Fiber.updateCoords() - sort needed")
+
+            zipped_cp = zip(self.coords, self.payloads)
+            sorted_cp = sorted(zipped_cp)
+            self.coords, self.payloads = [list(tuple) for tuple in zip(*sorted_cp)]
+
+        #
+        # Update the fiber's rank_id and/or shape
+        #
+        if new_rank_id is not None:
+            self.getRankAttrs().setId(new_rank_id)
+
+        if new_shape is not None:
+            self.getRankAttrs().setShape(new_shape)
+
+        new_shape = self.getRankAttrs().getShape()
+
+        assert isinstance(new_shape, type(self.coords[0])), \
+            "Type of shape must match shape of coordinates"
 
         return None
 
