@@ -3927,10 +3927,19 @@ class Fiber:
         result may contain references to the payloads of self).
 
         """
-        upper = Fiber(default=Fiber(), active_range=self.getActive())
+        shape = self.getRankAttrs().getShape()
+
+        upper = Fiber(default=Fiber(),
+                      active_range=self.getActive(),
+                      shape=shape)
 
         for part, coords, payloads, active_range in splitter(self):
-            lower = Fiber(coords=coords, payloads=payloads, active_range=active_range, default=self.getDefault())
+            lower = Fiber(coords=coords,
+                          payloads=payloads,
+                          active_range=active_range,
+                          default=self.getDefault(),
+                          shape=shape)
+
             upper.coords.append(part)
             upper.payloads.append(lower)
 
