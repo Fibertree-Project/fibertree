@@ -612,7 +612,7 @@ class Fiber:
 
 
         shape = self.getShape(all_ranks=False)
-        assert max_index == 0 or isinstance(self.coords[0], type(shape)), \
+        assert max_index == -1 or isinstance(self.coords[0], type(shape)), \
             "The type of coordinates must match type of shape"
 
         for c in self.iterShapeCoords():
