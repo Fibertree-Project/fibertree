@@ -1,4 +1,35 @@
-"""Highlight Module"""
+"""Highlight Module
+
+This module provides support for the specification of **highlights**
+of sets of **points** and/or **fibers** in a tensor (or fiber). These
+highlights are used to display a tensor (or fiber) with various points
+or entire subtensors colored and when a point or subtensor is colored.
+The ancestor fibers of any highlight entity are also colored.
+
+The points to highlight are a tuple of **coordinates**, where
+coordinates can be either integers or nests of tuples of integers,
+e.g., `(1, 2, 3)` or `((1,2), (4, 5))`. Furthermore, there is support
+for displaying multiple colors of highlights, these are referreed to
+as `workers` and can be used to illustrate activity in different
+PEs. For each worker, a list of points to highlight can be specified.
+
+If the tuple of **cordiantes** does not reach the leaves of the tree
+then an entire subtensor is highlighted.
+
+There is also a special case where a coordinate is a **wildcard**
+(represented with '?') and in that case all points with any coordinate
+value at that level will be highlighted.
+
+Highlights are specified in a variety of methods in the fibertree
+envirnoment including: `DisplayTensor()`, `Canvas.addActivity()`, and
+`TensorImage()`
+
+To simplify specification of hightlights, they can be represented in
+various ways in calls to those functions, and the routine
+HighlightManager.canonical_highlights() is used to convert them into a
+standard form.
+
+"""
 
 import logging
 
@@ -10,9 +41,50 @@ module_logger = logging.getLogger('fibertree.graphics.highlights')
 
 
 class HighlightManager():
-    """HighlightManager """
+    """HighlightManager
 
-    def __init__(self, highlights={}, highlight_subtensor={}, parent=None, level=None):
+    This class maintaints a data structure that holds the
+    **highlights** for a specific tensor or subtensor. This class is
+    used recursively to figure out how to highlight the fibers or
+    points in the various levels of the object by various display
+    methods, such as `TreeImage()` and `UncmpressedImage()`.
+
+    Constructor
+    -----------
+
+    Parameters
+    ----------
+
+    highlights: dictionary
+        A dictionary of workers and the points to highlight for each worker
+
+    level: int
+        This highlight manager's  height in the tree, where 0 is the bottom.
+
+    highlight_subtensor: dictionary, default={}
+        TBD
+
+    parent: HightlightManager, default=None
+        The highlight manager of the level of the fibertree one level up
+
+
+    Notes
+    -----
+
+    In normal usage, the user only specifies the first two constructor
+    arguments, the others are used in recursive invocations by the
+    HighlightManager itself.
+
+    To allow more flexibilty in the specification of hightlights the
+    method `HighlightManager.canonicalizeHighlights()` is provided.
+
+    """
+
+    def __init__(self,
+                 highlights={},
+                 highlight_subtensor={},
+                 parent=None,
+                 level=None):
 
         #
         # Set up logging
@@ -30,17 +102,24 @@ class HighlightManager():
 
         #
         # The points to highlight for each worker at this level are
-        # based on the first coordinate in each point, unless the
-        # coordinate is a wildcard ('?')
+        # based on the first coordinate in each point in the
+        # `highlights`, unless the coordinate is a wildcard
+        # ('?'). These will be coordinates of elements of the current
+        # fiber and will be are called the `active_coords` for the
+        # level.
         #
         self.active_coords = {}
-    
+
         for worker, points in highlights.items():
 
             active_coords_temp = []
 
             for point in points:
-                if point[0] not in ['?']:
+                #
+                # This checks that there actually is a coordinate at this level
+                # and that it is not a wildcard ('?')
+                #
+                if len(point) >= 1 and point[0] not in ['?']:
                     active_coords_temp.append(point[0])
 
             self.active_coords[worker] = set(active_coords_temp)
@@ -130,7 +209,6 @@ class HighlightManager():
 
             for worker, coords in self.highlight_coords.items():
                 if c in coords:
-                    # print(f"highlights[{worker}] = {self.highlights[worker]}")
                     parent = self.parent
                     if parent is not None:
                         self.parent.addHighlight(worker)
@@ -149,6 +227,11 @@ class HighlightManager():
     @staticmethod
     def canonicalizeHighlights(highlights, worker="PE"):
         """canonicalizeHighlights
+
+        This method handles the specification of **highlights**, which
+        are a list of **points** in a tensor (or fiber). The points
+        themselves are a tuple of **coordinates**, where coordinates
+        can be either integers or nests of tuples of integers.
 
         In methods that accept highlights there is considerable
         flexibility in the form that the highlights are provided. This
@@ -187,11 +270,11 @@ class HighlightManager():
 
         3) Single point, no worker
 
-        (point1_coord0, point1_coord1, ...)
+        (point0_coord0, point0_coord1, ...)
 
 
         Warning: if a coordinate is a tuple there is ambiguity in forms
-        1 and 3, so they cannot be used.
+        2 and 3, so in that case you must use form 2...
 
 
         Parameters:
@@ -224,6 +307,10 @@ class HighlightManager():
 
         """
 
+        # print(f"Raw highlights: {highlights}")
+
+        canonical_highlights = {}
+
         if not isinstance(highlights, dict):
             #
             # Massage highlights into proper form
@@ -239,13 +326,33 @@ class HighlightManager():
             #
             if len(pe_highlights):
                 try:
+                    #
+                    # Success here means we have two levels of container
+                    #
                     temp = pe_highlights[0][0]
 
+                    canonical_point_list = pe_highlights
+
                 except Exception:
-                    temp = pe_highlights
-                    pe_highlights = []
-                    pe_highlights.append(temp)
-                    highlights[pe] = pe_highlights
+                    #
+                    # An exception means we should wrap the point in a list
+                    #
+                    canonical_point_list = [pe_highlights]
 
-        return highlights
+                #
+                # Remove empty points from `canonical_point_list`
+                #
+                final_canonical_point_list = []
 
+                for point in canonical_point_list:
+                    if not isinstance(point, tuple) or len(point) > 0:
+                        final_canonical_point_list.append(point)
+
+                #
+                # Record points for this worker `pe`
+                #
+                canonical_highlights[pe] = final_canonical_point_list
+
+        # print(f"Canonical Highlights: {canonical_highlights}")
+
+        return canonical_highlights

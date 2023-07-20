@@ -249,7 +249,10 @@ class TensorCanvas():
         highlights_list = []
 
         for hl in highlights:
-            highlights_list.append(HighlightManager.canonicalizeHighlights([hl], worker=worker))
+            canonical_highlights = HighlightManager.canonicalizeHighlights(hl,
+                                                                           worker=worker)
+
+            highlights_list.append(canonical_highlights)
 
         #
         # If wait is a list it is a list of input tensors that this
@@ -296,7 +299,9 @@ class TensorCanvas():
         #
         active_highlights = self.log[log_idx].highlights
 
-        for n, highlight in enumerate([highlights[worker] for highlights in highlights_list]):
+        for n, highlights in enumerate(highlights_list):
+
+            highlight = highlights.get(worker, [])
 
             if worker not in active_highlights[n]:
                 active_highlights[n][worker] = highlight
