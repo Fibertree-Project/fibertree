@@ -2731,7 +2731,7 @@ class TestFiber(unittest.TestCase):
 
         split = f.splitUniform(coords)
         flat_split = split.flattenRanks()
-        flat_split.updateCoords(lambda i, c, p: c[1])
+        flat_split.updateCoords(lambda i, c, p: c[1], new_shape=42)
 
         self.assertEqual(f, flat_split)
 
@@ -2765,7 +2765,7 @@ class TestFiber(unittest.TestCase):
 
         f_ans = Fiber([ 100-c for c in reversed(c)], list(reversed(p)))
 
-        f.updateCoords(lambda i, c, p: 100-c)
+        f.updateCoords(lambda i, c, p: 100-c, new_shape=42)
 
         self.assertEqual(f, f_ans)
 

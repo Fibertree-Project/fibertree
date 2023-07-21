@@ -651,7 +651,8 @@ class TestTensor(unittest.TestCase):
         t3 = t2.unflattenRanks()
         self.assertFalse(t3.isMutable())
 
-        t4 = Tensor(rank_ids=["X", "Y", "Z"])
+        # Note: Tensor witout a shape fails
+        t4 = Tensor(rank_ids=["X", "Y", "Z"], shape=[10, 10, 10])
         t5 = t4.flattenRanks()
         t6 = t5.unflattenRanks()
         self.assertTrue(t6.isMutable())

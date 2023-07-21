@@ -721,13 +721,24 @@ class Tensor:
 
     def _addFiber(self, fiber, level=0):
         """Recursively fill in ranks from "fiber"."""
-        shape = fiber.getShape(authoritative=True, all_ranks=False)
-        if shape:
+
+        #
+        # Reconcile fiber shape with rank shape
+        # with rank shape taking priority
+        #
+        fiber_shape = fiber.getShape(authoritative=True, all_ranks=False)
+
+        if fiber_shape:
             attrs = self.ranks[level].getAttrs()
-            if attrs.getShape():
-                attrs.setShape(max(attrs.getShape(), shape))
+            rank_shape = attrs.getShape()
+
+            if rank_shape:
+                try:
+                    attrs.setShape(max(fiber_shape, rank_shape))
+                except Exception:
+                    attrs.setShape(rank_shape)
             else:
-                attrs.setShape(shape)
+                attrs.setShape(fiber_shape)
                 attrs.setEstimatedShape(False)
 
         self.ranks[level].append(fiber)
@@ -1682,7 +1693,7 @@ class Tensor:
 
         return rank_ids, new_shape
 
-    def unflattenRanks(self, depth=0, levels=1):
+    def unflattenRanks(self, depth=0, levels=1, style="tuple"):
         """Unflatten ranks in the  tensor's fibertree.
 
         Tensor-level version of method that operates on the tensor's fibertree
@@ -1692,7 +1703,11 @@ class Tensor:
         ----------
 
         depth: integer, default=0
-            Level of fibertree to split
+            Level of fibertree to unflatten into multiple levels
+
+
+        style: str, default: "tuple"
+            The style of the coordinates in the level to be unflattened
 
         See `Fiber.unflattenRanks()` for other arguments.
 
@@ -1702,29 +1717,20 @@ class Tensor:
         unflattened_tensor: Tensor
              A new tensor with some ranks unflattened
 
+
+        Notes:
+        ------
+
+        The rank_ids and shape of the unflattened tensor are only
+        correct if the original flattening was done with style="tuple"
+
         """
 
-        #
-        # Create new list of rank ids
-        #
-        rank_ids = copy.deepcopy(self.getRankIds())
-
-        for d in range(levels):
-            id = rank_ids[depth + d]
-            rank_ids[depth + d] = id[0]
-            if len(id) == 2:
-                rank_ids.insert(depth + d + 1, id[1])
-            else:
-                rank_ids.insert(depth + d + 1, id[1:])
+        rank_ids, shape = self._unflattenRankIdsShape(depth, levels, style)
 
         #
-        # Create new shape list
+        # Call Fiber.unflattenRanks if there are actually ranks to unflatten
         #
-        # TBD: Create shape
-        #
-        shape = None
-
-        # Only call Fiber.unflattenRanks if there are actually ranks to unflatten
         if not all(fiber.isEmpty() for fiber in self.ranks[depth].fibers):
             root = self._modifyRoot(Fiber.unflattenRanks,
                                     Fiber.unflattenRanksBelow,
@@ -1753,6 +1759,41 @@ class Tensor:
         return tensor
 
 
+    def _unflattenRankIdsShape(self, depth, levels, coord_style):
+        """Compute the rank ids and shape after an unflattening"""
+        #
+        # Create new list of rank ids
+        #
+        # Note: we need to handle the case where existing ranks are lists
+        #
+        #
+        # Create new list of rank ids
+        #
+        rank_ids = copy.deepcopy(self.getRankIds())
+
+        for d in range(levels):
+            id = rank_ids[depth + d]
+            rank_ids[depth + d] = id[0]
+            if len(id) == 2:
+                rank_ids.insert(depth + d + 1, id[1])
+            else:
+                rank_ids.insert(depth + d + 1, id[1:])
+
+        #
+        # Create new shape list
+        #
+        shape = copy.deepcopy(self.getShape())
+
+        for d in range(levels):
+            s = shape[depth + d]
+            shape[depth + d] = s[0]
+            if len(s) == 2:
+                shape.insert(depth + d + 1, s[1])
+            else:
+                shape.insert(depth + d + 1, s[1:])
+
+        return rank_ids, shape
+
     def _modifyRoot(self, func, funcBelow, depth=0, **kwargs):
         #
         # Create new root fiber
@@ -1776,7 +1817,6 @@ class Tensor:
         for rank in self.ranks:
             for fiber in rank.getFibers():
                 fiber.clearStats()
-
 
 #
 # String methods

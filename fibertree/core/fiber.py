@@ -4449,16 +4449,31 @@ class Fiber:
         #
         coords1.append(c1_last)
 
-        cur_fiber = Fiber(coords0, payloads0, default=self.getDefault())
-        if levels > 1:
-            cur_fiber = cur_fiber.unflattenRanks(levels=levels - 1)
+        #
+        # Create the new lower (c0) rank
+        #
 
-        payloads1.append(cur_fiber)
+        fiber0 = Fiber(coords0,
+                       payloads0,
+                       default=self.getDefault())
+
+
+        #
+        # Conditionally recurse
+        #
+        if levels > 1:
+            fiber0 = fiber0.unflattenRanks(levels=levels - 1)
+
+        payloads1.append(fiber0)
 
         #
         # Create (and return) the new top (c1) rank
         #
-        return self._newFiber(coords1, payloads1, default=Fiber())
+        fiber1 = self._newFiber(coords1,
+                                payloads1,
+                                default=Fiber())
+
+        return fiber1
 
 #
 # Closures to operate on all payloads at a specified depth
