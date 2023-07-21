@@ -62,21 +62,28 @@ class UncompressedImage():
         self.default = 0
 
         #
-        # Deal with lazy fibers by instantiating them
+        # Determine number of levels and
+        # deal with lazy fibersby instantiating them.
+        #
         #    Note: isLazy() and fromLazy() are not recursive...
         #
         if isinstance(self.object, Fiber):
+            level = self.object.getDepth() - 1
+
             if self.object.isLazy():
                 self.object = Fiber.fromLazy(self.object)
         elif isinstance(self.object, Tensor):
+            level = self.object.getDepth() - 1
+
             root = self.object.getRoot()
             if isinstance(root, Fiber) and root.isLazy():
                 self.object.setRoot(Fiber.fromLazy(root))
+        else:
+            level = 0
 
         #
-        # Determine number of levels in fibertree, and create highlight manager
+        # Create highlight manager
         #
-        level = self.object.getDepth()-1
         self.highlight_manager = HighlightManager(highlights, level=level)
 
         #
@@ -130,11 +137,14 @@ class UncompressedImage():
             #
             name = object.getName()
             if not name:
-                name = "unknown"
+                name = "noname"
 
             ranks = ", ".join([str(r) for r in object.getRankIds()])
 
-            self._draw_label(0, 0, f"Tensor: {name}[{ranks}]")
+            #
+            # Dangerous - using a negative row number
+            #
+            self._draw_label(-1, 0, f"Tensor: {name}[{ranks}]")
 
         elif isinstance(object, Fiber):
             #
@@ -146,7 +156,7 @@ class UncompressedImage():
             #
             # Handle a scalar
             #
-            root = None
+            root = object
             self._color = "red"
 
         #
@@ -155,7 +165,13 @@ class UncompressedImage():
         if not Payload.contains(root, Fiber):
             # Draw a 0-D tensor, i.e., a value
 
-            # TBD
+            hl = self.highlight_manager.getColorCoord(0)
+
+            self._draw_value(0,
+                             0,
+                             Payload.get(root),
+                             hl)
+
             region_size = [1, 1]
 
         else:

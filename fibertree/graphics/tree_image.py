@@ -53,21 +53,28 @@ class TreeImage():
         self.col_extent = extent[1]
 
         #
-        # Deal with lazy fibers by instantiating them
+        # Determine number of levels and
+        # deal with lazy fibers by instantiating them.
+        #
         #    Note: isLazy() and fromLazy() are not recursive...
         #
         if isinstance(self.object, Fiber):
+            level = self.object.getDepth() - 1
+
             if self.object.isLazy():
                 self.object = Fiber.fromLazy(self.object)
         elif isinstance(self.object, Tensor):
+            level = self.object.getDepth() - 1
+
             root = self.object.getRoot()
             if isinstance(root, Fiber) and root.isLazy():
                 self.object.setRoot(Fiber.fromLazy(root))
+        else:
+            level = 0
 
         #
-        # Determine number of levels in fibertree, and create highlight manager
+        # Create highlight manager
         #
-        level = self.object.getDepth() - 1
         self.highlight_manager = HighlightManager(highlights, level=level)
 
         #
@@ -122,7 +129,7 @@ class TreeImage():
             #
             name = object.getName()
             if not name:
-                name = "ANON"
+                name = "noname"
             #
             # Get rank_id, convert lists to a string
             #
@@ -144,9 +151,9 @@ class TreeImage():
             self._color = "red"
         else:
             #
-            # Displaying nothing?
+            # Displaying a scalar
             #
-            root = None
+            root = object
             self._color = "red"
 
         #
@@ -220,6 +227,8 @@ class TreeImage():
             if not Payload.contains(fiber, Fiber):
                 #
                 # Draw a 0-D tensor, i.e., a value (NOT a fiber)
+                #
+                # Note: Highlight is picked up from coordinate "0"
                 #
                 hl = highlight_manager.getColorCoord(0)
 
