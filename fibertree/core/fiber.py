@@ -2473,7 +2473,7 @@ class Fiber:
         if depth > 0:
             # Recurse down to depth...
             for p in self.payloads:
-                p.updateCoords(func, depth=depth - 1, shape=shape)
+                p.updateCoords(func, depth=depth - 1, new_shape=new_shape)
                 return None
 
         # Update my coordinates
