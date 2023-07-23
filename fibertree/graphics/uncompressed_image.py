@@ -62,22 +62,22 @@ class UncompressedImage():
         self.default = 0
 
         #
-        # Determine number of levels and
-        # deal with lazy fibersby instantiating them.
+        # Deal with lazy fibers by instantiating them, and
+        # determine number of levels
         #
         #    Note: isLazy() and fromLazy() are not recursive...
         #
         if isinstance(self.object, Fiber):
-            level = self.object.getDepth() - 1
-
             if self.object.isLazy():
                 self.object = Fiber.fromLazy(self.object)
-        elif isinstance(self.object, Tensor):
-            level = self.object.getDepth() - 1
 
+            level = self.object.getDepth() - 1
+        elif isinstance(self.object, Tensor):
             root = self.object.getRoot()
             if isinstance(root, Fiber) and root.isLazy():
                 self.object.setRoot(Fiber.fromLazy(root))
+
+            level = self.object.getDepth() - 1
         else:
             level = 0
 
