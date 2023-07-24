@@ -546,6 +546,24 @@ class TestTensorTransform(unittest.TestCase):
         self.assertEqual(f4, t0)
         self.assertEqual(f4.getDefault(), float("inf"))
 
+    def test_flattenRanks_shape_correct(self):
+        """Test flattenRanks - levels=3, coord_style=absolute"""
+        t0 = Tensor.fromUncompressed(rank_ids=["A"], root=list(range(16)))
+        t0.setDefault(float("inf"))
+        self.assertEqual(t0.getDefault(), float("inf"))
+
+        s1 = t0.splitUniform(8, depth=0)
+        s2 = s1.splitUniform(4, depth=1)
+        s2.setRankIds(["A2", "A1", "A0"])
+
+        f4 = s2.flattenRanks(depth=1, levels=1, coord_style="absolute")
+        f4 = f4.flattenRanks(depth=0, levels=1, coord_style="absolute")
+        f4.setRankIds(["A"])
+
+        self.assertEqual(f4, t0)
+        self.assertEqual(f4.getDefault(), float("inf"))
+
+
     def test_merge(self):
         """Test that mergeRanks merges together fibers"""
         f = Fiber([0, 1, 4, 5],

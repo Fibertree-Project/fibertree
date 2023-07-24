@@ -1632,7 +1632,7 @@ class Tensor:
             next_rankid = rank_ids[depth + 1]
 
             if isinstance(next_rankid, list):
-                rank_ids[depth] = cur_rankid + next_rankid
+                rank_ids[depth] += next_rankid
             else:
                 rank_ids[depth].append(next_rankid)
 
