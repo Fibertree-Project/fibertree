@@ -571,7 +571,7 @@ class Traffic:
         line = traces[info[:3]].readline()
 
         # If there are no more lines, push this trace to the end
-        if line == "":
+        if len(line) == 0:
             return (float("inf"),) * len(order) + (i,), []
 
         split = line[:-1].split(",")
@@ -579,11 +579,11 @@ class Traffic:
         for val in split:
             if val.isdigit():
                 trace.append(int(val))
-            elif val == "None":
+            elif val[0] == "N":
                 trace.append(None)
-            elif val == "True":
+            elif val[0] == "T":
                 trace.append(True)
-            elif val == "False":
+            elif val[0] == "F":
                 trace.append(False)
             else:
                 # Should never reach here
