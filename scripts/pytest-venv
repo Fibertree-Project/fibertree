@@ -1,0 +1,4 @@
+#
+# To run pytest in a venv source this in this directory
+#
+export PYTHONPATH=`pwd`
