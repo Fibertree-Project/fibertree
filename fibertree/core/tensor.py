@@ -1459,14 +1459,20 @@ class Tensor:
             last_coord = coord
 
         # Build the new tensor
-        kwargs = {"fiber": root, "rank_ids": rank_ids, "default": self.getDefault()}
+        kwargs = {"name": f"{old_name}+swizzled",
+                  "rank_ids": rank_ids,
+                  "default": self.getDefault(),
+                  "fiber": root,
+                  "color": self.getColor()
+                  }
+
         old_shape = self.getShape(authoritative=True)
         if old_shape:
             new_shape = [old_shape[guide[i]] for i in range(swiz_len)] \
                 + old_shape[swiz_len:]
             kwargs["shape"] = new_shape
+
         swizzled = Tensor.fromFiber(**kwargs)
-        swizzled.setName(f"{old_name}+swizzled")
 
         return swizzled
 
@@ -1709,7 +1715,11 @@ class Tensor:
         style: str, default: "tuple"
             The style of the coordinates in the level to be unflattened
 
-        See `Fiber.unflattenRanks()` for other arguments.
+        levels: integer
+           The number of extra levels to create
+
+
+        See `Fiber.unflattenRanks()` for additional details.
 
         Returns
         -------
@@ -1722,7 +1732,8 @@ class Tensor:
         ------
 
         The rank_ids and shape of the unflattened tensor are only
-        correct if the original flattening was done with style="tuple"
+        correct if the original flattening was created with
+        style="tuple"
 
         """
 
