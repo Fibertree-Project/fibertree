@@ -98,6 +98,107 @@ class TestUnionIntersect(unittest.TestCase):
         with open("tmp/test_intersection_metrics-K-iter.csv", "r") as f:
             self.assertEqual(f.readlines(), corr)
 
+    def test_intersection_leader_follower(self):
+        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 5])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([0, 6, 7, 0, 8])
+        b_k.getRankAttrs().setId("K")
+        c_k = Fiber.fromUncompressed([10, 0, 9, 0, 12])
+        c_k.getRankAttrs().setId("K")
+
+        # Check the elements
+        cc = [0, 2, 3, 4]
+        cp = [(1, 0, 10), (3, 7, 9), (4, 0, 0), (5, 8, 12)]
+
+        ans = Fiber.intersection(a_k, b_k, c_k, style="leader-follower")
+        for i, (c, p) in enumerate(ans):
+            self.assertEqual(cc[i], c)
+            self.assertEqual(cp[i], p)
+
+        # Check the fiber fields
+        self.assertEqual(ans.getActive(), (0, 5))
+        self.assertEqual(ans.getRankAttrs().getId(), "K")
+
+
+    def test_intersection_leader_follower_metrics(self):
+        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 5])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([0, 6, 7, 0, 8])
+        b_k.getRankAttrs().setId("K")
+        c_k = Fiber.fromUncompressed([10, 0, 9, 0, 12])
+        c_k.getRankAttrs().setId("K")
+
+        Metrics.beginCollect("tmp/test_intersection_leader_follower_metrics")
+        Metrics.trace("K", type_="intersect_0")
+        Metrics.trace("K", type_="intersect_1")
+        Metrics.trace("K", type_="intersect_2")
+        Metrics.registerRank("M")
+        for m in range(3):
+            Metrics.addUse("M", m + 1, m)
+            for _ in Fiber.intersection(a_k, b_k, c_k, style="leader-follower"):
+                pass
+            Metrics.incIter("M")
+        Metrics.endCollect()
+
+        corr = [
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "0,0,1,0,0\n",
+            "0,1,1,2,1\n",
+            "0,2,1,3,2\n",
+            "0,3,1,4,3\n",
+            "1,0,2,0,0\n",
+            "1,1,2,2,1\n",
+            "1,2,2,3,2\n",
+            "1,3,2,4,3\n",
+            "2,0,3,0,0\n",
+            "2,1,3,2,1\n",
+            "2,2,3,3,2\n",
+            "2,3,3,4,3\n"
+        ]
+
+        with open("tmp/test_intersection_leader_follower_metrics-K-intersect_0.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+        corr = [
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "0,0,1,0,0\n",
+            "0,1,1,2,1\n",
+            "0,2,1,3,2\n",
+            "0,3,1,4,2\n",
+            "1,0,2,0,0\n",
+            "1,1,2,2,1\n",
+            "1,2,2,3,2\n",
+            "1,3,2,4,2\n",
+            "2,0,3,0,0\n",
+            "2,1,3,2,1\n",
+            "2,2,3,3,2\n",
+            "2,3,3,4,2\n"
+        ]
+
+        with open("tmp/test_intersection_leader_follower_metrics-K-intersect_1.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+        corr = [
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "0,0,1,0,0\n",
+            "0,1,1,2,1\n",
+            "0,2,1,3,2\n",
+            "0,3,1,4,2\n",
+            "1,0,2,0,0\n",
+            "1,1,2,2,1\n",
+            "1,2,2,3,2\n",
+            "1,3,2,4,2\n",
+            "2,0,3,0,0\n",
+            "2,1,3,2,1\n",
+            "2,2,3,3,2\n",
+            "2,3,3,4,2\n"
+        ]
+
+        with open("tmp/test_intersection_leader_follower_metrics-K-intersect_2.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+
+
 #     def test_intersection_tuple():
 #         A_coords = [(0, 2), (0, 8), (2, 10), (3, 2), (3, 4), (3, 6), (4, 17)]
 #         A_payloads = [1, 1, 2, 3, 5, 8, 13]
