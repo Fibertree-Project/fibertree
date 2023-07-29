@@ -11,6 +11,7 @@ import logging
 
 import bisect
 import copy
+import sys
 from functools import partialmethod
 from itertools import product
 
@@ -822,19 +823,8 @@ class Fiber:
 
 
         if do_search:
-            # If there is no saved shortcut, then do a log search
-            if start_pos is None:
-                index = bisect.bisect_left(self.coords, coord0)
-
-            # If there is a saved shortcut, then search linearly from there
-            else:
-                index = len(self.coords)
-                for i in range(start_pos, len(self.coords)):
-                    if self.coords[i] >= coord0:
-                        index = i
-                        break
-
-            existing = index < len(self.coords) and self.coords[index] == coord0
+            index = self._coord2pos(coord0, start_pos=start_pos)
+            existing = self._coordExists(coord0, index)
 
         if existing:
             payload = self.payloads[index]
@@ -912,8 +902,9 @@ class Fiber:
         start_pos = Payload.get(start_pos)
 
         # Get the payload for the particular index
-        index = bisect.bisect_left(self.coords, coords[0])
-        if index < len(self.coords) and self.coords[index] == coords[0]:
+        index = self._coord2pos(coords[0], start_pos=start_pos)
+
+        if self._coordExists(coords[0], index):
             payload = self.payloads[index]
         else:
             payload = self._create_payload(coords[0])
@@ -951,7 +942,8 @@ class Fiber:
         assert Payload.is_payload(payload)
 
         if pos is None:
-            pos = bisect.bisect_left(self.coords, coord)
+            pos = self._coord2pos(coord)
+
         self.coords.insert(pos, coord)
         self.payloads.insert(pos, payload)
 
@@ -1118,12 +1110,11 @@ class Fiber:
 
         assert not self.isLazy()
 
-        # TBD: Actually optimize the search
-
         start_pos = Payload.get(start_pos)
 
-        index = bisect.bisect_left(self.coords, coord)
-        if coord != self.coords[index]:
+        index = self._coord2pos(coord, start_pos=start_pos)
+
+        if not self._coordExists(coord, index):
             index = None
 
         if start_pos is not None and index is not None:
@@ -1170,10 +1161,9 @@ class Fiber:
 
         start_pos = Payload.get(start_pos)
 
-        # TBD: Actually optimize the search
+        index = self._coord2pos(coord, start_pos=start_pos)
 
-        index = bisect.bisect_left(self.coords, coord)
-        if coord != self.coords[index]:
+        if not self._coordExists(coord, index):
             self._create_payload(coord)
 
         if start_pos is not None and index is not None:
@@ -2473,6 +2463,7 @@ class Fiber:
         if depth > 0:
             # Recurse down to depth...
             for p in self.payloads:
+                print(f"updateCoords: depth: {depth}, payload: {p}")
                 p.updateCoords(func, depth=depth - 1, new_shape=new_shape)
                 return None
 
@@ -4272,9 +4263,13 @@ class Fiber:
 
             low_shape = p1.getShape(all_ranks=False, authoritative=True)
             for c0, p0 in p1:
-                new_coord = self._flattenCoords(c1, c0, style=style, shape=low_shape)
+                new_coord = self._flattenCoords(c1,
+                                                c0,
+                                                style=style,
+                                                shape=low_shape)
 
-                j = bisect.bisect_left(coords, new_coord)
+                j = self._coord2pos(new_coord, coords=coords)
+
                 if j < len(coords) and new_coord == coords[j]:
                     payloads[j].append(p0)
                 else:
@@ -4390,6 +4385,9 @@ class Fiber:
         payloads1 = []
 
         first = True
+        c1_last = sys.maxsize
+        coords0 = []
+        payloads0 = []
 
         #
         # Traverse the rank being unflattened in order to collect all
@@ -4424,7 +4422,10 @@ class Fiber:
                     #
                     coords1.append(c1_last)
 
-                    cur_fiber = Fiber(coords0, payloads0, default=self.getDefault())
+                    cur_fiber = Fiber(coords0,
+                                      payloads0,
+                                      default=self.getDefault())
+
                     if levels > 1:
                         cur_fiber = cur_fiber.unflattenRanks(levels=levels - 1)
 
@@ -4854,6 +4855,103 @@ class Fiber:
                      ordered=ordered,
                      unique=unique)
 
+
+    def _coord2pos(self, coord, start_pos=None, coords=None):
+        """_coord2pos
+
+        Find the position (index) of a coordinate in the fiber or
+        where the coordinate should be inserted into the fiber.
+
+        Handles cases where the fiber is "ordered" (using a binary
+        search) or "unordered" (using a linear search). Also tries to
+        optimize search by using `start_pos` shortcuts.
+
+        If the coordinate is not found return the index where it
+        should be inserted, taking into account whether the fiber is
+        ordered or unordered.
+
+        Parameters
+        ----------
+
+        coord: integer or tuple
+            The desired coordinate
+
+        start_pos: integer, default: None
+            The starting index (only used for ordered fibers)
+
+        coords: list, default=self.coords
+             List of coordinates to search
+
+        Returns
+        -------
+
+        index: integer
+            The position of the coordinate in the fiber
+            or where it can be inserted
+
+
+        Notes
+        -----
+
+        To find out whether the coordinate was found one can use the
+        position returned as an argument to the `Fiber._coordExists()`
+        method.
+
+        """
+
+        if coords is None:
+            coords = self.coords
+
+        if self._ordered:
+            #
+            # Find coordinate in an ordered fiber
+            #
+            if start_pos is None:
+                #
+                # Do a bisection search
+                #
+                index = bisect.bisect_left(coords, coord)
+            else:
+                #
+                # Search linearly starting at `start_pos`
+                # Seach ends when the coordinate is found or passed
+                #
+                index = len(coords)
+
+                for i in range(start_pos, len(coords)):
+                    if coords[i] >= coord:
+                        index = i
+                        break
+        else:
+            #
+            # Find coordinate in an unordered fiber
+            #
+            assert start_pos is None, \
+                "Unordered fibers do not support `start pos`"
+
+            #
+            # Search linearly starting at beginning
+            # Seach ends when the coordinate is found
+            #
+            index = len(coords)
+
+            for i in range(len(coords)):
+                if coords[i] == coord:
+                    index = i
+                    break
+
+        return index
+
+    def _coordExists(self, coord, pos):
+        """ _coordExists
+
+        Check if given coordinates exists at the given position
+
+        """
+
+        exists = pos < len(self.coords) and self.coords[pos] == coord
+
+        return exists
 
     def _checkOrdered(self):
         """ Check that coordinates satisfy the "ordered" attribute """

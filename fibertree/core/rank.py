@@ -467,12 +467,17 @@ class Rank:
         #
         # Check default value for new coordinates in the fiber
         #
+        # Note: defaults of non-leaf ranks can be a subclass of Fiber
+        #       to allow creating special Fibers, e.g., unordered ones
+        #
+        default = self.getDefault()
+
         if self.next_rank is None:
-            assert self.getDefault() != Fiber, \
+            assert not (type(default) is type and issubclass(default, Fiber)), \
                 "Leaf rank default should not be Fiber"
         else:
-            assert self.getDefault() == Fiber, \
-                "Non-leaf rank default should be Fiber"
+            assert issubclass(default, Fiber), \
+                "Non-leaf rank default should be Fiber (or Fiber subclass)"
 
         #
         # Add fiber to list of fibers of rank
