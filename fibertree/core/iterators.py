@@ -448,7 +448,7 @@ def coiterRangeShapeRef(fibers, start, end, step=1):
 #
 # Aggretated intersection/union methods
 #
-def intersection(*args):
+def intersection(*args, **kwargs):
     """Intersect a set of fibers.
 
     Create a new fiber containing all the coordinates that are
@@ -464,6 +464,11 @@ def intersection(*args):
     args: list of Fibers
         The set of fibers to intersect
 
+    kwargs: dict
+        style:
+        - "two-finger" - combining fibers sequentially
+        - "leader-follower" - where the leader is the first arg
+
     Returns
     -------
 
@@ -478,24 +483,64 @@ def intersection(*args):
 
     """
 
-    nested_result = args[0] & args[1]
+    if "style" in kwargs:
+        style = kwargs["style"]
+    else:
+        style = "two-finger"
 
-    for arg in args[2:]:
-        nested_result = nested_result & arg
+    if style == "two-finger":
+        nested_result = args[0] & args[1]
 
-    # Lazy implementation
-    class intersection_iterator:
-        nested = nested_result
+        for arg in args[2:]:
+            nested_result = nested_result & arg
 
-        def __iter__(self):
-            for c, np in self.nested.__iter__(tick=False):
-                p = []
-                while isinstance(Payload.get(np), tuple):
-                    val = Payload.get(np)
-                    p.append(val[1])
-                    np = val[0]
-                p.append(np)
-                yield CoordPayload(c, tuple(reversed(p)))
+        # Lazy implementation
+        class intersection_iterator:
+            nested = nested_result
+
+            def __iter__(self):
+                for c, np in self.nested.__iter__(tick=False):
+                    p = []
+                    while isinstance(Payload.get(np), tuple):
+                        val = Payload.get(np)
+                        p.append(val[1])
+                        np = val[0]
+                    p.append(np)
+                    yield CoordPayload(c, tuple(reversed(p)))
+
+    elif style == "leader-follower":
+
+        class intersection_iterator:
+            fibers = args
+
+            def __iter__(self):
+                start_pos = [None] * (len(self.fibers) - 1)
+
+                is_collecting = Metrics.isCollecting()
+                leader_traced = False
+                traces = [""] * len(self.fibers)
+                if is_collecting:
+                    rank = self.fibers[0].getRankAttrs().getId()
+                    traces = ["intersect_" + str(Metrics.getLabel(rank)) \
+                              for _ in range(len(self.fibers))]
+
+                    leader_traced = Metrics.isTraced(rank, traces[0])
+
+                for i, (c, p) in enumerate(self.fibers[0].__iter__(tick=False)):
+                    if leader_traced:
+                        Metrics.addUse(rank, c, i, type_=traces[0])
+
+                    payloads = [p]
+                    for j, fiber in enumerate(self.fibers[1:]):
+                        p_fiber = fiber.getPayload(c, start_pos=start_pos[j], trace=traces[j + 1])
+
+                        saved = fiber.getSavedPos()
+                        if saved > 0:
+                            start_pos[j] = saved
+
+                        payloads.append(p_fiber)
+
+                    yield CoordPayload(c, tuple(payloads))
 
     # Call the constructor via the first argument
     fiber = args[0].fromIterator(intersection_iterator, active_range=args[0].getActive())
