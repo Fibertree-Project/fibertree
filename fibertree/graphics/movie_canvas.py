@@ -57,7 +57,7 @@ class MovieCanvas():
         #
         # Set image type
         #
-        self.style = style
+        self.style = TensorImage.canonicalizeStyle(style, count=len(tensors))
 
         #
         # Set tqdm control
@@ -110,8 +110,10 @@ class MovieCanvas():
         for n in range(len(self.tensors)):
             tensor = self.tensors[n]
             highlighted_coords = final_coords[n]
+            style = self.style[n]
+
             im = TensorImage(tensor,
-                             style=self.style,
+                             style=style,
                              highlights=highlighted_coords).im
 
             self.image_list_per_tensor[n].append(im)

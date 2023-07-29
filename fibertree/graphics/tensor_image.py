@@ -72,6 +72,11 @@ class TensorImage():
         object = Payload.get(object)
 
         #
+        # Canonicalize the specification of the style
+        #
+        style = TensorImage.canonicalizeStyle(style)
+
+        #
         # Create the subimages
         #
         if "tree" in style:
@@ -122,6 +127,64 @@ class TensorImage():
         """
 
         self.im.show()
+
+
+    @staticmethod
+    def canonicalizeStyle(style, count=None):
+        """"Canonicalize the style
+
+        Convert `style` into canonical display style(s) by expanding
+        abbreviations, e.g., 'u' -> 'uncompressed'.
+
+        If `count` is `None`, return a single style (as a string), and
+        if `count` is an integer return a list of styles of length
+        `count`.
+
+        If `count` is an integer and `style` is a single string
+        replicate it into a list of the length `count`.
+
+        And, if `style` is a list of less than length `count`, then
+        expand it to length `count` by replicating the last item in
+        the given list.
+
+        Parameters
+        ----------
+
+        style: string or list
+            The user provided style or list of styles
+
+        count: integer
+            The length of the list of styles to create
+
+
+        Returns
+        --------
+
+        canonical_style: string or list
+            The input style(s) in canonical form
+
+        """
+
+        abbrevs = {
+            'u': 'uncompressed',
+            't': 'tree',
+            't+u': 'tree+uncompressed'
+        }
+
+        if isinstance(style, str):
+            style = abbrevs.get(style, style)
+
+            if count is not None:
+                style = count * [style]
+        else:
+            style = [abbrevs.get(s, s) for s in style]
+
+            last_style = style[-1]
+
+            for _ in range(len(style), count):
+                style.append(last_style)
+
+        return style
 
 
 if __name__ == "__main__":
