@@ -56,6 +56,27 @@ class TestIntersector(unittest.TestCase):
 
         self.assertEqual(intersector.getNumIntersects(), 3)
 
+    def test_num_isect_skip_ahead_empty(self):
+        """ Test SkipAheadIntersector on empty fibers"""
+        a_k = Fiber()
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber()
+        b_k.getRankAttrs().setId("K")
+
+        intersector = SkipAheadIntersector()
+
+        Metrics.beginCollect()
+        Metrics.trace("K", "intersect_0", consumable=True)
+        Metrics.trace("K", "intersect_1", consumable=True)
+        for _ in a_k & b_k:
+            pass
+        intersector.addTraces(
+            Metrics.consumeTrace("K", "intersect_0"),
+            Metrics.consumeTrace("K", "intersect_1"))
+        Metrics.endCollect()
+
+        self.assertEqual(intersector.getNumIntersects(), 0)
+
     def test_num_isect_cannot_skip_across_fibers(self):
         """Test SkipAheadIntersector does not skip across fibers"""
         a_k = Fiber.fromUncompressed([1, 0, 3, 4, 0])
@@ -125,6 +146,27 @@ class TestIntersector(unittest.TestCase):
 
         self.assertEqual(intersector.getNumIntersects(), 6)
 
+    def test_num_isect_two_finger_empty(self):
+        """ Test TwoFingerIntersector even when the fibers are empty"""
+        a_k = Fiber()
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber()
+        b_k.getRankAttrs().setId("K")
+
+        intersector = TwoFingerIntersector()
+
+        Metrics.beginCollect()
+        Metrics.trace("K", "intersect_0", consumable=True)
+        Metrics.trace("K", "intersect_1", consumable=True)
+        for _ in a_k & b_k:
+            pass
+        intersector.addTraces(
+            Metrics.consumeTrace("K", "intersect_0"),
+            Metrics.consumeTrace("K", "intersect_1"))
+        Metrics.endCollect()
+
+        self.assertEqual(intersector.getNumIntersects(), 0)
+
     def test_num_isect_two_finger_cannot_compare_across_fibers(self):
         """ Test TwoFingerIntersector does not compare across fibers"""
         a_k = Fiber.fromUncompressed([1, 0, 3, 4, 0])
@@ -146,6 +188,31 @@ class TestIntersector(unittest.TestCase):
             intersector.addTraces(
                 Metrics.consumeTrace("K", "intersect_0"),
                 Metrics.consumeTrace("K", "intersect_1"))
+        Metrics.endCollect()
+
+        self.assertEqual(intersector.getNumIntersects(), 4 * 3)
+
+    def test_num_isect_two_finger_cannot_compare_across_fibers_one_shot(self):
+        """ Test TwoFingerIntersector does not compare across fibers"""
+        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 0])
+        a_k.getRankAttrs().setId("K")
+        b_k = Fiber.fromUncompressed([0, 2, 3, 0, 5])
+        b_k.getRankAttrs().setId("K")
+        c_j = Fiber.fromUncompressed([1, 2, 3])
+        c_j.getRankAttrs().setId("J")
+
+        intersector = TwoFingerIntersector()
+
+        Metrics.beginCollect()
+        Metrics.trace("K", "intersect_0", consumable=True)
+        Metrics.trace("K", "intersect_1", consumable=True)
+
+        for _ in c_j:
+            for _ in a_k & b_k:
+                pass
+        intersector.addTraces(
+            Metrics.consumeTrace("K", "intersect_0"),
+            Metrics.consumeTrace("K", "intersect_1"))
         Metrics.endCollect()
 
         self.assertEqual(intersector.getNumIntersects(), 4 * 3)

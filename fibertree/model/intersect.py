@@ -99,6 +99,8 @@ class SkipAheadIntersector(Intersector):
 
         None
 
+        Note: Must be called after two fibers are fully intersected
+
         """
         assert len(traces) == 2
 
@@ -106,15 +108,13 @@ class SkipAheadIntersector(Intersector):
         trace1 = traces[1]
 
         # Throw away the header, since we don't need it
-        if not self.started:
+        if not self.started and trace0:
             self.started = True
+
+            self.num_ranks = (len(trace0[0]) - 1) // 2
 
             trace0 = trace0[1:]
             trace1 = trace1[1:]
-
-            self.num_ranks = (len(trace0[0]) - 1) // 2
-            self.curr = None
-            self.fiber = None
 
         i0 = -1
         i1 = -1
@@ -127,56 +127,58 @@ class SkipAheadIntersector(Intersector):
         point0, i0 = get_next(trace0, i0)
         point1, i1 = get_next(trace1, i1)
 
+        if point0 is None or point1 is None:
+            return
+
         assert point0 is not None and point1 is not None and point0[:-1] == point1[:-1]
 
-        if self.fiber != point0[:-1]:
-            self.fiber = point0[:-1]
-            self.curr = None
+        fiber = point0[:-1]
+        curr = None
 
         while point0 and point1:
             if point0 == point1:
                 self.num_intersects += 1
-                self.curr = None
+                curr = None
 
                 point0, i0 = get_next(trace0, i0)
                 point1, i1 = get_next(trace1, i1)
 
             elif point0 < point1:
-                if self.curr != 0:
-                    self.curr = 0
+                if curr != 0:
+                    curr = 0
                     self.num_intersects += 1
 
                 point0, i0 = get_next(trace0, i0)
 
                 # If we have reached the end of this iteration, forward the other
                 # finger to the next fiber
-                if point0 and self.fiber != point0[:-1]:
+                if point0 is None or fiber != point0[:-1]:
                     point1, i1 = get_next(trace1, i1)
 
             # point0 > point1
             else:
-                if self.curr != 1:
-                    self.curr = 1
+                if curr != 1:
+                    curr = 1
                     self.num_intersects += 1
 
                 point1, i1 = get_next(trace1, i1)
 
                 # If we have reached the end of this iteration, forward the other
                 # finger to the next fiber
-                if point1 and self.fiber != point1[:-1]:
+                if point1 is None or fiber != point1[:-1]:
                     point0, i0 = get_next(trace0, i0)
 
-            old_fiber = self.fiber
+            old_fiber = fiber
             if point0:
-                self.fiber = point0[:-1]
+                fiber = point0[:-1]
             else:
-                self.fiber = None
+                fiber = None
 
             # Do not need to check point1 because both fingers should fall of
             # the end of the trace at the same time
 
-            if self.fiber != old_fiber:
-                self.curr = None
+            if fiber != old_fiber:
+                curr = None
 
 class TwoFingerIntersector(Intersector):
     """Class for counting intersections with a two-finger-intersector"""
@@ -205,10 +207,10 @@ class TwoFingerIntersector(Intersector):
         if not self.started:
             self.started = True
 
+            self.num_ranks = (len(trace0[0]) - 1) // 2
+
             trace0 = trace0[1:]
             trace1 = trace1[1:]
-
-            self.num_ranks = (len(trace0[0]) - 1) // 2
 
         i0 = -1
         i1 = -1
@@ -221,6 +223,13 @@ class TwoFingerIntersector(Intersector):
         point0, i0 = get_next(trace0, i0)
         point1, i1 = get_next(trace1, i1)
 
+        if point0 is None or point1 is None:
+            return
+
+        assert point0 is not None and point1 is not None and point0[:-1] == point1[:-1]
+
+        fiber = point0[:-1]
+
         while point0 and point1:
             self.num_intersects += 1
 
@@ -231,7 +240,23 @@ class TwoFingerIntersector(Intersector):
             elif point0 < point1:
                 point0, i0 = get_next(trace0, i0)
 
+                # If we have reached the end of this iteration, forward the other
+                # finger to the next fiber
+                if point0 is None or fiber != point0[:-1]:
+                    point1, i1 = get_next(trace1, i1)
+
+
             # point0 > point1
             else:
                 point1, i1 = get_next(trace1, i1)
+
+                # If we have reached the end of this iteration, forward the other
+                # finger to the next fiber
+                if point1 is None or fiber != point1[:-1]:
+                    point0, i0 = get_next(trace0, i0)
+
+            if point0:
+                fiber = point0[:-1]
+            else:
+                fiber = None
 
