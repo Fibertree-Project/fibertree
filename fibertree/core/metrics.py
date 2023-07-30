@@ -38,10 +38,10 @@ class Metrics:
     prefix = None
     rank_matches = {}
 
-    # Dict[rank, Dict[type, Tuple[List[List[point]], is_started, consumable]]]
+    # Dict[rank, Dict[type, Tuple[Optional[file_trace], Optional[mem_trace], is_started]]]
+    # file_trace: trace written to a file
+    # mem_trace: trace saved in memory
     # is_started: the header has been added to the trace
-    # consumable: trace can be consumed with Metrics.consumeTrace() (as opposed
-    #   to being written to a file)
     traces = {}
 
     def __init__(self):
@@ -99,12 +99,15 @@ class Metrics:
         point = cls.point[:i] + [coord]
 
         data = iteration + point + [pos]
-        cls.traces[rank][type_][0].append(data)
+        file_trace, mem_trace, _ = cls.traces[rank][type_]
+        if file_trace is not None:
+            file_trace.append(data)
+        if mem_trace is not None:
+            mem_trace.append(data)
 
         # If we are at the limit of the number of cached uses, write the data
         # to disk
-        if not cls.traces[rank][type_][2] and \
-                len(cls.traces[rank][type_][0]) == cls.num_cached_uses:
+        if file_trace is not None and len(file_trace) == cls.num_cached_uses:
             cls._writeTrace(rank, type_)
 
     @classmethod
@@ -180,13 +183,12 @@ class Metrics:
             The list of entries in the trace since the last call to
             `Metrics.consumeTrace()`
         """
-        assert cls.traces[rank][type_][2]
+        file_trace, mem_trace, is_started = cls.traces[rank][type_]
+        assert mem_trace is not None
 
-        trace = cls.traces[rank][type_][0]
+        cls.traces[rank][type_] = (file_trace, [], is_started)
 
-        cls.traces[rank][type_] = ([], True, True)
-
-        return trace
+        return mem_trace
 
     @classmethod
     def endCollect(cls):
@@ -207,13 +209,13 @@ class Metrics:
         """
         # Save the trace of uses
         for rank, dicts in cls.traces.items():
-            for type_, (trace, _, consumable) in dicts.items():
-                if not consumable:
+            for type_, (file_trace, mem_trace, _) in dicts.items():
+                if file_trace is not None:
                     cls._writeTrace(rank, type_)
 
                 # Ensure that all consumable traces have been fully consumed
-                else:
-                    assert len(trace) == 0
+                if mem_trace is not None:
+                    assert len(mem_trace) == 0
 
 
         # Clear all info
@@ -465,8 +467,8 @@ class Metrics:
 
         # Start any traces that can now be started
         if new_rank in cls.traces:
-            for type_ in cls.traces[new_rank]:
-                if not cls.traces[new_rank][type_][1]:
+            for type_, (_, _, is_started) in cls.traces[new_rank].items():
+                if not is_started:
                     cls._startTrace(new_rank, type_)
 
     @classmethod
@@ -548,10 +550,10 @@ class Metrics:
         else:
             end = cls.line_order[cls.rank_matches[rank]] + 1
 
-        consumable = cls.traces[rank][type_][2]
-        cls.traces[rank][type_] = ([], True, consumable)
+        file_trace, mem_trace, _ = cls.traces[rank][type_]
+        cls.traces[rank][type_] = (file_trace, mem_trace, True)
 
-        if not consumable:
+        if file_trace is not None:
             with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "w") as f:
                 f.write("")
 
@@ -561,7 +563,11 @@ class Metrics:
         headings = [pos, coord, "fiber_pos"]
         headings = list(r + "_pos" for r in cls.loop_order[:end]) + \
             cls.loop_order[:end] + ["fiber_pos"]
-        cls.traces[rank][type_][0].append(headings)
+
+        if file_trace is not None:
+            file_trace.append(headings)
+        if mem_trace is not None:
+            mem_trace.append(headings)
 
 
     @classmethod
@@ -591,7 +597,14 @@ class Metrics:
         if rank not in cls.traces.keys():
             cls.traces[rank] = {}
 
-        cls.traces[rank][type_] = ([], False, consumable)
+        if type_ not in cls.traces[rank].keys():
+            cls.traces[rank][type_] = (None, None, False)
+
+        file_trace, mem_trace, is_started = cls.traces[rank][type_]
+        if consumable:
+            cls.traces[rank][type_] = (file_trace, [], is_started)
+        else:
+            cls.traces[rank][type_] = ([], mem_trace, is_started)
 
     @classmethod
     def _writeTrace(cls, rank, type_):
@@ -612,10 +625,11 @@ class Metrics:
         None
 
         """
-        assert not cls.traces[rank][type_][2]
+        file_trace, mem_trace, _ = cls.traces[rank][type_]
+        assert file_trace is not None
 
-        trace_strs = [",".join(str(val) for val in line) + "\n" for line in cls.traces[rank][type_][0]]
+        trace_strs = [",".join(str(val) for val in line) + "\n" for line in file_trace]
         with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "a") as f:
             f.write("".join(trace_strs))
 
-        cls.traces[rank][type_] = ([], True, cls.traces[rank][type_][2])
+        cls.traces[rank][type_] = ([], mem_trace, True)
