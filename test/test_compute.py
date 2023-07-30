@@ -39,24 +39,6 @@ class TestCompute(unittest.TestCase):
 
         Metrics.endCollect()
 
-    def test_num_isect_leader_follower(self):
-        """Test Compute.numIsectLeaderFollower()"""
-        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 5])
-        a_k.getRankAttrs().setId("K")
-        b_k = Fiber.fromUncompressed([0, 0, 6, 7, 9])
-        b_k.getRankAttrs().setId("K")
-
-        Metrics.beginCollect("tmp/test_num_isect_leader_follower")
-        Metrics.trace("K", "intersect_0")
-        Metrics.trace("K", "intersect_1")
-        for _ in a_k & b_k:
-            pass
-        Metrics.endCollect()
-
-        trace_fn = "tmp/test_num_isect_leader_follower-K-intersect_"
-        self.assertEqual(Compute.numIsectLeaderFollower(trace_fn + "0.csv"), 4)
-        self.assertEqual(Compute.numIsectLeaderFollower(trace_fn + "1.csv"), 3)
-
     def test_num_isect_naive(self):
         """ Test Compute.numIsectSkipAhead()"""
         a_k = Fiber.fromUncompressed([1, 0, 0, 0, 0, 0, 0, 8, 4])

@@ -263,6 +263,53 @@ class TestMetrics(unittest.TestCase):
         # Should not write this information to a file
         self.assertFalse(os.path.exists("tmp/test_consume_trace-K-consumable.csv"))
 
+    def test_consume_trace_and_write(self):
+        """Test that consumable traces can be consumed by consumeTrace and are
+        written to disk"""
+        Metrics.beginCollect("tmp/test_consume_trace_and_write")
+        Metrics.trace("K", type_="consumable", consumable=True)
+        Metrics.trace("K", type_="consumable")
+
+        ks = [[3, 7], [8]]
+
+        corr = [[["M_pos", "K_pos", "M", "K", "fiber_pos"],
+                 [0, 0, 2, 3, 3],
+                 [0, 1, 2, 7, 5]],
+                [[1, 0, 5, 8, 3]]]
+
+        Metrics.registerRank("M")
+        for i, m in enumerate([2, 5]):
+            Metrics.addUse("M", m, i)
+            Metrics.registerRank("K")
+            for j, k in enumerate(ks[i]):
+                Metrics.addUse("K", k, 2 * j + 1)
+                Metrics.addUse("K", k, 2 * j + 3, type_="consumable")
+                Metrics.registerRank("N")
+                for n in range(3):
+                    Metrics.addUse("N", n, n)
+                    Metrics.incIter("N")
+                Metrics.endIter("N")
+                Metrics.incIter("K")
+            Metrics.endIter("K")
+            self.assertEqual(Metrics.consumeTrace("K", "consumable"), corr[i])
+            Metrics.incIter("M")
+        Metrics.endIter("M")
+
+        self.assertEqual(Metrics.consumeTrace("K", "consumable"), [])
+
+        Metrics.endCollect()
+
+        # Should not write this information to a file
+        corr = [
+            "M_pos,K_pos,M,K,fiber_pos\n",
+            "0,0,2,3,3\n",
+            "0,1,2,7,5\n",
+            "1,0,5,8,3\n"
+        ]
+
+        with open("tmp/test_consume_trace_and_write-K-consumable.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
     def test_consume_trace_missing(self):
         """Test that Metrics.endCollect() raises an error if a consumable trace
         is not fully consumed"""

@@ -27,37 +27,6 @@ class Compute:
             return 0
 
     @staticmethod
-    def numIsectLeaderFollower(leader_fn):
-        """
-        Compute the number of intersection attempts with leader-follower
-        intersection
-
-        Parameters
-        ----------
-
-        leader_fn: str
-            The filename of the access trace of the leader
-
-        Returns
-        ------
-
-        num_isects: int
-            Number of intersection tests
-
-        """
-        with open(leader_fn, "r") as f:
-            # Throw away the header
-            f.readline()
-
-            isects = 0
-            line = f.readline()
-            while line:
-                isects += 1
-                line = f.readline()
-
-        return isects
-
-    @staticmethod
     def numIsectNaive(fn0, fn1):
         """ Compute the number of intersection attempts with a naive
         intersection unit

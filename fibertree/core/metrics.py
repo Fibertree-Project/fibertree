@@ -591,7 +591,7 @@ class Metrics:
         None
 
         """
-        assert cls.prefix is not None
+        assert consumable or cls.prefix is not None
         assert cls.collecting
 
         if rank not in cls.traces.keys():
