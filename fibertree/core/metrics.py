@@ -4,7 +4,7 @@ class Metrics:
     """A globally available class for tracking metrics.
 
     The Metrics class provides an interface for collecting metrics from the
-    execution of an HFA kernel. All methods are class-level so that the metrics
+    execution of an HiFiber kernel. All methods are class-level so that the metrics
     can be updated and read from anywhere.
 
     Attributes
@@ -37,6 +37,11 @@ class Metrics:
     point = None
     prefix = None
     rank_matches = {}
+
+    # Dict[rank, Dict[type, Tuple[List[List[point]], is_started, consumable]]]
+    # is_started: the header has been added to the trace
+    # consumable: trace can be consumed with Metrics.consumeTrace() (as opposed
+    #   to being written to a file)
     traces = {}
 
     def __init__(self):
@@ -94,19 +99,19 @@ class Metrics:
         point = cls.point[:i] + [coord]
 
         data = iteration + point + [pos]
-        data_str = ",".join(map(str, data))
-        cls.traces[rank][type_][0].append(data_str + "\n")
+        cls.traces[rank][type_][0].append(data)
 
         # If we are at the limit of the number of cached uses, write the data
         # to disk
-        if len(cls.traces[rank][type_][0]) == cls.num_cached_uses:
+        if not cls.traces[rank][type_][2] and \
+                len(cls.traces[rank][type_][0]) == cls.num_cached_uses:
             cls._writeTrace(rank, type_)
 
     @classmethod
     def beginCollect(cls, prefix=None):
         """Begin metrics collection
 
-        Start collecting metrics during future HFA program execution.
+        Start collecting metrics during future HiFiber program execution.
 
         Parameters
         ----------
@@ -153,10 +158,41 @@ class Metrics:
         return cls.metrics
 
     @classmethod
+    def consumeTrace(cls, rank, type_):
+        """Consume a consumable (in memory) trace
+
+        Return the list of entries in the trace added since the most recent
+        call to `Metrics.consumeTrace()`
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank associated with the trace
+
+        type_: str
+            The name of the trace to consume
+
+        Returns
+        -------
+
+        trace: List[List[points]]
+            The list of entries in the trace since the last call to
+            `Metrics.consumeTrace()`
+        """
+        assert cls.traces[rank][type_][2]
+
+        trace = cls.traces[rank][type_][0]
+
+        cls.traces[rank][type_] = ([], True, True)
+
+        return trace
+
+    @classmethod
     def endCollect(cls):
         """End metrics collection
 
-        Stop collecting metrics during future HFA program execution.
+        Stop collecting metrics during future HiFiber program execution.
 
         Parameters
         ----------
@@ -171,8 +207,14 @@ class Metrics:
         """
         # Save the trace of uses
         for rank, dicts in cls.traces.items():
-            for type_ in dicts:
-                cls._writeTrace(rank, type_)
+            for type_, (trace, _, consumable) in dicts.items():
+                if not consumable:
+                    cls._writeTrace(rank, type_)
+
+                # Ensure that all consumable traces have been fully consumed
+                else:
+                    assert len(trace) == 0
+
 
         # Clear all info
         cls.collecting = False
@@ -180,7 +222,6 @@ class Metrics:
         cls.iteration = None
         cls.line_order = None
         cls.loop_order = None
-        cls.num_cached_uses = 1000
         cls.point = None
         cls.prefix = None
         cls.traces = {}
@@ -507,20 +548,24 @@ class Metrics:
         else:
             end = cls.line_order[cls.rank_matches[rank]] + 1
 
-        cls.traces[rank][type_] = ([], True)
+        consumable = cls.traces[rank][type_][2]
+        cls.traces[rank][type_] = ([], True, consumable)
 
-        with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "w") as f:
-            f.write("")
+        if not consumable:
+            with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "w") as f:
+                f.write("")
 
         pos = ",".join(r + "_pos" for r in cls.loop_order[:end])
         coord = ",".join(r for r in cls.loop_order[:end])
 
         headings = [pos, coord, "fiber_pos"]
-        cls.traces[rank][type_][0].append(",".join(headings) + "\n")
+        headings = list(r + "_pos" for r in cls.loop_order[:end]) + \
+            cls.loop_order[:end] + ["fiber_pos"]
+        cls.traces[rank][type_][0].append(headings)
 
 
     @classmethod
-    def trace(cls, rank, type_="iter"):
+    def trace(cls, rank, type_="iter", consumable=False):
         """Set a rank to trace
 
         Note must be called after Metrics.beginCollect()
@@ -546,7 +591,7 @@ class Metrics:
         if rank not in cls.traces.keys():
             cls.traces[rank] = {}
 
-        cls.traces[rank][type_] = ([], False)
+        cls.traces[rank][type_] = ([], False, consumable)
 
     @classmethod
     def _writeTrace(cls, rank, type_):
@@ -567,7 +612,10 @@ class Metrics:
         None
 
         """
-        with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "a") as f:
-            f.write("".join(cls.traces[rank][type_][0]))
+        assert not cls.traces[rank][type_][2]
 
-        cls.traces[rank][type_] = ([], True)
+        trace_strs = [",".join(str(val) for val in line) + "\n" for line in cls.traces[rank][type_][0]]
+        with open(cls.prefix + "-" + rank + "-" + type_ + ".csv", "a") as f:
+            f.write("".join(trace_strs))
+
+        cls.traces[rank][type_] = ([], True, cls.traces[rank][type_][2])
