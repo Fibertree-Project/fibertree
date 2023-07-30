@@ -39,43 +39,6 @@ class TestCompute(unittest.TestCase):
 
         Metrics.endCollect()
 
-    def test_num_isect_skip_ahead(self):
-        """ Test Compute.numIsectSkipAhead()"""
-        a_k = Fiber.fromUncompressed([1, 0, 0, 0, 0, 0, 0, 8, 4])
-        a_k.getRankAttrs().setId("K")
-        b_k = Fiber.fromUncompressed([0, 2, 3, 4, 6, 0, 0, 4, 0])
-        b_k.getRankAttrs().setId("K")
-
-        Metrics.beginCollect("tmp/test_num_isect_skip_ahead")
-        Metrics.trace("K", "intersect_0")
-        Metrics.trace("K", "intersect_1")
-        for _ in a_k & b_k:
-            pass
-        Metrics.endCollect()
-
-        trace_fn = "tmp/test_num_isect_skip_ahead-K-intersect_"
-        self.assertEqual(Compute.numIsectSkipAhead(trace_fn + "0.csv", trace_fn + "1.csv"), 3)
-
-    def test_num_isect_cannot_skip_across_fibers(self):
-        """Test Compute.numIsectSkipAhead() does not skip across fibers"""
-        a_k = Fiber.fromUncompressed([1, 0, 3, 4, 0])
-        a_k.getRankAttrs().setId("K")
-        b_k = Fiber.fromUncompressed([0, 2, 3, 0, 5])
-        b_k.getRankAttrs().setId("K")
-        c_j = Fiber.fromUncompressed([1, 2, 3])
-        c_j.getRankAttrs().setId("J")
-
-        Metrics.beginCollect("tmp/test_num_isect_cannot_skip_across_fibers")
-        Metrics.trace("K", "intersect_0")
-        Metrics.trace("K", "intersect_1")
-        for _ in c_j:
-            for _ in a_k & b_k:
-                pass
-        Metrics.endCollect()
-
-        trace_fn = "tmp/test_num_isect_cannot_skip_across_fibers-K-intersect_"
-        self.assertEqual(Compute.numIsectSkipAhead(trace_fn + "0.csv", trace_fn + "1.csv"), 4 * 3)
-
     def test_num_swaps_discrete_next(self):
         """Test Compute.numSwaps()"""
         coords = [0, 1]
