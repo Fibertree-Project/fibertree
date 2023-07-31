@@ -4475,6 +4475,52 @@ class Fiber:
 
         return fiber1
 
+    def trace(self, trace_type, iteration_num=None):
+        """Trace through the subtree specified by a fiber
+
+        Parameters
+        ----------
+
+        trace_type: str
+            The name of the trace
+
+        iteration_num: Optional[List[int]]
+            The iteration to start on (use the default if not specified)
+
+        Returns
+        -------
+
+        None
+
+        Note: All ranks in the loop order must already be registered before this
+        method is called
+        """
+        assert Metrics.isCollecting()
+
+        rank = self.getRankAttrs().getId()
+        depth = Metrics.getIndex(rank)
+        for i, (c, p) in enumerate(self.__iter__(tick=False)):
+            Metrics.addUse(rank, c, i, type_=trace_type, iteration_num=iteration_num)
+
+            # Recurse down the tree
+            if isinstance(p, Fiber):
+                p.trace(trace_type, iteration_num=iteration_num)
+
+                # Only need to reset it if the iteration is being tracked automatically
+                # The parent rank is never reset
+                p_rank = p.getRankAttrs().getId()
+                if iteration_num is None:
+                    Metrics.endIter(p_rank)
+                else:
+                    p_depth = Metrics.getIndex(p_rank)
+                    iteration_num[p_depth] = 0
+
+            # Increment the iterator
+            if iteration_num is None:
+                Metrics.incIter(rank)
+            else:
+                iteration_num[depth] += 1
+
 #
 # Closures to operate on all payloads at a specified depth
 #
