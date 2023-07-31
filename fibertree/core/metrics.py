@@ -183,6 +183,8 @@ class Metrics:
             The list of entries in the trace since the last call to
             `Metrics.consumeTrace()`
         """
+        assert cls.collecting
+
         file_trace, mem_trace, is_started = cls.traces[rank][type_]
         assert mem_trace is not None
 
@@ -268,6 +270,30 @@ class Metrics:
         return cls.iteration
 
     @classmethod
+    def getIndex(cls, rank):
+        """Get the index in the line order of this rank
+
+        Parameters
+        ----------
+
+        rank: str
+            The rank whose index to get
+
+        Returns
+        -------
+
+        None
+
+        """
+        assert cls.collecting
+        assert rank in cls.line_order or rank in cls.rank_matches
+
+        if rank in cls.line_order:
+            return cls.line_order[rank]
+        else:
+            return cls.line_order[cls.rank_matches[rank]]
+
+    @classmethod
     def getLabel(cls, rank):
         """Get a new label for a fiber at this rank
 
@@ -305,30 +331,6 @@ class Metrics:
 
         cls.fiber_label[iter_rank] += 1
         return cls.fiber_label[iter_rank] - 1
-
-    @classmethod
-    def getIndex(cls, rank):
-        """Get the index in the line order of this rank
-
-        Parameters
-        ----------
-
-        rank: str
-            The rank whose index to get
-
-        Returns
-        -------
-
-        None
-
-        """
-        assert cls.collecting
-        assert rank in cls.line_order or rank in cls.rank_matches
-
-        if rank in cls.line_order:
-            return cls.line_order[rank]
-        else:
-            return cls.line_order[cls.rank_matches[rank]]
 
     @classmethod
     def incCount(cls, line, metric, inc):

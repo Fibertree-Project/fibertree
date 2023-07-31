@@ -3409,6 +3409,89 @@ class TestFiber(unittest.TestCase):
         with self.assertRaises(AssertionError):
             Fiber._transCoord("foo", lambda c: c + "bar")
 
+    def test_trace(self):
+        """Test that a fiber is traced correctly"""
+        A_KM = Tensor.fromUncompressed(rank_ids=["K", "M"], root=[[1, 0, 0, 4, 5, 6, 7], [1, 2, 0, 0, 0, 6, 0]])
+        a_k = A_KM.getRoot()
+
+        Metrics.beginCollect("tmp/test_trace")
+        Metrics.trace("K", type_="A")
+        Metrics.trace("M", type_="A")
+
+        Metrics.registerRank("K")
+        Metrics.registerRank("N")
+        Metrics.registerRank("M")
+
+        a_k.trace("A")
+
+        Metrics.endCollect()
+
+        corr_K = [
+            "K_pos,K,fiber_pos\n",
+            "0,0,0\n",
+            "1,1,1\n"
+        ]
+
+        corr_M = [
+            "K_pos,N_pos,M_pos,K,N,M,fiber_pos\n",
+            "0,0,0,0,0,0,0\n",
+            "0,0,1,0,0,3,1\n",
+            "0,0,2,0,0,4,2\n",
+            "0,0,3,0,0,5,3\n",
+            "0,0,4,0,0,6,4\n",
+            "1,0,0,1,0,0,0\n",
+            "1,0,1,1,0,1,1\n",
+            "1,0,2,1,0,5,2\n"
+        ]
+
+        with open("tmp/test_trace-K-A.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_K)
+
+        with open("tmp/test_trace-M-A.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_M)
+
+    def test_trace_iteration_num(self):
+        """Test that a fiber is traced correctly even with an explicitly
+        specified iteration num"""
+        A_KM = Tensor.fromUncompressed(rank_ids=["K", "M"], root=[[1, 0, 0, 4, 5, 6, 7], [1, 2, 0, 0, 0, 6, 0]])
+        a_k = A_KM.getRoot()
+
+        Metrics.beginCollect("tmp/test_trace_iteration_num")
+        Metrics.trace("K", type_="A")
+        Metrics.trace("M", type_="A")
+
+        Metrics.registerRank("K")
+        Metrics.registerRank("N")
+        Metrics.registerRank("M")
+
+        a_k.trace("A", iteration_num=[5, 6, 1])
+
+        Metrics.endCollect()
+
+        corr_K = [
+            "K_pos,K,fiber_pos\n",
+            "5,0,0\n",
+            "6,1,1\n"
+        ]
+
+        corr_M = [
+            "K_pos,N_pos,M_pos,K,N,M,fiber_pos\n",
+            "5,6,1,0,0,0,0\n",
+            "5,6,2,0,0,3,1\n",
+            "5,6,3,0,0,4,2\n",
+            "5,6,4,0,0,5,3\n",
+            "5,6,5,0,0,6,4\n",
+            "6,6,0,1,0,0,0\n",
+            "6,6,1,1,0,1,1\n",
+            "6,6,2,1,0,5,2\n"
+        ]
+
+        with open("tmp/test_trace_iteration_num-K-A.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_K)
+
+        with open("tmp/test_trace_iteration_num-M-A.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr_M)
+
 
 if __name__ == '__main__':
     unittest.main()
