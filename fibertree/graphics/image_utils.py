@@ -3,7 +3,7 @@
 import logging
 import os
 import webcolors
-import importlib_resources
+import importlib.resources as importlib_resources
 
 from PIL import Image, ImageDraw, ImageFont
 from functools import lru_cache
@@ -39,7 +39,7 @@ class ImageUtils():
     #
     hl_next = 0
     """The index of the next color to assign as a highlight."""
-    
+
     #
     # Map of worker names to colors
     #
@@ -55,7 +55,7 @@ class ImageUtils():
         #
         self.logger = logging.getLogger('fibertree.graphics.image_utils')
 
-        
+
     @staticmethod
     def setColor(worker, color):
         """Set color for a worker.
