@@ -7,6 +7,7 @@ abstraction for representing tensors.
 
 """
 import logging
+from sys import exit
 
 import copy
 import pickle

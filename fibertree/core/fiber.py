@@ -8,6 +8,7 @@ a tensor.
 """
 
 import logging
+from sys import exit
 
 import bisect
 import copy
