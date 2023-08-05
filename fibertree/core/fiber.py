@@ -1281,15 +1281,18 @@ class Fiber:
                 is_collecting = Metrics.isCollecting()
                 assert not is_collecting or self.rank is not None
 
+                # Associate the src and dst ranks
+                if Metrics.isCollecting():
+                    src_rank = self.fbr.getRankAttrs().getId()
+                    Metrics.matchRanks(src_rank, self.rank)
+
             def __iter__(self):
                 is_collecting = Metrics.isCollecting()
                 traced = False
                 if is_collecting:
-                    # Associate the src and dst ranks
                     src_rank = self.fbr.getRankAttrs().getId()
                     if tick:
                         Metrics.registerRank(src_rank)
-                    Metrics.matchRanks(src_rank, self.rank)
 
                     label = str(Metrics.getLabel(src_rank))
                     trace = "project_" + label
@@ -2464,7 +2467,6 @@ class Fiber:
         if depth > 0:
             # Recurse down to depth...
             for p in self.payloads:
-                print(f"updateCoords: depth: {depth}, payload: {p}")
                 p.updateCoords(func, depth=depth - 1, new_shape=new_shape)
                 return None
 
