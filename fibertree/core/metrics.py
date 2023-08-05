@@ -1,5 +1,7 @@
 #cython: language_level=3
 # cython: profile=True
+from functools import reduce
+
 class Metrics:
     """A globally available class for tracking metrics.
 
@@ -37,6 +39,7 @@ class Metrics:
     point = None
     prefix = None
     rank_matches = {}
+    rank_flatten = {}
 
     # Dict[rank, Dict[type, Tuple[Optional[file_trace], Optional[mem_trace], is_started]]]
     # file_trace: trace written to a file
@@ -46,6 +49,21 @@ class Metrics:
 
     def __init__(self):
         raise NotImplementedError
+
+    @classmethod
+    def associateShape(cls, rank, shape):
+        """Associate the given rank with the given shape
+
+        Used to flatten tuple coordinates into integer coordinates to keep
+        the csv parsing correct
+        """
+        def flatten(coords):
+            final = 0
+            for i, coord in enumerate(coords):
+                final += coord * reduce(lambda x, y: x * y, shape[i + 1:], 1)
+            return final
+
+        cls.rank_flatten[rank] = flatten
 
     @classmethod
     def addUse(cls, rank, coord, pos, type_="iter", iteration_num=None):
@@ -76,6 +94,9 @@ class Metrics:
         assert cls.collecting
         assert rank in cls.line_order or rank in cls.rank_matches
 
+        if isinstance(coord, tuple):
+            coord = cls.rank_flatten[rank](coord)
+
         # Update the point
         if rank in cls.line_order:
             i = cls.line_order[rank]
@@ -96,6 +117,7 @@ class Metrics:
             iteration_num = cls.iteration
 
         iteration = iteration_num[:(i + 1)]
+
         point = cls.point[:i] + [coord]
 
         data = iteration + point + [pos]
@@ -137,6 +159,7 @@ class Metrics:
         cls.point = []
         cls.prefix = prefix
         cls.rank_matches = {}
+        cls.rank_flatten = {}
         cls.traces = {}
 
     @classmethod
