@@ -201,9 +201,9 @@ class TestMetrics(unittest.TestCase):
     def test_add_use_matched_ranks(self):
         Metrics.beginCollect("tmp/test_add_use_matched_ranks")
         Metrics.trace("K", "matched")
+        Metrics.matchRanks("K", "M")
         Metrics.registerRank("N")
         Metrics.registerRank("M")
-        Metrics.matchRanks("K", "M")
         for i, n in enumerate([2, 4]):
             Metrics.addUse("N", n, i)
             for j, m in enumerate([7, 9, 11]):
@@ -224,6 +224,51 @@ class TestMetrics(unittest.TestCase):
             "1,1,4,6,2\n",
             "1,2,4,8,3\n"
         ]
+
+        with open("tmp/test_add_use_matched_ranks-K-matched.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
+
+    def test_associate_shape(self):
+        Metrics.beginCollect("tmp/test_associate_shape")
+        Metrics.associateShape("MKN", (10, 20, 30))
+        Metrics.trace("MKN", "flat")
+
+        Metrics.registerRank("MKN")
+
+        i = 0
+        for m in [2, 4, 6]:
+            for k in [3, 7, 15]:
+                for n in [12, 22]:
+                    i += 1
+                    Metrics.addUse("MKN", (m, k, n), i * 3, type_="flat")
+                    Metrics.incIter("MKN")
+        Metrics.endIter("MKN")
+        Metrics.endCollect()
+
+        corr = [
+            "MKN_pos,MKN,fiber_pos\n",
+            "0,1302,3\n",
+            "1,1312,6\n",
+            "2,1422,9\n",
+            "3,1432,12\n",
+            "4,1662,15\n",
+            "5,1672,18\n",
+            "6,2502,21\n",
+            "7,2512,24\n",
+            "8,2622,27\n",
+            "9,2632,30\n",
+            "10,2862,33\n",
+            "11,2872,36\n",
+            "12,3702,39\n",
+            "13,3712,42\n",
+            "14,3822,45\n",
+            "15,3832,48\n",
+            "16,4062,51\n",
+            "17,4072,54\n"
+        ]
+
+        with open("tmp/test_associate_shape-MKN-flat.csv", "r") as f:
+            self.assertEqual(f.readlines(), corr)
 
     def test_consume_trace(self):
         """Test that consumable traces can be consumed by consumeTrace and are
@@ -362,14 +407,13 @@ class TestMetrics(unittest.TestCase):
     def test_getIndex(self):
         """Test that getIndex works"""
         Metrics.beginCollect()
+
+        Metrics.matchRanks("K", "M")
         Metrics.registerRank("M")
         Metrics.registerRank("N")
 
         self.assertEqual(Metrics.getIndex("M"), 0)
         self.assertEqual(Metrics.getIndex("N"), 1)
-
-        Metrics.matchRanks("K", "M")
-
         self.assertEqual(Metrics.getIndex("K"), 0)
 
         with self.assertRaises(AssertionError):
@@ -491,14 +535,10 @@ class TestMetrics(unittest.TestCase):
         Metrics.beginCollect("tmp/test_match_ranks")
         Metrics.trace("M", "match_ranks")
 
-        # At least one must be in the loop order
-        with self.assertRaises(AssertionError):
-            Metrics.matchRanks("K", "M")
-
         # Either rank can be in either position
-        Metrics.registerRank("K")
         Metrics.matchRanks("K", "M")
         Metrics.matchRanks("N", "K")
+        Metrics.registerRank("K")
 
         # Metrics.getLabel still works correctly
         self.assertEqual(Metrics.getLabel("K"), 0)
@@ -528,12 +568,11 @@ class TestMetrics(unittest.TestCase):
     def test_match_rank_unmatched_label(self):
         """Test that match rank correctly combines labels"""
         Metrics.beginCollect()
+        Metrics.matchRanks("M", "K")
+        Metrics.registerRank("M")
 
         self.assertEqual(Metrics.getLabel("K"), 0)
         self.assertEqual(Metrics.getLabel("K"), 1)
-
-        Metrics.registerRank("M")
-        Metrics.matchRanks("M", "K")
 
         self.assertEqual(Metrics.getLabel("M"), 2)
 

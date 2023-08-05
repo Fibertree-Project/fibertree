@@ -29,6 +29,7 @@ class Metrics:
 
     """
     # Create a class instance variable for the metrics collection
+    all_rank_matches = {}
     collecting = False
     fiber_label = {}
     iteration = None
@@ -49,21 +50,6 @@ class Metrics:
 
     def __init__(self):
         raise NotImplementedError
-
-    @classmethod
-    def associateShape(cls, rank, shape):
-        """Associate the given rank with the given shape
-
-        Used to flatten tuple coordinates into integer coordinates to keep
-        the csv parsing correct
-        """
-        def flatten(coords):
-            final = 0
-            for i, coord in enumerate(coords):
-                final += coord * reduce(lambda x, y: x * y, shape[i + 1:], 1)
-            return final
-
-        cls.rank_flatten[rank] = flatten
 
     @classmethod
     def addUse(cls, rank, coord, pos, type_="iter", iteration_num=None):
@@ -133,6 +119,21 @@ class Metrics:
             cls._writeTrace(rank, type_)
 
     @classmethod
+    def associateShape(cls, rank, shape):
+        """Associate the given rank with the given shape
+
+        Used to flatten tuple coordinates into integer coordinates to keep
+        the csv parsing correct
+        """
+        def flatten(coords):
+            final = 0
+            for i, coord in enumerate(coords):
+                final += coord * reduce(lambda x, y: x * y, shape[i + 1:], 1)
+            return final
+
+        cls.rank_flatten[rank] = flatten
+
+    @classmethod
     def beginCollect(cls, prefix=None):
         """Begin metrics collection
 
@@ -150,6 +151,7 @@ class Metrics:
         None
 
         """
+        cls.all_rank_matches = {}
         cls.collecting = True
         cls.fiber_label = {}
         cls.iteration = []
@@ -473,28 +475,18 @@ class Metrics:
         None
 
         """
-        assert rank1 in cls.line_order or rank2 in cls.line_order
+        if rank1 not in cls.all_rank_matches:
+            cls.all_rank_matches[rank1] = set()
 
-        if rank1 in cls.line_order:
-            loop_rank = rank1
-            new_rank = rank2
+        if rank2 not in cls.all_rank_matches:
+            cls.all_rank_matches[rank2] = set()
 
-        else:
-            loop_rank = rank2
-            new_rank = rank1
+        all_matches = cls.all_rank_matches[rank1].union(cls.all_rank_matches[rank2])
+        all_matches.add(rank1)
+        all_matches.add(rank2)
 
-        cls.rank_matches[new_rank] = loop_rank
-
-        # Combine fiber labels
-        if new_rank in cls.fiber_label:
-            cls.fiber_label[loop_rank] += cls.fiber_label[new_rank]
-            del cls.fiber_label[new_rank]
-
-        # Start any traces that can now be started
-        if new_rank in cls.traces:
-            for type_, (_, _, is_started) in cls.traces[new_rank].items():
-                if not is_started:
-                    cls._startTrace(new_rank, type_)
+        for rank in all_matches:
+            cls.all_rank_matches[rank] = all_matches.difference({rank})
 
     @classmethod
     def registerRank(cls, rank):
@@ -527,6 +519,16 @@ class Metrics:
         if rank in cls.traces.keys():
             for type_ in cls.traces[rank]:
                 cls._startTrace(rank, type_)
+
+        for src_rank, dst_ranks in cls.all_rank_matches.items():
+            if rank not in dst_ranks:
+                continue
+
+            cls.rank_matches[src_rank] = rank
+
+            if src_rank in cls.traces.keys():
+                for type_ in cls.traces[src_rank]:
+                    cls._startTrace(src_rank, type_)
 
     @classmethod
     def setNumCachedUses(cls, num_cached_uses):
