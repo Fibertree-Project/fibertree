@@ -4506,7 +4506,7 @@ class Fiber:
 
         rank = self.getRankAttrs().getId()
         depth = Metrics.getIndex(rank)
-        for i, (c, p) in enumerate(self):
+        for i, (c, p) in enumerate(self.__iter__(tick=False)):
             Metrics.addUse(rank, c, i, type_=trace_type, iteration_num=iteration_num)
 
             # Recurse down the tree
@@ -4519,6 +4519,10 @@ class Fiber:
             # Increment the iterator
             if iteration_num is not None:
                 iteration_num[depth] += 1
+            else:
+                Metrics.incIter(rank)
+
+        Metrics.endIter(rank)
 
 
 #
