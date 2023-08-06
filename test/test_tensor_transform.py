@@ -434,6 +434,23 @@ class TestTensorTransform(unittest.TestCase):
         A_KM = A_MK.swizzleRanks(["K", "M"])
         self.assertEqual(A_KM.getDefault(), float("inf"))
 
+    def test_swizzleRanks_no_tick(self):
+        """Test swizzleRanks does not tick metrics counting"""
+        A_MK = Tensor.fromUncompressed(["M", "K"],
+                               [[0, 0, 4, 0, 0, 5],
+                                [3, 2, 0, 3, 0, 2],
+                                [0, 2, 0, 0, 1, 2],
+                                [0, 0, 0, 0, 0, 0],
+                                [2, 5, 0, 0, 0, 5],
+                                [4, 1, 0, 0, 0, 0],
+                                [5, 0, 0, 1, 0, 0],
+                                [4, 0, 0, 5, 1, 3]])
+
+        Metrics.beginCollect()
+        A_KM = A_MK.swizzleRanks(["K", "M"])
+
+        self.assertEqual(Metrics.getIter(), [])
+        Metrics.endCollect()
 
     def test_flattenRanks_0(self):
         """ Test flattenRanks - depth=0 """

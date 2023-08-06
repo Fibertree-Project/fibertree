@@ -1,10 +1,16 @@
 import unittest
-from fibertree import Payload
 from fibertree import Fiber
+from fibertree import Payload
+from fibertree import Metrics
 
 from fibertree import TensorImage
 
 class TestFiberSplit(unittest.TestCase):
+
+    def setUp(self):
+        # Make sure that no metrics are being collected, unless explicitly
+        # desired by the test
+        Metrics.endCollect()
 
     def test_split_uniform_empty(self):
         """Test splitUniform on empty fiber"""
@@ -505,6 +511,21 @@ class TestFiberSplit(unittest.TestCase):
             self.assertEqual(sc, split_ref_coords[i])
             self.assertEqual(sp, split_ref_payloads[i])
             self.assertEqual(sp.getActive(), split_ref_payloads[i].getActive())
+
+    def test_split_uniform_no_tick(self):
+        """Test that splitUniform does not tick the metrics counting"""
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber([1, 3], [Fiber(c,p), Fiber(c, p)])
+
+        Metrics.beginCollect()
+        f.splitUniform(2, depth=1)
+
+        self.assertEqual(Metrics.getIter(), [])
+
+        Metrics.endCollect()
+
 
     def test_split_nonuniform_empty(self):
         """Test splitNonUniform on empty fiber"""
@@ -1204,6 +1225,21 @@ class TestFiberSplit(unittest.TestCase):
 
         self.assertEqual(split, ans)
 
+    def test_split_non_uniform_no_tick(self):
+        """Test that splitNonUniform does not tick the metrics counting"""
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber([1, 3], [Fiber(c,p), Fiber(c, p)])
+
+        Metrics.beginCollect()
+        f.splitNonUniform([10, 20, 33], depth=1)
+
+        self.assertEqual(Metrics.getIter(), [])
+
+        Metrics.endCollect()
+
+
     def test_split_equal_empty(self):
         """Test splitEqual on empty fiber"""
         empty = Fiber()
@@ -1680,6 +1716,20 @@ class TestFiberSplit(unittest.TestCase):
         #
         self.assertEqual(split.flattenRanks(style="absolute"), f)
 
+    def test_split_equal_no_tick(self):
+        """Test that splitEqual does not tick the metrics counting"""
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber([1, 3], [Fiber(c,p), Fiber(c, p)])
+
+        Metrics.beginCollect()
+        f.splitEqual(2, depth=1)
+
+        self.assertEqual(Metrics.getIter(), [])
+
+        Metrics.endCollect()
+
 
     def test_split_unequal_empty(self):
         """Test splitUnEqual on empty fiber"""
@@ -2066,6 +2116,21 @@ class TestFiberSplit(unittest.TestCase):
         # Check the split
         #
         self.assertEqual(split.flattenRanks(style="absolute"), f)
+
+    def test_split_un_equal_no_tick(self):
+        """Test that splitUnEqual does not tick the metrics counting"""
+        c = [0, 1, 9, 10, 12, 31, 41]
+        p = [ 1, 10, 20, 100, 120, 310, 410 ]
+
+        f = Fiber([1, 3], [Fiber(c,p), Fiber(c, p)])
+
+        Metrics.beginCollect()
+        f.splitUnEqual([10, 20, 33], depth=1)
+
+        self.assertEqual(Metrics.getIter(), [])
+
+        Metrics.endCollect()
+
 
     @staticmethod
     def _make_fiber_a():
