@@ -789,6 +789,9 @@ class Fiber:
         start_pos: scalar or Payload() containing a scalar, default=None
             An optional shortcut value to optimize search
 
+        trace: str
+            The name of the metrics traces the accesses should track
+
         Returns
         -------
 
@@ -2555,7 +2558,7 @@ class Fiber:
                 p.updatePayloads(func, depth=depth - 1)
         else:
             # Update my payloads
-            for i, (c, p) in enumerate(self.iterOccupancy()):
+            for i, (c, p) in enumerate(self.iterOccupancy(tick=False)):
                 self.payloads[i] = func(i, c, p)
 
         return None
@@ -3455,7 +3458,7 @@ class Fiber:
 
                 search_start = 0
 
-                for c, p in self.fiber:
+                for c, p in self.fiber.__iter__(tick=False):
                     # If the coordinate will not be in any partition, skip it
                     if c < active_start - self.pre_halo:
                         continue
@@ -3638,7 +3641,7 @@ class Fiber:
 
                 search_start = 0
 
-                for c, p in self.fiber:
+                for c, p in self.fiber.__iter__(tick=False):
                     if c < halo_start:
                         continue
 
@@ -3748,7 +3751,7 @@ class Fiber:
 
             def __init__(self, fiber, step, pre_halo, post_halo, relative):
                 splits = []
-                for i, (c, _) in enumerate(fiber.iterActive()):
+                for i, (c, _) in enumerate(fiber.iterActive(tick=False)):
                     if i == 0:
                         splits.append(fiber.getActive()[0])
 
@@ -3821,7 +3824,7 @@ class Fiber:
                 splits = []
                 j = 0
                 base = 0
-                for i, (c, _) in enumerate(fiber.iterActive()):
+                for i, (c, _) in enumerate(fiber.iterActive(tick=False)):
                     if j == len(sizes):
                         break
 
@@ -4503,7 +4506,7 @@ class Fiber:
 
         rank = self.getRankAttrs().getId()
         depth = Metrics.getIndex(rank)
-        for i, (c, p) in enumerate(self.__iter__()):
+        for i, (c, p) in enumerate(self):
             Metrics.addUse(rank, c, i, type_=trace_type, iteration_num=iteration_num)
 
             # Recurse down the tree

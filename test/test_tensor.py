@@ -247,6 +247,17 @@ class TestTensor(unittest.TestCase):
         self.assertEqual(tensor.getPayload(1, 0), 100)
         self.assertEqual(tensor.getPayload(1, 3), float("inf"))
 
+    def test_fromFiber_no_tick(self):
+        """Tensor.fromFiber should not affect metrics counting"""
+        tensor_ref = Tensor.fromYAMLfile("./data/test_tensor-1.yaml")
+        root = tensor_ref.getRoot()
+
+        Metrics.beginCollect()
+        tensor = Tensor.fromFiber(["M", "K"], root)
+
+        self.assertEqual(Metrics.getIter(), [])
+        Metrics.endCollect()
+
     def test_fromRandom(self):
         """Test construction of a random tensor"""
 
