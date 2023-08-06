@@ -275,7 +275,10 @@ class Metrics:
         assert cls.collecting
 
         cls.fiber_label[rank] = 0
-        cls.iteration[cls.line_order[rank]] = 0
+        if rank in cls.line_order:
+            cls.iteration[cls.line_order[rank]] = 0
+        else:
+            cls.iteration[cls.line_order[cls.rank_matches[rank]]] = 0
 
     @classmethod
     def getIter(cls):

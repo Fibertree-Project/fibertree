@@ -392,6 +392,24 @@ class TestMetrics(unittest.TestCase):
         Metrics.traces = {}
         Metrics.endCollect()
 
+    def test_end_iter_works_for_matching_ranks(self):
+        """Test that endIter works for matching ranks"""
+        Metrics.beginCollect()
+        Metrics.matchRanks("K", "M")
+
+        Metrics.registerRank("K")
+        Metrics.incIter("M")
+        Metrics.incIter("M")
+        Metrics.incIter("M")
+
+        self.assertEqual(Metrics.getIter(), [3])
+
+        Metrics.endIter("M")
+
+        self.assertEqual(Metrics.getIter(), [0])
+
+        Metrics.endCollect()
+
     def test_end_iter_fails_if_not_collecting(self):
         """Test that endIter fails if collection is not on"""
         with self.assertRaises(AssertionError):
