@@ -4571,14 +4571,61 @@ class Fiber:
 #
 # Copy operation
 #
+    def copy(self, preserve_owner=True):
+        """Deep copying that allows the owner to not be copied"""
+        if not preserve_owner:
+            owners = self._detach_owner()
+
+        copied = copy.deepcopy(self)
+
+        if not preserve_owner:
+            self._attach_owner(owners)
+            copied._attach_attrs(owners)
+
+        return copied
+
+
     def __deepcopy__(self, memo):
         """__deepcopy__
 
         Note: to ensure maintainability, we want to automatically copy
         everything. We use pickling because it is much more performant
         than the default deepcopy
+
+        The no_owner parameter means that the owning rank is not copied
         """
         return pickle.loads(pickle.dumps(self))
+
+    def _detach_owner(self):
+        """Detatch the owner from this fiber and its children"""
+        owners = {}
+        owners[None] = self.getOwner()
+        self.setOwner(None)
+
+        for c, p in self.iterOccupancy(tick=False):
+            if isinstance(p, Fiber):
+                owners[c] = p._detach_owner()
+
+        return owners
+
+    def _attach_attrs(self, owners):
+        owner = owners[None]
+        if owner is not None:
+            self.setRankAttrs(copy.deepcopy(owner.getAttrs()))
+
+        for c, p in self.iterOccupancy(tick=False):
+            if isinstance(p, Fiber):
+                p._attach_attrs(owners[c])
+
+
+    def _attach_owner(self, owners):
+        """Reattach the owners to this fiber"""
+        self.setOwner(owners[None])
+
+        for c, p in self.iterOccupancy(tick=False):
+            if isinstance(p, Fiber):
+                p._attach_owner(owners[c])
+
 
 #
 #  Comparison operations

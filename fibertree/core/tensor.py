@@ -708,7 +708,7 @@ class Tensor:
         # Note: shapes and owners will be overwritten in _addFiber()
         #
         if root.getOwner() is not None:
-            root = deepcopy(root)
+            root = deepcopy(root.copy(preserve_owner=False))
 
         self._root = root
 
