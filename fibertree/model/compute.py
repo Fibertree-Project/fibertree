@@ -18,6 +18,20 @@ class Compute:
         raise NotImplementedError
 
     @staticmethod
+    def numIters(trace):
+        """
+        Compute the number of iterations (lines) in this trace
+        """
+        with open(trace, "r") as f:
+            f.readline()
+
+            iters = 0
+            while f.readline():
+                iters += 1
+
+        return iters
+
+    @staticmethod
     def numOps(dump, op):
         """Compute the number of operations executed by this kernel """
         metric = "payload_" + op
@@ -128,3 +142,4 @@ class Compute:
         merged.sort()
 
         return compares, merged
+
