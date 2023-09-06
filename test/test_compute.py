@@ -17,6 +17,23 @@ class TestCompute(unittest.TestCase):
         if not os.path.exists("tmp"):
             os.makedirs("tmp")
 
+    def test_num_iters(self):
+        """Test Compute.numIters()"""
+
+        coords = [0, 1]
+        payloads = [Fiber([1, 3, 5], [1, 1, 1]), Fiber([1, 2], [1, 1])]
+        T_MK = Tensor.fromFiber(rank_ids=["M", "K"], fiber=Fiber(coords, payloads))
+        t_m = T_MK.getRoot()
+
+        Metrics.beginCollect("tmp/test_num_iters")
+        Metrics.trace("K")
+        for m, t_k in t_m:
+            for _ in t_k:
+                pass
+        Metrics.endCollect()
+
+        self.assertEqual(Compute.numIters("tmp/test_num_iters-K-iter.csv"), 5)
+
     def test_num_ops(self):
         """Test Compute.numOps()"""
         av = 1
