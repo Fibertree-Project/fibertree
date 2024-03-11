@@ -297,7 +297,7 @@ class Fiber:
         self.iter = None
 
     @classmethod
-    def fromCoordPayloadList(cls, *cp, **kwargs):
+    def fromCoordPayloadList(cls, cp, **kwargs):
         """Construct a Fiber from a coordinate/payload list.
 
         The base Fiber contructor creates a fiber from a list of a
