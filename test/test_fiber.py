@@ -109,20 +109,13 @@ class TestFiber(unittest.TestCase):
 
         a_ref = Fiber(coords=coords, payloads=payloads)
 
-        a1 = Fiber.fromCoordPayloadList(*cp)
+        a1 = Fiber.fromCoordPayloadList(cp)
         self.assertEqual(a1, a_ref)
         self.assertEqual(a1.getDefault(), 0)
 
-        # Removed functionality to set fiber default
-
-#       a2 = Fiber.fromCoordPayloadList(*cp, default=1)
-#       self.assertEqual(a2, a_ref)
-#       self.assertEqual(a2.getDefault(), 1)
-
-#       a3 = Fiber.fromCoordPayloadList(default=2, *cp)
-#       self.assertEqual(a3, a_ref)
-#       self.assertEqual(a3.getDefault(), 2)
-
+        a2 = Fiber.fromCoordPayloadList(cp, default=1)
+        self.assertEqual(a2, a_ref)
+        self.assertEqual(a2.getDefault(), 1)
 
     def test_fromYAMLfile_1D(self):
         """Read a YAMLfile 1-D"""
