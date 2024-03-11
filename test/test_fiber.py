@@ -108,7 +108,6 @@ class TestFiber(unittest.TestCase):
         (coords, payloads) = zip(*cp)
 
         a_ref = Fiber(coords=coords, payloads=payloads)
-        print(repr(a_ref))
 
         a1 = Fiber.fromCoordPayloadList(cp)
         self.assertEqual(a1, a_ref)
