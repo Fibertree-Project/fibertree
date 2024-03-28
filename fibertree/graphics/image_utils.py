@@ -3,7 +3,6 @@
 import logging
 import os
 import webcolors
-import importlib.resources as importlib_resources
 
 from PIL import Image, ImageDraw, ImageFont
 from functools import lru_cache
@@ -164,10 +163,22 @@ class ImageUtils():
         #
         # Get ffile from installed package
         #
-        ref = importlib_resources.files('fibertree') / data_file_path
-        with importlib_resources.as_file(ref) as font_file:
+        try:
+            import importlib.resources as importlib_resources
+
+            ref = importlib_resources.files("fibertree") / data_file_path
+            with importlib_resources.as_file(ref) as font_file:
+                try:
+                    font = ImageFont.truetype(str(font_file), font_size)
+                    return font
+                except Exception as e:
+                    print(f"Could not find font file: {font_file}")
+                    raise e
+        except (AttributeError, ModuleNotFoundError):
+            cur_dir = os.path.abspath(os.path.dirname(__file__))
+            font_file = os.path.join(cur_dir, data_file_path)
             try:
-                font = ImageFont.truetype(str(font_file), font_size)
+                font = ImageFont.truetype(font_file, font_size)
                 return font
             except Exception as e:
                 print(f"Could not find font file: {font_file}")
