@@ -192,6 +192,11 @@ class Tensor:
 
         See Tensor() for additional keyword arguments
 
+
+        Notes:
+            Tensors created with the method will be set `mutable`,
+            as it is expected that they will be updated...
+
         """
 
         root = initial
@@ -204,6 +209,9 @@ class Tensor:
                                     root=root,
                                     default=default,
                                     **kwargs)
+
+
+        t.setMutable(True)
 
         return t
 
