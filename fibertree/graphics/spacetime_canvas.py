@@ -84,7 +84,7 @@ class SpacetimeCanvas():
         self.frame_num = 0
 
 
-    def addFrame(self, *highlighted_coords_per_tensor):
+    def addFrame(self, *highlighted_coords_per_tensor, message=""):
         """Add a timestep to the spacetime diagram
 
         Parameters
