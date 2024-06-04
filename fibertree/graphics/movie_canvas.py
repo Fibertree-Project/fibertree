@@ -44,9 +44,12 @@ class MovieCanvas():
     progress: Boolean (default: True)
         Enable tqdm style progress bar on movie creation
 
+    layout: list (default: [len(tensors)*[1]]
+        List of the number of tensors in each row
+    
     """
 
-    def __init__(self, *tensors, style='tree', progress=True):
+    def __init__(self, *tensors, style='tree', progress=True, layout=None):
         """__init__"""
 
         #
@@ -64,6 +67,19 @@ class MovieCanvas():
         #
         self.use_tqdm = progress
 
+        #
+        # Set up pattern
+        #
+
+        layout_tensors = sum(layout)
+        total_tensors = len(tensors)
+        
+        # Add rows to cover all tensors
+        if layout_tensors  < total_tensors:
+            layout.extend([1] * (total_tensors - layout_tensors))
+        
+        self.layout = layout
+        
         #
         # Set up tensor class variables
         #
@@ -138,8 +154,14 @@ class MovieCanvas():
 
         """
 
+        #
+        # Create a frame with nothing highlighted
+        #
         self.addFrame()
 
+        #
+        # Force creation of the final frame
+        #
         end = len(self.image_list_per_tensor[0])
         (final_images, final_width, final_height) = self._combineFrames(end-1, end)
 
@@ -187,29 +209,55 @@ class MovieCanvas():
 #
     def _combineFrames(self, start, end):
 
-        (final_width, final_height, flattened_height) = self._finalize()
         #
-        # Create empty frames for pasting
+        # Obtain the shape of each tensors for the frames 
         #
-        final_images = []
-        for n in range(start, end):
-            final_images.append(Image.new("RGB",
-                                          (final_width, final_height),
-                                          "wheat"))
+        (final_width, final_height, tensor_shapes) = self._calcShapes(start, end)
 
         #
         # Dump individual frames into the same image so they stay in sync.
         #
+        final_images = []
+
         for n in range(start, end):
-            for t in range(len(self.tensors)):
-                image = self.image_list_per_tensor[t][n]
+            
+            #
+            # Create empty frame for pasting tensor images into
+            #
+            final_images.append(Image.new("RGB",
+                                          (final_width, final_height),
+                                          "wheat"))
 
-                x_center = final_width // 2 - (image.width // 2)
-                # Start where the last image finished.
-                y_final = 0 if t == 0 else flattened_height[t-1]
+            #
+            # Populat4e the image for this timestep
+            #
+            current_tensor = 0
+            row_x = 0
+            row_y = 0
 
-                final_images[n-start].paste(image, (x_center, y_final))
+            for row_width, row_height, tensor_widths in tensor_shapes:
 
+                #
+                # Center row of tensor images in full image
+                #
+                row_x = final_width // 2 - row_width // 2 
+
+                for tensor_width in tensor_widths:
+
+                    image = self.image_list_per_tensor[current_tensor][n]
+
+                    #
+                    # Center individual tensor in its cell
+                    #
+                    tensor_x_left = row_x + tensor_width // 2  - image.width // 2
+
+                    final_images[n-start].paste(image, (tensor_x_left, row_y))
+
+                    row_x += tensor_width
+                    current_tensor += 1
+
+                row_y += row_height
+            
         #
         # Add cycle information to the images
         # (skipping extra frames at beginning and end)
@@ -224,41 +272,77 @@ class MovieCanvas():
 
         return (final_images, final_width, final_height)
 
+    def _calcShapes(self, start, end):
 
-    def _finalize(self):
-        """_finalize"""
+        layout = self.layout
 
-        #
-        # Set all images to the max canvas size to ensure smooth animations
-        #
+        tensor_dims = self._calcTensorSizes()
 
-        final_dims = []
-        for n in range(len(self.tensors)):
-            max_width = 0
-            max_height = 0
-            for image in self.image_list_per_tensor[n]:
-                max_height = image.height if (image.height > max_height) else max_height
-                max_width  = image.width  if (image.width  > max_width)  else max_width
-            final_dims.append((max_width, max_height))
-
-        #
-        # Take max of width, but concatenate height
-        #
         final_width = 0
         final_height = 0
-        flattened_height = []
+        row_shapes = []
 
-        for w, h in final_dims:
-            final_width = w if w > final_width else final_width
-            final_height = final_height + h
-            flattened_height.append(final_height)
+        current_tensor = 0
+        
+        for row_length in layout:
+
+            if current_tensor >= len(tensor_dims):
+                break
+
+            #
+            # Extract out tensor dimensions for tensors in this row
+            #
+            row_dims = tensor_dims[current_tensor:current_tensor+row_length]
+
+            #
+            # Calculate the width/height of row
+            # Record width of each tensor in the row
+            # Track total width and height
+            #
+            row_width = 0
+            row_height = 0
+            row_widths = []
+            
+            for tensor_width, tensor_height in row_dims:
+            
+                row_width += tensor_width
+                row_height = max(row_height, tensor_height)
+
+                row_widths.append(tensor_width)
+
+
+            final_width = max(final_width, row_width)
+            final_height += row_height
+            row_shapes.append([row_width, row_height, row_widths])
+
+            current_tensor += row_length
 
         #
         # Add a little padding at the bottom for when the controls are visible.
         #
         final_height = final_height + 75
 
-        return (final_width, final_height, flattened_height)
+        return (final_width, final_height, row_shapes)
+    
+    
+    def _calcTensorSizes(self):
+        """_finalize"""
+
+        #
+        # For each tensor find the image of that tensor with the maximum width and height
+        #
+        tensor_dims = []
+
+        for t in range(len(self.tensors)):
+            max_width = 0
+            max_height = 0
+            for image in self.image_list_per_tensor[t]:
+                max_height = image.height if (image.height > max_height) else max_height
+                max_width  = image.width  if (image.width  > max_width)  else max_width
+
+            tensor_dims.append((max_width, max_height))
+
+        return tensor_dims
 
 #
 # Tqdm-related methods
