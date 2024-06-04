@@ -92,6 +92,11 @@ class MovieCanvas():
             self.image_list_per_tensor.append([])
 
         #
+        # Set up per cycle message list
+        #
+        self.message_list = []
+
+        #
         # Font to use for text
         #
         self.font = ImageUtils.getFont('DejaVuSansMono', 16)
@@ -102,8 +107,15 @@ class MovieCanvas():
         self.addFrame()
 
 
-    def addFrame(self, *highlighted_coords_per_tensor):
+    def addFrame(self, *highlighted_coords_per_tensor, message=""):
         """Add a frame to the movie
+
+        Create an image of each tracked tensor preperly highlighted and
+        append those images to the "per frame" lists associated with the
+        tracked tensor.
+
+        Also remember the "message" to be associated with this frame by
+        including it in the "per frame" list of message.
 
         Parameters
         ----------
@@ -111,6 +123,13 @@ class MovieCanvas():
         highlighted_coords_per_tensor: list of highlights
             Highlights to add to the registered tensors
 
+        message: string
+            The message associated with this cycle
+
+
+        Note: This method must be called in frame order. Dealing with
+              any out-of-order of creation of frames must be handled
+              before this method is called.
         """
 
         #
@@ -134,6 +153,7 @@ class MovieCanvas():
 
             self.image_list_per_tensor[n].append(im)
 
+        self.message_list.append(message)
 
     def getLastFrame(self, message=None):
         """Get the final frame
@@ -263,7 +283,7 @@ class MovieCanvas():
         # (skipping extra frames at beginning and end)
         #
         for n, im in enumerate(final_images[1:]):
-            message = f"Cycle: {n}"
+            message = f"Cycle: {n} - {self.message_list[n]}"
 
             ImageDraw.Draw(im).text((15, final_height-80),
                                     message,
