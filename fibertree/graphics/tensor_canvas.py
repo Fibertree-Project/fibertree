@@ -65,15 +65,20 @@ class TensorCanvas():
     animation: string
         Type of animation ('none', 'movie', 'spacetime')
 
+    === only for movies ===
+
     style: string
         Display style for movies ('tree', 'uncompressed', 'tree+uncompressed')
 
     enable_wait: Boolean
         Enable tracking update times to allow waiting for an update
 
+    layout: list (default: [len(tensors)*[1]]
+        List of the number of tensors in each row
+    
     """
 
-    def __init__(self, *tensors, animation='movie', style='tree', enable_wait=False):
+    def __init__(self, *tensors, animation='movie', style='tree', enable_wait=False, **kwargs):
         """__init__
 
         """
@@ -150,7 +155,8 @@ class TensorCanvas():
         # the visualized activity happens in the desired order
         #
         if animation == 'movie':
-            self.canvas = MovieCanvas(*self.shadow_tensors, style=style)
+            layout = kwargs.get("layout",[])
+            self.canvas = MovieCanvas(*self.shadow_tensors, style=style, layout=layout)
         elif animation == 'spacetime':
             self.canvas = SpacetimeCanvas(*self.shadow_tensors)
         elif animation == 'none':
