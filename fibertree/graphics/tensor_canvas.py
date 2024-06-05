@@ -168,7 +168,7 @@ class TensorCanvas():
     def addActivity(self,
                     *highlights,
                     spacetime=None,
-                    message="",
+                    caption="",
                     # Deprecated options
                     worker="anon",
                     skew=0,
@@ -188,8 +188,8 @@ class TensorCanvas():
             A tuple containing the "worker" performing the activity and a "timestamp"
             specifying the time the activity occurs. Timestamps are tuples of integers
 
-        message: string
-             A message to add to the frame
+        caption: string
+             A caption to add to the frame
 
         worker: string
             Name of the worker performing the action (mutually exclusive with `spacetime`)
@@ -307,7 +307,7 @@ class TensorCanvas():
         #
         log_idx = self._logChanges(*highlights_list,
                                    timestamp=timestamp,
-                                   message=message)
+                                   caption=caption)
 
         #
         # Collect the highlights for this frame accounting for global time
@@ -357,7 +357,7 @@ class TensorCanvas():
         return None
 
 
-    def addFrame(self, *highlights, message=""):
+    def addFrame(self, *highlights, caption=""):
         """Add a step to the movie or spacetime diagram
 
         A step (or cycle) to the animation. For movies this
@@ -389,27 +389,27 @@ class TensorCanvas():
         self.inframe = False
 
         #
-        # Highlights and message were collected by addActivity
+        # Highlights and caption were collected by addActivity
         #
         if len(self.log):
             highlights = self.log[0].highlights
-            message = self.log[0].message[0]
+            caption = self.log[0].caption[0]
         else:
             highlights = {}
-            message = ""
+            caption = ""
 
         #
         # Populate shadow tensors with values for this frame
         #
         # Note: The log gets popped, so we needed to get the
-        # highlights and message out before this call
+        # highlights and caption out before this call
         #
         self._replayChanges()
 
         #
         # Add the frame
         #
-        self.canvas.addFrame(*highlights, message=message)
+        self.canvas.addFrame(*highlights, caption=caption)
 
 
     def getLastFrame(self, message=None):
@@ -466,7 +466,7 @@ class TensorCanvas():
 # tensors being tracked
 #
 
-    def _logChanges(self, *highlights, timestamp=None, message=""):
+    def _logChanges(self, *highlights, timestamp=None, caption=""):
         """logChanges
 
         Log current values (at the highlighted points) to the mutable
@@ -482,8 +482,8 @@ class TensorCanvas():
         timestamp: tuple of integers
             The time at which these values are to be replayed
 
-        message: string
-            A message to associate with this frame
+        caption: string
+            A caption to associate with this frame
 
         """
 
@@ -503,9 +503,9 @@ class TensorCanvas():
             log_idx = self._createChanges(timestamp)
 
         #
-        # Save the message in the log
+        # Save the caption in the log
         #
-        self.log[log_idx].message.append(message)
+        self.log[log_idx].caption.append(caption)
 
         #
         # Get references to the lists of points and values updated at timestamp
@@ -574,16 +574,20 @@ class TensorCanvas():
     def _createChanges(self, timestamp):
         """ _createChanges """
 
-        FrameLog = namedtuple('FrameLog', ['timestamp', 'points', 'values', 'highlights', 'message'])
+        FrameLog = namedtuple('FrameLog', ['timestamp', 'points', 'values', 'highlights', 'caption'])
 
         num_tensors = self.num_tensors
 
         new_points = [[] for n in range(num_tensors)]
         new_values = [[] for n in range(num_tensors)]
         new_highlights = [{} for n in range(num_tensors)]
-        new_message = []
+        new_caption = []
 
-        framelog = FrameLog(timestamp, new_points, new_values, new_highlights, new_message)
+        framelog = FrameLog(timestamp,
+                            new_points,
+                            new_values,
+                            new_highlights,
+                            new_caption)
 
         if len(self.log) == 0:
             self.log.append(framelog)
@@ -697,7 +701,7 @@ class NoneCanvas():
 
         return
 
-    def addFrame(self, *highlighted_coords_per_tensor, message=""):
+    def addFrame(self, *highlighted_coords_per_tensor, caption=""):
         """addFrame - should never get called"""
 
         return

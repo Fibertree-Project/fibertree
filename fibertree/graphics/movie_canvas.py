@@ -87,9 +87,9 @@ class MovieCanvas():
             self.image_list_per_tensor.append([])
 
         #
-        # Set up per frame message list
+        # Set up per frame caption list
         #
-        self.message_list = []
+        self.caption_list = []
 
         #
         # Font to use for text
@@ -102,15 +102,15 @@ class MovieCanvas():
         self.addFrame()
 
 
-    def addFrame(self, *highlighted_coords_per_tensor, message=""):
+    def addFrame(self, *highlighted_coords_per_tensor, caption=""):
         """Add a frame to the movie
 
         Create an image of each tracked tensor preperly highlighted and
         append those images to the "per frame" lists associated with the
         tracked tensor.
 
-        Also remember the "message" to be associated with this frame by
-        including it in the "per frame" list of message.
+        Also remember the "caption" to be associated with this frame by
+        including it in the "per frame" list of captions.
 
         Parameters
         ----------
@@ -118,8 +118,8 @@ class MovieCanvas():
         highlighted_coords_per_tensor: list of highlights
             Highlights to add to the registered tensors
 
-        message: string
-            The message associated with this cycle
+        caption: string
+            The caption associated with this frame
 
 
         Note: This method must be called in frame order. Dealing with
@@ -149,7 +149,7 @@ class MovieCanvas():
 
             self.image_list_per_tensor[n].append(im)
 
-        self.message_list.append(message)
+        self.caption_list.append(caption)
 
     def getLastFrame(self, message=None):
         """Get the final frame
@@ -281,10 +281,10 @@ class MovieCanvas():
         # (skipping extra frames at beginning and end)
         #
         for n, im in enumerate(final_images[1:]):
-            message = f"Cycle: {n} - {self.message_list[n]}"
+            caption = f"Cycle: {n} - {self.caption_list[n]}"
 
             ImageDraw.Draw(im).text((15, final_height-80),
-                                    message,
+                                    caption,
                                     font=self.font,
                                     fill="black")
 
