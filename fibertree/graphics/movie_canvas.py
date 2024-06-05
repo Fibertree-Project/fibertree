@@ -15,6 +15,8 @@ from fibertree import Fiber
 from fibertree import Payload
 from fibertree import ImageUtils
 
+from .canvas_layout import CanvasLayout
+
 #
 # Set up logging
 #
@@ -63,22 +65,15 @@ class MovieCanvas():
         self.style = TensorImage.canonicalizeStyle(style, count=len(tensors))
 
         #
+        # Remember layout
+        #
+        self.layout = layout
+
+        #
         # Set tqdm control
         #
         self.use_tqdm = progress
 
-        #
-        # Set up pattern
-        #
-
-        layout_tensors = sum(layout)
-        total_tensors = len(tensors)
-        
-        # Add rows to cover all tensors
-        if layout_tensors  < total_tensors:
-            layout.extend([1] * (total_tensors - layout_tensors))
-        
-        self.layout = layout
         
         #
         # Set up tensor class variables
@@ -92,7 +87,7 @@ class MovieCanvas():
             self.image_list_per_tensor.append([])
 
         #
-        # Set up per cycle message list
+        # Set up per frame message list
         #
         self.message_list = []
 
@@ -129,7 +124,8 @@ class MovieCanvas():
 
         Note: This method must be called in frame order. Dealing with
               any out-of-order of creation of frames must be handled
-              before this method is called.
+              before this method is called, e.g., in TensorCanvas:addActivity
+
         """
 
         #
@@ -232,7 +228,9 @@ class MovieCanvas():
         #
         # Obtain the shape of each tensors for the frames 
         #
-        (final_width, final_height, tensor_shapes) = self._calcShapes(start, end)
+        canvas_layout = CanvasLayout(self.image_list_per_tensor, self.layout)
+
+        (final_width, final_height, tensor_shapes) = canvas_layout.getLayout(start, end)
 
         #
         # Dump individual frames into the same image so they stay in sync.
@@ -292,77 +290,6 @@ class MovieCanvas():
 
         return (final_images, final_width, final_height)
 
-    def _calcShapes(self, start, end):
-
-        layout = self.layout
-
-        tensor_dims = self._calcTensorSizes()
-
-        final_width = 0
-        final_height = 0
-        row_shapes = []
-
-        current_tensor = 0
-        
-        for row_length in layout:
-
-            if current_tensor >= len(tensor_dims):
-                break
-
-            #
-            # Extract out tensor dimensions for tensors in this row
-            #
-            row_dims = tensor_dims[current_tensor:current_tensor+row_length]
-
-            #
-            # Calculate the width/height of row
-            # Record width of each tensor in the row
-            # Track total width and height
-            #
-            row_width = 0
-            row_height = 0
-            row_widths = []
-            
-            for tensor_width, tensor_height in row_dims:
-            
-                row_width += tensor_width
-                row_height = max(row_height, tensor_height)
-
-                row_widths.append(tensor_width)
-
-
-            final_width = max(final_width, row_width)
-            final_height += row_height
-            row_shapes.append([row_width, row_height, row_widths])
-
-            current_tensor += row_length
-
-        #
-        # Add a little padding at the bottom for when the controls are visible.
-        #
-        final_height = final_height + 75
-
-        return (final_width, final_height, row_shapes)
-    
-    
-    def _calcTensorSizes(self):
-        """_finalize"""
-
-        #
-        # For each tensor find the image of that tensor with the maximum width and height
-        #
-        tensor_dims = []
-
-        for t in range(len(self.tensors)):
-            max_width = 0
-            max_height = 0
-            for image in self.image_list_per_tensor[t]:
-                max_height = image.height if (image.height > max_height) else max_height
-                max_width  = image.width  if (image.width  > max_width)  else max_width
-
-            tensor_dims.append((max_width, max_height))
-
-        return tensor_dims
 
 #
 # Tqdm-related methods
