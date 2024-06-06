@@ -208,8 +208,7 @@ class MovieCanvas():
 
         """
 
-        end = len(self.image_list_per_tensor[0])
-        (final_images, final_width, final_height) = self._combineFrames(0, end)
+        (final_images, final_width, final_height) = self._combineFrames()
 
         fourcc = cv2.VideoWriter_fourcc(*"vp09")
         out = cv2.VideoWriter(filename, fourcc, 1, (final_width, final_height))
@@ -223,7 +222,10 @@ class MovieCanvas():
 #
 # Internal utility functions
 #
-    def _combineFrames(self, start, end):
+    def _combineFrames(self, start=0, end=None):
+
+        if end is None:
+            end = len(self.image_list_per_tensor[0])
 
         #
         # Obtain the shape of each tensors for the frames 
