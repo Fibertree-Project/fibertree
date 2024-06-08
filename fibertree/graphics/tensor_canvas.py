@@ -63,19 +63,23 @@ class TensorCanvas():
         A list of tensors or fiber objects to track
 
     animation: string
-        Type of animation ('none', 'movie', 'spacetime')
+        Type of animation ('none', 'movie', 'slideshow', 'spacetime')
 
-    === only for movies ===
+    === only for movies or slideshow ===
+
+    title: string (default: "")
+        Title for images
 
     style: string
-        Display style for movies ('tree', 'uncompressed', 'tree+uncompressed')
+        Display style for tensors ('tree', 'uncompressed', 'tree+uncompressed')
+
+    layout: list (default: [len(tensors)*[1]]
+        List of the number of tensors in each row
 
     enable_wait: Boolean
         Enable tracking update times to allow waiting for an update
 
-    layout: list (default: [len(tensors)*[1]]
-        List of the number of tensors in each row
-    
+
     """
 
     def __init__(self, *tensors, animation='movie', style='tree', enable_wait=False, **kwargs):
@@ -154,13 +158,21 @@ class TensorCanvas():
         # Note: We create the canvas with the shadow tensors, so that
         # the visualized activity happens in the desired order
         #
-        if animation == 'movie':
+        if animation in ['movie', 'slideshow']:
+            title =  kwargs.get("title","")
             layout = kwargs.get("layout",[])
-            self.canvas = MovieCanvas(*self.shadow_tensors, style=style, layout=layout)
+
+            self.canvas = MovieCanvas(*self.shadow_tensors,
+                                      title=title,
+                                      style=style,
+                                      layout=layout)
+
         elif animation == 'spacetime':
             self.canvas = SpacetimeCanvas(*self.shadow_tensors)
+
         elif animation == 'none':
             self.canvas = NoneCanvas(*self.shadow_tensors, style=style)
+
         else:
             self.logger.warning("TensorCanvas: No animation type: %s", animation)
 
@@ -431,16 +443,19 @@ class TensorCanvas():
 
         """
 
-        #
-        # Push out any remaining logged activity
-        #
-        for n in range(len(self.log)):
-            self.addFrame()
+        self._finalizeCanvas()
 
         return self.canvas.getLastFrame(message=message)
 
 
-    def saveMovie(self, filename=None):
+    def getAllFrames(self, layout=None):
+
+        self._finalizeCanvas()
+
+        return self.canvas.getAllFrames()
+
+
+    def saveMovie(self, filename=None, layout=None):
         """Save the animation to a file
 
         If the animation can be saved to a file, this method will do
@@ -457,9 +472,31 @@ class TensorCanvas():
         #
         # Push out any remaining logged activity
         #
-        self.getLastFrame()
+        self._finalizeCanvas()
 
-        return self.canvas.saveMovie(filename=filename)
+        return self.canvas.saveMovie(filename=filename, layout=layout)
+
+
+#
+# Utility functions
+#
+    def _finalizeCanvas(self):
+        """Finalize the movie/spacetime diagram
+
+        Finalize the animation by adding all the pending cycles to the
+        animation.
+        """
+
+        #
+        # Push out any remaining logged activity
+        #
+        for n in range(len(self.log)):
+            self.addFrame()
+
+        #
+        # Create a frame with nothing highlighted
+        #
+        self.addFrame()
 
 #
 # Utility function to log and replay a series of changes to the
@@ -574,7 +611,12 @@ class TensorCanvas():
     def _createChanges(self, timestamp):
         """ _createChanges """
 
-        FrameLog = namedtuple('FrameLog', ['timestamp', 'points', 'values', 'highlights', 'caption'])
+        FrameLog = namedtuple('FrameLog',
+                              ['timestamp',
+                               'points',
+                               'values',
+                               'highlights',
+                               'caption'])
 
         num_tensors = self.num_tensors
 
@@ -712,6 +754,11 @@ class NoneCanvas():
         im = self.canvas.getLastFrame(message=message)
 
         return im
+
+
+    def getAllFrames(self, layout=None):
+
+        return self.getLastFrame()
 
 
     def saveMovie(self, filename=None):

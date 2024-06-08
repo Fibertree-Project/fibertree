@@ -113,9 +113,10 @@ class CanvasLayout():
             current_tensor += row_length
 
         #
-        # Add a little padding at the bottom for when the controls are visible.
+        # Add a little padding at the top for title
+        # and bottom for when the controls are visible.
         #
-        final_height = final_height + 75
+        final_height = final_height + 80 + 75
 
         return (final_width, final_height, row_shapes)
     
