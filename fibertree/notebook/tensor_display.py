@@ -21,6 +21,9 @@ from IPython.display import Video
 
 from base64 import b64encode
 
+from .movie_player import MoviePlayer
+from .slideshow_player import SlideshowPlayer
+
 #
 # Try to import ipywidgets
 #
@@ -75,15 +78,6 @@ class TensorDisplay():
 
             if animation is not None:
                 self.setAnimation(animation)
-
-        self.rand = random.Random()
-
-        #
-        # Create tmp directory for movies
-        #
-        tmpdir = Path("tmp")
-        tmpdir.mkdir(mode=0o755, exist_ok=True)
-        self.tmpdir = tmpdir
 
 
     #
@@ -142,13 +136,34 @@ class TensorDisplay():
                             **kwargs)
 
 
-    def displayCanvas(self, canvas, filename=None, width="100%", loop=True, autoplay=True, controls=True, center=False):
+    def displayCanvas(self,
+                      canvas,
+                      layout=None,
+                      animation=None,
+                      filename=None,
+                      width="100%",
+                      loop=True,
+                      autoplay=True,
+                      controls=True,
+                      center=False):
+
         """ displayCanvas """
 
         if canvas is None:
             return None
 
-        if self.animation == 'none':
+        #
+        # Only can do a last minute swap between "slideshow" and "movie"
+        #
+        if animation == "slideshow" and self.animation != "movie":
+            animation = self.animation
+
+        elif animation == "movie" and self.animation != "slidehow":
+            animation = self.animation
+        else:
+            animation = self.animation
+
+        if animation == 'none':
             #
             # Just create a frame from the last state and display it
             #
@@ -158,7 +173,7 @@ class TensorDisplay():
             display(im)
             return
 
-        if self.animation == 'spacetime':
+        if animation == 'spacetime':
             #
             # Get the spacetime diagrams
             #
@@ -170,46 +185,25 @@ class TensorDisplay():
 
             return
 
-        if filename is None:
-            basename = Path(self._random_string(10)+".mp4")
-            filename = self.tmpdir / basename
+        if animation == 'slideshow':
 
-        posix_filename = filename.as_posix()
-        canvas.saveMovie(posix_filename)
+            player = SlideshowPlayer(canvas,
+                                     layout=layout)
 
-        # TBD: Actually pay attention to width and centering
-        final_width = "" if width is None else " width=\"{0}\"".format(width)
-        final_center = "" if not center else " style=\"display:block; margin: 0 auto;\""
+            player.display()
 
-        final_loop = "" if not loop else " loop"
-        final_autoplay = "" if not autoplay else " autoplay"
-        final_controls = "" if not controls else " controls"
-
-        final_attributes = f"{final_loop}{final_autoplay}{final_controls}"
-
-        if 'COLAB_JUPYTER_IP' in os.environ:
-            #
-            # Running in a Google Colab (note status is ignored)
-            #
-            video_file = open(posix_filename, "r+b").read()
-
-            video_url = f"data:video/mp4;base64,{b64encode(video_file).decode()}"
-
-#            video = HTML(f"""<video width=600 controls loop autoplay><source src="{video_url}"></video>""")
-            video = HTML(f"""<video width=800 {final_attributes}><source src="{video_url}"></video>""")
-            display(video)
             return
 
-        #
-        # Running in a regular Jupyter notebook
-        #
-        video = Video(f"./{posix_filename}", html_attributes=final_attributes, width=800)
-        display(video)
+        if animation == 'movie':
 
+            player = MoviePlayer(canvas,
+                                 filename=filename,
+                                 layout=layout)
 
-
-    def _random_string(self, length):
-        return ''.join(self.rand.choice(string.ascii_letters) for m in range(length))
+            player.display(width,
+                           loop,
+                           autoplay,
+                           controls)
 
 
     def displayGraph(self, am_s):
@@ -239,7 +233,7 @@ class TensorDisplay():
         if have_ipywidgets:
             self.w = interactive(self.updateWidgets,
                                  style=['tree', 'uncompressed', 'tree+uncompressed'],
-                                 animation=['none', 'movie', 'spacetime'])
+                                 animation=['none', 'movie', 'slideshow', 'spacetime'])
 
             display(self.w)
         else:

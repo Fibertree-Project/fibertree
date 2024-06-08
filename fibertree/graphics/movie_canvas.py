@@ -51,7 +51,13 @@ class MovieCanvas():
     
     """
 
-    def __init__(self, *tensors, style='tree', progress=True, layout=None):
+    def __init__(self,
+                 *tensors,
+                 style='tree',
+                 title="",
+                 layout=None,
+                 progress=True):
+
         """__init__"""
 
         #
@@ -60,20 +66,16 @@ class MovieCanvas():
         self.logger = logging.getLogger('fibertree.graphics.movie_canvas')
 
         #
-        # Set image type
+        # Set various image attributes
         #
+        self.title = title
         self.style = TensorImage.canonicalizeStyle(style, count=len(tensors))
-
-        #
-        # Remember layout
-        #
         self.layout = layout
 
         #
         # Set tqdm control
         #
         self.use_tqdm = progress
-
         
         #
         # Set up tensor class variables
@@ -171,11 +173,6 @@ class MovieCanvas():
         """
 
         #
-        # Create a frame with nothing highlighted
-        #
-        self.addFrame()
-
-        #
         # Force creation of the final frame
         #
         end = len(self.image_list_per_tensor[0])
@@ -197,7 +194,14 @@ class MovieCanvas():
         return im
 
 
-    def saveMovie(self, filename=None):
+    def getAllFrames(self, layout=None):
+
+        (final_images, _, _) = self._combineFrames(layout=layout)
+
+        return final_images
+
+
+    def saveMovie(self, filename=None, layout=None):
         """Save the movie to a file
 
         Parameters
@@ -208,12 +212,14 @@ class MovieCanvas():
 
         """
 
-        (final_images, final_width, final_height) = self._combineFrames()
+        (final_images, final_width, final_height) = self._combineFrames(layout=layout)
 
         fourcc = cv2.VideoWriter_fourcc(*"vp09")
         out = cv2.VideoWriter(filename, fourcc, 1, (final_width, final_height))
 
-        for image in self._tqdm(final_images):
+        tqdm_desc = "Render video frames"
+
+        for image in self._tqdm(final_images, desc=tqdm_desc):
             for duplication_cnt in range(1):
                 out.write(cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR))
 
@@ -222,7 +228,7 @@ class MovieCanvas():
 #
 # Internal utility functions
 #
-    def _combineFrames(self, start=0, end=None):
+    def _combineFrames(self, start=0, end=None, layout=None):
 
         if end is None:
             end = len(self.image_list_per_tensor[0])
@@ -230,6 +236,9 @@ class MovieCanvas():
         #
         # Obtain the shape of each tensors for the frames 
         #
+        if layout is None:
+            layout = self.layout
+
         canvas_layout = CanvasLayout(self.image_list_per_tensor, self.layout)
 
         (final_width, final_height, tensor_shapes) = canvas_layout.getLayout(start, end)
@@ -239,7 +248,9 @@ class MovieCanvas():
         #
         final_images = []
 
-        for n in range(start, end):
+        tqdm_desc = "Fill frame image with tensors"
+
+        for n in self._tqdm(range(start, end), desc=tqdm_desc):
             
             #
             # Create empty frame for pasting tensor images into
@@ -253,7 +264,7 @@ class MovieCanvas():
             #
             current_tensor = 0
             row_x = 0
-            row_y = 0
+            row_y = 80         # Leave room for title
 
             for row_width, row_height, tensor_widths in tensor_shapes:
 
@@ -282,8 +293,21 @@ class MovieCanvas():
         # Add cycle information to the images
         # (skipping extra frames at beginning and end)
         #
-        for n, im in enumerate(final_images[1:]):
-            caption = f"Cycle: {n} - {self.caption_list[n]}"
+        for n, im in enumerate(final_images[1:-1]):
+            #
+            # Draw title
+            #
+            title = self.title
+
+            ImageDraw.Draw(im).text((15, 5),
+                                    title,
+                                    font=self.font,
+                                    fill="black")
+
+            #
+            # Draw caption
+            #
+            caption = f"Cycle: {n} - {self.caption_list[n+1]}"
 
             ImageDraw.Draw(im).text((15, final_height-80),
                                     caption,
@@ -299,16 +323,16 @@ class MovieCanvas():
 # TBD: Move to some more central location
 #
 
-    def _tqdm(self, iterable):
+    def _tqdm(self, iterable, desc=""):
         """
         _tqdm
 
-        Conditional tqdm based on wheter we are in a notebook
+        Conditional tqdm based on whether we are in a notebook
 
         """
 
         if self.use_tqdm and MovieCanvas._in_ipynb():
-            return tqdm(iterable)
+            return tqdm(iterable, leave=True, desc=desc)
         else:
             return iterable
 
