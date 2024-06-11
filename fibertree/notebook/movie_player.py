@@ -6,6 +6,8 @@ import os
 import string
 import random
 import tempfile
+import datetime
+import re
 
 from pathlib import Path
 
@@ -25,18 +27,15 @@ class MoviePlayer():
 
     def __init__(self, canvas, layout=None, filename=None):
 
+        self.canvas = canvas
+
         self.rand = random.Random()
 
         #
-        # Create tmp directory for movies
+        # Create filename (if not given)
         #
-        tmpdir = Path("tmp")
-        tmpdir.mkdir(mode=0o755, exist_ok=True)
-        self.tmpdir = tmpdir
-
         if filename is None:
-            basename = Path(self._random_string(10)+".mp4")
-            filename = self.tmpdir / basename
+            filename = self._createFilename()
 
         posix_filename = filename.as_posix()
         self.posix_filename = posix_filename
@@ -83,6 +82,48 @@ class MoviePlayer():
                       width=800)
 
         display(video)
+
+    def _createFilename(self):
+        """
+        Create a filename for the movie
+
+        File will have a timestamp followed by the title of the video
+        or a random strin (for empty titles)
+
+        """
+
+        title = self.canvas.title
+
+        #
+        # Create tmp directory for movies
+        #
+        tmpdir = Path("tmp")
+        tmpdir.mkdir(mode=0o755, exist_ok=True)
+        self.tmpdir = tmpdir
+
+        #
+        # Create filename
+        #
+        now = datetime.datetime.now()
+        date_time_str = now.strftime("%Y.%m.%d_%H%M%S")
+
+        if title == "":
+            basename = Path(f"{date_time_str}.{self._random_string(10)}.mp4")
+        else:
+            #
+            # Remove illegal characters and replace spaces with underscore and lowercase
+            #
+            cleaned_title = re.sub(r'[^\w\s-]', '', title)    # Remove illegal characters
+            cleaned_title = cleaned_title.replace(' ', '_')   # Replace spaces with underscores
+            cleaned_title = cleaned_title.lower()
+            #
+            # Construct the filename
+            #
+            basename = Path(f"{date_time_str}.{cleaned_title}.mp4")
+
+        filename = self.tmpdir / basename
+
+        return filename
 
     def _random_string(self, length):
         return ''.join(self.rand.choice(string.ascii_letters) for m in range(length))

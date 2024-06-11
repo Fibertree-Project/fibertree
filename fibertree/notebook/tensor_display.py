@@ -130,10 +130,14 @@ class TensorDisplay():
         if animation is None:
             animation = self.animation
 
-        return TensorCanvas(*tensors,
-                            style=style,
-                            animation=animation,
-                            **kwargs)
+        canvas = TensorCanvas(*tensors,
+                              style=style,
+                              animation=animation,
+                              **kwargs)
+
+        print("Starting simulation")
+
+        return canvas
 
 
     def displayCanvas(self,
@@ -148,6 +152,8 @@ class TensorDisplay():
                       center=False):
 
         """ displayCanvas """
+
+        print("Finished simulation")
 
         if canvas is None:
             return None

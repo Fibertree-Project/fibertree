@@ -46,6 +46,9 @@ class MovieCanvas():
     progress: Boolean (default: True)
         Enable tqdm style progress bar on movie creation
 
+    title: string(defalt: "")
+        A title for the movie
+
     layout: list (default: [len(tensors)*[1]]
         List of the number of tensors in each row
     
@@ -217,7 +220,7 @@ class MovieCanvas():
         fourcc = cv2.VideoWriter_fourcc(*"vp09")
         out = cv2.VideoWriter(filename, fourcc, 1, (final_width, final_height))
 
-        tqdm_desc = "Render video frames"
+        tqdm_desc = "Render video frame for each cycle"
 
         for image in self._tqdm(final_images, desc=tqdm_desc):
             for duplication_cnt in range(1):
@@ -248,7 +251,7 @@ class MovieCanvas():
         #
         final_images = []
 
-        tqdm_desc = "Fill frame image with tensors"
+        tqdm_desc = "Paste individual tensor images into frame for each cycle"
 
         for n in self._tqdm(range(start, end), desc=tqdm_desc):
             
@@ -332,7 +335,7 @@ class MovieCanvas():
         """
 
         if self.use_tqdm and MovieCanvas._in_ipynb():
-            return tqdm(iterable, leave=True, desc=desc)
+            return tqdm(iterable, desc=desc, leave=False)
         else:
             return iterable
 

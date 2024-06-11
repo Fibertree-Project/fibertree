@@ -26,7 +26,7 @@ class SlideshowPlayer:
         # Attach click event handlers
         self.next_button.on_click(self.next_image)
         self.back_button.on_click(self.prev_image)
-        self.play_button.on_click(self.play_images)
+        self.play_button.on_click(self.toggle_play)
         self.full_screen_button.on_click(self.full_screen)
 
         # Create an output widget to display the image
@@ -43,10 +43,6 @@ class SlideshowPlayer:
 
         # Create a VBox layout to hold the output and the button box
         self.layout = VBox([self.output, self.button_box])
-
-# Attach the async event handler for play button after initializing
-        self.play_button.on_click(lambda b: asyncio.ensure_future(self.play_images(b)))
-
 
     def show_image(self):
         self.output.clear_output(wait=True)
@@ -67,25 +63,20 @@ class SlideshowPlayer:
         self.index = (self.index - 1) % len(self.frames)
         self.show_image()
 
-    async def play_images(self, b=None):
-        print("Entering play images")
-
+    def toggle_play(self, b=None):
         if not self.is_playing:
             self.is_playing = True
             self.play_button.description = "Pause"
-
-            while self.is_playing and self.index < len(self.frames):
-                self.show_image()
-                await asyncio.sleep(1)
-                self.next_image()
-                # Ensure to let the event loop process other events
-                await asyncio.sleep(0.1)
-
-            self.play_button.description = "Play"
-            self.is_playing = False
+            asyncio.ensure_future(self.play_images())
         else:
             self.is_playing = False
             self.play_button.description = "Play"
+
+    async def play_images(self):
+        while self.is_playing:
+            self.next_image()
+            await asyncio.sleep(1)  # Pause for 1 second
+
 
 
     def full_screen(self, b=None):
