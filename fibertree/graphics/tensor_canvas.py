@@ -5,6 +5,8 @@ import logging
 import copy
 from collections import namedtuple
 
+from tqdm.notebook import tqdm
+
 from fibertree import Tensor
 from fibertree import Fiber
 from fibertree import Payload
@@ -65,6 +67,9 @@ class TensorCanvas():
     animation: string
         Type of animation ('none', 'movie', 'slideshow', 'spacetime')
 
+    progress: Boolean (default: True)
+        Enable tqdm progress bars
+
     === only for movies or slideshow ===
 
     title: string (default: "")
@@ -82,7 +87,13 @@ class TensorCanvas():
 
     """
 
-    def __init__(self, *tensors, animation='movie', style='tree', enable_wait=False, **kwargs):
+    def __init__(self,
+                 *tensors,
+                 animation='movie',
+                 style='tree',
+#                 progress=True,      # This is broken
+                 enable_wait=False,
+                 **kwargs):
         """__init__
 
         """
@@ -100,6 +111,17 @@ class TensorCanvas():
         self.orig_tensors = []
         self.shadow_tensors = []
 
+        self.progress = True
+
+        #
+        # Save some optional keyword arguments
+        #
+        self.title =  kwargs.get("title","")
+        self.layout = kwargs.get("layout",[])
+
+        #
+        # Save some bookkeeping variables
+        #
         self.using_spacetimestamp = None
 
         self.update_times = [] if enable_wait else None
@@ -159,13 +181,11 @@ class TensorCanvas():
         # the visualized activity happens in the desired order
         #
         if animation in ['movie', 'slideshow']:
-            title =  kwargs.get("title","")
-            layout = kwargs.get("layout",[])
-
             self.canvas = MovieCanvas(*self.shadow_tensors,
-                                      title=title,
+                                      title=self.title,
                                       style=style,
-                                      layout=layout)
+                                      layout=self.layout,
+                                      progress=self.progress)
 
         elif animation == 'spacetime':
             self.canvas = SpacetimeCanvas(*self.shadow_tensors)
@@ -490,7 +510,9 @@ class TensorCanvas():
         #
         # Push out any remaining logged activity
         #
-        for n in range(len(self.log)):
+        tqdm_desc = "Create individual tensor images for each cycle" 
+
+        for n in self._tqdm(range(len(self.log)), desc=tqdm_desc):
             self.addFrame()
 
         #
@@ -649,6 +671,16 @@ class TensorCanvas():
         self.log.append(framelog)
 
         return len(self.log)-1
+
+#
+# Utillity method for tqdm
+#
+    def _tqdm(self, iterator, desc=""):
+
+        return tqdm(iterator,
+                    desc=desc,
+                    leave=False,
+                    disable=not self.progress)
 
 
 #
