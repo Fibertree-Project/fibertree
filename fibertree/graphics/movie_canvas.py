@@ -101,7 +101,10 @@ class MovieCanvas():
         #
         self.font = ImageUtils.getFont('DejaVuSansMono', 16)
 
-        #
+        ascent, descent = self.font.getmetrics()
+        self.font_height = ascent + descent
+
+       #
         # Add an initial frame with nothing highlighted (it looks good)
         #
         self.addFrame()
@@ -244,11 +247,20 @@ class MovieCanvas():
 
         canvas_layout = CanvasLayout(self.image_list_per_tensor, self.layout)
 
-        (final_width, final_height, tensor_shapes) = canvas_layout.getLayout(start, end)
+        (core_width, core_height, tensor_shapes) = canvas_layout.getLayout(start, end)
 
         #
         # Dump individual frames into the same image so they stay in sync.
         #
+        final_width = core_width
+
+        header_height = 75
+
+        max_captions = max([len(captions) for captions in self.caption_list])
+        footer_height = 150 + max_captions * self.font_height
+
+        final_height = header_height + core_height + footer_height
+
         final_images = []
 
         tqdm_desc = "Paste individual tensor images into frame for each cycle"
@@ -308,17 +320,67 @@ class MovieCanvas():
                                     fill="black")
 
             #
-            # Draw caption
+            # Draw footer (cycle info and captions)
             #
-            caption = f"Cycle: {n} - {self.caption_list[n+1]}"
+            footer = self._createFooter(n, self.caption_list[n+1])
 
-            ImageDraw.Draw(im).text((15, final_height-80),
-                                    caption,
+            ImageDraw.Draw(im).text((15, final_height - footer_height),
+                                    footer,
                                     font=self.font,
                                     fill="black")
 
         return (final_images, final_width, final_height)
 
+#
+# Utitlity functions
+#
+    def _createFooter(self, cycle, captions):
+        #
+        # Create common, per_pe tuples
+        # And find length of common spacerspacer
+        #
+        caption_tuples = []
+        max_common = 0
+
+        for caption in captions:
+            if " & " in caption:
+                common, per_pe = caption.split(" & ", 1)
+            else:
+                common = caption
+                per_pe = ""
+
+            caption_tuples.append((common, per_pe))
+
+            max_common = max(max_common, len(common))
+
+        #
+        # Create list of footers
+        #
+        cycle_prefix = f"Cycle: {cycle} - "
+        cycle_spacer = len(cycle_prefix) * ' '
+        common_spacer = max_common * ' '
+
+        result = []
+
+        #
+        # First line includes the cycle info and common part
+        #
+        common, per_pe = caption_tuples[0]
+        result.append(f"{cycle_prefix}{common:<{max_common}} {per_pe}")
+        last_common = common
+
+        #
+        # Following lines optionally start a new common section
+        #
+        for common, per_pe in caption_tuples[1:]:
+
+            if common != last_common:
+                result.append(f"{cycle_spacer}{common:<{max_common}} {per_pe}")
+                last_common = common
+            else:
+                result.append(f"{cycle_spacer}{common_spacer} {per_pe}")
+
+        return "\n".join(result)
 
 #
 # Tqdm-related methods

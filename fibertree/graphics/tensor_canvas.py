@@ -425,10 +425,10 @@ class TensorCanvas():
         #
         if len(self.log):
             highlights = self.log[0].highlights
-            caption = self.log[0].caption[0]
+            caption = self.log[0].caption
         else:
             highlights = {}
-            caption = ""
+            caption = [""]
 
         #
         # Populate shadow tensors with values for this frame

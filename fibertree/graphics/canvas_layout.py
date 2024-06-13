@@ -113,10 +113,10 @@ class CanvasLayout():
             current_tensor += row_length
 
         #
-        # Add a little padding at the top for title
-        # and bottom for when the controls are visible.
+        # Add a little padding at the bottom (above the footer)
+        # Note: padding for header and footer are added by caller
         #
-        final_height = final_height + 80 + 75
+        final_height = final_height + 50
 
         return (final_width, final_height, row_shapes)
     
