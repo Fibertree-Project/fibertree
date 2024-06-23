@@ -27,31 +27,31 @@ class TensorCanvas():
     """TensorCanvas
 
     The TensorCanvas class is a frontend for the
-    {Movie,SpaceTime}Canvas classes. It creates a canvas of the
-    requested animation type and shadows of the tracked tensors and
-    passes method calls on to the created class.
+    {Movie,SpaceTime}Canvas classes. It creates a backend canvas of
+    the requested animation type logs activity and manages shadows of
+    the tracked tensors to allow visualizing updates. It passes all
+    the information on to the backend classes to create the
+    appropriate images.
 
-    It manges the shadows of the tracked tensors in an addActivity()
-    method. That method is used to support incremental addition of
-    highlights at a specfic time and at a particular worker, which is
-    is specified by the "spacetime" keyword. In more detail,
-    addActivity() uses the shadows of the tracked tensors, logs
-    highlights and logs changes to mutable tensors. Then when a frame
-    is to be displayed it collects the appropriate highlights and
-    replays the changes into the appropriate shadow tensor and passes
-    highlights to the addFrame() method in a {Movie,SpaceTime}Canvas,
-    which displays those highlights on the current state of the shadow
-    tensors.
+    TensorCanvas logs activty of the tracked tensors in an
+    addActivity() method. That method is used to support incremental
+    addition of highlights at a specfic time and at a particular
+    worker, which is is specified by the "spacetime" keyword. In more
+    detail, addActivity() logs tensor highlights along with changes to
+    mutable tensors and captions assocaited with a specific
+    spacetimestamp . At the end of a run all of that information is
+    used to replay the changes into the appropriate shadow tensor and
+    passes highlights and captions to the addFrame() method in a
+    {Movie,SpaceTime}Canvas, which displays those highlights on the
+    current state of the shadow tensors.
 
-    The addFrame() method can be called exclictly to output the
-    information from the oldest frame, but it is best to just wait
-    until the information for all frames has been recorded, and all
-    frames will be output..
+    The addFrame() method is a legacy method that synthesizes a spacetime
+    stamp for a single worker and increments the cycle by one each time it
+    is called.  Using addFrame() is incompatible with uses of addActivity()
 
-    This class also provides primitive support for having an activity
-    "wait" for a coordinate in another tensor to be updated. To do
-    this it tracks the update time of each coordinate that changes
-    a value. This capability is enabled with the "enable_wait" keyword.
+    Legacy capabilities to try to adjust time for depedencies has been
+    removed.
+
 
     Constructor
     -----------
@@ -81,9 +81,10 @@ class TensorCanvas():
     layout: list (default: [len(tensors)*[1]]
         List of the number of tensors in each row
 
+    == capbility removed ===
+
     enable_wait: Boolean
         Enable tracking update times to allow waiting for an update
-
 
     """
 
@@ -122,7 +123,7 @@ class TensorCanvas():
         #
         # Save some bookkeeping variables
         #
-        self.using_spacetimestamp = None
+        self.using_spacetimestamp = True
 
         self.update_times = [] if enable_wait else None
         self.waitname_map = {}
@@ -157,12 +158,6 @@ class TensorCanvas():
         # Create a list to hold a record of activity at each timestamp
         #
         self.log = []
-
-        #
-        # Flag to help addFrame() know if it is adding activity
-        # to an existing frame
-        #
-        self.inframe = False
 
         #
         # Global cycle tracker
@@ -251,6 +246,12 @@ class TensorCanvas():
         if isinstance(self.canvas, NoneCanvas):
             return
 
+        assert self.using_spacetimestamp, "Cannot mix addActivty and addFrame"
+        assert spacetime != None, "Keyword argument 'spacetime' is required"
+        assert skew == 0, "Keyword argument 'skew' is no longer supported"
+        assert wait == None, "Keyword argument 'wait' is no longer supported"
+        assert end_frame == False, "Keyword argument 'end_frame' is no longer supported"
+
         #
         # Rename spacetime to spacetimestamp to avoid confusion
         # with the spacetime style
@@ -258,32 +259,10 @@ class TensorCanvas():
         spacetimestamp = spacetime
 
         #
-        # Set that we are in a frame
+        # Spacetimestamp mode
         #
-        self.inframe = True
-
-        if spacetimestamp is not None:
-            #
-            # Spacetimestamp mode
-            #
-            assert self.using_spacetimestamp in [None, True], "One cannot mix spacetimestamp and skew"
-
-            self.using_spacetimestamp = True
-
-            worker = spacetimestamp[0]
-            timestamp = spacetimestamp[1]
-        else:
-            #
-            # Skew mode - user must invoke AddFrame()
-            #
-            assert self.using_spacetimestamp in [None, False], "One cannot mix spacetimestamp and skew"
-
-            self.using_spacetimestamp = False
-
-            #
-            # Convert skew into a global time
-            #
-            timestamp = self.cycle + skew
+        worker = spacetimestamp[0]
+        timestamp = spacetimestamp[1]
 
         #
         # Canonicalize highlights
@@ -302,37 +281,6 @@ class TensorCanvas():
                                                                            worker=worker)
 
             highlights_list.append(canonical_highlights)
-
-        #
-        # If wait is a list it is a list of input tensors that this
-        # activity depended on and the skew is delayed by the latest
-        # time among those inputs
-        #
-        if wait is not None:
-            assert False, "Wait is currently broken"
-            assert self.update_times is not None, "Keyword 'enable_wait' not set"
-
-            delay = -1
-
-            #
-            # Look at each input and see which is the latest
-            #
-            # TBD: We wait for all the highlighted points in an input,
-            #      maybe it should be selective
-            #
-            for tname, xmit_time in wait.items():
-
-                tnum = self.waitname_map.get(tname, self._insertWaitname(tname))
-
-                for hl in highlights_list[tnum][worker]:
-                    update_time = self.update_times[tnum].getPayload(*hl)
-                    update_delay = update_time.value - self.cycle + xmit_time
-                    if update_delay > delay:
-                        delay = update_delay
-
-            assert delay >= 0, "Tensor never updated for wait"
-
-            skew = max(skew, delay)
 
         #
         # Tell the canvas to remember the current tensor states
@@ -364,12 +312,6 @@ class TensorCanvas():
                 active_highlights[n][worker].extend(highlight)
                 self.logger.debug("After: %s", active_highlights[n][worker])
 
-        #
-        # Sometimes addActivity should end the frame
-        #
-        if end_frame or worker == "anon":
-            self.addFrame()
-
 
     def _insertWaitname(self, tname):
 
@@ -392,14 +334,22 @@ class TensorCanvas():
     def addFrame(self, *highlights, caption=""):
         """Add a step to the movie or spacetime diagram
 
-        A step (or cycle) to the animation. For movies this
-        corresponds to a frame in the movie.
+        This is a method to add a step (or cycle) to the
+        animation. For movies this corresponds to a frame in the
+        movie.
+
+        Note: This is just a legacy interface (from before the
+        introduction of addActivity()) that creates a spacetimestamp
+        for a single worker in sucessive cycles.
 
         Parameters
         ----------
 
         highlighted_coords_per_tensor: list of highlights
             Highlights to add to the registered tensors
+
+        caption: string (default: "")
+            A caption to add to the frame
 
         """
         #
@@ -408,40 +358,33 @@ class TensorCanvas():
         if isinstance(self.canvas, NoneCanvas):
             return
 
+        #
+        # Calling addFrame() without highlights is really a NOP because we collect all activity
+        # in the log and do not render anyting frame-by-frame
+        #
+        # To make a cycle pass with no hightlights, the caller must pass in a set of empty hightlights.
+        #
+        # Todo: Is this the semantics we want?
+        #
+        if not highlights:
+            return
 
         #
-        # For situations where caller did not use addActivity()
-        # call it one time for them
+        # Call addActivity() with synthesized spacetime
         #
         # Note: highlights is a list of highlights objects
         #
-        if highlights:
-            self.addActivity(*highlights, worker="PE")
+        # Note 2: Calling addFrame() with highlights is incompatible with using addActivity() directly
+        #         so we overriding the control variable to call addActivty()
+        #
+        self.using_spacetimestamp = True
 
-        self.inframe = False
+        self.addActivity(*highlights,
+                         spacetime=("PE", self.cycle))
 
-        #
-        # Highlights and caption were collected by addActivity
-        #
-        if len(self.log):
-            highlights = self.log[0].highlights
-            caption = self.log[0].caption
-        else:
-            highlights = {}
-            caption = [""]
+        self.using_spacetimestamp = False
 
-        #
-        # Populate shadow tensors with values for this frame
-        #
-        # Note: The log gets popped, so we needed to get the
-        # highlights and caption out before this call
-        #
-        self._replayChanges()
-
-        #
-        # Add the frame
-        #
-        self.canvas.addFrame(*highlights, caption=caption)
+        self.cycle += 1
 
 
     def getLastFrame(self, message=None):
@@ -489,9 +432,6 @@ class TensorCanvas():
 
         """
 
-        #
-        # Push out any remaining logged activity
-        #
         self._finalizeCanvas()
 
         return self.canvas.saveMovie(filename=filename, layout=layout)
@@ -503,22 +443,40 @@ class TensorCanvas():
     def _finalizeCanvas(self):
         """Finalize the movie/spacetime diagram
 
-        Finalize the animation by adding all the pending cycles to the
-        animation.
+        Finalize the animation by calling the backend canvas with the
+        activity for each frame of activity.
         """
 
+        print(f"{self.log = }")
         #
-        # Push out any remaining logged activity
+        # Push out all logged activity
         #
         tqdm_desc = "Create individual tensor images for each cycle" 
 
         for n in self._tqdm(range(len(self.log)), desc=tqdm_desc):
-            self.addFrame()
+            #
+            # Highlights and caption were collected by addActivity
+            #
+            highlights = self.log[0].highlights
+            caption = self.log[0].caption
+
+            #
+            # Populate shadow tensors with values for this frame
+            #
+            # Note: The log gets popped, so we needed to get the
+            # highlights and caption out before this call
+            #
+            self._replayChanges()
+
+            #
+            # Have the backend canvas the frame
+            #
+            self.canvas.addFrame(*highlights, caption=caption)
 
         #
-        # Create a frame with nothing highlighted
+        # Create a final frame with nothing highlighted
         #
-        self.addFrame()
+        self.canvas.addFrame()
 
 #
 # Utility function to log and replay a series of changes to the
@@ -622,12 +580,6 @@ class TensorCanvas():
                     ref <<= value
 
         del self.log[0]
-
-        #
-        # Increment cycle
-        #
-        if not self.using_spacetimestamp:
-            self.cycle += 1
 
 
     def _createChanges(self, timestamp):
