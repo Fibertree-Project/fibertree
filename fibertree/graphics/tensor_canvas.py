@@ -249,7 +249,7 @@ class TensorCanvas():
         highlights_list = []
 
         for hl in highlights:
-            canonical_highlights = HighlightManager.canonicalizeHighlights(hl,
+            canonical_highlights = HighlightManager.canonicalizeHighlights([hl],
                                                                            worker=worker)
 
             highlights_list.append(canonical_highlights)
