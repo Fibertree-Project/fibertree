@@ -1346,9 +1346,11 @@ class TestFiber(unittest.TestCase):
             self.assertEqual(c, c0[i])
             self.assertEqual(p, p0[i])
 
+        self.assertEqual(i, len(c0) - 1)
+
 
     def test_iter_uncompressed(self):
-        """Test iteration over a fiber (default: iterOccupancy)"""
+        """Test iteration over a fiber (default: iterActiveShape)"""
 
         c0 = [1, 8, 9]
         p0 = [2, 7, 10]
@@ -1363,6 +1365,30 @@ class TestFiber(unittest.TestCase):
         for i, (c, p) in enumerate(a):
             self.assertEqual(c, c1[i])
             self.assertEqual(p, p1[i])
+
+        self.assertEqual(i, len(c1) - 1)
+
+
+    def test_iter_uncompressed_restricted_range(self):
+        """Test iteration over a fiber (default: iterActiveShape)"""
+
+        c0 = [1, 4, 8, 9]
+        p0 = [2, 5, 7, 10]
+
+        a = Fiber(c0, p0)
+        t = Tensor.fromFiber(rank_ids=["K"], fiber=a)
+        t.setFormat("K", "U")
+
+        a.setActive((3, 9))
+
+        c1 = [3, 4, 5, 6, 7, 8]
+        p1 = [0, 5, 0, 0, 0, 7]
+
+        for i, (c, p) in enumerate(a):
+            self.assertEqual(c, c1[i])
+            self.assertEqual(p, p1[i])
+
+        self.assertEqual(i, len(c1) - 1)
 
 
     def test_reversed_eager_only(self):

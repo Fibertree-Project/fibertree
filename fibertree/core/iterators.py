@@ -25,7 +25,9 @@ def __iter__(self, tick=True, start_pos=None):
     if fmt == "C":
         return self.iterOccupancy(tick, start_pos=start_pos)
     elif fmt == "U":
-        return self.iterShape(tick)
+        # Warning: Because this covers only the active range, it will not work
+        # for fibers with halos
+        return self.iterActiveShape(tick)
     else:
         raise ValueError("Unknown format")
 
