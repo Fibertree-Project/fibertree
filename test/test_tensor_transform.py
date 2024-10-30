@@ -581,6 +581,14 @@ class TestTensorTransform(unittest.TestCase):
         self.assertEqual(f4.getDefault(), float("inf"))
 
 
+    def test_merge_empty(self):
+        """Test that mergeRanks merges together fibers"""
+        t = Tensor.fromFiber(fiber=Fiber(), rank_ids=["M2", "M1", "M0"], shape=[10, 10, 10])
+        mt = t.mergeRanks(coord_style="absolute", levels=2)
+
+        self.assertEqual(mt.getRoot(), Fiber())
+        self.assertEqual(mt.getShape(), [10])
+
     def test_merge(self):
         """Test that mergeRanks merges together fibers"""
         f = Fiber([0, 1, 4, 5],
