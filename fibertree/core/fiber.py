@@ -4235,6 +4235,9 @@ class Fiber:
         #
         if levels == 1:
             cur_payloads = self.payloads
+        # If the fiber is empty, no need to merge lower levels
+        elif not self.coords:
+            cur_payloads = self.payloads
         else:
             assert Payload.contains(self.payloads[0], Fiber), \
                 "Insuffient levels to merge"
