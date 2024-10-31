@@ -3395,7 +3395,7 @@ class TestFiber(unittest.TestCase):
                          [Fiber([4, 7], [7, 8], shape=10),
                           Fiber([5, 7], [9, 10], shape=10)],
                          shape=10)],
-                  shape=7)
+                  shape=10)
         mf = f.mergeRanks(style="absolute")
 
         corr = Fiber([0, 1, 5],

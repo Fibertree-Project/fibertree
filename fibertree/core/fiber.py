@@ -4316,7 +4316,7 @@ class Fiber:
         elif style == "relative":
             active_range = self.getActive()
         elif style == "absolute":
-            active_range = (range_start, range_end)
+            active_range = self.getActive()
         elif style == "linear":
             active_range = (0, float("inf"))
 
