@@ -1410,15 +1410,20 @@ class Tensor:
 
         coords = []
         payloads = {}
-        frontier = [(copied.getRoot(), None, -1)]
+        frontier = [(copied.getRoot(), None, None, -1)]
         frontier_coords = [None] * swiz_len
+
+        ranges = {rank: set() for rank in old_rank_ids}
 
         # Depth-first search through the fibertree and extract the coordinate
         # payload pairs
         while frontier:
-            head, coord, depth = frontier.pop()
+            head, parent, coord, depth = frontier.pop()
             if coord is not None:
                 frontier_coords[depth] = coord
+
+            if parent is not None:
+                ranges[parent.getRankAttrs().getId()].add(parent.getActive())
 
             # If this is the last point we need to swizzle, save the payload
             if depth == swiz_len - 1:
@@ -1430,11 +1435,10 @@ class Tensor:
 
             # Otherwise, add this fiber to the frontier
             for c, p in zip(head.coords, head.payloads):
-                frontier.append((p, c, depth + 1))
+                frontier.append((p, head, c, depth + 1))
 
         # Sort the coordinates
         coords.sort(reverse=True)
-
 
         # Add back all of the payloads
         root = Fiber()
@@ -1474,6 +1478,25 @@ class Tensor:
             kwargs["shape"] = new_shape
 
         swizzled = Tensor.fromFiber(**kwargs)
+
+        # For each fiber, reset its active range
+        frontier = [swizzled.getRoot()]
+        while frontier:
+            fiber = frontier.pop()
+            rank = fiber.getRankAttrs().getId()
+            rank_ranges = ranges[rank]
+
+            if not fiber.isEmpty() and rank_ranges:
+                starts = [range_[0] for range_ in rank_ranges if range_[0] <= fiber.coords[0] and range_[1] > fiber.coords[0]]
+                start = min(starts)
+
+                ends = [range_[1] for range_ in rank_ranges if range_[0] <= fiber.coords[-1] and range_[1] > fiber.coords[-1]]
+                end = max(ends)
+
+                fiber.setActive((start, end))
+
+                if isinstance(fiber.payloads[0], Fiber):
+                    frontier.extend(fiber.payloads)
 
         return swizzled
 

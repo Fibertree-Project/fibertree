@@ -393,6 +393,10 @@ class TestTensorTransform(unittest.TestCase):
 
         a_MKMK_2 = a_MMKK.swizzleRanks(["M.1","K.1", "M.0", "K.0"])
         self.assertEqual(a_MKMK_2, a_MKMK)
+        self.assertEqual(a_MKMK_2.getPayload(0, 0).getActive(), (0, 4))
+        self.assertEqual(a_MKMK_2.getPayload(0, 3).getActive(), (0, 4))
+        self.assertEqual(a_MKMK_2.getPayload(4, 0).getActive(), (4, 8))
+        self.assertEqual(a_MKMK_2.getPayload(4, 3).getActive(), (4, 8))
 
         a_MMKK_2 = a_MKMK.swizzleRanks(["M.1", "M.0", "K.1", "K.0"])
         self.assertEqual(a_MMKK_2, a_MMKK)
