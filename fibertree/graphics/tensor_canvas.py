@@ -112,13 +112,15 @@ class TensorCanvas():
         self.orig_tensors = []
         self.shadow_tensors = []
 
-        self.progress = True
-
         #
-        # Save some optional keyword arguments
+        # Save some required/optional keyword arguments
         #
+        self.animation = animation
+        self.style = style
         self.title =  kwargs.get("title","")
         self.layout = kwargs.get("layout",[])
+        self.progress = True
+
 
         #
         # Save some bookkeeping variables
@@ -169,27 +171,6 @@ class TensorCanvas():
         #
         ImageUtils.resetColors()
 
-        #
-        # Create desired canvas
-        #
-        # Note: We create the canvas with the shadow tensors, so that
-        # the visualized activity happens in the desired order
-        #
-        if animation in ['movie', 'slideshow']:
-            self.canvas = MovieCanvas(*self.shadow_tensors,
-                                      title=self.title,
-                                      style=style,
-                                      layout=self.layout,
-                                      progress=self.progress)
-
-        elif animation == 'spacetime':
-            self.canvas = SpacetimeCanvas(*self.shadow_tensors)
-
-        elif animation == 'none':
-            self.canvas = NoneCanvas(*self.shadow_tensors, style=style)
-
-        else:
-            self.logger.warning("TensorCanvas: No animation type: %s", animation)
 
 
     def addActivity(self,
@@ -243,7 +224,7 @@ class TensorCanvas():
         #
         # Don't need to do anything for `NoneCanvas`
         #
-        if isinstance(self.canvas, NoneCanvas):
+        if self.animation == 'none':
             return
 
         assert self.using_spacetimestamp, "Cannot mix addActivty and addFrame"
@@ -355,7 +336,7 @@ class TensorCanvas():
         #
         # Don't need to do anything for `NoneCanvas`
         #
-        if isinstance(self.canvas, NoneCanvas):
+        if self.animation == 'none':
             return
 
         #
@@ -387,17 +368,19 @@ class TensorCanvas():
         self.cycle += 1
 
 
-    def getLastFrame(self, message=None):
-        """Finalize the movie/spacetime diagram
+    def getLastFrame(self, message=None, **kwargs):
+        """Get last fraom of animation
 
-        Finalize the animation by adding all the pending cycles to the
-        animation.  Get an image of the final frame.
+        Finalize the animation by rendering frames.
+        Get an image of the final frame.
 
         Parameters
         ---------
 
         message: string, default=None
             A message to add to the image
+
+        <see self._createCanvas() for other arguments>
 
         Returns
         -------
@@ -406,19 +389,46 @@ class TensorCanvas():
 
         """
 
+        #
+        # Create desired canvas
+        #
+        self._createCanvas(**kwargs)
         self._finalizeCanvas()
 
         return self.canvas.getLastFrame(message=message)
 
 
-    def getAllFrames(self, layout=None):
+    def getAllFrames(self, **kwargs):
+        """Get all frames of the animation
 
+        Finalize the animation by rendering all frames.
+        Get all the frame images.
+
+        Parameters
+        ---------
+
+        message: string, default=None
+            A message to add to the image
+
+        <see self._createCanvas() for other arguments>
+
+        Returns
+        -------
+        frames: list
+            A list of images for all frames
+
+        """
+
+        #
+        # Create desired canvas
+        #
+        self._createCanvas(**kwargs)
         self._finalizeCanvas()
 
         return self.canvas.getAllFrames()
 
 
-    def saveMovie(self, filename=None, layout=None):
+    def saveMovie(self, filename=None, **kwargs):
         """Save the animation to a file
 
         If the animation can be saved to a file, this method will do
@@ -430,8 +440,19 @@ class TensorCanvas():
         filename: string, default=None
             Name of a file to save the movie
 
+        <see self._createCanvas() for other arguments>
         """
 
+        #
+        # FIXME: When _createCanvas() is called here we do not need to pass layout to saveMovie
+        #
+
+        layout = kwargs.get("layout", self.layout)
+
+        #
+        # Create desired canvas
+        #
+        self._createCanvas(**kwargs)
         self._finalizeCanvas()
 
         return self.canvas.saveMovie(filename=filename, layout=layout)
@@ -440,6 +461,70 @@ class TensorCanvas():
 #
 # Utility functions
 #
+    def _createCanvas(self, **kwargs):
+        """Create the backend canvas
+
+        Create the desired type of backend canvas. 
+
+        Note: parameters are all defaulted from the constructor, but
+              can be overridden here
+
+        Parameters
+        ----------
+        animation: string (default: self.animation)
+            Type of animation ('none', 'movie', 'slideshow', 'spacetime')
+
+        progress: Boolean (default: self.progress)
+            Enable tqdm progress bars
+
+        === only for movies or slideshow ===
+
+        title: string (default: self.title)
+            Title for images
+
+        style: string (default: self.style)
+            Display style for tensors ('tree', 'uncompressed', 'tree+uncompressed')
+
+        layout: list (default: self.layout)
+            List of the number of tensors in each row
+
+        """
+
+        #
+        # Save some optional keyword arguments
+        #
+        animation = kwargs.get("animation", self.animation)
+        style = kwargs.get("style", self.style)
+        title = kwargs.get("title", self.title)
+        layout = kwargs.get("layout", self.layout)
+        progress = kwargs.get("progress", self.progress)
+
+        #
+        # Create desired canvas
+        #
+        # Note: We create the canvas with the shadow tensors, so that
+        # the visualized activity happens in the desired order
+        #
+        if animation in ['movie', 'slideshow']:
+            canvas = MovieCanvas(*self.shadow_tensors,
+                                 title=title,
+                                 style=style,
+                                 layout=layout,
+                                 progress=self.progress)
+
+        elif animation == 'spacetime':
+            canvas = SpacetimeCanvas(*self.shadow_tensors)
+
+        elif animation == 'none':
+            canvas = NoneCanvas(*self.shadow_tensors, style=style)
+
+        else:
+            self.logger.warning("TensorCanvas: No animation type: %s", animation)
+            canvas = None
+
+        self.canvas = canvas
+
+        
     def _finalizeCanvas(self):
         """Finalize the movie/spacetime diagram
 
@@ -447,7 +532,8 @@ class TensorCanvas():
         activity for each frame of activity.
         """
 
-        print(f"{self.log = }")
+        #print(f"{self.log = }")
+
         #
         # Push out all logged activity
         #
@@ -479,7 +565,7 @@ class TensorCanvas():
         self.canvas.addFrame()
 
 #
-# Utility function to log and replay a series of changes to the
+# Utility functions to log and replay a series of changes to the
 # tensors being tracked
 #
 
